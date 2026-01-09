@@ -1,0 +1,39 @@
+{
+  "name": "@doist/todoist-cli",
+  "version": "0.1.0",
+  "description": "TypeScript CLI for Todoist",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "td": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "todoist",
+    "cli",
+    "todo",
+    "tasks"
+  ],
+  "author": "Ernesto García <ernesto@ernesto.dev>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@doist/todoist-api-typescript": "6.2.1",
+    "chalk": "5.6.2",
+    "commander": "14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.0.3",
+    "typescript": "5.9.3"
+  }
+}
