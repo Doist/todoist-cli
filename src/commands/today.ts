@@ -13,7 +13,8 @@ export function registerTodayCommand(program: Command): void {
       const { results: allProjects } = await api.getProjects()
       const projects = new Map<string, Project>(allProjects.map((p) => [p.id, p]))
 
-      const today = new Date().toISOString().split('T')[0]
+      const now = new Date()
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
       const overdue = tasks.filter((t) => t.due && t.due.date < today)
       const dueToday = tasks.filter((t) => t.due?.date === today)
