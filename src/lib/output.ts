@@ -41,19 +41,6 @@ export function formatTaskRow(task: Task, projectName?: string): string {
   return parts.join('  ')
 }
 
-export function formatTaskList(tasks: Task[], projects?: Map<string, Project>): string {
-  if (tasks.length === 0) {
-    return 'No tasks found.'
-  }
-
-  const lines = tasks.map((task) => {
-    const projectName = projects?.get(task.projectId)?.name
-    return formatTaskRow(task, projectName)
-  })
-
-  return lines.join('\n')
-}
-
 export function formatTaskView(task: Task, project?: Project, full = false): string {
   const lines: string[] = []
 
