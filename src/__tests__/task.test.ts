@@ -715,3 +715,80 @@ describe('task list --parent', () => {
     consoleSpy.mockRestore()
   })
 })
+
+describe('task add --assignee', () => {
+  let mockApi: ReturnType<typeof createMockApi>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi = createMockApi()
+    mockGetApi.mockResolvedValue(mockApi as any)
+  })
+
+  it('creates task with assignee using id:', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getProjects.mockResolvedValue({
+      results: [{ id: 'proj-1', name: 'Work', isShared: true }],
+    })
+    mockApi.addTask.mockResolvedValue({ id: 'task-new', content: 'Task', due: null })
+
+    await program.parseAsync([
+      'node', 'td', 'task', 'add',
+      '--content', 'Task',
+      '--project', 'Work',
+      '--assignee', 'id:user-123',
+    ])
+
+    expect(mockApi.addTask).toHaveBeenCalledWith(
+      expect.objectContaining({ assigneeId: 'user-123' })
+    )
+    consoleSpy.mockRestore()
+  })
+
+  it('throws error when --assignee used without --project', async () => {
+    const program = createProgram()
+
+    await expect(
+      program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--assignee', 'id:user-123'])
+    ).rejects.toThrow('PROJECT_REQUIRED')
+  })
+})
+
+describe('task update --assignee', () => {
+  let mockApi: ReturnType<typeof createMockApi>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi = createMockApi()
+    mockGetApi.mockResolvedValue(mockApi as any)
+  })
+
+  it('updates task with assignee using id:', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task', projectId: 'proj-1' })
+    mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work', isShared: true })
+    mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+    await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--assignee', 'id:user-123'])
+
+    expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { assigneeId: 'user-123' })
+    consoleSpy.mockRestore()
+  })
+
+  it('unassigns task with --unassign flag', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task', projectId: 'proj-1' })
+    mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+    await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--unassign'])
+
+    expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { assigneeId: null })
+    consoleSpy.mockRestore()
+  })
+})

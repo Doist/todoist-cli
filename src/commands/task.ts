@@ -5,15 +5,19 @@ import {
   requireIdRef,
   resolveParentTaskId,
   resolveProjectId,
+  resolveProjectRef,
   resolveSectionId,
   resolveTaskRef,
 } from '../lib/refs.js'
 import { listTasksForProject, parsePriority, type TaskListOptions } from '../lib/task-list.js'
+import { resolveAssigneeId } from '../lib/collaborators.js'
 
 interface ListOptions extends TaskListOptions {
   project?: string
   parent?: string
   label?: string
+  assignee?: string
+  unassigned?: boolean
 }
 
 interface ViewOptions {
@@ -90,6 +94,7 @@ interface AddOptions {
   labels?: string
   parent?: string
   description?: string
+  assignee?: string
 }
 
 async function addTask(options: AddOptions): Promise<void> {
@@ -107,9 +112,10 @@ async function addTask(options: AddOptions): Promise<void> {
     args.priority = parsePriority(options.priority)
   }
 
+  let project = null
   if (options.project) {
-    const projectId = await resolveProjectId(api, options.project)
-    if (projectId) args.projectId = projectId
+    project = await resolveProjectRef(api, options.project)
+    args.projectId = project.id
   }
 
   if (options.section) {
@@ -128,6 +134,15 @@ async function addTask(options: AddOptions): Promise<void> {
     args.description = options.description
   }
 
+  if (options.assignee) {
+    if (!project) {
+      throw new Error(
+        formatError('PROJECT_REQUIRED', 'The --project flag is required when using --assignee.')
+      )
+    }
+    args.assigneeId = await resolveAssigneeId(api, options.assignee, project)
+  }
+
   const task = await api.addTask(args)
   console.log(`Created: ${task.content}`)
   if (task.due) console.log(`Due: ${task.due.string || task.due.date}`)
@@ -140,6 +155,8 @@ interface UpdateOptions {
   priority?: string
   labels?: string
   description?: string
+  assignee?: string
+  unassign?: boolean
 }
 
 async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
@@ -153,6 +170,13 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
   if (options.priority) args.priority = parsePriority(options.priority)
   if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
   if (options.description) args.description = options.description
+
+  if (options.unassign) {
+    args.assigneeId = null
+  } else if (options.assignee) {
+    const project = await api.getProject(task.projectId)
+    args.assigneeId = await resolveAssigneeId(api, options.assignee, project)
+  }
 
   const updated = await api.updateTask(task.id, args)
   console.log(`Updated: ${updated.content}`)
@@ -214,6 +238,8 @@ export function registerTaskCommand(program: Command): void {
     .option('--priority <p1-p4>', 'Filter by priority')
     .option('--due <date>', 'Filter by due date (today, overdue, or YYYY-MM-DD)')
     .option('--filter <query>', 'Raw Todoist filter query')
+    .option('--assignee <ref>', 'Filter by assignee (me or id:xxx)')
+    .option('--unassigned', 'Show only unassigned tasks')
     .option('--limit <n>', 'Limit number of results (default: 300)')
     .option('--cursor <cursor>', 'Continue from cursor')
     .option('--all', 'Fetch all results (no limit)')
@@ -255,6 +281,7 @@ export function registerTaskCommand(program: Command): void {
     .option('--labels <a,b>', 'Comma-separated labels')
     .option('--parent <ref>', 'Parent task reference')
     .option('--description <text>', 'Task description')
+    .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
     .action(addTask)
 
   task
@@ -265,6 +292,8 @@ export function registerTaskCommand(program: Command): void {
     .option('--priority <p1-p4>', 'New priority')
     .option('--labels <a,b>', 'New labels (replaces existing)')
     .option('--description <text>', 'New description')
+    .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
+    .option('--unassign', 'Remove assignee')
     .action(updateTask)
 
   task

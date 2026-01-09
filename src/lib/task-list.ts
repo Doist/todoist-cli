@@ -1,4 +1,4 @@
-import { getApi, type Project, type Section } from './api.js'
+import { getApi, getCurrentUserId, type Project, type Section } from './api.js'
 import { formatTaskRow, formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from './output.js'
 import { paginate, LIMITS } from './pagination.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
@@ -11,6 +11,8 @@ export interface TaskListOptions {
   filter?: string
   label?: string
   parent?: string
+  assignee?: string
+  unassigned?: boolean
   limit?: string
   cursor?: string
   all?: boolean
@@ -149,6 +151,26 @@ export async function listTasksForProject(
     filtered = filtered.filter((t) =>
       t.labels.some((tl) => labels.includes(tl.toLowerCase()))
     )
+  }
+
+  if (options.unassigned) {
+    filtered = filtered.filter((t) => !t.responsibleUid)
+  } else if (options.assignee) {
+    let assigneeId: string
+    if (options.assignee.toLowerCase() === 'me') {
+      assigneeId = await getCurrentUserId()
+    } else if (options.assignee.startsWith('id:')) {
+      assigneeId = options.assignee.slice(3)
+    } else {
+      throw new Error(
+        formatError(
+          'INVALID_ASSIGNEE_FILTER',
+          'Assignee filter requires "me" or "id:xxx" format.',
+          ['Use --assignee me or --assignee id:12345']
+        )
+      )
+    }
+    filtered = filtered.filter((t) => t.responsibleUid === assigneeId)
   }
 
   if (options.json) {

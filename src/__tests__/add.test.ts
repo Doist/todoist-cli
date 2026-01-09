@@ -13,6 +13,8 @@ const mockGetApi = vi.mocked(getApi)
 function createMockApi() {
   return {
     quickAddTask: vi.fn(),
+    getProject: vi.fn(),
+    updateTask: vi.fn(),
   }
 }
 
@@ -111,6 +113,29 @@ describe('add command', () => {
     expect(mockApi.quickAddTask).toHaveBeenCalledWith({
       text: 'Buy milk tomorrow p1 #Shopping',
     })
+    consoleSpy.mockRestore()
+  })
+
+  it('assigns task with --assignee flag', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.quickAddTask.mockResolvedValue({
+      id: 'task-1',
+      content: 'Review PR',
+      projectId: 'proj-1',
+      due: null,
+    })
+    mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work', isShared: true })
+    mockApi.updateTask.mockResolvedValue({
+      id: 'task-1',
+      content: 'Review PR',
+      due: null,
+    })
+
+    await program.parseAsync(['node', 'td', 'add', 'Review PR', '--assignee', 'id:user-123'])
+
+    expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { assigneeId: 'user-123' })
     consoleSpy.mockRestore()
   })
 })
