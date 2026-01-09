@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api.js'
-import { formatJson, formatNdjson, formatError } from '../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from '../lib/output.js'
+import { paginate, DEFAULT_LIMIT } from '../lib/pagination.js'
 import { isIdRef, extractId, requireIdRef } from '../lib/refs.js'
 import type { Task } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
@@ -32,6 +33,8 @@ async function resolveTaskRef(api: Awaited<ReturnType<typeof getApi>>, ref: stri
 }
 
 interface ListOptions {
+  limit?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -40,15 +43,25 @@ interface ListOptions {
 async function listComments(taskRef: string, options: ListOptions): Promise<void> {
   const api = await getApi()
   const task = await resolveTaskRef(api, taskRef)
-  const { results: comments } = await api.getComments({ taskId: task.id })
+
+  const targetLimit = options.all
+    ? Number.MAX_SAFE_INTEGER
+    : options.limit
+      ? parseInt(options.limit, 10)
+      : 10
+
+  const { results: comments, nextCursor } = await paginate(
+    (cursor, limit) => api.getComments({ taskId: task.id, cursor: cursor ?? undefined, limit }),
+    { limit: targetLimit }
+  )
 
   if (options.json) {
-    console.log(formatJson(comments, 'comment', options.full))
+    console.log(formatPaginatedJson({ results: comments, nextCursor }, 'comment', options.full))
     return
   }
 
   if (options.ndjson) {
-    console.log(formatNdjson(comments, 'comment', options.full))
+    console.log(formatPaginatedNdjson({ results: comments, nextCursor }, 'comment', options.full))
     return
   }
 
@@ -64,6 +77,7 @@ async function listComments(taskRef: string, options: ListOptions): Promise<void
     console.log(`  ${comment.content}`)
     console.log('')
   }
+  console.log(formatNextCursorFooter(nextCursor))
 }
 
 interface AddOptions {
@@ -100,7 +114,9 @@ export function registerCommentCommand(program: Command): void {
   comment
     .command('list <task>')
     .description('List comments on a task')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 10)')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(listComments)

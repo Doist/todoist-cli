@@ -1,10 +1,13 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api.js'
-import { formatJson, formatNdjson, formatError } from '../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from '../lib/output.js'
+import { paginate, DEFAULT_LIMIT } from '../lib/pagination.js'
 import { isIdRef, extractId } from '../lib/refs.js'
 import chalk from 'chalk'
 
 interface ListOptions {
+  limit?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -12,15 +15,25 @@ interface ListOptions {
 
 async function listLabels(options: ListOptions): Promise<void> {
   const api = await getApi()
-  const { results: labels } = await api.getLabels()
+
+  const targetLimit = options.all
+    ? Number.MAX_SAFE_INTEGER
+    : options.limit
+      ? parseInt(options.limit, 10)
+      : DEFAULT_LIMIT
+
+  const { results: labels, nextCursor } = await paginate(
+    (cursor, limit) => api.getLabels({ cursor: cursor ?? undefined, limit }),
+    { limit: targetLimit }
+  )
 
   if (options.json) {
-    console.log(formatJson(labels, 'label', options.full))
+    console.log(formatPaginatedJson({ results: labels, nextCursor }, 'label', options.full))
     return
   }
 
   if (options.ndjson) {
-    console.log(formatNdjson(labels, 'label', options.full))
+    console.log(formatPaginatedNdjson({ results: labels, nextCursor }, 'label', options.full))
     return
   }
 
@@ -34,6 +47,7 @@ async function listLabels(options: ListOptions): Promise<void> {
     const name = label.isFavorite ? chalk.yellow(`@${label.name}`) : `@${label.name}`
     console.log(`${id}  ${name}`)
   }
+  console.log(formatNextCursorFooter(nextCursor))
 }
 
 interface CreateOptions {
@@ -88,7 +102,9 @@ export function registerLabelCommand(program: Command): void {
   label
     .command('list')
     .description('List all labels')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 300)')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(listLabels)

@@ -1,9 +1,13 @@
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api.js'
-import { formatTaskRow, formatJson, formatNdjson } from '../lib/output.js'
+import { formatTaskRow, formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter } from '../lib/output.js'
+import { paginate, DEFAULT_LIMIT } from '../lib/pagination.js'
 import chalk from 'chalk'
 
 interface TodayOptions {
+  limit?: string
+  cursor?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -13,12 +17,25 @@ export function registerTodayCommand(program: Command): void {
   program
     .command('today')
     .description('Show tasks due today and overdue')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 300)')
+    .option('--cursor <cursor>', 'Continue from cursor')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(async (options: TodayOptions) => {
       const api = await getApi()
-      const { results: tasks } = await api.getTasks()
+
+      const targetLimit = options.all
+        ? Number.MAX_SAFE_INTEGER
+        : options.limit
+          ? parseInt(options.limit, 10)
+          : DEFAULT_LIMIT
+
+      const { results: tasks, nextCursor } = await paginate(
+        (cursor, limit) => api.getTasks({ cursor: cursor ?? undefined, limit }),
+        { limit: targetLimit, startCursor: options.cursor }
+      )
 
       const now = new Date()
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -28,12 +45,12 @@ export function registerTodayCommand(program: Command): void {
       const allTodayTasks = [...overdue, ...dueToday]
 
       if (options.json) {
-        console.log(formatJson(allTodayTasks, 'task', options.full))
+        console.log(formatPaginatedJson({ results: allTodayTasks, nextCursor }, 'task', options.full))
         return
       }
 
       if (options.ndjson) {
-        console.log(formatNdjson(allTodayTasks, 'task', options.full))
+        console.log(formatPaginatedNdjson({ results: allTodayTasks, nextCursor }, 'task', options.full))
         return
       }
 
@@ -42,6 +59,7 @@ export function registerTodayCommand(program: Command): void {
 
       if (overdue.length === 0 && dueToday.length === 0) {
         console.log('No tasks due today.')
+        console.log(formatNextCursorFooter(nextCursor))
         return
       }
 
@@ -57,5 +75,6 @@ export function registerTodayCommand(program: Command): void {
       for (const task of dueToday) {
         console.log(formatTaskRow(task, projects.get(task.projectId)?.name))
       }
+      console.log(formatNextCursorFooter(nextCursor))
     })
 }

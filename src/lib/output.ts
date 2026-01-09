@@ -137,3 +137,43 @@ export function formatError(code: string, message: string, hints?: string[]): st
   }
   return chalk.red(lines.join('\n'))
 }
+
+export interface PaginatedOutput<T> {
+  results: T[]
+  nextCursor: string | null
+}
+
+export function formatPaginatedJson<T extends object>(
+  data: PaginatedOutput<T>,
+  type?: EntityType,
+  full = false
+): string {
+  const fields = type && !full ? getEssentialFields(type) : null
+  const results = fields
+    ? data.results.map((item) => pickFields(item, fields))
+    : data.results
+
+  return JSON.stringify({ results, nextCursor: data.nextCursor }, null, 2)
+}
+
+export function formatPaginatedNdjson<T extends object>(
+  data: PaginatedOutput<T>,
+  type?: EntityType,
+  full = false
+): string {
+  const fields = type && !full ? getEssentialFields(type) : null
+  const lines = data.results.map((item) =>
+    JSON.stringify(fields ? pickFields(item, fields) : item)
+  )
+
+  if (data.nextCursor) {
+    lines.push(JSON.stringify({ _meta: true, nextCursor: data.nextCursor }))
+  }
+
+  return lines.join('\n')
+}
+
+export function formatNextCursorFooter(nextCursor: string | null): string {
+  if (!nextCursor) return ''
+  return chalk.dim(`\n... more items exist. Use --all to fetch everything.`)
+}

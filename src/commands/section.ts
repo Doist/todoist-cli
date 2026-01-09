@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api.js'
-import { formatJson, formatNdjson, formatError } from '../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from '../lib/output.js'
+import { paginate, DEFAULT_LIMIT } from '../lib/pagination.js'
 import { isIdRef, extractId, requireIdRef } from '../lib/refs.js'
 import chalk from 'chalk'
 
@@ -31,6 +32,8 @@ async function resolveProjectId(api: Awaited<ReturnType<typeof getApi>>, nameOrI
 }
 
 interface ListOptions {
+  limit?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -39,15 +42,25 @@ interface ListOptions {
 async function listSections(projectRef: string, options: ListOptions): Promise<void> {
   const api = await getApi()
   const projectId = await resolveProjectId(api, projectRef)
-  const { results: sections } = await api.getSections({ projectId })
+
+  const targetLimit = options.all
+    ? Number.MAX_SAFE_INTEGER
+    : options.limit
+      ? parseInt(options.limit, 10)
+      : DEFAULT_LIMIT
+
+  const { results: sections, nextCursor } = await paginate(
+    (cursor, limit) => api.getSections({ projectId, cursor: cursor ?? undefined, limit }),
+    { limit: targetLimit }
+  )
 
   if (options.json) {
-    console.log(formatJson(sections, 'section', options.full))
+    console.log(formatPaginatedJson({ results: sections, nextCursor }, 'section', options.full))
     return
   }
 
   if (options.ndjson) {
-    console.log(formatNdjson(sections, 'section', options.full))
+    console.log(formatPaginatedNdjson({ results: sections, nextCursor }, 'section', options.full))
     return
   }
 
@@ -60,6 +73,7 @@ async function listSections(projectRef: string, options: ListOptions): Promise<v
     const id = chalk.dim(section.id)
     console.log(`${id}  ${section.name}`)
   }
+  console.log(formatNextCursorFooter(nextCursor))
 }
 
 interface CreateOptions {
@@ -97,7 +111,9 @@ export function registerSectionCommand(program: Command): void {
   section
     .command('list <project>')
     .description('List sections in a project')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 300)')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(listSections)

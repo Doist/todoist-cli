@@ -1,10 +1,14 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api.js'
-import { formatJson, formatNdjson, formatError } from '../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from '../lib/output.js'
+import { paginate, DEFAULT_LIMIT } from '../lib/pagination.js'
 import { isIdRef, extractId } from '../lib/refs.js'
 import chalk from 'chalk'
 
 interface ListOptions {
+  limit?: string
+  cursor?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -12,15 +16,25 @@ interface ListOptions {
 
 async function listProjects(options: ListOptions): Promise<void> {
   const api = await getApi()
-  const { results: projects } = await api.getProjects()
+
+  const targetLimit = options.all
+    ? Number.MAX_SAFE_INTEGER
+    : options.limit
+      ? parseInt(options.limit, 10)
+      : 50
+
+  const { results: projects, nextCursor } = await paginate(
+    (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+    { limit: targetLimit, startCursor: options.cursor }
+  )
 
   if (options.json) {
-    console.log(formatJson(projects, 'project', options.full))
+    console.log(formatPaginatedJson({ results: projects, nextCursor }, 'project', options.full))
     return
   }
 
   if (options.ndjson) {
-    console.log(formatNdjson(projects, 'project', options.full))
+    console.log(formatPaginatedNdjson({ results: projects, nextCursor }, 'project', options.full))
     return
   }
 
@@ -29,6 +43,7 @@ async function listProjects(options: ListOptions): Promise<void> {
     const name = project.isFavorite ? chalk.yellow(project.name) : project.name
     console.log(`${id}  ${name}`)
   }
+  console.log(formatNextCursorFooter(nextCursor))
 }
 
 async function resolveProjectRef(api: Awaited<ReturnType<typeof getApi>>, ref: string) {
@@ -88,7 +103,10 @@ export function registerProjectCommand(program: Command): void {
   project
     .command('list')
     .description('List all projects')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 50)')
+    .option('--cursor <cursor>', 'Continue from cursor')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(listProjects)

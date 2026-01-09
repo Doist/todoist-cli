@@ -8,8 +8,10 @@ export function registerInboxCommand(program: Command): void {
     .description('List tasks in Inbox')
     .option('--priority <p1-p4>', 'Filter by priority')
     .option('--due <date>', 'Filter by due date (today, overdue, or YYYY-MM-DD)')
-    .option('--limit <n>', 'Limit number of results', '50')
-    .option('--json', 'Output as JSON array')
+    .option('--limit <n>', 'Limit number of results (default: 300)')
+    .option('--cursor <cursor>', 'Continue from cursor')
+    .option('--all', 'Fetch all results (no limit)')
+    .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .action(async (options: TaskListOptions) => {

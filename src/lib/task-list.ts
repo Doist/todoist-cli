@@ -1,5 +1,6 @@
 import { getApi, type Project, type Section } from './api.js'
-import { formatTaskRow, formatJson, formatNdjson, formatError } from './output.js'
+import { formatTaskRow, formatPaginatedJson, formatPaginatedNdjson, formatNextCursorFooter, formatError } from './output.js'
+import { paginate, DEFAULT_LIMIT } from './pagination.js'
 import type { Task } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 
@@ -8,6 +9,8 @@ export interface TaskListOptions {
   due?: string
   filter?: string
   limit?: string
+  cursor?: string
+  all?: boolean
   json?: boolean
   ndjson?: boolean
   full?: boolean
@@ -93,42 +96,45 @@ export async function listTasksForProject(
 ): Promise<void> {
   const api = await getApi()
 
-  let tasks: Task[]
+  const targetLimit = options.all
+    ? Number.MAX_SAFE_INTEGER
+    : options.limit
+      ? parseInt(options.limit, 10)
+      : DEFAULT_LIMIT
 
-  if (projectId) {
-    const response = await api.getTasks({ projectId })
-    tasks = response.results
-  } else {
-    const response = await api.getTasks()
-    tasks = response.results
-  }
+  const { results: tasks, nextCursor } = await paginate(
+    (cursor, limit) =>
+      projectId
+        ? api.getTasks({ projectId, cursor: cursor ?? undefined, limit })
+        : api.getTasks({ cursor: cursor ?? undefined, limit }),
+    { limit: targetLimit, startCursor: options.cursor }
+  )
+
+  let filtered = tasks
 
   if (options.priority) {
     const priority = parsePriority(options.priority)
-    tasks = tasks.filter((t) => t.priority === priority)
+    filtered = filtered.filter((t) => t.priority === priority)
   }
 
   if (options.due) {
     const today = getLocalToday()
     if (options.due === 'today') {
-      tasks = tasks.filter((t) => t.due?.date === today)
+      filtered = filtered.filter((t) => t.due?.date === today)
     } else if (options.due === 'overdue') {
-      tasks = tasks.filter((t) => t.due && t.due.date < today)
+      filtered = filtered.filter((t) => t.due && t.due.date < today)
     } else {
-      tasks = tasks.filter((t) => t.due?.date === options.due)
+      filtered = filtered.filter((t) => t.due?.date === options.due)
     }
   }
 
-  const limit = options.limit ? parseInt(options.limit, 10) : 50
-  tasks = tasks.slice(0, limit)
-
   if (options.json) {
-    console.log(formatJson(tasks, 'task', options.full))
+    console.log(formatPaginatedJson({ results: filtered, nextCursor }, 'task', options.full))
     return
   }
 
   if (options.ndjson) {
-    console.log(formatNdjson(tasks, 'task', options.full))
+    console.log(formatPaginatedNdjson({ results: filtered, nextCursor }, 'task', options.full))
     return
   }
 
@@ -137,10 +143,11 @@ export async function listTasksForProject(
       api.getProject(projectId),
       api.getSections({ projectId }),
     ])
-    console.log(formatGroupedTaskList(tasks, projectRes, sectionsRes.results))
+    console.log(formatGroupedTaskList(filtered, projectRes, sectionsRes.results))
   } else {
     const { results: allProjects } = await api.getProjects()
     const projects = new Map(allProjects.map((p) => [p.id, p]))
-    console.log(formatFlatTaskList(tasks, projects))
+    console.log(formatFlatTaskList(filtered, projects))
   }
+  console.log(formatNextCursorFooter(nextCursor))
 }
