@@ -66,6 +66,24 @@ program
     }
   })
 
+program
+  .command('inbox')
+  .description('List tasks in Inbox')
+  .action(async () => {
+    const api = await getApi()
+    const user = await api.getUser()
+    const { results: tasks } = await api.getTasks({ projectId: user.inboxProjectId })
+
+    if (tasks.length === 0) {
+      console.log('Inbox is empty.')
+      return
+    }
+
+    for (const task of tasks) {
+      console.log(formatTaskRow(task))
+    }
+  })
+
 registerTaskCommand(program)
 registerProjectCommand(program)
 registerLabelCommand(program)
