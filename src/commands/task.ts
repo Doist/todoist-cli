@@ -185,6 +185,83 @@ async function deleteTask(ref: string, options: { yes?: boolean }): Promise<void
   console.log(`Deleted: ${task.content}`)
 }
 
+interface AddOptions {
+  content: string
+  due?: string
+  priority?: string
+  project?: string
+  section?: string
+  labels?: string
+  parent?: string
+  description?: string
+}
+
+async function addTask(options: AddOptions): Promise<void> {
+  const api = await getApi()
+
+  const args: Parameters<typeof api.addTask>[0] = {
+    content: options.content,
+  }
+
+  if (options.due) {
+    args.dueString = options.due
+  }
+
+  if (options.priority) {
+    args.priority = parsePriority(options.priority)
+  }
+
+  if (options.project) {
+    const projectId = await resolveProjectId(api, options.project)
+    if (projectId) args.projectId = projectId
+  }
+
+  if (options.section) {
+    args.sectionId = options.section.startsWith('id:') ? options.section.slice(3) : options.section
+  }
+
+  if (options.labels) {
+    args.labels = options.labels.split(',').map((l) => l.trim())
+  }
+
+  if (options.parent) {
+    args.parentId = options.parent.startsWith('id:') ? options.parent.slice(3) : options.parent
+  }
+
+  if (options.description) {
+    args.description = options.description
+  }
+
+  const task = await api.addTask(args)
+  console.log(`Created: ${task.content}`)
+  if (task.due) console.log(`Due: ${task.due.string || task.due.date}`)
+  console.log(`ID: ${task.id}`)
+}
+
+interface UpdateOptions {
+  content?: string
+  due?: string
+  priority?: string
+  labels?: string
+  description?: string
+}
+
+async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
+  const api = await getApi()
+  const task = await resolveTaskRef(api, ref)
+
+  const args: Parameters<typeof api.updateTask>[1] = {}
+
+  if (options.content) args.content = options.content
+  if (options.due) args.dueString = options.due
+  if (options.priority) args.priority = parsePriority(options.priority)
+  if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
+  if (options.description) args.description = options.description
+
+  const updated = await api.updateTask(task.id, args)
+  console.log(`Updated: ${updated.content}`)
+}
+
 export function registerTaskCommand(program: Command): void {
   const task = program.command('task').description('Manage tasks')
 
@@ -216,4 +293,27 @@ export function registerTaskCommand(program: Command): void {
     .description('Delete a task')
     .option('--yes', 'Confirm deletion')
     .action(deleteTask)
+
+  task
+    .command('add')
+    .description('Add a task with explicit flags')
+    .requiredOption('--content <text>', 'Task content')
+    .option('--due <date>', 'Due date (natural language or YYYY-MM-DD)')
+    .option('--priority <p1-p4>', 'Priority level')
+    .option('--project <name>', 'Project name or id:xxx')
+    .option('--section <id>', 'Section ID')
+    .option('--labels <a,b>', 'Comma-separated labels')
+    .option('--parent <ref>', 'Parent task reference')
+    .option('--description <text>', 'Task description')
+    .action(addTask)
+
+  task
+    .command('update <ref>')
+    .description('Update a task')
+    .option('--content <text>', 'New content')
+    .option('--due <date>', 'New due date')
+    .option('--priority <p1-p4>', 'New priority')
+    .option('--labels <a,b>', 'New labels (replaces existing)')
+    .option('--description <text>', 'New description')
+    .action(updateTask)
 }
