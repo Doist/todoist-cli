@@ -92,19 +92,16 @@ async function deleteLabel(
   nameOrId: string,
   options: { yes?: boolean }
 ): Promise<void> {
-  if (!options.yes) {
-    throw new Error(
-      formatError('CONFIRMATION_REQUIRED', 'Use --yes to confirm deletion.')
-    )
-  }
-
   const api = await getApi()
   const { results: labels } = await api.getLabels()
 
   let labelId: string | undefined
+  let labelName = nameOrId
 
   if (isIdRef(nameOrId)) {
     labelId = extractId(nameOrId)
+    const label = labels.find((l) => l.id === labelId)
+    if (label) labelName = label.name
   } else {
     const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
     const label = labels.find(
@@ -116,10 +113,17 @@ async function deleteLabel(
       )
     }
     labelId = label.id
+    labelName = label.name
+  }
+
+  if (!options.yes) {
+    console.log(`Would delete: @${labelName}`)
+    console.log('Use --yes to confirm.')
+    return
   }
 
   await api.deleteLabel(labelId)
-  console.log(`Deleted: @${nameOrId}`)
+  console.log(`Deleted: @${labelName}`)
 }
 
 export function registerLabelCommand(program: Command): void {

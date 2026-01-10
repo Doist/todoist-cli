@@ -15,6 +15,7 @@ function createMockApi() {
     getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
     getProject: vi.fn(),
     getSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+    getSection: vi.fn(),
     addSection: vi.fn(),
     deleteSection: vi.fn(),
   }
@@ -189,18 +190,25 @@ describe('section delete', () => {
     ).rejects.toThrow('INVALID_REF')
   })
 
-  it('requires --yes flag', async () => {
+  it('shows dry-run without --yes', async () => {
     const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    await expect(
-      program.parseAsync(['node', 'td', 'section', 'delete', 'id:sec-1'])
-    ).rejects.toThrow('CONFIRMATION_REQUIRED')
+    mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'My Section' })
+
+    await program.parseAsync(['node', 'td', 'section', 'delete', 'id:sec-1'])
+
+    expect(mockApi.deleteSection).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith('Would delete section: My Section')
+    expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+    consoleSpy.mockRestore()
   })
 
   it('deletes section with id: prefix and --yes', async () => {
     const program = createProgram()
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+    mockApi.getSection.mockResolvedValue({ id: 'sec-123', name: 'My Section' })
     mockApi.deleteSection.mockResolvedValue(undefined)
 
     await program.parseAsync([
@@ -213,7 +221,7 @@ describe('section delete', () => {
     ])
 
     expect(mockApi.deleteSection).toHaveBeenCalledWith('sec-123')
-    expect(consoleSpy).toHaveBeenCalledWith('Deleted section sec-123')
+    expect(consoleSpy).toHaveBeenCalledWith('Deleted section: My Section')
     consoleSpy.mockRestore()
   })
 })

@@ -17,6 +17,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): TodoistApi {
     getProject: vi.fn(),
     // Sections
     getSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+    getSection: vi.fn(),
     addSection: vi.fn(),
     deleteSection: vi.fn(),
     // Labels
@@ -25,6 +26,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): TodoistApi {
     deleteLabel: vi.fn(),
     // Comments
     getComments: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+    getComment: vi.fn(),
     addComment: vi.fn(),
     deleteComment: vi.fn(),
     // User

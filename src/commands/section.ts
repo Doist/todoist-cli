@@ -93,16 +93,18 @@ async function deleteSection(
   sectionId: string,
   options: { yes?: boolean }
 ): Promise<void> {
-  if (!options.yes) {
-    throw new Error(
-      formatError('CONFIRMATION_REQUIRED', 'Use --yes to confirm deletion.')
-    )
-  }
-
   const api = await getApi()
   const id = requireIdRef(sectionId, 'section')
+  const section = await api.getSection(id)
+
+  if (!options.yes) {
+    console.log(`Would delete section: ${section.name}`)
+    console.log('Use --yes to confirm.')
+    return
+  }
+
   await api.deleteSection(id)
-  console.log(`Deleted section ${id}`)
+  console.log(`Deleted section: ${section.name}`)
 }
 
 export function registerSectionCommand(program: Command): void {

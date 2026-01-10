@@ -82,14 +82,15 @@ async function deleteTask(
   ref: string,
   options: { yes?: boolean }
 ): Promise<void> {
-  if (!options.yes) {
-    throw new Error(
-      formatError('CONFIRMATION_REQUIRED', 'Use --yes to confirm deletion.')
-    )
-  }
-
   const api = await getApi()
   const task = await resolveTaskRef(api, ref)
+
+  if (!options.yes) {
+    console.log(`Would delete: ${task.content}`)
+    console.log('Use --yes to confirm.')
+    return
+  }
+
   await api.deleteTask(task.id)
   console.log(`Deleted: ${task.content}`)
 }

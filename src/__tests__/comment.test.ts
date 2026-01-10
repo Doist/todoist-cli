@@ -15,6 +15,7 @@ function createMockApi() {
     getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
     getTask: vi.fn(),
     getComments: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+    getComment: vi.fn(),
     addComment: vi.fn(),
     deleteComment: vi.fn(),
   }
@@ -217,18 +218,39 @@ describe('comment delete', () => {
     ).rejects.toThrow('INVALID_REF')
   })
 
-  it('requires --yes flag', async () => {
+  it('shows dry-run without --yes', async () => {
     const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    await expect(
-      program.parseAsync(['node', 'td', 'comment', 'delete', 'id:comment-1'])
-    ).rejects.toThrow('CONFIRMATION_REQUIRED')
+    mockApi.getComment.mockResolvedValue({
+      id: 'comment-1',
+      content: 'Test comment',
+    })
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'comment',
+      'delete',
+      'id:comment-1',
+    ])
+
+    expect(mockApi.deleteComment).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Would delete comment: Test comment'
+    )
+    expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+    consoleSpy.mockRestore()
   })
 
   it('deletes comment with id: prefix and --yes', async () => {
     const program = createProgram()
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+    mockApi.getComment.mockResolvedValue({
+      id: 'comment-123',
+      content: 'Test comment',
+    })
     mockApi.deleteComment.mockResolvedValue(undefined)
 
     await program.parseAsync([
@@ -241,7 +263,7 @@ describe('comment delete', () => {
     ])
 
     expect(mockApi.deleteComment).toHaveBeenCalledWith('comment-123')
-    expect(consoleSpy).toHaveBeenCalledWith('Deleted comment comment-123')
+    expect(consoleSpy).toHaveBeenCalledWith('Deleted comment: Test comment')
     consoleSpy.mockRestore()
   })
 })

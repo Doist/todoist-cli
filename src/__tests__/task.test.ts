@@ -406,14 +406,18 @@ describe('task delete', () => {
     mockGetApi.mockResolvedValue(mockApi as any)
   })
 
-  it('requires --yes flag', async () => {
+  it('shows dry-run without --yes', async () => {
     const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
+    mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
 
-    await expect(
-      program.parseAsync(['node', 'td', 'task', 'delete', 'id:task-1'])
-    ).rejects.toThrow('CONFIRMATION_REQUIRED')
+    await program.parseAsync(['node', 'td', 'task', 'delete', 'id:task-1'])
+
+    expect(mockApi.deleteTask).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith('Would delete: Test task')
+    expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+    consoleSpy.mockRestore()
   })
 
   it('deletes task with --yes', async () => {

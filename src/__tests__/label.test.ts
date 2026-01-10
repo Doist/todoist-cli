@@ -221,17 +221,21 @@ describe('label delete', () => {
     mockGetApi.mockResolvedValue(mockApi as any)
   })
 
-  it('requires --yes flag', async () => {
+  it('shows dry-run without --yes', async () => {
     const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     mockApi.getLabels.mockResolvedValue({
       results: [{ id: 'label-1', name: 'urgent' }],
       nextCursor: null,
     })
 
-    await expect(
-      program.parseAsync(['node', 'td', 'label', 'delete', 'urgent'])
-    ).rejects.toThrow('CONFIRMATION_REQUIRED')
+    await program.parseAsync(['node', 'td', 'label', 'delete', 'urgent'])
+
+    expect(mockApi.deleteLabel).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith('Would delete: @urgent')
+    expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+    consoleSpy.mockRestore()
   })
 
   it('deletes by name with --yes', async () => {
