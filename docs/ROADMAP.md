@@ -15,7 +15,6 @@ Features not yet implemented, organized by priority.
 | --------- | --------- | ------------------------------- |
 | Templates | Sync API  | Import/export project templates |
 | Backups   | Sync API  | List and download backups       |
-| Karma     | Sync API  | Productivity tracking           |
 | Webhooks  | REST/Sync | Create webhook subscriptions    |
 
 ## API Notes
