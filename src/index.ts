@@ -13,6 +13,7 @@ import { registerCommentCommand } from './commands/comment.js'
 import { registerSectionCommand } from './commands/section.js'
 import { registerWorkspaceCommand } from './commands/workspace.js'
 import { registerActivityCommand } from './commands/activity.js'
+import { registerReminderCommand } from './commands/reminder.js'
 
 program
   .name('td')
@@ -38,5 +39,6 @@ registerCommentCommand(program)
 registerSectionCommand(program)
 registerWorkspaceCommand(program)
 registerActivityCommand(program)
+registerReminderCommand(program)
 
 program.parse()

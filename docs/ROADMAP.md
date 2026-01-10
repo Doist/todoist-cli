@@ -4,14 +4,13 @@ Features not yet implemented, organized by priority.
 
 ## Tier 2 - Power User Features
 
-| Feature          | API      | Notes                                   |
-| ---------------- | -------- | --------------------------------------- |
-| Reminders        | Sync API | Time-based and location-based reminders |
-| Filters          | Sync API | Custom saved filter views               |
-| Task deadline    | REST API | `deadline_date` separate from due       |
-| Shared labels    | REST API | List/rename/remove shared labels        |
-| Comment update   | REST API | Edit existing comments                  |
-| Project comments | REST API | Comments on projects (not just tasks)   |
+| Feature          | API      | Notes                                 |
+| ---------------- | -------- | ------------------------------------- |
+| Filters          | Sync API | Custom saved filter views             |
+| Task deadline    | REST API | `deadline_date` separate from due     |
+| Shared labels    | REST API | List/rename/remove shared labels      |
+| Comment update   | REST API | Edit existing comments                |
+| Project comments | REST API | Comments on projects (not just tasks) |
 
 ## Tier 3 - Advanced/Optional
 
@@ -28,5 +27,5 @@ Features not yet implemented, organized by priority.
 ## API Notes
 
 - REST API v2 being deprecated February 2026, migrating to v1
-- Reminders and Filters require Sync API (different patterns)
+- Filters require Sync API (different patterns)
 - Some features require Pro/Business plan

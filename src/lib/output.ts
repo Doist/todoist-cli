@@ -147,6 +147,13 @@ const COMMENT_ESSENTIAL_FIELDS = [
   'taskId',
   'projectId',
 ] as const
+const REMINDER_ESSENTIAL_FIELDS = [
+  'id',
+  'itemId',
+  'type',
+  'due',
+  'minuteOffset',
+] as const
 
 function pickFields<T extends object>(
   item: T,
@@ -163,7 +170,13 @@ function pickFields<T extends object>(
   return result
 }
 
-export type EntityType = 'task' | 'project' | 'label' | 'section' | 'comment'
+export type EntityType =
+  | 'task'
+  | 'project'
+  | 'label'
+  | 'section'
+  | 'comment'
+  | 'reminder'
 
 function getEssentialFields(type: EntityType): readonly string[] {
   switch (type) {
@@ -177,6 +190,8 @@ function getEssentialFields(type: EntityType): readonly string[] {
       return SECTION_ESSENTIAL_FIELDS
     case 'comment':
       return COMMENT_ESSENTIAL_FIELDS
+    case 'reminder':
+      return REMINDER_ESSENTIAL_FIELDS
   }
 }
 
