@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { getApi } from '../lib/api.js'
+import { getApi, completeTaskForever } from '../lib/api.js'
 import { parseDuration } from '../lib/duration.js'
 import { formatTaskView, formatError, formatJson } from '../lib/output.js'
 
@@ -85,7 +85,10 @@ async function viewTask(ref: string, options: ViewOptions): Promise<void> {
   )
 }
 
-async function completeTask(ref: string): Promise<void> {
+async function completeTask(
+  ref: string,
+  options: { forever?: boolean }
+): Promise<void> {
   const api = await getApi()
   const task = await resolveTaskRef(api, ref)
 
@@ -96,6 +99,16 @@ async function completeTask(ref: string): Promise<void> {
 
   if (task.isUncompletable) {
     console.log('Task is uncompletable (reference item).')
+    return
+  }
+
+  if (options.forever) {
+    const isRecurring = task.due?.isRecurring ?? false
+    if (!isRecurring) {
+      console.log('Task is not recurring, completing normally.')
+    }
+    await completeTaskForever(task.id)
+    console.log(`Completed forever: ${task.content}`)
     return
   }
 
@@ -334,10 +347,20 @@ export function registerTaskCommand(program: Command): void {
     .option('--raw', 'Disable markdown rendering')
     .action(viewTask)
 
-  task
-    .command('complete <ref>')
+  const completeCmd = task
+    .command('complete [ref]')
     .description('Complete a task')
-    .action(completeTask)
+    .option(
+      '--forever',
+      'Complete recurring task permanently (stops recurrence)'
+    )
+    .action((ref, options) => {
+      if (!ref) {
+        completeCmd.help()
+        return
+      }
+      return completeTask(ref, options)
+    })
 
   task
     .command('uncomplete <ref>')

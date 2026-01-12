@@ -3,12 +3,14 @@ import { Command } from 'commander'
 
 vi.mock('../lib/api.js', () => ({
   getApi: vi.fn(),
+  completeTaskForever: vi.fn(),
 }))
 
-import { getApi } from '../lib/api.js'
+import { getApi, completeTaskForever } from '../lib/api.js'
 import { registerTaskCommand } from '../commands/task.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockCompleteTaskForever = vi.mocked(completeTaskForever)
 
 function createMockApi() {
   return {
@@ -385,6 +387,62 @@ describe('task complete', () => {
     expect(consoleSpy).toHaveBeenCalledWith(
       'Task is uncompletable (reference item).'
     )
+    consoleSpy.mockRestore()
+  })
+
+  it('completes recurring task forever with --forever flag', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTask.mockResolvedValue({
+      id: 'task-1',
+      content: 'Recurring task',
+      checked: false,
+      due: { isRecurring: true, date: '2026-01-12', string: 'every day' },
+    })
+    mockCompleteTaskForever.mockResolvedValue(undefined)
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'complete',
+      'id:task-1',
+      '--forever',
+    ])
+
+    expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
+    expect(mockApi.closeTask).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Recurring task')
+    consoleSpy.mockRestore()
+  })
+
+  it('warns when --forever used on non-recurring task', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTask.mockResolvedValue({
+      id: 'task-1',
+      content: 'Normal task',
+      checked: false,
+    })
+    mockCompleteTaskForever.mockResolvedValue(undefined)
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'complete',
+      'id:task-1',
+      '--forever',
+    ])
+
+    expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
+    expect(mockApi.closeTask).not.toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Task is not recurring, completing normally.'
+    )
+    expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Normal task')
     consoleSpy.mockRestore()
   })
 })

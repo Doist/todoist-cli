@@ -753,4 +753,16 @@ export async function deleteFilter(id: string): Promise<void> {
   await executeSyncCommand([command])
 }
 
+// Complete task forever (stops recurrence for recurring tasks)
+// Uses Sync API item_complete which permanently archives the task
+
+export async function completeTaskForever(taskId: string): Promise<void> {
+  const command: SyncCommand = {
+    type: 'item_complete',
+    uuid: generateUuid(),
+    args: { id: taskId },
+  }
+  await executeSyncCommand([command])
+}
+
 export type { Task, PersonalProject, WorkspaceProject, Section, User }
