@@ -111,7 +111,7 @@ export function registerCompletedCommand(program: Command): void {
 
       for (const task of tasks) {
         const projectName = projects.get(task.projectId)?.name
-        console.log(formatTaskRow(task, projectName))
+        console.log(formatTaskRow({ task, projectName }))
         console.log('')
       }
       console.log(formatNextCursorFooter(nextCursor))

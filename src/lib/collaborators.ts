@@ -117,11 +117,15 @@ export class CollaboratorCache {
     this.projectCollaborators.set(projectId, userMap)
   }
 
-  getUserName(
-    userId: string,
-    projectId: string,
+  getUserName({
+    userId,
+    projectId,
+    projects,
+  }: {
+    userId: string
+    projectId: string
     projects: Map<string, Project>
-  ): string | null {
+  }): string | null {
     const project = projects.get(projectId)
     if (!project) return null
 
@@ -147,15 +151,22 @@ export function formatUserShortName(fullName: string): string {
   return `${firstName} ${lastInitial}.`
 }
 
-export function formatAssignee(
-  userId: string | null,
-  projectId: string,
-  projects: Map<string, Project>,
+export interface FormatAssigneeOptions {
+  userId: string | null
+  projectId: string
+  projects: Map<string, Project>
   cache: CollaboratorCache
-): string | null {
+}
+
+export function formatAssignee({
+  userId,
+  projectId,
+  projects,
+  cache,
+}: FormatAssigneeOptions): string | null {
   if (!userId) return null
 
-  const name = cache.getUserName(userId, projectId, projects)
+  const name = cache.getUserName({ userId, projectId, projects })
   if (name) {
     return `+${formatUserShortName(name)}`
   }

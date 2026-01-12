@@ -80,7 +80,9 @@ async function viewTask(ref: string, options: ViewOptions): Promise<void> {
   const { results: projects } = await api.getProjects()
   const project = projects.find((p) => p.id === task.projectId)
 
-  console.log(formatTaskView(task, project, options.full, options.raw))
+  console.log(
+    formatTaskView({ task, project, full: options.full, raw: options.raw })
+  )
 }
 
 async function completeTask(ref: string): Promise<void> {

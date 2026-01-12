@@ -37,12 +37,19 @@ export function formatDue(due: Task['due'] | undefined): string {
   return due.string || due.date
 }
 
-export function formatTaskRow(
-  task: Task,
-  projectName?: string,
-  assignee?: string,
-  raw = false
-): string {
+export interface FormatTaskRowOptions {
+  task: Task
+  projectName?: string
+  assignee?: string
+  raw?: boolean
+}
+
+export function formatTaskRow({
+  task,
+  projectName,
+  assignee,
+  raw = false,
+}: FormatTaskRowOptions): string {
   const content = raw ? task.content : renderMarkdown(task.content)
   const line1 = '  ' + content
   const metaParts = [chalk.dim(`id:${task.id}`), formatPriority(task.priority)]
@@ -60,12 +67,19 @@ export function formatTaskRow(
   return `${line1}\n${line2}`
 }
 
-export function formatTaskView(
-  task: Task,
-  project?: Project,
+export interface FormatTaskViewOptions {
+  task: Task
+  project?: Project
+  full?: boolean
+  raw?: boolean
+}
+
+export function formatTaskView({
+  task,
+  project,
   full = false,
-  raw = false
-): string {
+  raw = false,
+}: FormatTaskViewOptions): string {
   const lines: string[] = []
   const content = raw ? task.content : renderMarkdown(task.content)
 

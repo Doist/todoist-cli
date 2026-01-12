@@ -96,14 +96,23 @@ function getLocalToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-function formatGroupedTaskList(
-  tasks: Task[],
-  project: Project,
-  sections: Section[],
-  projects: Map<string, Project>,
-  collaboratorCache: CollaboratorCache,
-  raw = false
-): string {
+interface FormatGroupedTaskListOptions {
+  tasks: Task[]
+  project: Project
+  sections: Section[]
+  projects: Map<string, Project>
+  collaboratorCache: CollaboratorCache
+  raw?: boolean
+}
+
+function formatGroupedTaskList({
+  tasks,
+  project,
+  sections,
+  projects,
+  collaboratorCache,
+  raw = false,
+}: FormatGroupedTaskListOptions): string {
   if (tasks.length === 0) {
     return 'No tasks found.'
   }
@@ -126,13 +135,13 @@ function formatGroupedTaskList(
   if (noSection.length > 0) {
     lines.push(chalk.italic.dim(`(no section) (${noSection.length})`))
     for (const task of noSection) {
-      const assignee = formatAssignee(
-        task.responsibleUid,
-        task.projectId,
+      const assignee = formatAssignee({
+        userId: task.responsibleUid,
+        projectId: task.projectId,
         projects,
-        collaboratorCache
-      )
-      lines.push(formatTaskRow(task, undefined, assignee ?? undefined, raw))
+        cache: collaboratorCache,
+      })
+      lines.push(formatTaskRow({ task, assignee: assignee ?? undefined, raw }))
       lines.push('')
     }
   }
@@ -142,13 +151,15 @@ function formatGroupedTaskList(
     if (sectionTasks && sectionTasks.length > 0) {
       lines.push(`${section.name} (${sectionTasks.length})`)
       for (const task of sectionTasks) {
-        const assignee = formatAssignee(
-          task.responsibleUid,
-          task.projectId,
+        const assignee = formatAssignee({
+          userId: task.responsibleUid,
+          projectId: task.projectId,
           projects,
-          collaboratorCache
+          cache: collaboratorCache,
+        })
+        lines.push(
+          formatTaskRow({ task, assignee: assignee ?? undefined, raw })
         )
-        lines.push(formatTaskRow(task, undefined, assignee ?? undefined, raw))
         lines.push('')
       }
     }
@@ -157,25 +168,37 @@ function formatGroupedTaskList(
   return lines.join('\n').trimEnd()
 }
 
-function formatFlatTaskList(
-  tasks: Task[],
-  projects: Map<string, Project>,
-  collaboratorCache: CollaboratorCache,
-  raw = false
-): string {
+interface FormatFlatTaskListOptions {
+  tasks: Task[]
+  projects: Map<string, Project>
+  collaboratorCache: CollaboratorCache
+  raw?: boolean
+}
+
+function formatFlatTaskList({
+  tasks,
+  projects,
+  collaboratorCache,
+  raw = false,
+}: FormatFlatTaskListOptions): string {
   if (tasks.length === 0) {
     return 'No tasks found.'
   }
 
   const blocks = tasks.map((task) => {
     const projectName = projects.get(task.projectId)?.name
-    const assignee = formatAssignee(
-      task.responsibleUid,
-      task.projectId,
+    const assignee = formatAssignee({
+      userId: task.responsibleUid,
+      projectId: task.projectId,
       projects,
-      collaboratorCache
-    )
-    return formatTaskRow(task, projectName, assignee ?? undefined, raw)
+      cache: collaboratorCache,
+    })
+    return formatTaskRow({
+      task,
+      projectName,
+      assignee: assignee ?? undefined,
+      raw,
+    })
   })
 
   return blocks.join('\n\n')
@@ -309,18 +332,23 @@ export async function listTasksForProject(
       api.getSections({ projectId }),
     ])
     console.log(
-      formatGroupedTaskList(
-        filtered,
-        projectRes,
-        sectionsRes.results,
+      formatGroupedTaskList({
+        tasks: filtered,
+        project: projectRes,
+        sections: sectionsRes.results,
         projects,
         collaboratorCache,
-        options.raw
-      )
+        raw: options.raw,
+      })
     )
   } else {
     console.log(
-      formatFlatTaskList(filtered, projects, collaboratorCache, options.raw)
+      formatFlatTaskList({
+        tasks: filtered,
+        projects,
+        collaboratorCache,
+        raw: options.raw,
+      })
     )
   }
   console.log(formatNextCursorFooter(nextCursor))

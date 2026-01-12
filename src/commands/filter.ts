@@ -256,18 +256,18 @@ async function showFilter(
   await collaboratorCache.preload(api, tasks, projectMap)
 
   for (const task of tasks) {
-    const assignee = formatAssignee(
-      task.responsibleUid,
-      task.projectId,
-      projectMap,
-      collaboratorCache
-    )
+    const assignee = formatAssignee({
+      userId: task.responsibleUid,
+      projectId: task.projectId,
+      projects: projectMap,
+      cache: collaboratorCache,
+    })
     console.log(
-      formatTaskRow(
+      formatTaskRow({
         task,
-        projectMap.get(task.projectId)?.name,
-        assignee ?? undefined
-      )
+        projectName: projectMap.get(task.projectId)?.name,
+        assignee: assignee ?? undefined,
+      })
     )
     console.log('')
   }

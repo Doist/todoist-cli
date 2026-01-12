@@ -135,18 +135,18 @@ export function registerUpcomingCommand(program: Command): void {
       if (overdue.length > 0) {
         console.log(chalk.red.bold(`Overdue (${overdue.length})`))
         for (const task of overdue) {
-          const assignee = formatAssignee(
-            task.responsibleUid,
-            task.projectId,
+          const assignee = formatAssignee({
+            userId: task.responsibleUid,
+            projectId: task.projectId,
             projects,
-            collaboratorCache
-          )
+            cache: collaboratorCache,
+          })
           console.log(
-            formatTaskRow(
+            formatTaskRow({
               task,
-              projects.get(task.projectId)?.name,
-              assignee ?? undefined
-            )
+              projectName: projects.get(task.projectId)?.name,
+              assignee: assignee ?? undefined,
+            })
           )
           console.log('')
         }
@@ -158,18 +158,18 @@ export function registerUpcomingCommand(program: Command): void {
         const header = formatDateHeader(date, today)
         console.log(chalk.bold(`${header} (${dateTasks.length})`))
         for (const task of dateTasks) {
-          const assignee = formatAssignee(
-            task.responsibleUid,
-            task.projectId,
+          const assignee = formatAssignee({
+            userId: task.responsibleUid,
+            projectId: task.projectId,
             projects,
-            collaboratorCache
-          )
+            cache: collaboratorCache,
+          })
           console.log(
-            formatTaskRow(
+            formatTaskRow({
               task,
-              projects.get(task.projectId)?.name,
-              assignee ?? undefined
-            )
+              projectName: projects.get(task.projectId)?.name,
+              assignee: assignee ?? undefined,
+            })
           )
           console.log('')
         }

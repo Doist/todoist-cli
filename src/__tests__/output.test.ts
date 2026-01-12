@@ -68,7 +68,7 @@ describe('formatDue', () => {
 describe('formatTaskRow', () => {
   it('returns two-line format with indented content on first line', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskRow(task)
+    const result = formatTaskRow({ task })
     const lines = result.split('\n')
     expect(lines).toHaveLength(2)
     expect(lines[0]).toBe('  ' + task.content)
@@ -76,7 +76,7 @@ describe('formatTaskRow', () => {
 
   it('includes metadata on indented second line', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskRow(task)
+    const result = formatTaskRow({ task })
     const lines = result.split('\n')
     expect(lines[1]).toMatch(/^\s{2}/)
     expect(lines[1]).toContain(`id:${task.id}`)
@@ -84,21 +84,21 @@ describe('formatTaskRow', () => {
 
   it('includes due date in metadata line when present', () => {
     const task = fixtures.tasks.withDue
-    const result = formatTaskRow(task)
+    const result = formatTaskRow({ task })
     const lines = result.split('\n')
     expect(lines[1]).toContain('today')
   })
 
   it('includes project name in metadata line when provided', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskRow(task, 'Work')
+    const result = formatTaskRow({ task, projectName: 'Work' })
     const lines = result.split('\n')
     expect(lines[1]).toContain('Work')
   })
 
   it('omits project name when not provided', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskRow(task)
+    const result = formatTaskRow({ task })
     expect(result).not.toContain('Inbox')
   })
 })
@@ -106,54 +106,54 @@ describe('formatTaskRow', () => {
 describe('formatTaskView', () => {
   it('shows task content as header', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain(task.content)
   })
 
   it('shows task ID', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('ID:')
     expect(result).toContain(task.id)
   })
 
   it('shows priority', () => {
     const task = fixtures.tasks.withDue
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Priority:')
   })
 
   it('shows project name when provided', () => {
     const task = fixtures.tasks.basic
     const project = fixtures.projects.work
-    const result = formatTaskView(task, project)
+    const result = formatTaskView({ task, project })
     expect(result).toContain('Project:')
     expect(result).toContain('Work')
   })
 
   it('shows projectId when project not provided', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Project:')
     expect(result).toContain(task.projectId)
   })
 
   it('shows due date when present', () => {
     const task = fixtures.tasks.withDue
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Due:')
     expect(result).toContain('today')
   })
 
   it('omits due date when not present', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).not.toContain('Due:')
   })
 
   it('shows labels when present', () => {
     const task = fixtures.tasks.withDescription
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Labels:')
     expect(result).toContain('urgent')
     expect(result).toContain('home')
@@ -161,26 +161,26 @@ describe('formatTaskView', () => {
 
   it('omits labels when empty', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).not.toContain('Labels:')
   })
 
   it('shows description when present', () => {
     const task = fixtures.tasks.withDescription
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Description:')
     expect(result).toContain('Some detailed description here')
   })
 
   it('omits description when empty', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).not.toContain('Description:')
   })
 
   it('shows metadata section when full=true', () => {
     const task = { ...fixtures.tasks.basic, addedAt: '2026-01-01T00:00:00Z' }
-    const result = formatTaskView(task, undefined, true)
+    const result = formatTaskView({ task, full: true })
     expect(result).toContain('Metadata')
     expect(result).toContain('Created:')
     expect(result).toContain('URL:')
@@ -188,20 +188,20 @@ describe('formatTaskView', () => {
 
   it('omits metadata section when full=false', () => {
     const task = fixtures.tasks.basic
-    const result = formatTaskView(task, undefined, false)
+    const result = formatTaskView({ task, full: false })
     expect(result).not.toContain('Metadata')
   })
 
   it('shows type for uncompletable tasks', () => {
     const task = { ...fixtures.tasks.basic, isUncompletable: true }
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).toContain('Type:')
     expect(result).toContain('reference (uncompletable)')
   })
 
   it('omits type for completable tasks', () => {
     const task = { ...fixtures.tasks.basic, isUncompletable: false }
-    const result = formatTaskView(task)
+    const result = formatTaskView({ task })
     expect(result).not.toContain('Type:')
   })
 })
