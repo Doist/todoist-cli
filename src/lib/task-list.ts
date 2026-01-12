@@ -117,6 +117,33 @@ function formatGroupedTaskList({
     return 'No tasks found.'
   }
 
+  const taskIds = new Set(tasks.map((t) => t.id))
+  const childrenMap = new Map<string, Task[]>()
+  for (const task of tasks) {
+    if (task.parentId && taskIds.has(task.parentId)) {
+      const children = childrenMap.get(task.parentId) || []
+      children.push(task)
+      childrenMap.set(task.parentId, children)
+    }
+  }
+
+  function renderTask(task: Task, indent: number): void {
+    const assignee = formatAssignee({
+      userId: task.responsibleUid,
+      projectId: task.projectId,
+      projects,
+      cache: collaboratorCache,
+    })
+    lines.push(
+      formatTaskRow({ task, assignee: assignee ?? undefined, raw, indent })
+    )
+    lines.push('')
+    const children = childrenMap.get(task.id) || []
+    for (const child of children) {
+      renderTask(child, indent + 1)
+    }
+  }
+
   const lines: string[] = []
   const noSection = tasks.filter((t) => !t.sectionId)
   const bySectionId = new Map<string, Task[]>()
@@ -134,15 +161,11 @@ function formatGroupedTaskList({
 
   if (noSection.length > 0) {
     lines.push(chalk.italic.dim(`(no section) (${noSection.length})`))
-    for (const task of noSection) {
-      const assignee = formatAssignee({
-        userId: task.responsibleUid,
-        projectId: task.projectId,
-        projects,
-        cache: collaboratorCache,
-      })
-      lines.push(formatTaskRow({ task, assignee: assignee ?? undefined, raw }))
-      lines.push('')
+    const topLevel = noSection.filter(
+      (t) => !t.parentId || !taskIds.has(t.parentId)
+    )
+    for (const task of topLevel) {
+      renderTask(task, 0)
     }
   }
 
@@ -150,17 +173,11 @@ function formatGroupedTaskList({
     const sectionTasks = bySectionId.get(section.id)
     if (sectionTasks && sectionTasks.length > 0) {
       lines.push(`${section.name} (${sectionTasks.length})`)
-      for (const task of sectionTasks) {
-        const assignee = formatAssignee({
-          userId: task.responsibleUid,
-          projectId: task.projectId,
-          projects,
-          cache: collaboratorCache,
-        })
-        lines.push(
-          formatTaskRow({ task, assignee: assignee ?? undefined, raw })
-        )
-        lines.push('')
+      const topLevel = sectionTasks.filter(
+        (t) => !t.parentId || !taskIds.has(t.parentId)
+      )
+      for (const task of topLevel) {
+        renderTask(task, 0)
       }
     }
   }

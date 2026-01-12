@@ -42,6 +42,7 @@ export interface FormatTaskRowOptions {
   projectName?: string
   assignee?: string
   raw?: boolean
+  indent?: number
 }
 
 export function formatTaskRow({
@@ -49,9 +50,12 @@ export function formatTaskRow({
   projectName,
   assignee,
   raw = false,
+  indent = 0,
 }: FormatTaskRowOptions): string {
   const content = raw ? task.content : renderMarkdown(task.content)
-  const line1 = '  ' + content
+  const baseIndent = '  '
+  const extraIndent = '  '.repeat(indent)
+  const line1 = baseIndent + extraIndent + content
   const metaParts = [chalk.dim(`id:${task.id}`), formatPriority(task.priority)]
   const due = formatDue(task.due)
   if (due) metaParts.push(chalk.green(due))
@@ -63,13 +67,15 @@ export function formatTaskRow({
   if (task.deadline) metaParts.push(chalk.red(task.deadline.date))
   if (projectName) metaParts.push(chalk.cyan(projectName))
   if (assignee) metaParts.push(chalk.magenta(assignee))
-  const line2 = '  ' + metaParts.join('  ')
+  const line2 = baseIndent + extraIndent + metaParts.join('  ')
   return `${line1}\n${line2}`
 }
 
 export interface FormatTaskViewOptions {
   task: Task
   project?: Project
+  parentTask?: Task
+  subtaskCount?: number
   full?: boolean
   raw?: boolean
 }
@@ -77,6 +83,8 @@ export interface FormatTaskViewOptions {
 export function formatTaskView({
   task,
   project,
+  parentTask,
+  subtaskCount,
   full = false,
   raw = false,
 }: FormatTaskViewOptions): string {
@@ -91,6 +99,12 @@ export function formatTaskView({
   }
   lines.push(`Priority: ${formatPriority(task.priority)}`)
   lines.push(`Project:  ${project?.name || task.projectId}`)
+  if (parentTask) {
+    lines.push(`Parent:   ${parentTask.content} (id:${parentTask.id})`)
+  }
+  if (subtaskCount !== undefined && subtaskCount > 0) {
+    lines.push(`Subtasks: ${subtaskCount} active`)
+  }
 
   if (task.due) {
     lines.push(`Due:      ${formatDue(task.due)}`)

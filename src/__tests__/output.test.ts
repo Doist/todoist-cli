@@ -101,6 +101,22 @@ describe('formatTaskRow', () => {
     const result = formatTaskRow({ task })
     expect(result).not.toContain('Inbox')
   })
+
+  it('adds extra indentation when indent > 0', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskRow({ task, indent: 1 })
+    const lines = result.split('\n')
+    expect(lines[0]).toBe('    ' + task.content)
+    expect(lines[1]).toMatch(/^\s{4}/)
+  })
+
+  it('adds multiple levels of indentation', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskRow({ task, indent: 2 })
+    const lines = result.split('\n')
+    expect(lines[0]).toBe('      ' + task.content)
+    expect(lines[1]).toMatch(/^\s{6}/)
+  })
 })
 
 describe('formatTaskView', () => {
@@ -203,6 +219,42 @@ describe('formatTaskView', () => {
     const task = { ...fixtures.tasks.basic, isUncompletable: false }
     const result = formatTaskView({ task })
     expect(result).not.toContain('Type:')
+  })
+
+  it('shows parent task name when parentTask provided', () => {
+    const task = { ...fixtures.tasks.basic, parentId: 'parent-123' }
+    const parentTask = {
+      ...fixtures.tasks.basic,
+      id: 'parent-123',
+      content: 'Parent Task',
+    }
+    const result = formatTaskView({ task, parentTask })
+    expect(result).toContain('Parent:')
+    expect(result).toContain('Parent Task (id:parent-123)')
+  })
+
+  it('omits parent line when parentTask not provided', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskView({ task })
+    expect(result).not.toContain('Parent:')
+  })
+
+  it('shows subtask count when > 0', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskView({ task, subtaskCount: 3 })
+    expect(result).toContain('Subtasks: 3 active')
+  })
+
+  it('omits subtask line when subtaskCount is 0', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskView({ task, subtaskCount: 0 })
+    expect(result).not.toContain('Subtasks:')
+  })
+
+  it('omits subtask line when subtaskCount not provided', () => {
+    const task = fixtures.tasks.basic
+    const result = formatTaskView({ task })
+    expect(result).not.toContain('Subtasks:')
   })
 })
 

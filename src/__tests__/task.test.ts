@@ -57,7 +57,7 @@ describe('task move command', () => {
     await expect(
       program.parseAsync(['node', 'td', 'task', 'move', 'Test task'])
     ).rejects.toThrow(
-      'At least one of --project, --section, or --parent is required'
+      'At least one of --project, --section, --parent, --no-parent, or --no-section is required.'
     )
   })
 
@@ -189,6 +189,68 @@ describe('task move command', () => {
 
     expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
       parentId: 'task-2',
+    })
+    consoleSpy.mockRestore()
+  })
+
+  it('moves task to project root with --no-parent', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTasks.mockResolvedValue({
+      results: [
+        {
+          id: 'task-1',
+          content: 'Child task',
+          projectId: 'proj-1',
+          parentId: 'parent-1',
+        },
+      ],
+    })
+    mockApi.moveTask.mockResolvedValue({})
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'move',
+      'Child task',
+      '--no-parent',
+    ])
+
+    expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+      projectId: 'proj-1',
+    })
+    consoleSpy.mockRestore()
+  })
+
+  it('moves task to project root with --no-section', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTasks.mockResolvedValue({
+      results: [
+        {
+          id: 'task-1',
+          content: 'Task in section',
+          projectId: 'proj-1',
+          sectionId: 'section-1',
+        },
+      ],
+    })
+    mockApi.moveTask.mockResolvedValue({})
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'move',
+      'Task in section',
+      '--no-section',
+    ])
+
+    expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+      projectId: 'proj-1',
     })
     consoleSpy.mockRestore()
   })
@@ -804,6 +866,91 @@ describe('task add', () => {
         'invalid',
       ])
     ).rejects.toThrow('Invalid duration format')
+  })
+
+  it('creates subtask with id:xxx parent format', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.addTask.mockResolvedValue({
+      id: 'child-1',
+      content: 'Child task',
+      due: null,
+    })
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'add',
+      '--content',
+      'Child task',
+      '--parent',
+      'id:parent-1',
+    ])
+
+    expect(mockApi.addTask).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Child task', parentId: 'parent-1' })
+    )
+    consoleSpy.mockRestore()
+  })
+
+  it('creates subtask with fuzzy parent name match', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getProjects.mockResolvedValue({
+      results: [{ id: 'proj-1', name: 'Work' }],
+      nextCursor: null,
+    })
+    mockApi.getTasks.mockResolvedValue({
+      results: [
+        { id: 'parent-1', content: 'Parent task', projectId: 'proj-1' },
+      ],
+      nextCursor: null,
+    })
+    mockApi.addTask.mockResolvedValue({
+      id: 'child-1',
+      content: 'Child task',
+      due: null,
+    })
+
+    await program.parseAsync([
+      'node',
+      'td',
+      'task',
+      'add',
+      '--content',
+      'Child task',
+      '--parent',
+      'Parent task',
+      '--project',
+      'Work',
+    ])
+
+    expect(mockApi.addTask).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Child task', parentId: 'parent-1' })
+    )
+    consoleSpy.mockRestore()
+  })
+
+  it('throws error when using fuzzy parent without project', async () => {
+    const program = createProgram()
+
+    await expect(
+      program.parseAsync([
+        'node',
+        'td',
+        'task',
+        'add',
+        '--content',
+        'Child task',
+        '--parent',
+        'Parent task',
+      ])
+    ).rejects.toThrow(
+      'The --project flag is required when using --parent with a task name.'
+    )
   })
 })
 

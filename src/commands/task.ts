@@ -20,6 +20,8 @@ function applyDuration(args: DurationArgs, durationStr: string): void {
   args.durationUnit = 'minute'
 }
 import {
+  extractId,
+  isIdRef,
   requireIdRef,
   resolveParentTaskId,
   resolveProjectId,
@@ -80,8 +82,23 @@ async function viewTask(ref: string, options: ViewOptions): Promise<void> {
   const { results: projects } = await api.getProjects()
   const project = projects.find((p) => p.id === task.projectId)
 
+  let parentTask = undefined
+  if (task.parentId) {
+    parentTask = await api.getTask(task.parentId)
+  }
+
+  const { results: subtasks } = await api.getTasks({ parentId: task.id })
+  const subtaskCount = subtasks.length
+
   console.log(
-    formatTaskView({ task, project, full: options.full, raw: options.raw })
+    formatTaskView({
+      task,
+      project,
+      parentTask,
+      subtaskCount,
+      full: options.full,
+      raw: options.raw,
+    })
   )
 }
 
@@ -188,7 +205,25 @@ async function addTask(options: AddOptions): Promise<void> {
   }
 
   if (options.parent) {
-    args.parentId = requireIdRef(options.parent, 'parent task')
+    if (isIdRef(options.parent)) {
+      args.parentId = extractId(options.parent)
+    } else {
+      if (!args.projectId) {
+        throw new Error(
+          formatError(
+            'PROJECT_REQUIRED',
+            'The --project flag is required when using --parent with a task name.',
+            ['Use id:xxx format to specify parent by ID without a project.']
+          )
+        )
+      }
+      args.parentId = await resolveParentTaskId(
+        api,
+        options.parent,
+        args.projectId,
+        args.sectionId
+      )
+    }
   }
 
   if (options.description) {
@@ -265,22 +300,39 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
 
 interface MoveOptions {
   project?: string
-  section?: string
-  parent?: string
+  section?: string | false
+  parent?: string | false
 }
 
 async function moveTask(ref: string, options: MoveOptions): Promise<void> {
-  if (!options.project && !options.section && !options.parent) {
+  const wantsNoParent = options.parent === false
+  const wantsNoSection = options.section === false
+  const hasDestination =
+    options.project ||
+    options.section ||
+    options.parent ||
+    wantsNoParent ||
+    wantsNoSection
+  if (!hasDestination) {
     throw new Error(
       formatError(
         'MISSING_DESTINATION',
-        'At least one of --project, --section, or --parent is required.'
+        'At least one of --project, --section, --parent, --no-parent, or --no-section is required.'
       )
     )
   }
 
   const api = await getApi()
   const task = await resolveTaskRef(api, ref)
+
+  if (wantsNoParent || wantsNoSection) {
+    const targetProjectId = options.project
+      ? await resolveProjectId(api, options.project)
+      : task.projectId
+    await api.moveTask(task.id, { projectId: targetProjectId })
+    console.log(`Moved: ${task.content}`)
+    return
+  }
 
   const targetProjectId = options.project
     ? await resolveProjectId(api, options.project)
@@ -440,6 +492,8 @@ export function registerTaskCommand(program: Command): void {
     .option('--project <ref>', 'Target project (name or id:xxx)')
     .option('--section <ref>', 'Target section (name or id:xxx)')
     .option('--parent <ref>', 'Parent task (name or id:xxx)')
+    .option('--no-parent', 'Remove parent (move to project root)')
+    .option('--no-section', 'Remove section (move to project root)')
     .action((ref, options) => {
       if (!ref) {
         moveCmd.help()
