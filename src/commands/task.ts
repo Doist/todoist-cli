@@ -75,7 +75,7 @@ async function viewTask(ref: string, options: ViewOptions): Promise<void> {
   const task = await resolveTaskRef(api, ref)
 
   if (options.json) {
-    console.log(formatJson(task, 'task', options.full))
+    console.log(formatJson(task, 'task', options.full, true))
     return
   }
 
@@ -389,6 +389,7 @@ export function registerTaskCommand(program: Command): void {
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .option('--raw', 'Disable markdown rendering')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action(listTasks)
 
   const viewCmd = task

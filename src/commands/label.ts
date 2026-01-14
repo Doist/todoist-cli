@@ -6,6 +6,7 @@ import {
   formatNextCursorFooter,
   formatError,
 } from '../lib/output.js'
+import { labelUrl } from '../lib/urls.js'
 import { paginate, LIMITS } from '../lib/pagination.js'
 import { isIdRef, extractId } from '../lib/refs.js'
 import chalk from 'chalk'
@@ -16,6 +17,7 @@ interface ListOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 async function listLabels(options: ListOptions): Promise<void> {
@@ -37,7 +39,8 @@ async function listLabels(options: ListOptions): Promise<void> {
       formatPaginatedJson(
         { results: labels, nextCursor },
         'label',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -48,7 +51,8 @@ async function listLabels(options: ListOptions): Promise<void> {
       formatPaginatedNdjson(
         { results: labels, nextCursor },
         'label',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -65,6 +69,9 @@ async function listLabels(options: ListOptions): Promise<void> {
       ? chalk.yellow(`@${label.name}`)
       : `@${label.name}`
     console.log(`${id}  ${name}`)
+    if (options.showUrls) {
+      console.log(`  ${chalk.dim(labelUrl(label.id))}`)
+    }
   }
   console.log(formatNextCursorFooter(nextCursor))
 }
@@ -194,6 +201,7 @@ export function registerLabelCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each label')
     .action(listLabels)
 
   const createCmd = label

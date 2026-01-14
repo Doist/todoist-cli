@@ -20,6 +20,7 @@ interface CompletedOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 function getLocalDate(daysOffset = 0): string {
@@ -41,6 +42,7 @@ export function registerCompletedCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action(async (options: CompletedOptions) => {
       const api = await getApi()
 
@@ -77,7 +79,8 @@ export function registerCompletedCommand(program: Command): void {
           formatPaginatedJson(
             { results: tasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -88,7 +91,8 @@ export function registerCompletedCommand(program: Command): void {
           formatPaginatedNdjson(
             { results: tasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -111,7 +115,9 @@ export function registerCompletedCommand(program: Command): void {
 
       for (const task of tasks) {
         const projectName = projects.get(task.projectId)?.name
-        console.log(formatTaskRow({ task, projectName }))
+        console.log(
+          formatTaskRow({ task, projectName, showUrl: options.showUrls })
+        )
         console.log('')
       }
       console.log(formatNextCursorFooter(nextCursor))

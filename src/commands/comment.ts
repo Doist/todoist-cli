@@ -6,6 +6,7 @@ import {
   formatNextCursorFooter,
   formatFileSize,
 } from '../lib/output.js'
+import { commentUrl, projectCommentUrl } from '../lib/urls.js'
 import { paginate, LIMITS } from '../lib/pagination.js'
 import { requireIdRef, resolveTaskRef, resolveProjectRef } from '../lib/refs.js'
 import { renderMarkdown } from '../lib/markdown.js'
@@ -20,6 +21,7 @@ interface ListOptions {
   lines?: string
   project?: boolean
   raw?: boolean
+  showUrls?: boolean
 }
 
 function truncateContent(content: string, maxLines: number): string {
@@ -62,7 +64,8 @@ async function listComments(ref: string, options: ListOptions): Promise<void> {
       formatPaginatedJson(
         { results: enrichedComments, nextCursor },
         'comment',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -73,7 +76,8 @@ async function listComments(ref: string, options: ListOptions): Promise<void> {
       formatPaginatedNdjson(
         { results: enrichedComments, nextCursor },
         'comment',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -99,6 +103,13 @@ async function listComments(ref: string, options: ListOptions): Promise<void> {
     const truncated = truncateContent(content, maxLines)
     for (const line of truncated.split('\n')) {
       console.log(`  ${line}`)
+    }
+    if (options.showUrls) {
+      const url =
+        'taskId' in queryArgs
+          ? commentUrl(queryArgs.taskId, comment.id)
+          : projectCommentUrl(queryArgs.projectId, comment.id)
+      console.log(`  ${chalk.dim(url)}`)
     }
     console.log('')
   }
@@ -208,10 +219,17 @@ async function viewComment(
   const id = requireIdRef(commentId, 'comment')
   const comment = await api.getComment(id)
 
+  const url = comment.taskId
+    ? commentUrl(comment.taskId, comment.id)
+    : comment.projectId
+      ? projectCommentUrl(comment.projectId, comment.id)
+      : ''
+
   console.log(chalk.bold('Comment'))
   console.log('')
   console.log(`ID:      ${comment.id}`)
   console.log(`Posted:  ${comment.postedAt}`)
+  if (url) console.log(`URL:     ${url}`)
   console.log('')
   console.log('Content:')
   const content = options.raw
@@ -239,6 +257,7 @@ export function registerCommentCommand(program: Command): void {
     .option('-P, --project', 'Target a project instead of a task')
     .option('--limit <n>', 'Limit number of results (default: 10)')
     .option('--all', 'Fetch all results (no limit)')
+    .option('--show-urls', 'Show web app URLs for each comment')
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')

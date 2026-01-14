@@ -18,6 +18,7 @@ export function registerInboxCommand(program: Command): void {
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .option('--raw', 'Disable markdown rendering')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action(async (options: TaskListOptions) => {
       const api = await getApi()
       const user = await api.getUser()

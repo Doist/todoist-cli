@@ -23,6 +23,7 @@ interface TodayOptions {
   ndjson?: boolean
   full?: boolean
   raw?: boolean
+  showUrls?: boolean
 }
 
 export function registerTodayCommand(program: Command): void {
@@ -42,6 +43,7 @@ export function registerTodayCommand(program: Command): void {
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
     .option('--raw', 'Disable markdown rendering')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action(async (options: TodayOptions) => {
       const api = await getApi()
 
@@ -83,7 +85,8 @@ export function registerTodayCommand(program: Command): void {
           formatPaginatedJson(
             { results: allTodayTasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -94,7 +97,8 @@ export function registerTodayCommand(program: Command): void {
           formatPaginatedNdjson(
             { results: allTodayTasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -125,6 +129,7 @@ export function registerTodayCommand(program: Command): void {
               projectName: projects.get(task.projectId)?.name,
               assignee: assignee ?? undefined,
               raw: options.raw,
+              showUrl: options.showUrls,
             })
           )
           console.log('')
@@ -145,6 +150,7 @@ export function registerTodayCommand(program: Command): void {
             projectName: projects.get(task.projectId)?.name,
             assignee: assignee ?? undefined,
             raw: options.raw,
+            showUrl: options.showUrls,
           })
         )
         console.log('')

@@ -6,6 +6,7 @@ import {
   formatNextCursorFooter,
   formatError,
 } from '../lib/output.js'
+import { sectionUrl } from '../lib/urls.js'
 import { paginate, LIMITS } from '../lib/pagination.js'
 import { requireIdRef, resolveProjectId } from '../lib/refs.js'
 import chalk from 'chalk'
@@ -16,6 +17,7 @@ interface ListOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 async function listSections(
@@ -42,7 +44,8 @@ async function listSections(
       formatPaginatedJson(
         { results: sections, nextCursor },
         'section',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -53,7 +56,8 @@ async function listSections(
       formatPaginatedNdjson(
         { results: sections, nextCursor },
         'section',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -67,6 +71,9 @@ async function listSections(
   for (const section of sections) {
     const id = chalk.dim(section.id)
     console.log(`${id}  ${section.name}`)
+    if (options.showUrls) {
+      console.log(`  ${chalk.dim(sectionUrl(section.id))}`)
+    }
   }
   console.log(formatNextCursorFooter(nextCursor))
 }
@@ -142,6 +149,7 @@ export function registerSectionCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each section')
     .action((project, options) => {
       if (!project) {
         listCmd.help()

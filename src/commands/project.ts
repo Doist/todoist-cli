@@ -14,6 +14,7 @@ import {
   formatNextCursorFooter,
   formatError,
 } from '../lib/output.js'
+import { projectUrl } from '../lib/urls.js'
 import { paginate, LIMITS } from '../lib/pagination.js'
 import { resolveProjectRef } from '../lib/refs.js'
 import { formatUserShortName } from '../lib/collaborators.js'
@@ -27,6 +28,7 @@ interface ListOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 async function listProjects(options: ListOptions): Promise<void> {
@@ -48,7 +50,8 @@ async function listProjects(options: ListOptions): Promise<void> {
       formatPaginatedJson(
         { results: projects, nextCursor },
         'project',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -59,7 +62,8 @@ async function listProjects(options: ListOptions): Promise<void> {
       formatPaginatedNdjson(
         { results: projects, nextCursor },
         'project',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -74,6 +78,9 @@ async function listProjects(options: ListOptions): Promise<void> {
         name = `${name} ${chalk.dim('[shared]')}`
       }
       console.log(`${id}  ${name}`)
+      if (options.showUrls) {
+        console.log(`  ${chalk.dim(projectUrl(project.id))}`)
+      }
     }
     console.log(formatNextCursorFooter(nextCursor))
     return
@@ -110,6 +117,9 @@ async function listProjects(options: ListOptions): Promise<void> {
       }
       const indent = workspaceProjects.size > 0 ? '  ' : ''
       console.log(`${indent}${id}  ${name}`)
+      if (options.showUrls) {
+        console.log(`${indent}  ${chalk.dim(projectUrl(project.id))}`)
+      }
     }
     if (workspaceProjects.size > 0) {
       console.log('')
@@ -133,6 +143,9 @@ async function listProjects(options: ListOptions): Promise<void> {
         ? chalk.yellow(project.name)
         : project.name
       console.log(`  ${id}  ${name}`)
+      if (options.showUrls) {
+        console.log(`    ${chalk.dim(projectUrl(project.id))}`)
+      }
     }
     console.log('')
   }
@@ -176,7 +189,7 @@ async function viewProject(ref: string): Promise<void> {
 
   console.log(`Color:    ${project.color}`)
   console.log(`Favorite: ${project.isFavorite ? 'Yes' : 'No'}`)
-  console.log(`URL:      ${project.url}`)
+  console.log(`URL:      ${projectUrl(project.id)}`)
 
   const { results: tasks } = await api.getTasks({ projectId: project.id })
 
@@ -365,6 +378,7 @@ export function registerProjectCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each project')
     .action(listProjects)
 
   const viewCmd = project

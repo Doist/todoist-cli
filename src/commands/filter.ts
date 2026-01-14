@@ -15,6 +15,7 @@ import {
   formatTaskRow,
   formatError,
 } from '../lib/output.js'
+import { filterUrl } from '../lib/urls.js'
 import { paginate, LIMITS } from '../lib/pagination.js'
 import { isIdRef, extractId } from '../lib/refs.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
@@ -24,6 +25,7 @@ interface ListOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 async function listFilters(options: ListOptions): Promise<void> {
@@ -34,7 +36,8 @@ async function listFilters(options: ListOptions): Promise<void> {
       formatPaginatedJson(
         { results: filters, nextCursor: null },
         'filter',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -45,7 +48,8 @@ async function listFilters(options: ListOptions): Promise<void> {
       formatPaginatedNdjson(
         { results: filters, nextCursor: null },
         'filter',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -61,6 +65,9 @@ async function listFilters(options: ListOptions): Promise<void> {
     const name = filter.isFavorite ? chalk.yellow(filter.name) : filter.name
     const query = chalk.dim(`"${filter.query}"`)
     console.log(`${id}  ${name}  ${query}`)
+    if (options.showUrls) {
+      console.log(`  ${chalk.dim(filterUrl(filter.id))}`)
+    }
   }
 }
 
@@ -174,6 +181,7 @@ interface ShowOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 async function showFilter(
@@ -220,7 +228,12 @@ async function showFilter(
 
   if (options.json) {
     console.log(
-      formatPaginatedJson({ results: tasks, nextCursor }, 'task', options.full)
+      formatPaginatedJson(
+        { results: tasks, nextCursor },
+        'task',
+        options.full,
+        options.showUrls
+      )
     )
     return
   }
@@ -230,7 +243,8 @@ async function showFilter(
       formatPaginatedNdjson(
         { results: tasks, nextCursor },
         'task',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -238,6 +252,7 @@ async function showFilter(
 
   console.log(chalk.bold(`${filter.name}`))
   console.log(chalk.dim(`Query: ${filter.query}`))
+  console.log(chalk.dim(`URL:   ${filterUrl(filter.id)}`))
   console.log('')
 
   if (tasks.length === 0) {
@@ -267,6 +282,7 @@ async function showFilter(
         task,
         projectName: projectMap.get(task.projectId)?.name,
         assignee: assignee ?? undefined,
+        showUrl: options.showUrls,
       })
     )
     console.log('')
@@ -283,6 +299,7 @@ export function registerFilterCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each filter')
     .action(listFilters)
 
   const createCmd = filter
@@ -340,6 +357,7 @@ export function registerFilterCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action((ref, options) => {
       if (!ref) {
         showCmd.help()

@@ -3,6 +3,15 @@ import type { Task } from '@doist/todoist-api-typescript'
 import type { Project } from './api.js'
 import { formatDuration } from './duration.js'
 import { renderMarkdown } from './markdown.js'
+import {
+  taskUrl,
+  projectUrl,
+  labelUrl,
+  filterUrl,
+  sectionUrl,
+  commentUrl,
+  projectCommentUrl,
+} from './urls.js'
 
 const PRIORITY_COLORS: Record<number, (s: string) => string> = {
   4: chalk.red, // p1 = priority 4 in API (highest)
@@ -43,6 +52,7 @@ export interface FormatTaskRowOptions {
   assignee?: string
   raw?: boolean
   indent?: number
+  showUrl?: boolean
 }
 
 export function formatTaskRow({
@@ -51,6 +61,7 @@ export function formatTaskRow({
   assignee,
   raw = false,
   indent = 0,
+  showUrl = false,
 }: FormatTaskRowOptions): string {
   const content = raw ? task.content : renderMarkdown(task.content)
   const baseIndent = '  '
@@ -68,6 +79,10 @@ export function formatTaskRow({
   if (projectName) metaParts.push(chalk.cyan(projectName))
   if (assignee) metaParts.push(chalk.magenta(assignee))
   const line2 = baseIndent + extraIndent + metaParts.join('  ')
+  if (showUrl) {
+    const line3 = baseIndent + extraIndent + chalk.dim(taskUrl(task.id))
+    return `${line1}\n${line2}\n${line3}`
+  }
   return `${line1}\n${line2}`
 }
 
@@ -124,6 +139,8 @@ export function formatTaskView({
     lines.push(`Labels:   ${task.labels.join(', ')}`)
   }
 
+  lines.push(`URL:      ${taskUrl(task.id)}`)
+
   if (task.description) {
     lines.push('')
     lines.push('Description:')
@@ -139,7 +156,6 @@ export function formatTaskView({
     if (task.responsibleUid) lines.push(`Assignee:  ${task.responsibleUid}`)
     if (task.parentId) lines.push(`Parent:    ${task.parentId}`)
     if (task.sectionId) lines.push(`Section:   ${task.sectionId}`)
-    lines.push(`URL:       ${task.url}`)
   }
 
   return lines.join('\n')
@@ -217,6 +233,44 @@ function pickFields<T extends object>(
   return result
 }
 
+function addWebUrl<T extends { id: string }>(
+  item: T,
+  type: EntityType
+): T & { webUrl: string } {
+  const record = item as Record<string, unknown>
+  let url: string
+  switch (type) {
+    case 'task':
+      url = taskUrl(item.id)
+      break
+    case 'project':
+      url = projectUrl(item.id)
+      break
+    case 'label':
+      url = labelUrl(item.id)
+      break
+    case 'filter':
+      url = filterUrl(item.id)
+      break
+    case 'section':
+      url = sectionUrl(item.id)
+      break
+    case 'comment':
+      if (record.taskId) {
+        url = commentUrl(record.taskId as string, item.id)
+      } else if (record.projectId) {
+        url = projectCommentUrl(record.projectId as string, item.id)
+      } else {
+        url = ''
+      }
+      break
+    case 'reminder':
+      url = ''
+      break
+  }
+  return { ...item, webUrl: url }
+}
+
 export type EntityType =
   | 'task'
   | 'project'
@@ -245,36 +299,55 @@ function getEssentialFields(type: EntityType): readonly string[] {
   }
 }
 
+function hasId<T extends object>(item: T): item is T & { id: string } {
+  return (
+    'id' in item && typeof (item as Record<string, unknown>).id === 'string'
+  )
+}
+
+function processItem<T extends object>(
+  item: T,
+  type: EntityType,
+  full: boolean,
+  showUrl: boolean
+): object {
+  const base = full ? item : pickFields(item, getEssentialFields(type))
+  if (showUrl && hasId(item)) {
+    return { ...base, webUrl: addWebUrl(item, type).webUrl }
+  }
+  return base
+}
+
 export function formatJson<T extends object>(
   data: T | T[],
   type?: EntityType,
-  full = false
+  full = false,
+  showUrl = false
 ): string {
-  if (full || !type) {
+  if (!type) {
     return JSON.stringify(data, null, 2)
   }
-  const fields = getEssentialFields(type)
   if (Array.isArray(data)) {
     return JSON.stringify(
-      data.map((item) => pickFields(item, fields)),
+      data.map((item) => processItem(item, type, full, showUrl)),
       null,
       2
     )
   }
-  return JSON.stringify(pickFields(data, fields), null, 2)
+  return JSON.stringify(processItem(data, type, full, showUrl), null, 2)
 }
 
 export function formatNdjson<T extends object>(
   items: T[],
   type?: EntityType,
-  full = false
+  full = false,
+  showUrl = false
 ): string {
-  if (full || !type) {
+  if (!type) {
     return items.map((item) => JSON.stringify(item)).join('\n')
   }
-  const fields = getEssentialFields(type)
   return items
-    .map((item) => JSON.stringify(pickFields(item, fields)))
+    .map((item) => JSON.stringify(processItem(item, type, full, showUrl)))
     .join('\n')
 }
 
@@ -301,25 +374,30 @@ export interface PaginatedOutput<T> {
 export function formatPaginatedJson<T extends object>(
   data: PaginatedOutput<T>,
   type?: EntityType,
-  full = false
+  full = false,
+  showUrl = false
 ): string {
-  const fields = type && !full ? getEssentialFields(type) : null
-  const results = fields
-    ? data.results.map((item) => pickFields(item, fields))
-    : data.results
-
+  if (!type) {
+    return JSON.stringify(data, null, 2)
+  }
+  const results = data.results.map((item) =>
+    processItem(item, type, full, showUrl)
+  )
   return JSON.stringify({ results, nextCursor: data.nextCursor }, null, 2)
 }
 
 export function formatPaginatedNdjson<T extends object>(
   data: PaginatedOutput<T>,
   type?: EntityType,
-  full = false
+  full = false,
+  showUrl = false
 ): string {
-  const fields = type && !full ? getEssentialFields(type) : null
-  const lines = data.results.map((item) =>
-    JSON.stringify(fields ? pickFields(item, fields) : item)
-  )
+  const lines = data.results.map((item) => {
+    if (!type) {
+      return JSON.stringify(item)
+    }
+    return JSON.stringify(processItem(item, type, full, showUrl))
+  })
 
   if (data.nextCursor) {
     lines.push(JSON.stringify({ _meta: true, nextCursor: data.nextCursor }))

@@ -22,6 +22,7 @@ interface UpcomingOptions {
   json?: boolean
   ndjson?: boolean
   full?: boolean
+  showUrls?: boolean
 }
 
 export function registerUpcomingCommand(program: Command): void {
@@ -40,6 +41,7 @@ export function registerUpcomingCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .option('--ndjson', 'Output as newline-delimited JSON')
     .option('--full', 'Include all fields in JSON output')
+    .option('--show-urls', 'Show web app URLs for each task')
     .action(async (daysArg: string | undefined, options: UpcomingOptions) => {
       const days = daysArg ? parseInt(daysArg, 10) : 7
       if (isNaN(days) || days < 1) {
@@ -89,7 +91,8 @@ export function registerUpcomingCommand(program: Command): void {
           formatPaginatedJson(
             { results: relevantTasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -100,7 +103,8 @@ export function registerUpcomingCommand(program: Command): void {
           formatPaginatedNdjson(
             { results: relevantTasks, nextCursor },
             'task',
-            options.full
+            options.full,
+            options.showUrls
           )
         )
         return
@@ -146,6 +150,7 @@ export function registerUpcomingCommand(program: Command): void {
               task,
               projectName: projects.get(task.projectId)?.name,
               assignee: assignee ?? undefined,
+              showUrl: options.showUrls,
             })
           )
           console.log('')
@@ -169,6 +174,7 @@ export function registerUpcomingCommand(program: Command): void {
               task,
               projectName: projects.get(task.projectId)?.name,
               assignee: assignee ?? undefined,
+              showUrl: options.showUrls,
             })
           )
           console.log('')

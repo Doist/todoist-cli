@@ -76,6 +76,7 @@ export interface TaskListOptions {
   ndjson?: boolean
   full?: boolean
   raw?: boolean
+  showUrls?: boolean
 }
 
 export function parsePriority(p: string): number {
@@ -103,6 +104,7 @@ interface FormatGroupedTaskListOptions {
   projects: Map<string, Project>
   collaboratorCache: CollaboratorCache
   raw?: boolean
+  showUrl?: boolean
 }
 
 function formatGroupedTaskList({
@@ -112,6 +114,7 @@ function formatGroupedTaskList({
   projects,
   collaboratorCache,
   raw = false,
+  showUrl = false,
 }: FormatGroupedTaskListOptions): string {
   if (tasks.length === 0) {
     return 'No tasks found.'
@@ -135,7 +138,13 @@ function formatGroupedTaskList({
       cache: collaboratorCache,
     })
     lines.push(
-      formatTaskRow({ task, assignee: assignee ?? undefined, raw, indent })
+      formatTaskRow({
+        task,
+        assignee: assignee ?? undefined,
+        raw,
+        indent,
+        showUrl,
+      })
     )
     lines.push('')
     const children = childrenMap.get(task.id) || []
@@ -190,6 +199,7 @@ interface FormatFlatTaskListOptions {
   projects: Map<string, Project>
   collaboratorCache: CollaboratorCache
   raw?: boolean
+  showUrl?: boolean
 }
 
 function formatFlatTaskList({
@@ -197,6 +207,7 @@ function formatFlatTaskList({
   projects,
   collaboratorCache,
   raw = false,
+  showUrl = false,
 }: FormatFlatTaskListOptions): string {
   if (tasks.length === 0) {
     return 'No tasks found.'
@@ -215,6 +226,7 @@ function formatFlatTaskList({
       projectName,
       assignee: assignee ?? undefined,
       raw,
+      showUrl,
     })
   })
 
@@ -322,7 +334,8 @@ export async function listTasksForProject(
       formatPaginatedJson(
         { results: filtered, nextCursor },
         'task',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -333,7 +346,8 @@ export async function listTasksForProject(
       formatPaginatedNdjson(
         { results: filtered, nextCursor },
         'task',
-        options.full
+        options.full,
+        options.showUrls
       )
     )
     return
@@ -356,6 +370,7 @@ export async function listTasksForProject(
         projects,
         collaboratorCache,
         raw: options.raw,
+        showUrl: options.showUrls,
       })
     )
   } else {
@@ -365,6 +380,7 @@ export async function listTasksForProject(
         projects,
         collaboratorCache,
         raw: options.raw,
+        showUrl: options.showUrls,
       })
     )
   }
