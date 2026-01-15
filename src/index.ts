@@ -15,6 +15,7 @@ import { registerWorkspaceCommand } from './commands/workspace.js'
 import { registerActivityCommand } from './commands/activity.js'
 import { registerReminderCommand } from './commands/reminder.js'
 import { registerSettingsCommand } from './commands/settings.js'
+import { registerLoginCommand } from './commands/login.js'
 import { registerStatsCommand } from './commands/stats.js'
 import { registerFilterCommand } from './commands/filter.js'
 
@@ -44,6 +45,7 @@ registerWorkspaceCommand(program)
 registerActivityCommand(program)
 registerReminderCommand(program)
 registerSettingsCommand(program)
+registerLoginCommand(program)
 registerStatsCommand(program)
 registerFilterCommand(program)
 
