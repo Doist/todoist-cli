@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import {
   formatPaginatedJson,
   formatPaginatedNdjson,
@@ -136,6 +137,11 @@ async function updateSection(
   console.log(`Updated: ${section.name} → ${updated.name}`)
 }
 
+async function browseSection(sectionId: string): Promise<void> {
+  const id = requireIdRef(sectionId, 'section')
+  await openInBrowser(sectionUrl(id))
+}
+
 export function registerSectionCommand(program: Command): void {
   const section = program
     .command('section')
@@ -193,5 +199,16 @@ export function registerSectionCommand(program: Command): void {
         return
       }
       return updateSection(id, options)
+    })
+
+  const browseCmd = section
+    .command('browse [id]')
+    .description('Open section in browser (requires id:xxx)')
+    .action((id) => {
+      if (!id) {
+        browseCmd.help()
+        return
+      }
+      return browseSection(id)
     })
 }

@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { getApi, uploadFile } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import {
   formatPaginatedJson,
   formatPaginatedNdjson,
@@ -248,6 +249,24 @@ async function viewComment(
   }
 }
 
+async function browseComment(commentId: string): Promise<void> {
+  const api = await getApi()
+  const id = requireIdRef(commentId, 'comment')
+  const comment = await api.getComment(id)
+
+  const url = comment.taskId
+    ? commentUrl(comment.taskId, comment.id)
+    : comment.projectId
+      ? projectCommentUrl(comment.projectId, comment.id)
+      : null
+
+  if (!url) {
+    throw new Error('Comment has no associated task or project.')
+  }
+
+  await openInBrowser(url)
+}
+
 export function registerCommentCommand(program: Command): void {
   const comment = program.command('comment').description('Manage comments')
 
@@ -319,5 +338,16 @@ export function registerCommentCommand(program: Command): void {
         return
       }
       return viewComment(id, options)
+    })
+
+  const browseCmd = comment
+    .command('browse [id]')
+    .description('Open comment in browser (requires id:xxx)')
+    .action((id) => {
+      if (!id) {
+        browseCmd.help()
+        return
+      }
+      return browseComment(id)
     })
 }

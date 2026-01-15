@@ -1,5 +1,7 @@
 import { Command } from 'commander'
+import type { Label } from '@doist/todoist-api-typescript'
 import { getApi } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import {
   formatPaginatedJson,
   formatPaginatedNdjson,
@@ -190,6 +192,34 @@ async function updateLabel(
   )
 }
 
+async function resolveLabelRef(nameOrId: string): Promise<Label> {
+  const api = await getApi()
+  const { results: labels } = await api.getLabels()
+
+  if (isIdRef(nameOrId)) {
+    const id = extractId(nameOrId)
+    const label = labels.find((l) => l.id === id)
+    if (!label) {
+      throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
+    }
+    return label
+  }
+
+  const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
+  const lower = name.toLowerCase()
+  const exact = labels.find((l) => l.name.toLowerCase() === lower)
+  if (exact) return exact
+
+  throw new Error(
+    formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`)
+  )
+}
+
+async function browseLabel(nameOrId: string): Promise<void> {
+  const label = await resolveLabelRef(nameOrId)
+  await openInBrowser(labelUrl(label.id))
+}
+
 export function registerLabelCommand(program: Command): void {
   const label = program.command('label').description('Manage labels')
 
@@ -243,5 +273,16 @@ export function registerLabelCommand(program: Command): void {
         return
       }
       return updateLabel(ref, options)
+    })
+
+  const browseCmd = label
+    .command('browse [ref]')
+    .description('Open label in browser')
+    .action((ref) => {
+      if (!ref) {
+        browseCmd.help()
+        return
+      }
+      return browseLabel(ref)
     })
 }

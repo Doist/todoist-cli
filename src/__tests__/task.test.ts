@@ -6,11 +6,17 @@ vi.mock('../lib/api.js', () => ({
   completeTaskForever: vi.fn(),
 }))
 
+vi.mock('../lib/browser.js', () => ({
+  openInBrowser: vi.fn(),
+}))
+
 import { getApi, completeTaskForever } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import { registerTaskCommand } from '../commands/task.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockCompleteTaskForever = vi.mocked(completeTaskForever)
+const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 function createMockApi() {
   return {
@@ -1821,6 +1827,50 @@ describe('task list --filter', () => {
     )
     expect(consoleSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('Low priority')
+    )
+    consoleSpy.mockRestore()
+  })
+})
+
+describe('task browse', () => {
+  let mockApi: ReturnType<typeof createMockApi>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi = createMockApi()
+    mockGetApi.mockResolvedValue(mockApi as any)
+  })
+
+  it('opens task in browser by name', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTasks.mockResolvedValue({
+      results: [{ id: 'task-1', content: 'Buy milk', projectId: 'proj-1' }],
+    })
+
+    await program.parseAsync(['node', 'td', 'task', 'browse', 'Buy milk'])
+
+    expect(mockOpenInBrowser).toHaveBeenCalledWith(
+      'https://app.todoist.com/app/task/task-1'
+    )
+    consoleSpy.mockRestore()
+  })
+
+  it('opens task in browser by id:', async () => {
+    const program = createProgram()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    mockApi.getTask.mockResolvedValue({
+      id: 'task-123',
+      content: 'Test task',
+      projectId: 'proj-1',
+    })
+
+    await program.parseAsync(['node', 'td', 'task', 'browse', 'id:task-123'])
+
+    expect(mockOpenInBrowser).toHaveBeenCalledWith(
+      'https://app.todoist.com/app/task/task-123'
     )
     consoleSpy.mockRestore()
   })

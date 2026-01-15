@@ -11,8 +11,15 @@ vi.mock('../lib/api.js', async (importOriginal) => {
   }
 })
 
+vi.mock('../lib/browser.js', () => ({
+  openInBrowser: vi.fn(),
+}))
+
 import { getApi, fetchWorkspaces, fetchWorkspaceFolders } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import { registerProjectCommand } from '../commands/project.js'
+
+const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
@@ -1043,5 +1050,48 @@ describe('project unarchive', () => {
     ])
 
     expect(mockApi.unarchiveProject).toHaveBeenCalledWith('proj-1')
+  })
+})
+
+describe('project browse', () => {
+  let mockApi: ReturnType<typeof createMockApi>
+  let consoleSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockApi = createMockApi()
+    mockGetApi.mockResolvedValue(mockApi as any)
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleSpy.mockRestore()
+  })
+
+  it('opens project in browser by name', async () => {
+    const program = createProgram()
+
+    mockApi.getProjects.mockResolvedValue({
+      results: [{ id: 'proj-1', name: 'Work' }],
+      nextCursor: null,
+    })
+
+    await program.parseAsync(['node', 'td', 'project', 'browse', 'Work'])
+
+    expect(mockOpenInBrowser).toHaveBeenCalledWith(
+      'https://app.todoist.com/app/project/proj-1'
+    )
+  })
+
+  it('opens project in browser by id:', async () => {
+    const program = createProgram()
+
+    mockApi.getProject.mockResolvedValue({ id: 'proj-123', name: 'Test' })
+
+    await program.parseAsync(['node', 'td', 'project', 'browse', 'id:proj-123'])
+
+    expect(mockOpenInBrowser).toHaveBeenCalledWith(
+      'https://app.todoist.com/app/project/proj-123'
+    )
   })
 })

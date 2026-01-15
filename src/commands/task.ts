@@ -1,7 +1,9 @@
 import { Command } from 'commander'
 import { getApi, completeTaskForever } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import { parseDuration } from '../lib/duration.js'
 import { formatTaskView, formatError, formatJson } from '../lib/output.js'
+import { taskUrl } from '../lib/urls.js'
 
 type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
 
@@ -363,6 +365,12 @@ async function moveTask(ref: string, options: MoveOptions): Promise<void> {
   console.log(`Moved: ${task.content}`)
 }
 
+async function browseTask(ref: string): Promise<void> {
+  const api = await getApi()
+  const task = await resolveTaskRef(api, ref)
+  await openInBrowser(taskUrl(task.id))
+}
+
 export function registerTaskCommand(program: Command): void {
   const task = program.command('task').description('Manage tasks')
 
@@ -501,5 +509,16 @@ export function registerTaskCommand(program: Command): void {
         return
       }
       return moveTask(ref, options)
+    })
+
+  const browseCmd = task
+    .command('browse [ref]')
+    .description('Open task in browser')
+    .action((ref) => {
+      if (!ref) {
+        browseCmd.help()
+        return
+      }
+      return browseTask(ref)
     })
 }

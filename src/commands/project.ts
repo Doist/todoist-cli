@@ -8,6 +8,7 @@ import {
   type Project,
   type Workspace,
 } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import {
   formatPaginatedJson,
   formatPaginatedNdjson,
@@ -365,6 +366,12 @@ async function unarchiveProject(ref: string): Promise<void> {
   console.log(`Unarchived: ${project.name}`)
 }
 
+async function browseProject(ref: string): Promise<void> {
+  const api = await getApi()
+  const project = await resolveProjectRef(api, ref)
+  await openInBrowser(projectUrl(project.id))
+}
+
 export function registerProjectCommand(program: Command): void {
   const project = program.command('project').description('Manage projects')
 
@@ -467,5 +474,16 @@ export function registerProjectCommand(program: Command): void {
         return
       }
       return unarchiveProject(ref)
+    })
+
+  const browseCmd = project
+    .command('browse [ref]')
+    .description('Open project in browser')
+    .action((ref) => {
+      if (!ref) {
+        browseCmd.help()
+        return
+      }
+      return browseProject(ref)
     })
 }

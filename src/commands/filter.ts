@@ -8,6 +8,7 @@ import {
   Filter,
   Project,
 } from '../lib/api.js'
+import { openInBrowser } from '../lib/browser.js'
 import {
   formatPaginatedJson,
   formatPaginatedNdjson,
@@ -290,6 +291,11 @@ async function showFilter(
   console.log(formatNextCursorFooter(nextCursor))
 }
 
+async function browseFilter(nameOrId: string): Promise<void> {
+  const filter = await resolveFilterRef(nameOrId)
+  await openInBrowser(filterUrl(filter.id))
+}
+
 export function registerFilterCommand(program: Command): void {
   const filter = program.command('filter').description('Manage filters')
 
@@ -364,5 +370,16 @@ export function registerFilterCommand(program: Command): void {
         return
       }
       return showFilter(ref, options)
+    })
+
+  const browseCmd = filter
+    .command('browse [ref]')
+    .description('Open filter in browser')
+    .action((ref) => {
+      if (!ref) {
+        browseCmd.help()
+        return
+      }
+      return browseFilter(ref)
     })
 }
