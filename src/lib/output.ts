@@ -217,6 +217,15 @@ const FILTER_ESSENTIAL_FIELDS = [
   'color',
   'isFavorite',
 ] as const
+const NOTIFICATION_ESSENTIAL_FIELDS = [
+  'id',
+  'type',
+  'isUnread',
+  'createdAt',
+  'fromUser',
+  'project',
+  'task',
+] as const
 
 function pickFields<T extends object>(
   item: T,
@@ -267,6 +276,9 @@ function addWebUrl<T extends { id: string }>(
     case 'reminder':
       url = ''
       break
+    case 'notification':
+      url = ''
+      break
   }
   return { ...item, webUrl: url }
 }
@@ -279,6 +291,7 @@ export type EntityType =
   | 'comment'
   | 'reminder'
   | 'filter'
+  | 'notification'
 
 function getEssentialFields(type: EntityType): readonly string[] {
   switch (type) {
@@ -296,6 +309,8 @@ function getEssentialFields(type: EntityType): readonly string[] {
       return REMINDER_ESSENTIAL_FIELDS
     case 'filter':
       return FILTER_ESSENTIAL_FIELDS
+    case 'notification':
+      return NOTIFICATION_ESSENTIAL_FIELDS
   }
 }
 
