@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1](https://github.com/Doist/todoist-cli/compare/v1.1.0...v1.1.1) (2026-01-16)
+
+
+### Bug Fixes
+
+* exclude CHANGELOG.md from Prettier formatting ([c989d18](https://github.com/Doist/todoist-cli/commit/c989d18f4e62b76df68b3e3c82e127635e10055b))
+
 ## [1.1.0](https://github.com/Doist/todoist-cli/compare/v1.0.0...v1.1.0) (2026-01-16)
 
 
