@@ -87,22 +87,25 @@ const ERROR_HTML = (message: string) => `
 </html>
 `
 
-export function startCallbackServer(expectedState: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let server: Server | null = null
-    let timeoutId: NodeJS.Timeout | null = null
+export function startCallbackServer(expectedState: string): {
+  promise: Promise<string>
+  cleanup: () => void
+} {
+  let server: Server | null = null
+  let timeoutId: NodeJS.Timeout | null = null
 
-    const cleanup = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-      if (server) {
-        server.close()
-        server = null
-      }
+  const cleanup = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      timeoutId = null
     }
+    if (server) {
+      server.close()
+      server = null
+    }
+  }
 
+  const promise = new Promise<string>((resolve, reject) => {
     const handleRequest = (req: IncomingMessage, res: ServerResponse) => {
       const url = new URL(req.url || '/', `http://localhost:${PORT}`)
 
@@ -160,6 +163,8 @@ export function startCallbackServer(expectedState: string): Promise<string> {
       }, TIMEOUT_MS)
     })
   })
+
+  return { promise, cleanup }
 }
 
 export const OAUTH_REDIRECT_URI = `http://localhost:${PORT}/callback`

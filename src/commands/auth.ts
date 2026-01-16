@@ -25,19 +25,24 @@ async function loginWithOAuth(): Promise<void> {
   console.log('Opening browser for Todoist authorization...')
 
   const authUrl = buildAuthorizationUrl(codeChallenge, state)
-  const callbackPromise = startCallbackServer(state)
+  const { promise: callbackPromise, cleanup } = startCallbackServer(state)
 
-  await open(authUrl)
-  console.log(chalk.dim('Waiting for authorization...'))
+  try {
+    await open(authUrl)
+    console.log(chalk.dim('Waiting for authorization...'))
 
-  const code = await callbackPromise
-  console.log(chalk.dim('Exchanging code for token...'))
+    const code = await callbackPromise
+    console.log(chalk.dim('Exchanging code for token...'))
 
-  const accessToken = await exchangeCodeForToken(code, codeVerifier)
-  await saveApiToken(accessToken)
+    const accessToken = await exchangeCodeForToken(code, codeVerifier)
+    await saveApiToken(accessToken)
 
-  console.log(chalk.green('✓'), 'Successfully logged in!')
-  console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+    console.log(chalk.green('✓'), 'Successfully logged in!')
+    console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+  } catch (error) {
+    cleanup()
+    throw error
+  }
 }
 
 async function showStatus(): Promise<void> {

@@ -137,7 +137,10 @@ describe('auth command', () => {
       const authCode = 'oauth_auth_code_123'
       const accessToken = 'oauth_access_token_456'
 
-      mockStartCallbackServer.mockResolvedValue(authCode)
+      mockStartCallbackServer.mockReturnValue({
+        promise: Promise.resolve(authCode),
+        cleanup: vi.fn(),
+      })
       mockExchangeCodeForToken.mockResolvedValue(accessToken)
       mockSaveApiToken.mockResolvedValue(undefined)
       mockOpen.mockResolvedValue({} as ReturnType<typeof open>)
@@ -158,23 +161,30 @@ describe('auth command', () => {
 
     it('handles OAuth callback server error', async () => {
       const program = createProgram()
+      const mockCleanup = vi.fn()
 
-      mockStartCallbackServer.mockRejectedValue(
-        new Error('OAuth callback timed out')
-      )
+      mockStartCallbackServer.mockReturnValue({
+        promise: Promise.reject(new Error('OAuth callback timed out')),
+        cleanup: mockCleanup,
+      })
       mockOpen.mockResolvedValue({} as ReturnType<typeof open>)
 
       await expect(
         program.parseAsync(['node', 'td', 'auth', 'login'])
       ).rejects.toThrow('OAuth callback timed out')
 
+      expect(mockCleanup).toHaveBeenCalled()
       expect(mockSaveApiToken).not.toHaveBeenCalled()
     })
 
     it('handles token exchange error', async () => {
       const program = createProgram()
+      const mockCleanup = vi.fn()
 
-      mockStartCallbackServer.mockResolvedValue('auth_code')
+      mockStartCallbackServer.mockReturnValue({
+        promise: Promise.resolve('auth_code'),
+        cleanup: mockCleanup,
+      })
       mockExchangeCodeForToken.mockRejectedValue(
         new Error('Token exchange failed: 400')
       )
@@ -184,6 +194,25 @@ describe('auth command', () => {
         program.parseAsync(['node', 'td', 'auth', 'login'])
       ).rejects.toThrow('Token exchange failed')
 
+      expect(mockCleanup).toHaveBeenCalled()
+      expect(mockSaveApiToken).not.toHaveBeenCalled()
+    })
+
+    it('calls cleanup when open() throws', async () => {
+      const program = createProgram()
+      const mockCleanup = vi.fn()
+
+      mockStartCallbackServer.mockReturnValue({
+        promise: new Promise(() => {}), // never resolves
+        cleanup: mockCleanup,
+      })
+      mockOpen.mockRejectedValue(new Error('Failed to open browser'))
+
+      await expect(
+        program.parseAsync(['node', 'td', 'auth', 'login'])
+      ).rejects.toThrow('Failed to open browser')
+
+      expect(mockCleanup).toHaveBeenCalled()
       expect(mockSaveApiToken).not.toHaveBeenCalled()
     })
   })
