@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { program } from 'commander'
+import packageJson from '../package.json' with { type: 'json' }
 import { registerAddCommand } from './commands/add.js'
 import { registerTodayCommand } from './commands/today.js'
 import { registerUpcomingCommand } from './commands/upcoming.js'
@@ -23,7 +24,7 @@ import { registerNotificationCommand } from './commands/notification.js'
 program
   .name('td')
   .description('Todoist CLI')
-  .version('0.1.0')
+  .version(packageJson.version)
   .option('--no-spinner', 'Disable loading animations')
   .addHelpText(
     'after',
