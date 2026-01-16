@@ -1,93 +1,75 @@
-import { Command } from 'commander'
-import { saveApiToken, clearApiToken } from '../lib/auth.js'
-import { getApi } from '../lib/api/core.js'
-import {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  generateState,
-} from '../lib/pkce.js'
-import { startCallbackServer } from '../lib/oauth-server.js'
-import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import chalk from 'chalk'
+import { Command } from 'commander'
 import open from 'open'
+import { getApi } from '../lib/api/core.js'
+import { clearApiToken, saveApiToken } from '../lib/auth.js'
+import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
+import { startCallbackServer } from '../lib/oauth-server.js'
+import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
 
 async function loginWithToken(token: string): Promise<void> {
-  await saveApiToken(token.trim())
-  console.log(chalk.green('✓'), 'API token saved successfully!')
-  console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+    await saveApiToken(token.trim())
+    console.log(chalk.green('✓'), 'API token saved successfully!')
+    console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
 }
 
 async function loginWithOAuth(): Promise<void> {
-  const codeVerifier = generateCodeVerifier()
-  const codeChallenge = generateCodeChallenge(codeVerifier)
-  const state = generateState()
+    const codeVerifier = generateCodeVerifier()
+    const codeChallenge = generateCodeChallenge(codeVerifier)
+    const state = generateState()
 
-  console.log('Opening browser for Todoist authorization...')
+    console.log('Opening browser for Todoist authorization...')
 
-  const authUrl = buildAuthorizationUrl(codeChallenge, state)
-  const { promise: callbackPromise, cleanup } = startCallbackServer(state)
+    const authUrl = buildAuthorizationUrl(codeChallenge, state)
+    const { promise: callbackPromise, cleanup } = startCallbackServer(state)
 
-  try {
-    await open(authUrl)
-    console.log(chalk.dim('Waiting for authorization...'))
+    try {
+        await open(authUrl)
+        console.log(chalk.dim('Waiting for authorization...'))
 
-    const code = await callbackPromise
-    console.log(chalk.dim('Exchanging code for token...'))
+        const code = await callbackPromise
+        console.log(chalk.dim('Exchanging code for token...'))
 
-    const accessToken = await exchangeCodeForToken(code, codeVerifier)
-    await saveApiToken(accessToken)
+        const accessToken = await exchangeCodeForToken(code, codeVerifier)
+        await saveApiToken(accessToken)
 
-    console.log(chalk.green('✓'), 'Successfully logged in!')
-    console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
-  } catch (error) {
-    cleanup()
-    throw error
-  }
+        console.log(chalk.green('✓'), 'Successfully logged in!')
+        console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+    } catch (error) {
+        cleanup()
+        throw error
+    }
 }
 
 async function showStatus(): Promise<void> {
-  try {
-    const api = await getApi()
-    const user = await api.getUser()
-    console.log(chalk.green('✓'), 'Authenticated')
-    console.log(`  Email: ${user.email}`)
-    console.log(`  Name:  ${user.fullName}`)
-  } catch {
-    console.log(chalk.yellow('Not authenticated'))
-    console.log(
-      chalk.dim(
-        'Run `td auth login` or `td auth token <token>` to authenticate'
-      )
-    )
-  }
+    try {
+        const api = await getApi()
+        const user = await api.getUser()
+        console.log(chalk.green('✓'), 'Authenticated')
+        console.log(`  Email: ${user.email}`)
+        console.log(`  Name:  ${user.fullName}`)
+    } catch {
+        console.log(chalk.yellow('Not authenticated'))
+        console.log(chalk.dim('Run `td auth login` or `td auth token <token>` to authenticate'))
+    }
 }
 
 async function logout(): Promise<void> {
-  await clearApiToken()
-  console.log(chalk.green('✓'), 'Logged out')
-  console.log(chalk.dim('Token removed from ~/.config/todoist-cli/config.json'))
+    await clearApiToken()
+    console.log(chalk.green('✓'), 'Logged out')
+    console.log(chalk.dim('Token removed from ~/.config/todoist-cli/config.json'))
 }
 
 export function registerAuthCommand(program: Command): void {
-  const auth = program.command('auth').description('Manage authentication')
+    const auth = program.command('auth').description('Manage authentication')
 
-  auth
-    .command('login')
-    .description('Authenticate with Todoist via OAuth')
-    .action(loginWithOAuth)
+    auth.command('login').description('Authenticate with Todoist via OAuth').action(loginWithOAuth)
 
-  auth
-    .command('token <token>')
-    .description('Save API token to config file (manual authentication)')
-    .action(loginWithToken)
+    auth.command('token <token>')
+        .description('Save API token to config file (manual authentication)')
+        .action(loginWithToken)
 
-  auth
-    .command('status')
-    .description('Show current authentication status')
-    .action(showStatus)
+    auth.command('status').description('Show current authentication status').action(showStatus)
 
-  auth
-    .command('logout')
-    .description('Remove saved authentication token')
-    .action(logout)
+    auth.command('logout').description('Remove saved authentication token').action(logout)
 }

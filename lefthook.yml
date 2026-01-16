@@ -2,8 +2,12 @@ pre-commit:
   commands:
     type-check:
       run: npm run type-check
+    biome:
+      glob: '*.{ts,js,json}'
+      run: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
     prettier:
-      glob: '*.{ts,js,json,md,yml,yaml}'
+      glob: '*.{md,yml,yaml,css}'
       run: npx prettier --write {staged_files}
       stage_fixed: true
 

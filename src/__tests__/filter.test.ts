@@ -1,25 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Command } from 'commander'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
-  getApi: vi.fn(),
+    getApi: vi.fn(),
 }))
 
 vi.mock('../lib/api/filters.js', () => ({
-  fetchFilters: vi.fn(),
-  addFilter: vi.fn(),
-  updateFilter: vi.fn(),
-  deleteFilter: vi.fn(),
+    fetchFilters: vi.fn(),
+    addFilter: vi.fn(),
+    updateFilter: vi.fn(),
+    deleteFilter: vi.fn(),
 }))
 
-import { getApi } from '../lib/api/core.js'
-import {
-  fetchFilters,
-  addFilter,
-  updateFilter,
-  deleteFilter,
-} from '../lib/api/filters.js'
 import { registerFilterCommand } from '../commands/filter.js'
+import { getApi } from '../lib/api/core.js'
+import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../lib/api/filters.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
@@ -28,771 +23,733 @@ const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
 
 function createMockApi() {
-  return {
-    getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    getTasksByFilter: vi
-      .fn()
-      .mockResolvedValue({ results: [], nextCursor: null }),
-  }
+    return {
+        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+    }
 }
 
 function createProgram() {
-  const program = new Command()
-  program.exitOverride()
-  registerFilterCommand(program)
-  return program
+    const program = new Command()
+    program.exitOverride()
+    registerFilterCommand(program)
+    return program
 }
 
 describe('filter list', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
 
-  it('lists all filters', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('lists all filters', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work tasks',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-      {
-        id: 'filter-2',
-        name: 'Urgent',
-        query: 'p1',
-        isFavorite: true,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work tasks',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+            {
+                id: 'filter-2',
+                name: 'Urgent',
+                query: 'p1',
+                isFavorite: true,
+                isDeleted: false,
+            },
+        ])
 
-    await program.parseAsync(['node', 'td', 'filter', 'list'])
+        await program.parseAsync(['node', 'td', 'filter', 'list'])
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Work tasks')
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Urgent'))
-    consoleSpy.mockRestore()
-  })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work tasks'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Urgent'))
+        consoleSpy.mockRestore()
+    })
 
-  it('shows "No filters found" when empty', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('shows "No filters found" when empty', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([])
+        mockFetchFilters.mockResolvedValue([])
 
-    await program.parseAsync(['node', 'td', 'filter', 'list'])
+        await program.parseAsync(['node', 'td', 'filter', 'list'])
 
-    expect(consoleSpy).toHaveBeenCalledWith('No filters found.')
-    consoleSpy.mockRestore()
-  })
+        expect(consoleSpy).toHaveBeenCalledWith('No filters found.')
+        consoleSpy.mockRestore()
+    })
 
-  it('outputs JSON with --json flag', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-    await program.parseAsync(['node', 'td', 'filter', 'list', '--json'])
+        await program.parseAsync(['node', 'td', 'filter', 'list', '--json'])
 
-    const output = consoleSpy.mock.calls[0][0]
-    const parsed = JSON.parse(output)
-    expect(parsed.results).toBeDefined()
-    expect(parsed.results[0].name).toBe('Work')
-    consoleSpy.mockRestore()
-  })
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].name).toBe('Work')
+        consoleSpy.mockRestore()
+    })
 
-  it('outputs NDJSON with --ndjson flag', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('outputs NDJSON with --ndjson flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-      {
-        id: 'filter-2',
-        name: 'Home',
-        query: '@home',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+            {
+                id: 'filter-2',
+                name: 'Home',
+                query: '@home',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-    await program.parseAsync(['node', 'td', 'filter', 'list', '--ndjson'])
+        await program.parseAsync(['node', 'td', 'filter', 'list', '--ndjson'])
 
-    const output = consoleSpy.mock.calls[0][0]
-    const lines = output.split('\n')
-    expect(lines).toHaveLength(2)
-    consoleSpy.mockRestore()
-  })
+        const output = consoleSpy.mock.calls[0][0]
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(2)
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('filter create', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('creates filter with name and query', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-    mockAddFilter.mockResolvedValue({
-      id: 'filter-new',
-      name: 'Work',
-      query: '@work',
-      isFavorite: false,
-      isDeleted: false,
+    beforeEach(() => {
+        vi.clearAllMocks()
     })
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'create',
-      '--name',
-      'Work',
-      '--query',
-      '@work',
-    ])
+    it('creates filter with name and query', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(mockAddFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Work', query: '@work' })
-    )
-    expect(consoleSpy).toHaveBeenCalledWith('Created: Work')
-    consoleSpy.mockRestore()
-  })
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'Work',
+            query: '@work',
+            isFavorite: false,
+            isDeleted: false,
+        })
 
-  it('creates filter with --color', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Work',
+            '--query',
+            '@work',
+        ])
 
-    mockAddFilter.mockResolvedValue({
-      id: 'filter-new',
-      name: 'Urgent',
-      query: 'p1',
-      color: 'red',
-      isFavorite: false,
-      isDeleted: false,
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Work', query: '@work' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Created: Work')
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'create',
-      '--name',
-      'Urgent',
-      '--query',
-      'p1',
-      '--color',
-      'red',
-    ])
+    it('creates filter with --color', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(mockAddFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Urgent', query: 'p1', color: 'red' })
-    )
-    consoleSpy.mockRestore()
-  })
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'Urgent',
+            query: 'p1',
+            color: 'red',
+            isFavorite: false,
+            isDeleted: false,
+        })
 
-  it('creates filter with --favorite', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Urgent',
+            '--query',
+            'p1',
+            '--color',
+            'red',
+        ])
 
-    mockAddFilter.mockResolvedValue({
-      id: 'filter-new',
-      name: 'Important',
-      query: 'p1 | p2',
-      isFavorite: true,
-      isDeleted: false,
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Urgent', query: 'p1', color: 'red' }),
+        )
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'create',
-      '--name',
-      'Important',
-      '--query',
-      'p1 | p2',
-      '--favorite',
-    ])
+    it('creates filter with --favorite', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(mockAddFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Important', isFavorite: true })
-    )
-    consoleSpy.mockRestore()
-  })
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'Important',
+            query: 'p1 | p2',
+            isFavorite: true,
+            isDeleted: false,
+        })
 
-  it('shows filter ID after creation', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Important',
+            '--query',
+            'p1 | p2',
+            '--favorite',
+        ])
 
-    mockAddFilter.mockResolvedValue({
-      id: 'filter-xyz',
-      name: 'Test',
-      query: 'today',
-      isFavorite: false,
-      isDeleted: false,
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Important', isFavorite: true }),
+        )
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'create',
-      '--name',
-      'Test',
-      '--query',
-      'today',
-    ])
+    it('shows filter ID after creation', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('id:filter-xyz')
-    )
-    consoleSpy.mockRestore()
-  })
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-xyz',
+            name: 'Test',
+            query: 'today',
+            isFavorite: false,
+            isDeleted: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Test',
+            '--query',
+            'today',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('id:filter-xyz'))
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('filter delete', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
 
-  it('shows dry-run without --yes', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('shows dry-run without --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-    await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work'])
+        await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work'])
 
-    expect(mockDeleteFilter).not.toHaveBeenCalled()
-    expect(consoleSpy).toHaveBeenCalledWith('Would delete: Work')
-    expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-    consoleSpy.mockRestore()
-  })
+        expect(mockDeleteFilter).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would delete: Work')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+        consoleSpy.mockRestore()
+    })
 
-  it('deletes by name with --yes', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('deletes by name with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockDeleteFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockDeleteFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'delete',
-      'Work',
-      '--yes',
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work', '--yes'])
 
-    expect(mockDeleteFilter).toHaveBeenCalledWith('filter-1')
-    expect(consoleSpy).toHaveBeenCalledWith('Deleted: Work')
-    consoleSpy.mockRestore()
-  })
+        expect(mockDeleteFilter).toHaveBeenCalledWith('filter-1')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Work')
+        consoleSpy.mockRestore()
+    })
 
-  it('deletes by id: prefix with --yes', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('deletes by id: prefix with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-123',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockDeleteFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-123',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockDeleteFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'delete',
-      'id:filter-123',
-      '--yes',
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'delete', 'id:filter-123', '--yes'])
 
-    expect(mockDeleteFilter).toHaveBeenCalledWith('filter-123')
-    consoleSpy.mockRestore()
-  })
+        expect(mockDeleteFilter).toHaveBeenCalledWith('filter-123')
+        consoleSpy.mockRestore()
+    })
 
-  it('throws for non-existent filter', async () => {
-    const program = createProgram()
+    it('throws for non-existent filter', async () => {
+        const program = createProgram()
 
-    mockFetchFilters.mockResolvedValue([])
+        mockFetchFilters.mockResolvedValue([])
 
-    await expect(
-      program.parseAsync([
-        'node',
-        'td',
-        'filter',
-        'delete',
-        'nonexistent',
-        '--yes',
-      ])
-    ).rejects.toThrow('FILTER_NOT_FOUND')
-  })
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'delete', 'nonexistent', '--yes']),
+        ).rejects.toThrow('FILTER_NOT_FOUND')
+    })
 })
 
 describe('filter update', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('updates filter name', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Old Name',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockUpdateFilter.mockResolvedValue(undefined)
-
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'update',
-      'Old Name',
-      '--name',
-      'New Name',
-    ])
-
-    expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-      name: 'New Name',
+    beforeEach(() => {
+        vi.clearAllMocks()
     })
-    expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name')
-    consoleSpy.mockRestore()
-  })
 
-  it('updates filter query', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('updates filter name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockUpdateFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Old Name',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'update',
-      'Work',
-      '--query',
-      '@work & p1',
-    ])
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Old Name',
+            '--name',
+            'New Name',
+        ])
 
-    expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-      query: '@work & p1',
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            name: 'New Name',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name')
+        consoleSpy.mockRestore()
     })
-    consoleSpy.mockRestore()
-  })
 
-  it('updates filter color and favorite', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('updates filter query', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockUpdateFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'update',
-      'Work',
-      '--color',
-      'red',
-      '--favorite',
-    ])
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Work',
+            '--query',
+            '@work & p1',
+        ])
 
-    expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-      color: 'red',
-      isFavorite: true,
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            query: '@work & p1',
+        })
+        consoleSpy.mockRestore()
     })
-    consoleSpy.mockRestore()
-  })
 
-  it('removes favorite with --no-favorite', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('updates filter color and favorite', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: true,
-        isDeleted: false,
-      },
-    ])
-    mockUpdateFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'update',
-      'Work',
-      '--no-favorite',
-    ])
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Work',
+            '--color',
+            'red',
+            '--favorite',
+        ])
 
-    expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-      isFavorite: false,
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            color: 'red',
+            isFavorite: true,
+        })
+        consoleSpy.mockRestore()
     })
-    consoleSpy.mockRestore()
-  })
 
-  it('updates by id: prefix', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('removes favorite with --no-favorite', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-123',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-    mockUpdateFilter.mockResolvedValue(undefined)
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: true,
+                isDeleted: false,
+            },
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
 
-    await program.parseAsync([
-      'node',
-      'td',
-      'filter',
-      'update',
-      'id:filter-123',
-      '--color',
-      'blue',
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--no-favorite'])
 
-    expect(mockUpdateFilter).toHaveBeenCalledWith('filter-123', {
-      color: 'blue',
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            isFavorite: false,
+        })
+        consoleSpy.mockRestore()
     })
-    consoleSpy.mockRestore()
-  })
 
-  it('throws when no changes specified', async () => {
-    const program = createProgram()
+    it('updates by id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-123',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
 
-    await expect(
-      program.parseAsync(['node', 'td', 'filter', 'update', 'Work'])
-    ).rejects.toThrow('NO_CHANGES')
-  })
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'id:filter-123',
+            '--color',
+            'blue',
+        ])
 
-  it('throws for non-existent filter', async () => {
-    const program = createProgram()
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-123', {
+            color: 'blue',
+        })
+        consoleSpy.mockRestore()
+    })
 
-    mockFetchFilters.mockResolvedValue([])
+    it('throws when no changes specified', async () => {
+        const program = createProgram()
 
-    await expect(
-      program.parseAsync([
-        'node',
-        'td',
-        'filter',
-        'update',
-        'nonexistent',
-        '--name',
-        'new-name',
-      ])
-    ).rejects.toThrow('FILTER_NOT_FOUND')
-  })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'update', 'Work']),
+        ).rejects.toThrow('NO_CHANGES')
+    })
+
+    it('throws for non-existent filter', async () => {
+        const program = createProgram()
+
+        mockFetchFilters.mockResolvedValue([])
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'filter',
+                'update',
+                'nonexistent',
+                '--name',
+                'new-name',
+            ]),
+        ).rejects.toThrow('FILTER_NOT_FOUND')
+    })
 })
 
 describe('filter show', () => {
-  let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: ReturnType<typeof createMockApi>
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockApi = createMockApi()
-    mockGetApi.mockResolvedValue(mockApi as any)
-  })
-
-  it('shows tasks matching filter', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-
-    mockApi.getTasksByFilter.mockResolvedValue({
-      results: [
-        {
-          id: 'task-1',
-          content: 'Work task 1',
-          projectId: 'proj-1',
-          priority: 1,
-          labels: [],
-        },
-      ],
-      nextCursor: null,
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
-    mockApi.getProjects.mockResolvedValue({
-      results: [{ id: 'proj-1', name: 'Work Project' }],
-      nextCursor: null,
+    it('shows tasks matching filter', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Work task 1',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work Project' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task 1'))
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync(['node', 'td', 'filter', 'show', 'Work'])
+    it('shows "No tasks match this filter" when empty', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ query: '@work' })
-    )
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Work task 1')
-    )
-    consoleSpy.mockRestore()
-  })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Empty',
+                query: 'nonexistent',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-  it('shows "No tasks match this filter" when empty', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Empty',
-        query: 'nonexistent',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Empty'])
 
-    mockApi.getTasksByFilter.mockResolvedValue({
-      results: [],
-      nextCursor: null,
+        expect(consoleSpy).toHaveBeenCalledWith('No tasks match this filter.')
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync(['node', 'td', 'filter', 'show', 'Empty'])
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(consoleSpy).toHaveBeenCalledWith('No tasks match this filter.')
-    consoleSpy.mockRestore()
-  })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-  it('outputs JSON with --json flag', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Task 1',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--json'])
 
-    mockApi.getTasksByFilter.mockResolvedValue({
-      results: [
-        {
-          id: 'task-1',
-          content: 'Task 1',
-          projectId: 'proj-1',
-          priority: 1,
-          labels: [],
-        },
-      ],
-      nextCursor: null,
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].content).toBe('Task 1')
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--json'])
+    it('shows filter by id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    const output = consoleSpy.mock.calls[0][0]
-    const parsed = JSON.parse(output)
-    expect(parsed.results).toBeDefined()
-    expect(parsed.results[0].content).toBe('Task 1')
-    consoleSpy.mockRestore()
-  })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-123',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-  it('shows filter by id: prefix', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-123',
-        name: 'Work',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'id:filter-123'])
 
-    mockApi.getTasksByFilter.mockResolvedValue({
-      results: [],
-      nextCursor: null,
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        consoleSpy.mockRestore()
     })
 
-    await program.parseAsync(['node', 'td', 'filter', 'show', 'id:filter-123'])
+    it('throws for non-existent filter', async () => {
+        const program = createProgram()
 
-    expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ query: '@work' })
-    )
-    consoleSpy.mockRestore()
-  })
+        mockFetchFilters.mockResolvedValue([])
 
-  it('throws for non-existent filter', async () => {
-    const program = createProgram()
-
-    mockFetchFilters.mockResolvedValue([])
-
-    await expect(
-      program.parseAsync(['node', 'td', 'filter', 'show', 'nonexistent'])
-    ).rejects.toThrow('FILTER_NOT_FOUND')
-  })
-
-  it('resolves partial name match', async () => {
-    const program = createProgram()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work Tasks',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
-
-    mockApi.getTasksByFilter.mockResolvedValue({
-      results: [],
-      nextCursor: null,
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'show', 'nonexistent']),
+        ).rejects.toThrow('FILTER_NOT_FOUND')
     })
 
-    await program.parseAsync(['node', 'td', 'filter', 'show', 'work'])
+    it('resolves partial name match', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
-      expect.objectContaining({ query: '@work' })
-    )
-    consoleSpy.mockRestore()
-  })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work Tasks',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-  it('throws for ambiguous partial match', async () => {
-    const program = createProgram()
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Work Tasks',
-        query: '@work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-      {
-        id: 'filter-2',
-        name: 'Work Projects',
-        query: '#work',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'work'])
 
-    await expect(
-      program.parseAsync(['node', 'td', 'filter', 'show', 'work'])
-    ).rejects.toThrow('AMBIGUOUS_FILTER')
-  })
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        consoleSpy.mockRestore()
+    })
 
-  it('throws INVALID_FILTER_QUERY for invalid filter syntax', async () => {
-    const program = createProgram()
+    it('throws for ambiguous partial match', async () => {
+        const program = createProgram()
 
-    mockFetchFilters.mockResolvedValue([
-      {
-        id: 'filter-1',
-        name: 'Bad',
-        query: '(((',
-        isFavorite: false,
-        isDeleted: false,
-      },
-    ])
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work Tasks',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+            {
+                id: 'filter-2',
+                name: 'Work Projects',
+                query: '#work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
 
-    mockApi.getTasksByFilter.mockRejectedValue(
-      new Error('HTTP 400: Bad Request')
-    )
+        await expect(program.parseAsync(['node', 'td', 'filter', 'show', 'work'])).rejects.toThrow(
+            'AMBIGUOUS_FILTER',
+        )
+    })
 
-    await expect(
-      program.parseAsync(['node', 'td', 'filter', 'show', 'Bad'])
-    ).rejects.toThrow('INVALID_FILTER_QUERY')
-  })
+    it('throws INVALID_FILTER_QUERY for invalid filter syntax', async () => {
+        const program = createProgram()
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Bad',
+                query: '(((',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        mockApi.getTasksByFilter.mockRejectedValue(new Error('HTTP 400: Bad Request'))
+
+        await expect(program.parseAsync(['node', 'td', 'filter', 'show', 'Bad'])).rejects.toThrow(
+            'INVALID_FILTER_QUERY',
+        )
+    })
 })
