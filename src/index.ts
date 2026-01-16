@@ -24,6 +24,7 @@ program
   .name('td')
   .description('Todoist CLI')
   .version('0.1.0')
+  .option('--no-spinner', 'Disable loading animations')
   .addHelpText(
     'after',
     `

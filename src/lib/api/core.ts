@@ -7,13 +7,74 @@ import {
   User,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
+import { withSpinner } from '../spinner.js'
 
 let apiClient: TodoistApi | null = null
+
+// Mapping of API method names to user-friendly spinner messages
+const API_SPINNER_MESSAGES: Record<
+  string,
+  { text: string; color?: 'blue' | 'green' | 'yellow' }
+> = {
+  getUser: { text: 'Checking authentication...', color: 'blue' },
+  getTasks: { text: 'Loading tasks...', color: 'blue' },
+  getProjects: { text: 'Loading projects...', color: 'blue' },
+  getLabels: { text: 'Loading labels...', color: 'blue' },
+  getSections: { text: 'Loading sections...', color: 'blue' },
+  getComments: { text: 'Loading comments...', color: 'blue' },
+  addTask: { text: 'Creating task...', color: 'green' },
+  updateTask: { text: 'Updating task...', color: 'yellow' },
+  closeTask: { text: 'Completing task...', color: 'green' },
+  reopenTask: { text: 'Reopening task...', color: 'yellow' },
+  deleteTask: { text: 'Deleting task...', color: 'yellow' },
+  addProject: { text: 'Creating project...', color: 'green' },
+  updateProject: { text: 'Updating project...', color: 'yellow' },
+  deleteProject: { text: 'Deleting project...', color: 'yellow' },
+  addLabel: { text: 'Creating label...', color: 'green' },
+  updateLabel: { text: 'Updating label...', color: 'yellow' },
+  deleteLabel: { text: 'Deleting label...', color: 'yellow' },
+  addSection: { text: 'Creating section...', color: 'green' },
+  updateSection: { text: 'Updating section...', color: 'yellow' },
+  deleteSection: { text: 'Deleting section...', color: 'yellow' },
+  quickAddTask: { text: 'Adding task...', color: 'green' },
+}
+
+function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
+  return new Proxy(api, {
+    get(target, property, receiver) {
+      const originalMethod = Reflect.get(target, property, receiver)
+
+      // Only wrap methods (functions) and only if they're likely async API calls
+      if (
+        typeof originalMethod === 'function' &&
+        typeof property === 'string'
+      ) {
+        const spinnerConfig = API_SPINNER_MESSAGES[property]
+
+        if (spinnerConfig) {
+          return function (...args: any[]) {
+            const result = originalMethod.apply(target, args)
+
+            // If the method returns a Promise, wrap it with spinner
+            if (result && typeof result.then === 'function') {
+              return withSpinner(spinnerConfig, () => result)
+            }
+
+            return result
+          }
+        }
+      }
+
+      return originalMethod
+    },
+  })
+}
 
 export async function getApi(): Promise<TodoistApi> {
   if (!apiClient) {
     const token = await getApiToken()
-    apiClient = new TodoistApi(token)
+    const rawApi = new TodoistApi(token)
+    apiClient = createSpinnerWrappedApi(rawApi)
   }
   return apiClient
 }

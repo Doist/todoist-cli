@@ -37,7 +37,8 @@
     "commander": "14.0.2",
     "marked": "15.0.12",
     "marked-terminal": "7.3.0",
-    "open": "11.0.0"
+    "open": "11.0.0",
+    "yocto-spinner": "1.0.0"
   },
   "devDependencies": {
     "@types/marked-terminal": "6.1.1",
