@@ -25,6 +25,18 @@
   ],
   "author": "Ernesto García <ernesto@ernesto.dev>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Doist/todoist-cli.git"
+  },
+  "homepage": "https://github.com/Doist/todoist-cli#readme",
+  "bugs": {
+    "url": "https://github.com/Doist/todoist-cli/issues"
+  },
+  "preferGlobal": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
