@@ -47,7 +47,7 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                 const spinnerConfig = API_SPINNER_MESSAGES[property]
 
                 if (spinnerConfig) {
-                    return (...args: any[]) => {
+                    return <T extends unknown[]>(...args: T) => {
                         const result = originalMethod.apply(target, args)
 
                         // If the method returns a Promise, wrap it with spinner
