@@ -1,79 +1,79 @@
-import { readFile, writeFile, mkdir, unlink } from 'fs/promises'
-import { homedir } from 'os'
-import { join, dirname } from 'path'
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 
 const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 
 interface Config {
-  api_token?: string
+    api_token?: string
 }
 
 export async function getApiToken(): Promise<string> {
-  // Priority 1: Environment variable
-  const envToken = process.env.TODOIST_API_TOKEN
-  if (envToken) {
-    return envToken
-  }
-
-  // Priority 2: Config file
-  try {
-    const content = await readFile(CONFIG_PATH, 'utf-8')
-    const config: Config = JSON.parse(content)
-    if (config.api_token) {
-      return config.api_token
+    // Priority 1: Environment variable
+    const envToken = process.env.TODOIST_API_TOKEN
+    if (envToken) {
+        return envToken
     }
-  } catch {
-    // Config file doesn't exist or is invalid
-  }
 
-  throw new Error(
-    'No API token found. Set TODOIST_API_TOKEN environment variable or create ~/.config/todoist-cli/config.json with {"api_token": "your-token"}'
-  )
+    // Priority 2: Config file
+    try {
+        const content = await readFile(CONFIG_PATH, 'utf-8')
+        const config: Config = JSON.parse(content)
+        if (config.api_token) {
+            return config.api_token
+        }
+    } catch {
+        // Config file doesn't exist or is invalid
+    }
+
+    throw new Error(
+        'No API token found. Set TODOIST_API_TOKEN environment variable or create ~/.config/todoist-cli/config.json with {"api_token": "your-token"}',
+    )
 }
 
 export async function saveApiToken(token: string): Promise<void> {
-  // Validate token (non-empty, reasonable length)
-  if (!token || token.trim().length < 10) {
-    throw new Error('Invalid token: Token must be at least 10 characters')
-  }
+    // Validate token (non-empty, reasonable length)
+    if (!token || token.trim().length < 10) {
+        throw new Error('Invalid token: Token must be at least 10 characters')
+    }
 
-  // Ensure config directory exists
-  const configDir = dirname(CONFIG_PATH)
-  await mkdir(configDir, { recursive: true })
+    // Ensure config directory exists
+    const configDir = dirname(CONFIG_PATH)
+    await mkdir(configDir, { recursive: true })
 
-  // Read existing config to preserve other settings
-  let existingConfig: Config = {}
-  try {
-    const content = await readFile(CONFIG_PATH, 'utf-8')
-    existingConfig = JSON.parse(content)
-  } catch {
-    // Config doesn't exist - start fresh
-  }
+    // Read existing config to preserve other settings
+    let existingConfig: Config = {}
+    try {
+        const content = await readFile(CONFIG_PATH, 'utf-8')
+        existingConfig = JSON.parse(content)
+    } catch {
+        // Config doesn't exist - start fresh
+    }
 
-  // Update config with new token
-  const newConfig: Config = {
-    ...existingConfig,
-    api_token: token.trim(),
-  }
+    // Update config with new token
+    const newConfig: Config = {
+        ...existingConfig,
+        api_token: token.trim(),
+    }
 
-  // Write config file with proper formatting
-  await writeFile(CONFIG_PATH, JSON.stringify(newConfig, null, 2) + '\n')
+    // Write config file with proper formatting
+    await writeFile(CONFIG_PATH, `${JSON.stringify(newConfig, null, 2)}\n`)
 }
 
 export async function clearApiToken(): Promise<void> {
-  let config: Config = {}
-  try {
-    const content = await readFile(CONFIG_PATH, 'utf-8')
-    config = JSON.parse(content)
-  } catch {
-    return // Config doesn't exist, nothing to clear
-  }
+    let config: Config = {}
+    try {
+        const content = await readFile(CONFIG_PATH, 'utf-8')
+        config = JSON.parse(content)
+    } catch {
+        return // Config doesn't exist, nothing to clear
+    }
 
-  delete config.api_token
+    delete config.api_token
 
-  if (Object.keys(config).length === 0) {
-    await unlink(CONFIG_PATH)
-  } else {
-    await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n')
-  }
+    if (Object.keys(config).length === 0) {
+        await unlink(CONFIG_PATH)
+    } else {
+        await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`)
+    }
 }

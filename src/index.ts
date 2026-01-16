@@ -2,37 +2,37 @@
 
 import { program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
+import { registerActivityCommand } from './commands/activity.js'
 import { registerAddCommand } from './commands/add.js'
+import { registerAuthCommand } from './commands/auth.js'
+import { registerCommentCommand } from './commands/comment.js'
+import { registerCompletedCommand } from './commands/completed.js'
+import { registerFilterCommand } from './commands/filter.js'
+import { registerInboxCommand } from './commands/inbox.js'
+import { registerLabelCommand } from './commands/label.js'
+import { registerNotificationCommand } from './commands/notification.js'
+import { registerProjectCommand } from './commands/project.js'
+import { registerReminderCommand } from './commands/reminder.js'
+import { registerSectionCommand } from './commands/section.js'
+import { registerSettingsCommand } from './commands/settings.js'
+import { registerStatsCommand } from './commands/stats.js'
+import { registerTaskCommand } from './commands/task.js'
 import { registerTodayCommand } from './commands/today.js'
 import { registerUpcomingCommand } from './commands/upcoming.js'
-import { registerInboxCommand } from './commands/inbox.js'
-import { registerCompletedCommand } from './commands/completed.js'
-import { registerTaskCommand } from './commands/task.js'
-import { registerProjectCommand } from './commands/project.js'
-import { registerLabelCommand } from './commands/label.js'
-import { registerCommentCommand } from './commands/comment.js'
-import { registerSectionCommand } from './commands/section.js'
 import { registerWorkspaceCommand } from './commands/workspace.js'
-import { registerActivityCommand } from './commands/activity.js'
-import { registerReminderCommand } from './commands/reminder.js'
-import { registerSettingsCommand } from './commands/settings.js'
-import { registerAuthCommand } from './commands/auth.js'
-import { registerStatsCommand } from './commands/stats.js'
-import { registerFilterCommand } from './commands/filter.js'
-import { registerNotificationCommand } from './commands/notification.js'
 
 program
-  .name('td')
-  .description('Todoist CLI')
-  .version(packageJson.version)
-  .option('--no-spinner', 'Disable loading animations')
-  .addHelpText(
-    'after',
-    `
+    .name('td')
+    .description('Todoist CLI')
+    .version(packageJson.version)
+    .option('--no-spinner', 'Disable loading animations')
+    .addHelpText(
+        'after',
+        `
 Note for AI/LLM agents:
   Use --json or --ndjson flags for unambiguous, parseable output.
-  Default JSON shows essential fields; use --full for all fields.`
-  )
+  Default JSON shows essential fields; use --full for all fields.`,
+    )
 
 registerAddCommand(program)
 registerTodayCommand(program)
@@ -54,6 +54,6 @@ registerFilterCommand(program)
 registerNotificationCommand(program)
 
 program.parseAsync().catch((err: Error) => {
-  console.error(err.message)
-  process.exit(1)
+    console.error(err.message)
+    process.exit(1)
 })

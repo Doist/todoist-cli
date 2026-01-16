@@ -1,2 +1,7 @@
 dist
 node_modules
+
+# Biome handles these file types
+*.ts
+*.js
+*.json
