@@ -179,8 +179,8 @@ async function listWorkspaceProjects(ref: string, options: ProjectsOptions): Pro
 
     let isFirst = true
     for (const folderId of sortedFolderIds) {
-        const projects = projectsByFolder.get(folderId)!
-        if (projects.length === 0) continue
+        const projects = projectsByFolder.get(folderId)
+        if (!projects || projects.length === 0) continue
 
         const folderName = folderId ? folderMap.get(folderId) : null
         const hasHeader = folderName || (folderId === null && projectsByFolder.size > 1)

@@ -1,3 +1,4 @@
+import type { Task } from '@doist/todoist-api-typescript'
 import { describe, expect, it } from 'vitest'
 import {
     formatDue,
@@ -60,7 +61,7 @@ describe('formatDue', () => {
     })
 
     it('uses date when string is undefined', () => {
-        const due = { date: '2026-01-15', isRecurring: false } as any
+        const due: Task['due'] = { date: '2026-01-15', isRecurring: false }
         expect(formatDue(due)).toBe('2026-01-15')
     })
 })

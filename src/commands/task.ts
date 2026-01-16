@@ -1,3 +1,4 @@
+import type { Task } from '@doist/todoist-api-typescript'
 import { Command } from 'commander'
 import { completeTaskForever, getApi } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
@@ -79,7 +80,7 @@ async function viewTask(ref: string, options: ViewOptions): Promise<void> {
     const { results: projects } = await api.getProjects()
     const project = projects.find((p) => p.id === task.projectId)
 
-    let parentTask
+    let parentTask: Task | undefined
     if (task.parentId) {
         parentTask = await api.getTask(task.parentId)
     }

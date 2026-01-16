@@ -128,7 +128,8 @@ async function listProjects(options: ListOptions): Promise<void> {
     })
 
     for (const workspaceId of sortedWorkspaceIds) {
-        const wprojects = workspaceProjects.get(workspaceId)!
+        const wprojects = workspaceProjects.get(workspaceId)
+        if (!wprojects) continue // Should not happen since workspaceId comes from keys()
         const workspace = workspaceMap.get(workspaceId)
         const workspaceName = workspace?.name ?? `Workspace ${workspaceId}`
         console.log(chalk.bold(workspaceName))

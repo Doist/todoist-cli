@@ -15,7 +15,7 @@ vi.mock('../lib/api/workspaces.js', () => ({
 
 import { registerTodayCommand } from '../commands/today.js'
 import { getApi } from '../lib/api/core.js'
-import { fetchWorkspaces } from '../lib/api/workspaces.js'
+import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
@@ -278,7 +278,9 @@ describe('today command', () => {
             ],
             nextCursor: null,
         })
-        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as any])
+        mockFetchWorkspaces.mockResolvedValue([
+            { id: 'ws-1', name: 'Acme Corp' } as Partial<Workspace>,
+        ] as Workspace[])
 
         await program.parseAsync(['node', 'td', 'today', '--workspace', 'Acme'])
 

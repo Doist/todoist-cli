@@ -153,7 +153,8 @@ export function registerUpcomingCommand(program: Command): void {
 
             const sortedDates = Array.from(byDate.keys()).sort()
             for (const date of sortedDates) {
-                const dateTasks = byDate.get(date)!
+                const dateTasks = byDate.get(date)
+                if (!dateTasks) continue // Should not happen since date comes from keys()
                 const header = formatDateHeader(date, today)
                 console.log(chalk.bold(`${header} (${dateTasks.length})`))
                 for (const task of dateTasks) {

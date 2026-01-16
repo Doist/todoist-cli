@@ -3,11 +3,6 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http
 const PORT = 8765
 const TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes
 
-interface CallbackResult {
-    code: string
-    state: string
-}
-
 const SUCCESS_HTML = `
 <!DOCTYPE html>
 <html>

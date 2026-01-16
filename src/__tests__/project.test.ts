@@ -22,7 +22,7 @@ vi.mock('../lib/browser.js', () => ({
 
 import { registerProjectCommand } from '../commands/project.js'
 import { getApi } from '../lib/api/core.js'
-import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
+import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { openInBrowser } from '../lib/browser.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
@@ -254,7 +254,9 @@ describe('project view', () => {
             folderId: 'folder-1',
         })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
-        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as any])
+        mockFetchWorkspaces.mockResolvedValue([
+            { id: 'ws-1', name: 'Acme Corp' } as Partial<Workspace>,
+        ] as Workspace[])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
         ])
@@ -317,7 +319,9 @@ describe('project list grouping', () => {
             ],
             nextCursor: null,
         })
-        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as any])
+        mockFetchWorkspaces.mockResolvedValue([
+            { id: 'ws-1', name: 'Acme Corp' } as Partial<Workspace>,
+        ] as Workspace[])
 
         await program.parseAsync(['node', 'td', 'project', 'list'])
 
@@ -373,7 +377,9 @@ describe('project list grouping', () => {
             ],
             nextCursor: null,
         })
-        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as any])
+        mockFetchWorkspaces.mockResolvedValue([
+            { id: 'ws-1', name: 'Acme Corp' } as Partial<Workspace>,
+        ] as Workspace[])
 
         await program.parseAsync(['node', 'td', 'project', 'list'])
 
@@ -404,9 +410,9 @@ describe('project list grouping', () => {
             nextCursor: null,
         })
         mockFetchWorkspaces.mockResolvedValue([
-            { id: 'ws-z', name: 'Zebra Corp' } as any,
-            { id: 'ws-a', name: 'Alpha Inc' } as any,
-        ])
+            { id: 'ws-z', name: 'Zebra Corp' } as Partial<Workspace>,
+            { id: 'ws-a', name: 'Alpha Inc' } as Partial<Workspace>,
+        ] as Workspace[])
 
         await program.parseAsync(['node', 'td', 'project', 'list'])
 
