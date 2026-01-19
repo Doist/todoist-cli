@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2](https://github.com/Doist/todoist-cli/compare/v1.1.1...v1.1.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* use NPM_TOKEN for initial package publication ([#12](https://github.com/Doist/todoist-cli/issues/12)) ([75cf675](https://github.com/Doist/todoist-cli/commit/75cf6750067ef0227b7f92e658eaee57e95ec8d5))
+
 ## [1.1.1](https://github.com/Doist/todoist-cli/compare/v1.1.0...v1.1.1) (2026-01-16)
 
 
