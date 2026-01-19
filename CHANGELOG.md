@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/Doist/todoist-cli/compare/v1.1.2...v1.2.0) (2026-01-19)
+
+
+### Features
+
+* restore provenance publishing after initial publication ([#14](https://github.com/Doist/todoist-cli/issues/14)) ([8afde59](https://github.com/Doist/todoist-cli/commit/8afde593a2584b452c4e55a823e4834d1e08323b))
+
 ## [1.1.2](https://github.com/Doist/todoist-cli/compare/v1.1.1...v1.1.2) (2026-01-19)
 
 
