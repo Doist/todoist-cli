@@ -7,6 +7,7 @@ const SUCCESS_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Todoist CLI - Authenticated</title>
     <style>
         body {
@@ -44,6 +45,7 @@ const ERROR_HTML = (message: string) => `
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Todoist CLI - Error</title>
     <style>
         body {
@@ -110,7 +112,7 @@ export function startCallbackServer(expectedState: string): {
             const error = url.searchParams.get('error')
 
             if (error) {
-                res.writeHead(400, { 'Content-Type': 'text/html' })
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
                 res.end(ERROR_HTML(error))
                 cleanup()
                 reject(new Error(`OAuth error: ${error}`))
@@ -118,7 +120,7 @@ export function startCallbackServer(expectedState: string): {
             }
 
             if (!code || !state) {
-                res.writeHead(400, { 'Content-Type': 'text/html' })
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
                 res.end(ERROR_HTML('Missing code or state parameter'))
                 cleanup()
                 reject(new Error('Missing code or state parameter'))
@@ -126,14 +128,14 @@ export function startCallbackServer(expectedState: string): {
             }
 
             if (state !== expectedState) {
-                res.writeHead(400, { 'Content-Type': 'text/html' })
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
                 res.end(ERROR_HTML('Invalid state parameter (possible CSRF attack)'))
                 cleanup()
                 reject(new Error('Invalid state parameter'))
                 return
             }
 
-            res.writeHead(200, { 'Content-Type': 'text/html' })
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
             res.end(SUCCESS_HTML)
             cleanup()
             resolve(code)
