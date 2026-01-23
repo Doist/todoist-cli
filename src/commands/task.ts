@@ -185,6 +185,9 @@ async function addTask(options: AddOptions): Promise<void> {
     let project = null
     if (options.project) {
         project = await resolveProjectRef(api, options.project)
+        if (project.isArchived) {
+            throw new Error(`Cannot create task in archived project "${project.name}"`)
+        }
         args.projectId = project.id
     }
 

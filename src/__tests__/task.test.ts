@@ -897,6 +897,30 @@ describe('task add', () => {
             ]),
         ).rejects.toThrow('The --project flag is required when using --parent with a task name.')
     })
+
+    it('throws error when project is archived', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-archived', name: 'Old Project', isArchived: true }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--project',
+                'Old Project',
+            ]),
+        ).rejects.toThrow('Cannot create task in archived project "Old Project"')
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+    })
 })
 
 describe('task update', () => {
