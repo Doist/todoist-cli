@@ -1,5 +1,5 @@
 import { getApiToken } from '../auth.js'
-import { executeSyncV9Command, generateUuid, type SyncCommand } from './core.js'
+import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export interface Filter {
     id: string
@@ -31,7 +31,7 @@ function parseFilter(f: Record<string, unknown>): Filter {
 
 export async function fetchFilters(): Promise<Filter[]> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+    const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -76,7 +76,7 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
         },
     }
 
-    const result = await executeSyncV9Command([command])
+    const result = await executeSyncCommand([command])
     const mapping = result as unknown as {
         temp_id_mapping?: Record<string, string>
     }
@@ -112,7 +112,7 @@ export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<
         args: updateArgs,
     }
 
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
 
 export async function deleteFilter(id: string): Promise<void> {
@@ -122,5 +122,5 @@ export async function deleteFilter(id: string): Promise<void> {
         args: { id },
     }
 
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
