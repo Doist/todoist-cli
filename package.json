@@ -1,6 +1,6 @@
 {
   "name": "@doist/todoist-cli",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "TypeScript CLI for Todoist",
   "type": "module",
   "main": "dist/index.js",
