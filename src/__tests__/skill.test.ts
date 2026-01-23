@@ -14,6 +14,7 @@ vi.mock('chalk', () => ({
 }))
 
 import { registerSkillCommand } from '../commands/skill.js'
+import { createInstaller } from '../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../lib/skills/index.js'
 
 function createProgram() {
@@ -204,5 +205,19 @@ describe('installer file operations', () => {
         } catch {
             expect(true).toBe(true)
         }
+    })
+})
+
+describe('install detection', () => {
+    it('throws when agent directory does not exist', async () => {
+        const installer = createInstaller({
+            name: 'fake-agent',
+            description: 'Fake agent',
+            dirName: '.nonexistent-agent-dir-xyz',
+        })
+
+        await expect(installer.install(false, false)).rejects.toThrow(
+            'fake-agent does not appear to be installed',
+        )
     })
 })
