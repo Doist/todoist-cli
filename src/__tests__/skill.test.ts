@@ -14,8 +14,7 @@ vi.mock('chalk', () => ({
 }))
 
 import { registerSkillCommand } from '../commands/skill.js'
-import { claudeCodeInstaller } from '../lib/skills/claude-code.js'
-import { getInstaller, listAgents } from '../lib/skills/index.js'
+import { getInstaller, listAgents, skillInstallers } from '../lib/skills/index.js'
 
 function createProgram() {
     const program = new Command()
@@ -43,6 +42,8 @@ describe('skill command', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith('Available agents:')
             expect(consoleSpy).toHaveBeenCalledWith('  claude-code')
+            expect(consoleSpy).toHaveBeenCalledWith('  codex')
+            expect(consoleSpy).toHaveBeenCalledWith('  cursor')
         })
     })
 
@@ -86,26 +87,68 @@ describe('skills registry', () => {
         expect(installer?.name).toBe('claude-code')
     })
 
+    it('returns codex installer', () => {
+        const installer = getInstaller('codex')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('codex')
+    })
+
+    it('returns cursor installer', () => {
+        const installer = getInstaller('cursor')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('cursor')
+    })
+
     it('returns undefined for unknown agent', () => {
         const installer = getInstaller('unknown')
         expect(installer).toBeUndefined()
     })
 
-    it('lists available agents', () => {
+    it('lists all available agents', () => {
         const agents = listAgents()
         expect(agents).toContain('claude-code')
+        expect(agents).toContain('codex')
+        expect(agents).toContain('cursor')
     })
 })
 
-describe('claudeCodeInstaller', () => {
-    it('has correct name and description', () => {
-        expect(claudeCodeInstaller.name).toBe('claude-code')
-        expect(claudeCodeInstaller.description).toBe('Claude Code skill for Todoist CLI')
-    })
+describe('installer paths', () => {
+    const cases = [
+        { agent: 'claude-code', dir: '.claude', desc: 'Claude Code skill for Todoist CLI' },
+        { agent: 'codex', dir: '.codex', desc: 'Codex skill for Todoist CLI' },
+        { agent: 'cursor', dir: '.cursor', desc: 'Cursor skill for Todoist CLI' },
+    ] as const
+
+    for (const { agent, dir, desc } of cases) {
+        describe(agent, () => {
+            const installer = skillInstallers[agent]
+
+            it('has correct name and description', () => {
+                expect(installer.name).toBe(agent)
+                expect(installer.description).toBe(desc)
+            })
+
+            it(`returns global path containing ${dir}/skills`, () => {
+                const globalPath = installer.getInstallPath(false)
+                expect(globalPath).toContain(dir)
+                expect(globalPath).toContain('skills')
+                expect(globalPath).toContain('todoist-cli')
+                expect(globalPath).toContain('SKILL.md')
+            })
+
+            it('returns local path containing cwd', () => {
+                const localPath = installer.getInstallPath(true)
+                expect(localPath).toContain(dir)
+                expect(localPath).toContain('skills')
+                expect(localPath).toContain('todoist-cli')
+                expect(localPath).toContain('SKILL.md')
+                expect(localPath).toContain(process.cwd())
+            })
+        })
+    }
 
     it('generates skill file with YAML frontmatter', () => {
-        const content = claudeCodeInstaller.generateContent()
-
+        const content = skillInstallers['claude-code'].generateContent()
         expect(content).toContain('---')
         expect(content).toContain('name: todoist')
         expect(content).toContain('description: Manage Todoist tasks')
@@ -113,70 +156,53 @@ describe('claudeCodeInstaller', () => {
         expect(content).toContain('td today')
         expect(content).toContain('td add')
     })
+})
 
-    it('returns global path containing .claude/skills', () => {
-        const globalPath = claudeCodeInstaller.getInstallPath(false)
-        expect(globalPath).toContain('.claude')
-        expect(globalPath).toContain('skills')
-        expect(globalPath).toContain('todoist-cli')
-        expect(globalPath).toContain('SKILL.md')
+describe('installer file operations', () => {
+    let testDir: string
+    let skillFile: string
+
+    beforeEach(async () => {
+        testDir = await mkdtemp(join(tmpdir(), 'skill-test-'))
+        skillFile = join(testDir, 'SKILL.md')
     })
 
-    it('returns local path containing cwd', () => {
-        const localPath = claudeCodeInstaller.getInstallPath(true)
-        expect(localPath).toContain('.claude')
-        expect(localPath).toContain('skills')
-        expect(localPath).toContain('todoist-cli')
-        expect(localPath).toContain('SKILL.md')
-        expect(localPath).toContain(process.cwd())
+    afterEach(async () => {
+        await rm(testDir, { recursive: true, force: true })
     })
 
-    describe('install/uninstall operations', () => {
-        let testDir: string
-        let skillFile: string
+    it('creates directory structure and writes file', async () => {
+        const content = skillInstallers['claude-code'].generateContent()
+        const targetDir = join(testDir, 'nested', 'dir')
+        const targetFile = join(targetDir, 'SKILL.md')
 
-        beforeEach(async () => {
-            testDir = await mkdtemp(join(tmpdir(), 'skill-test-'))
-            skillFile = join(testDir, 'SKILL.md')
-        })
+        await mkdir(targetDir, { recursive: true })
+        await writeFile(targetFile, content, 'utf-8')
 
-        afterEach(async () => {
-            await rm(testDir, { recursive: true, force: true })
-        })
+        const written = await readFile(targetFile, 'utf-8')
+        expect(written).toContain('name: todoist')
+    })
 
-        it('creates directory structure and writes file', async () => {
-            const content = claudeCodeInstaller.generateContent()
-            const targetDir = join(testDir, 'nested', 'dir')
-            const targetFile = join(targetDir, 'SKILL.md')
+    it('detects existing file', async () => {
+        await writeFile(skillFile, 'test', 'utf-8')
 
-            await mkdir(targetDir, { recursive: true })
-            await writeFile(targetFile, content, 'utf-8')
+        try {
+            await access(skillFile)
+            expect(true).toBe(true)
+        } catch {
+            expect(false).toBe(true)
+        }
+    })
 
-            const written = await readFile(targetFile, 'utf-8')
-            expect(written).toContain('name: todoist')
-        })
+    it('removes file correctly', async () => {
+        await writeFile(skillFile, 'test', 'utf-8')
+        await unlink(skillFile)
 
-        it('detects existing file', async () => {
-            await writeFile(skillFile, 'test', 'utf-8')
-
-            try {
-                await access(skillFile)
-                expect(true).toBe(true)
-            } catch {
-                expect(false).toBe(true)
-            }
-        })
-
-        it('removes file correctly', async () => {
-            await writeFile(skillFile, 'test', 'utf-8')
-            await unlink(skillFile)
-
-            try {
-                await access(skillFile)
-                expect(false).toBe(true)
-            } catch {
-                expect(true).toBe(true)
-            }
-        })
+        try {
+            await access(skillFile)
+            expect(false).toBe(true)
+        } catch {
+            expect(true).toBe(true)
+        }
     })
 })
