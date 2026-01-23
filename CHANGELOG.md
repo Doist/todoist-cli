@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/Doist/todoist-cli/compare/v1.2.0...v1.3.0) (2026-01-23)
+
+
+### Features
+
+* add skill install command for coding agent integrations ([#16](https://github.com/Doist/todoist-cli/issues/16)) ([5c544c0](https://github.com/Doist/todoist-cli/commit/5c544c011178a390fadca82d1faf58c375bb8855))
+
+
+### Bug Fixes
+
+* add UTF-8 charset to OAuth callback HTML responses ([#17](https://github.com/Doist/todoist-cli/issues/17)) ([488fe4b](https://github.com/Doist/todoist-cli/commit/488fe4b2f91de52c0669fb4f42a1b16b888e57b2))
+* prevent task creation in archived projects ([#19](https://github.com/Doist/todoist-cli/issues/19)) ([838cdf5](https://github.com/Doist/todoist-cli/commit/838cdf5dbb27181c1763ff3a1d89581a0dea1daa))
+
 ## [1.2.0](https://github.com/Doist/todoist-cli/compare/v1.1.2...v1.2.0) (2026-01-19)
 
 
