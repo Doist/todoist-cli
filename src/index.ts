@@ -15,6 +15,7 @@ import { registerProjectCommand } from './commands/project.js'
 import { registerReminderCommand } from './commands/reminder.js'
 import { registerSectionCommand } from './commands/section.js'
 import { registerSettingsCommand } from './commands/settings.js'
+import { registerSkillCommand } from './commands/skill.js'
 import { registerStatsCommand } from './commands/stats.js'
 import { registerTaskCommand } from './commands/task.js'
 import { registerTodayCommand } from './commands/today.js'
@@ -52,6 +53,7 @@ registerAuthCommand(program)
 registerStatsCommand(program)
 registerFilterCommand(program)
 registerNotificationCommand(program)
+registerSkillCommand(program)
 
 program.parseAsync().catch((err: Error) => {
     console.error(err.message)
