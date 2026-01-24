@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import open from 'open'
@@ -7,7 +8,37 @@ import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
 
-async function loginWithToken(token: string): Promise<void> {
+function promptHiddenInput(prompt: string): Promise<string> {
+    return new Promise((resolve) => {
+        const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        })
+        // biome-ignore lint/suspicious/noExplicitAny: accessing private readline property
+        const origWrite = (rl as any)._writeToOutput
+        // biome-ignore lint/suspicious/noExplicitAny: accessing private readline property
+        ;(rl as any)._writeToOutput = (str: string) => {
+            if (str.includes(prompt)) {
+                origWrite.call(rl, prompt)
+            }
+        }
+        rl.question(prompt, (answer) => {
+            rl.close()
+            process.stdout.write('\n')
+            resolve(answer)
+        })
+    })
+}
+
+async function loginWithToken(token?: string): Promise<void> {
+    if (!token) {
+        token = await promptHiddenInput('API token: ')
+        if (!token.trim()) {
+            console.error(chalk.red('Error:'), 'No token provided')
+            process.exitCode = 1
+            return
+        }
+    }
     await saveApiToken(token.trim())
     console.log(chalk.green('✓'), 'API token saved successfully!')
     console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
@@ -65,7 +96,7 @@ export function registerAuthCommand(program: Command): void {
 
     auth.command('login').description('Authenticate with Todoist via OAuth').action(loginWithOAuth)
 
-    auth.command('token <token>')
+    auth.command('token [token]')
         .description('Save API token to config file (manual authentication)')
         .action(loginWithToken)
 
