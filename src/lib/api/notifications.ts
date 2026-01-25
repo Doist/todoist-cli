@@ -1,5 +1,5 @@
 import { getApiToken } from '../auth.js'
-import { executeSyncV9Command, generateUuid, type SyncCommand } from './core.js'
+import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export type NotificationType =
     | 'share_invitation_sent'
@@ -98,7 +98,7 @@ interface NotificationFetchResponse {
 
 export async function fetchNotifications(): Promise<Notification[]> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+    const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -137,7 +137,7 @@ export async function markNotificationRead(id: string): Promise<void> {
         uuid: generateUuid(),
         args: { ids: [id] },
     }
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
 
 export async function markNotificationUnread(id: string): Promise<void> {
@@ -146,7 +146,7 @@ export async function markNotificationUnread(id: string): Promise<void> {
         uuid: generateUuid(),
         args: { ids: [id] },
     }
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
@@ -155,7 +155,7 @@ export async function markAllNotificationsRead(): Promise<void> {
         uuid: generateUuid(),
         args: {},
     }
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
 
 export async function acceptInvitation(invitationId: string, secret: string): Promise<void> {
@@ -167,7 +167,7 @@ export async function acceptInvitation(invitationId: string, secret: string): Pr
             invitation_secret: secret,
         },
     }
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }
 
 export async function rejectInvitation(invitationId: string, secret: string): Promise<void> {
@@ -179,5 +179,5 @@ export async function rejectInvitation(invitationId: string, secret: string): Pr
             invitation_secret: secret,
         },
     }
-    await executeSyncV9Command([command])
+    await executeSyncCommand([command])
 }

@@ -41,7 +41,7 @@ function parseStreak(s: unknown): Streak {
 
 export async function fetchProductivityStats(): Promise<ProductivityStats> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/sync/v9/completed/get_stats', {
+    const response = await fetch('https://api.todoist.com/api/v1/tasks/completed/stats', {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,

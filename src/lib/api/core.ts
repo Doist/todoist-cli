@@ -151,47 +151,6 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
     return data
 }
 
-export interface NotificationSyncResponse {
-    live_notifications?: Array<Record<string, unknown>>
-    live_notifications_last_read_id?: number
-    sync_status?: Record<string, string | { error_code: number; error: string }>
-    error?: string
-}
-
-export async function executeSyncV9Command(
-    commands: SyncCommand[],
-): Promise<NotificationSyncResponse> {
-    const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            commands: JSON.stringify(commands),
-        }),
-    })
-
-    if (!response.ok) {
-        throw new Error(`Sync API error: ${response.status}`)
-    }
-
-    const data: NotificationSyncResponse = await response.json()
-    if (data.error) {
-        throw new Error(`Sync API error: ${data.error}`)
-    }
-
-    for (const cmd of commands) {
-        const status = data.sync_status?.[cmd.uuid]
-        if (status && typeof status === 'object' && 'error' in status) {
-            throw new Error(status.error)
-        }
-    }
-
-    return data
-}
-
 export async function completeTaskForever(taskId: string): Promise<void> {
     const command: SyncCommand = {
         type: 'item_complete',
