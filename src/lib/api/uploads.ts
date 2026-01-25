@@ -21,8 +21,7 @@ export async function uploadFile(filePath: string): Promise<UploadResult> {
     formData.append('file_name', fileName)
     formData.append('file', new Blob([fileBuffer]), fileName)
 
-    // TODO: migrate to v1 once available (https://github.com/Doist/todoist-cli/issues/21)
-    const response = await fetch('https://api.todoist.com/sync/v9/uploads/add', {
+    const response = await fetch('https://api.todoist.com/api/v1/uploads', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
