@@ -118,32 +118,14 @@ describe('withSpinner', () => {
         expect(mockSpinnerInstance.start).not.toHaveBeenCalled()
     })
 
-    it('should not show spinner with --json flag', async () => {
-        process.argv = ['node', 'td', 'auth', 'status', '--json']
-
-        const result = await withSpinner(
-            { text: 'Testing...', color: 'blue' },
-            async () => 'success',
-        )
-
-        expect(result).toBe('success')
-        expect(mockSpinnerInstance.start).not.toHaveBeenCalled()
-    })
-
-    it('should not show spinner with --ndjson flag', async () => {
-        process.argv = ['node', 'td', 'auth', 'status', '--ndjson']
-
-        const result = await withSpinner(
-            { text: 'Testing...', color: 'blue' },
-            async () => 'success',
-        )
-
-        expect(result).toBe('success')
-        expect(mockSpinnerInstance.start).not.toHaveBeenCalled()
-    })
-
-    it('should not show spinner with --no-spinner flag', async () => {
-        process.argv = ['node', 'td', 'auth', 'status', '--no-spinner']
+    it.each([
+        ['--json', ['node', 'td', 'auth', 'status', '--json']],
+        ['--ndjson', ['node', 'td', 'auth', 'status', '--ndjson']],
+        ['--no-spinner', ['node', 'td', 'auth', 'status', '--no-spinner']],
+        ['--progress-jsonl', ['node', 'td', 'today', '--progress-jsonl']],
+        ['--progress-jsonl=path', ['node', 'td', 'today', '--progress-jsonl=/tmp/progress.jsonl']],
+    ])('should not show spinner with %s flag', async (_flagName, argv) => {
+        process.argv = argv
 
         const result = await withSpinner(
             { text: 'Testing...', color: 'blue' },

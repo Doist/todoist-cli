@@ -7,6 +7,7 @@ import {
     WorkspaceProject,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
+import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
 
 let apiClient: TodoistApi | null = null
@@ -48,11 +49,46 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
 
                 if (spinnerConfig) {
                     return <T extends unknown[]>(...args: T) => {
+                        const progressTracker = getProgressTracker()
+
+                        // Extract cursor from args for paginated methods
+                        let cursor: string | null = null
+                        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
+                            const options = args[0] as Record<string, unknown>
+                            if ('cursor' in options && typeof options.cursor === 'string') {
+                                cursor = options.cursor
+                            }
+                        }
+
+                        // Emit progress event for API call start
+                        if (progressTracker.isEnabled()) {
+                            progressTracker.emitApiCall(property, cursor)
+                        }
+
                         const result = originalMethod.apply(target, args)
 
-                        // If the method returns a Promise, wrap it with spinner
+                        // If the method returns a Promise, wrap it with spinner and progress tracking
                         if (result && typeof result.then === 'function') {
-                            return withSpinner(spinnerConfig, () => result)
+                            const wrappedPromise = result
+                                .then((response: unknown) => {
+                                    // Emit progress event for successful response
+                                    if (progressTracker.isEnabled()) {
+                                        analyzeAndEmitApiResponse(progressTracker, response)
+                                    }
+                                    return response
+                                })
+                                .catch((error: Error) => {
+                                    // Emit progress event for error
+                                    if (progressTracker.isEnabled()) {
+                                        progressTracker.emitError(
+                                            error.name || 'API_ERROR',
+                                            error.message,
+                                        )
+                                    }
+                                    throw error
+                                })
+
+                            return withSpinner(spinnerConfig, () => wrappedPromise)
                         }
 
                         return result
@@ -63,6 +99,35 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
             return originalMethod
         },
     })
+}
+
+function analyzeAndEmitApiResponse(
+    progressTracker: ReturnType<typeof getProgressTracker>,
+    response: unknown,
+): void {
+    // For paginated responses, extract metadata
+    if (response && typeof response === 'object' && response !== null) {
+        const resp = response as Record<string, unknown>
+
+        // Check if it's a paginated response with results array
+        if ('results' in resp && Array.isArray(resp.results)) {
+            progressTracker.emitApiResponse(
+                resp.results.length,
+                Boolean(resp.nextCursor),
+                typeof resp.nextCursor === 'string' ? resp.nextCursor : null,
+            )
+            return
+        }
+
+        // For array responses (legacy or simple lists)
+        if (Array.isArray(response)) {
+            progressTracker.emitApiResponse(response.length, false, null)
+            return
+        }
+    }
+
+    // For other responses, emit minimal info
+    progressTracker.emitApiResponse(1, false, null)
 }
 
 export async function getApi(): Promise<TodoistApi> {

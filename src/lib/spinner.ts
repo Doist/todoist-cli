@@ -57,13 +57,16 @@ class LoadingSpinner {
             return true
         }
 
-        // Check process arguments for JSON output flags and --no-spinner
+        // Check process arguments for flags that should disable spinner
         const args = process.argv
-        if (args.includes('--json') || args.includes('--ndjson') || args.includes('--no-spinner')) {
-            return true
-        }
+        const spinnerDisablingFlags = ['--json', '--ndjson', '--no-spinner', '--progress-jsonl']
 
-        return false
+        // Check for both exact matches and prefix matches (to handle --flag=value variants)
+        return spinnerDisablingFlags.some(
+            (flag) =>
+                args.includes(flag) || // exact match
+                args.some((arg) => arg.startsWith(`${flag}=`)), // prefix match with equals
+        )
     }
 }
 
