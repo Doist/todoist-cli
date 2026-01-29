@@ -4,8 +4,6 @@ A command-line interface for Todoist.
 
 ## Installation
 
-> **Note**: This package is not yet published to npm. Once published, install with:
->
 > ```bash
 > npm install -g @doist/todoist-cli
 > ```
