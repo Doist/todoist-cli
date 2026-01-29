@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/Doist/todoist-cli/compare/v1.5.0...v1.6.0) (2026-01-29)
+
+
+### Features
+
+* add --progress-jsonl flag for machine-readable progress reporting ([#32](https://github.com/Doist/todoist-cli/issues/32)) ([d89adc5](https://github.com/Doist/todoist-cli/commit/d89adc5f9546167b8c7cf8783cab2be275e66f8e))
+
+
+### Bug Fixes
+
+* resolve td today missing tasks with specific times ([#30](https://github.com/Doist/todoist-cli/issues/30)) ([06debf4](https://github.com/Doist/todoist-cli/commit/06debf47f3042a403cc78f1bfafad0905347e7a2))
+
 ## [1.5.0](https://github.com/Doist/todoist-cli/compare/v1.4.0...v1.5.0) (2026-01-25)
 
 
