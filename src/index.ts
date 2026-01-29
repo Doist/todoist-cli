@@ -27,6 +27,7 @@ program
     .description('Todoist CLI')
     .version(packageJson.version)
     .option('--no-spinner', 'Disable loading animations')
+    .option('--progress-jsonl [path]', 'Output progress events as JSONL to stderr or file')
     .addHelpText(
         'after',
         `
