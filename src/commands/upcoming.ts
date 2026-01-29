@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, getCurrentUserId, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
-import { formatDateHeader, getLocalDate } from '../lib/dates.js'
+import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -79,7 +79,9 @@ export function registerUpcomingCommand(program: Command): void {
             )
             filteredTasks = filterResult.tasks
 
-            const relevantTasks = filteredTasks.filter((t) => t.due && t.due.date < endDate)
+            const relevantTasks = filteredTasks.filter(
+                (t) => t.due && isDueBefore(t.due.date, endDate),
+            )
 
             if (options.json) {
                 console.log(
@@ -121,7 +123,7 @@ export function registerUpcomingCommand(program: Command): void {
             for (const task of relevantTasks) {
                 const dueDate = task.due?.date
                 if (!dueDate) continue // Skip tasks without due dates
-                if (dueDate < today) {
+                if (isDueBefore(dueDate, today)) {
                     overdue.push(task)
                 } else {
                     const list = byDate.get(dueDate) || []

@@ -8,6 +8,7 @@ import {
     type Section,
 } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
+import { isDueBefore, isDueOnDate } from './dates.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -274,11 +275,12 @@ export async function listTasksForProject(
     if (options.due) {
         const today = getLocalToday()
         if (options.due === 'today') {
-            filtered = filtered.filter((t) => t.due?.date === today)
+            filtered = filtered.filter((t) => t.due && isDueOnDate(t.due.date, today))
         } else if (options.due === 'overdue') {
-            filtered = filtered.filter((t) => t.due && t.due.date < today)
-        } else {
-            filtered = filtered.filter((t) => t.due?.date === options.due)
+            filtered = filtered.filter((t) => t.due && isDueBefore(t.due.date, today))
+        } else if (options.due) {
+            const targetDate = options.due
+            filtered = filtered.filter((t) => t.due && isDueOnDate(t.due.date, targetDate))
         }
     }
 

@@ -110,6 +110,38 @@ describe('today command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Today task'))
     })
 
+    it('includes tasks with specific times in today section', async () => {
+        const program = createProgram()
+
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Meeting at 6pm',
+                    projectId: 'proj-1',
+                    due: { date: `${getToday()}T18:00:00`, string: 'today at 6pm' },
+                },
+                {
+                    id: 'task-2',
+                    content: 'Deadline at 9am',
+                    projectId: 'proj-1',
+                    due: { date: `${getToday()}T09:00:00`, string: 'today at 9am' },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'today'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Today'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Meeting at 6pm'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Deadline at 9am'))
+    })
+
     it('shows "No tasks due today" when empty', async () => {
         const program = createProgram()
 

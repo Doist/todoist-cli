@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, getCurrentUserId } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
-import { getLocalDate } from '../lib/dates.js'
+import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -73,8 +73,8 @@ export function registerTodayCommand(program: Command): void {
             )
             filteredTasks = filterResult.tasks
 
-            const overdue = filteredTasks.filter((t) => t.due && t.due.date < today)
-            const dueToday = filteredTasks.filter((t) => t.due?.date === today)
+            const overdue = filteredTasks.filter((t) => t.due && isDueBefore(t.due.date, today))
+            const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
             const allTodayTasks = [...overdue, ...dueToday]
 
             if (options.json) {
