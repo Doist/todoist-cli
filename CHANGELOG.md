@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1](https://github.com/Doist/todoist-cli/compare/v1.6.0...v1.6.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* use server-side filtering for today command ([#34](https://github.com/Doist/todoist-cli/issues/34)) ([d9430aa](https://github.com/Doist/todoist-cli/commit/d9430aab1fe407a988ae9a96db5d010af621937f))
+* use server-side filtering for upcoming command and fix date formatting ([#35](https://github.com/Doist/todoist-cli/issues/35)) ([9f5c98e](https://github.com/Doist/todoist-cli/commit/9f5c98e613a59d49eafb839f52dfb97d9ed9c3ef))
+
 ## [1.6.0](https://github.com/Doist/todoist-cli/compare/v1.5.0...v1.6.0) (2026-01-29)
 
 
