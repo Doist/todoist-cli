@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/Doist/todoist-cli/compare/v1.6.1...v1.7.0) (2026-02-03)
+
+
+### Features
+
+* expose workspaceId in project JSON output ([#37](https://github.com/Doist/todoist-cli/issues/37)) ([a833dba](https://github.com/Doist/todoist-cli/commit/a833dba64df417468b3526ea07f9ffa84cf8a992))
+
 ## [1.6.1](https://github.com/Doist/todoist-cli/compare/v1.6.0...v1.6.1) (2026-02-02)
 
 
