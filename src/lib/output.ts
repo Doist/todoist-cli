@@ -183,6 +183,7 @@ const PROJECT_ESSENTIAL_FIELDS = [
     'parentId',
     'viewStyle',
     'url',
+    'workspaceId',
 ] as const
 const LABEL_ESSENTIAL_FIELDS = ['id', 'name', 'color', 'isFavorite'] as const
 const SECTION_ESSENTIAL_FIELDS = ['id', 'name', 'projectId', 'sectionOrder', 'url'] as const
