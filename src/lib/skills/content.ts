@@ -8,49 +8,49 @@ Use this skill when the user wants to interact with their Todoist tasks.
 
 ## Quick Reference
 
-- \`td today\` — Tasks due today and overdue
-- \`td inbox\` — Inbox tasks
-- \`td upcoming\` — Tasks due in next N days
-- \`td completed\` — Recently completed tasks
-- \`td add "task text"\` — Quick add with natural language
-- \`td task list\` — List tasks with filters
-- \`td task complete <ref>\` — Complete a task
-- \`td project list\` — List projects
-- \`td label list\` — List labels
-- \`td filter list/show\` — Manage and use saved filters
-- \`td workspace list\` — List workspaces
-- \`td activity\` — Activity logs
-- \`td notification list\` — Notifications
-- \`td reminder add\` — Task reminders
-- \`td stats\` — Productivity stats
-- \`td settings view\` — User settings
+- \`td today\` - Tasks due today and overdue
+- \`td inbox\` - Inbox tasks
+- \`td upcoming\` - Tasks due in next N days
+- \`td completed\` - Recently completed tasks
+- \`td add "task text"\` - Quick add with natural language
+- \`td task list\` - List tasks with filters
+- \`td task complete <ref>\` - Complete a task
+- \`td project list\` - List projects
+- \`td label list\` - List labels
+- \`td filter list/show\` - Manage and use saved filters
+- \`td workspace list\` - List workspaces
+- \`td activity\` - Activity logs
+- \`td notification list\` - Notifications
+- \`td reminder add\` - Task reminders
+- \`td stats\` - Productivity stats
+- \`td settings view\` - User settings
 
 ## Output Formats
 
 All list commands support:
-- \`--json\` — JSON output (essential fields)
-- \`--ndjson\` — Newline-delimited JSON (streaming)
-- \`--full\` — Include all fields in JSON
-- \`--raw\` — Disable markdown rendering
+- \`--json\` - JSON output (essential fields)
+- \`--ndjson\` - Newline-delimited JSON (streaming)
+- \`--full\` - Include all fields in JSON
+- \`--raw\` - Disable markdown rendering
 
 ## Shared List Options
 
 Most list commands also support:
-- \`--limit <n>\` — Limit number of results
-- \`--all\` — Fetch all results (no limit)
-- \`--cursor <cursor>\` — Continue from pagination cursor
-- \`--show-urls\` — Show web app URLs for each item
+- \`--limit <n>\` - Limit number of results
+- \`--all\` - Fetch all results (no limit)
+- \`--cursor <cursor>\` - Continue from pagination cursor
+- \`--show-urls\` - Show web app URLs for each item
 
 ## Global Options
 
-- \`--no-spinner\` — Disable loading animations
-- \`--progress-jsonl\` — Machine-readable progress events (JSONL to stderr)
+- \`--no-spinner\` - Disable loading animations
+- \`--progress-jsonl\` - Machine-readable progress events (JSONL to stderr)
 
 ## Task References
 
 Tasks can be referenced by:
 - Name (fuzzy matched within context)
-- \`id:xxx\` — Explicit task ID
+- \`id:xxx\` - Explicit task ID
 
 ## Priority Mapping
 
