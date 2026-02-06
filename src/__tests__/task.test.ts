@@ -1076,18 +1076,12 @@ describe('task list --label', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
                     content: 'Work task',
                     labels: ['work'],
-                    projectId: 'proj-1',
-                },
-                {
-                    id: 'task-2',
-                    content: 'Home task',
-                    labels: ['home'],
                     projectId: 'proj-1',
                 },
                 {
@@ -1107,6 +1101,11 @@ describe('task list --label', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Both'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Home task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '@work',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 
@@ -1114,18 +1113,12 @@ describe('task list --label', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
                     content: 'Work task',
                     labels: ['work'],
-                    projectId: 'proj-1',
-                },
-                {
-                    id: 'task-2',
-                    content: 'Home task',
-                    labels: ['home'],
                     projectId: 'proj-1',
                 },
                 {
@@ -1145,6 +1138,11 @@ describe('task list --label', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Urgent task'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Home task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(@work | @urgent)',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 
@@ -1152,7 +1150,7 @@ describe('task list --label', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
@@ -1169,6 +1167,11 @@ describe('task list --label', () => {
         await program.parseAsync(['node', 'td', 'task', 'list', '--label', 'WORK'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '@WORK',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 })
@@ -1662,13 +1665,6 @@ describe('task list --filter', () => {
                     priority: 4,
                     labels: [],
                 },
-                {
-                    id: 'task-2',
-                    content: 'Low priority',
-                    projectId: 'proj-1',
-                    priority: 1,
-                    labels: [],
-                },
             ],
             nextCursor: null,
         })
@@ -1690,6 +1686,11 @@ describe('task list --filter', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('High priority'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Low priority'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(@work) & (p1)',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 })

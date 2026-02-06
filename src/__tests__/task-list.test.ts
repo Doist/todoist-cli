@@ -55,6 +55,7 @@ describe('listTasksForProject', () => {
     function createTestMockApi() {
         return {
             getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
             getProject: vi.fn(),
             getSections: vi.fn().mockResolvedValue({ results: [] }),
             getProjects: vi.fn().mockResolvedValue({ results: [] }),
@@ -112,20 +113,19 @@ describe('listTasksForProject', () => {
                 priority: 4,
                 projectId: 'proj-1',
             },
-            {
-                id: 'task-2',
-                content: 'Low priority',
-                priority: 1,
-                projectId: 'proj-1',
-            },
         ]
-        mockApi.getTasks.mockResolvedValue({ results: tasks, nextCursor: null })
+        mockApi.getTasksByFilter.mockResolvedValue({ results: tasks, nextCursor: null })
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
 
         await listTasksForProject('proj-1', { priority: 'p1' })
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('High priority'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Low priority'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: 'p1',
+            }),
+        )
     })
 
     it('outputs JSON when --json flag', async () => {

@@ -1,14 +1,7 @@
 import type { Task, TodoistApi } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
-import {
-    getApi,
-    getCurrentUserId,
-    isWorkspaceProject,
-    type Project,
-    type Section,
-} from './api/core.js'
+import { getApi, isWorkspaceProject, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
-import { isDueBefore, isDueOnDate } from './dates.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -88,9 +81,57 @@ export function parsePriority(p: string): number {
     return 5 - parseInt(match[1], 10)
 }
 
-function getLocalToday(): string {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+function buildFilterQuery(options: TaskListOptions): string | null {
+    const parts: string[] = []
+
+    if (options.label) {
+        const labels = options.label.split(',').map((l) => l.trim())
+        if (labels.length === 1) {
+            parts.push(`@${labels[0]}`)
+        } else {
+            parts.push(`(${labels.map((l) => `@${l}`).join(' | ')})`)
+        }
+    }
+
+    if (options.priority) {
+        parsePriority(options.priority) // Validate format
+        parts.push(options.priority)
+    }
+
+    if (options.due) {
+        if (options.due === 'today') {
+            parts.push('today')
+        } else if (options.due === 'overdue') {
+            parts.push('overdue')
+        } else {
+            parts.push(`${options.due}`)
+        }
+    }
+
+    if (options.assignee) {
+        if (options.assignee.toLowerCase() === 'me') {
+            parts.push('assigned to: me')
+        } else if (options.assignee.startsWith('id:')) {
+            // ID-based assignee filters are done client-side, separately
+        } else {
+            // Email or name provided directly
+            parts.push(`assigned to: ${options.assignee}`)
+        }
+    }
+
+    if (options.unassigned) {
+        parts.push('!assigned')
+    }
+
+    if (options.workspace) {
+        parts.push(`workspace: ${options.workspace}`)
+    }
+
+    if (options.personal) {
+        parts.push('workspace: personal')
+    }
+
+    return parts.length > 0 ? parts.join(' & ') : null
 }
 
 interface FormatGroupedTaskListOptions {
@@ -240,12 +281,18 @@ export async function listTasksForProject(
     let tasks: Task[]
     let nextCursor: string | null
 
-    if (options.filter) {
-        const filter = options.filter
+    const builtFilter = buildFilterQuery(options)
+    const filterQuery = options.filter
+        ? builtFilter
+            ? `(${options.filter}) & (${builtFilter})`
+            : options.filter
+        : builtFilter
+
+    if (filterQuery) {
         const result = await paginate(
             (cursor, limit) =>
                 api.getTasksByFilter({
-                    query: filter,
+                    query: filterQuery,
                     cursor: cursor ?? undefined,
                     limit,
                 }),
@@ -267,59 +314,16 @@ export async function listTasksForProject(
 
     let filtered = tasks
 
-    if (options.priority) {
-        const priority = parsePriority(options.priority)
-        filtered = filtered.filter((t) => t.priority === priority)
-    }
-
-    if (options.due) {
-        const today = getLocalToday()
-        if (options.due === 'today') {
-            filtered = filtered.filter((t) => t.due && isDueOnDate(t.due.date, today))
-        } else if (options.due === 'overdue') {
-            filtered = filtered.filter((t) => t.due && isDueBefore(t.due.date, today))
-        } else if (options.due) {
-            const targetDate = options.due
-            filtered = filtered.filter((t) => t.due && isDueOnDate(t.due.date, targetDate))
-        }
-    }
-
     if (options.parent) {
         filtered = filtered.filter((t) => t.parentId === options.parent)
     }
 
-    if (options.label) {
-        const labels = options.label.split(',').map((l) => l.trim().toLowerCase())
-        filtered = filtered.filter((t) => t.labels.some((tl) => labels.includes(tl.toLowerCase())))
-    }
-
-    if (options.unassigned) {
-        filtered = filtered.filter((t) => !t.responsibleUid)
-    } else if (options.assignee) {
-        let assigneeId: string
-        if (options.assignee.toLowerCase() === 'me') {
-            assigneeId = await getCurrentUserId()
-        } else if (options.assignee.startsWith('id:')) {
-            assigneeId = options.assignee.slice(3)
-        } else {
-            throw new Error(
-                formatError(
-                    'INVALID_ASSIGNEE_FILTER',
-                    'Assignee filter requires "me" or "id:xxx" format.',
-                    ['Use --assignee me or --assignee id:12345'],
-                ),
-            )
-        }
+    // ID-based assignee filtering requires client-side filtering
+    // (name/email-based assignee filtering is done server-side via filter query)
+    if (options.assignee?.startsWith('id:')) {
+        const assigneeId = options.assignee.slice(3)
         filtered = filtered.filter((t) => t.responsibleUid === assigneeId)
     }
-
-    const filterResult = await filterByWorkspaceOrPersonal(
-        api,
-        filtered,
-        options.workspace,
-        options.personal,
-    )
-    filtered = filterResult.tasks
 
     if (options.json) {
         console.log(
@@ -345,15 +349,18 @@ export async function listTasksForProject(
         return
     }
 
-    const { projects } = filterResult
     const collaboratorCache = new CollaboratorCache()
-    await collaboratorCache.preload(api, filtered, projects)
 
     if (projectId) {
+        // When listing tasks for a specific project, we only need that project's info
         const [projectRes, sectionsRes] = await Promise.all([
             api.getProject(projectId),
             api.getSections({ projectId }),
         ])
+
+        const projects = new Map([[projectRes.id, projectRes]])
+        await collaboratorCache.preload(api, filtered, projects)
+
         console.log(
             formatGroupedTaskList({
                 tasks: filtered,
@@ -366,6 +373,11 @@ export async function listTasksForProject(
             }),
         )
     } else {
+        // When listing tasks across all projects, we need all projects for formatting
+        const { results: allProjects } = await api.getProjects()
+        const projects = new Map(allProjects.map((p) => [p.id, p]))
+        await collaboratorCache.preload(api, filtered, projects)
+
         console.log(
             formatFlatTaskList({
                 tasks: filtered,
@@ -376,5 +388,6 @@ export async function listTasksForProject(
             }),
         )
     }
+
     console.log(formatNextCursorFooter(nextCursor))
 }

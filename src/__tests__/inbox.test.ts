@@ -15,6 +15,7 @@ function createMockApi() {
     return {
         getUser: vi.fn(),
         getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProject: vi.fn(),
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getSections: vi.fn().mockResolvedValue({ results: [] }),
@@ -104,11 +105,8 @@ describe('inbox command', () => {
             inboxProjectId: 'inbox-proj',
         })
         mockApi.getProject.mockResolvedValue({ id: 'inbox-proj', name: 'Inbox' })
-        mockApi.getTasks.mockResolvedValue({
-            results: [
-                { id: 'task-1', content: 'High', priority: 4, projectId: 'inbox-proj' },
-                { id: 'task-2', content: 'Low', priority: 1, projectId: 'inbox-proj' },
-            ],
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'High', priority: 4, projectId: 'inbox-proj' }],
             nextCursor: null,
         })
 
@@ -116,5 +114,10 @@ describe('inbox command', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('High'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Low'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: 'p1',
+            }),
+        )
     })
 })
