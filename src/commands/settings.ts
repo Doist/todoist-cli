@@ -8,6 +8,7 @@ import {
     updateUserSettings,
 } from '../lib/api/user-settings.js'
 import { formatError } from '../lib/output.js'
+import { withSpinner } from '../lib/spinner.js'
 
 const DAY_NAMES: Record<number, string> = {
     1: 'Monday',
@@ -170,8 +171,14 @@ function formatSettingsForJson(
 }
 
 async function viewSettings(options: ViewOptions): Promise<void> {
-    const settings = await fetchUserSettings()
-    const startPageName = await resolveStartPageName(settings.startPage)
+    const { settings, startPageName } = await withSpinner(
+        { text: 'Loading settings...', color: 'blue' },
+        async () => {
+            const settings = await fetchUserSettings()
+            const startPageName = await resolveStartPageName(settings.startPage)
+            return { settings, startPageName }
+        },
+    )
 
     if (options.json) {
         console.log(JSON.stringify(formatSettingsForJson(settings, startPageName), null, 2))
