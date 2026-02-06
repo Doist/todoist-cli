@@ -8,6 +8,10 @@ interface InstallOptions {
     force?: boolean
 }
 
+interface UpdateOptions {
+    local?: boolean
+}
+
 interface UninstallOptions {
     local?: boolean
 }
@@ -30,6 +34,33 @@ async function installSkill(agent: string, options: InstallOptions): Promise<voi
 
     const filepath = installer.getInstallPath(local)
     console.log(chalk.green('✓'), `Installed ${installer.name} skill`)
+    console.log(chalk.dim(filepath))
+}
+
+async function updateSkill(agent: string, options: UpdateOptions): Promise<void> {
+    const installer = getInstaller(agent)
+    if (!installer) {
+        const available = listAgents().join(', ')
+        throw new Error(
+            formatError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
+                `Available agents: ${available}`,
+            ]),
+        )
+    }
+
+    const local = options.local ?? false
+    const installed = await installer.isInstalled(local)
+
+    if (!installed) {
+        throw new Error(
+            `Skill is not installed for ${agent}. Use \`td skill install ${agent}${local ? ' --local' : ''}\` first.`,
+        )
+    }
+
+    await installer.update(local)
+
+    const filepath = installer.getInstallPath(local)
+    console.log(chalk.green('✓'), `Updated ${installer.name} skill`)
     console.log(chalk.dim(filepath))
 }
 
@@ -90,6 +121,18 @@ export function registerSkillCommand(program: Command): void {
                 return
             }
             return installSkill(agent, options)
+        })
+
+    const updateCmd = skill
+        .command('update [agent]')
+        .description('Update installed skill to latest version')
+        .option('--local', 'Update in current project instead of global')
+        .action((agent, options) => {
+            if (!agent) {
+                updateCmd.help()
+                return
+            }
+            return updateSkill(agent, options)
         })
 
     const uninstallCmd = skill

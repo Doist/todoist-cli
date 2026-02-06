@@ -64,6 +64,22 @@ describe('skill command', () => {
         })
     })
 
+    describe('update subcommand', () => {
+        it('shows help when no agent provided', async () => {
+            const program = createProgram()
+
+            await expect(program.parseAsync(['node', 'td', 'skill', 'update'])).rejects.toThrow()
+        })
+
+        it('errors for unknown agent', async () => {
+            const program = createProgram()
+
+            await expect(
+                program.parseAsync(['node', 'td', 'skill', 'update', 'unknown-agent']),
+            ).rejects.toThrow('Unknown agent: unknown-agent')
+        })
+    })
+
     describe('uninstall subcommand', () => {
         it('shows help when no agent provided', async () => {
             const program = createProgram()
@@ -219,5 +235,32 @@ describe('install detection', () => {
         await expect(installer.install(false, false)).rejects.toThrow(
             'fake-agent does not appear to be installed',
         )
+    })
+})
+
+describe('update file operations', () => {
+    let testDir: string
+
+    beforeEach(async () => {
+        testDir = await mkdtemp(join(tmpdir(), 'skill-update-test-'))
+    })
+
+    afterEach(async () => {
+        await rm(testDir, { recursive: true, force: true })
+    })
+
+    it('overwrites existing skill file with latest content', async () => {
+        const targetDir = join(testDir, 'skills', 'todoist-cli')
+        const targetFile = join(targetDir, 'SKILL.md')
+        await mkdir(targetDir, { recursive: true })
+        await writeFile(targetFile, 'old content', 'utf-8')
+
+        const installer = skillInstallers['claude-code']
+        const latestContent = installer.generateContent()
+        await writeFile(targetFile, latestContent, 'utf-8')
+
+        const written = await readFile(targetFile, 'utf-8')
+        expect(written).toContain('name: todoist')
+        expect(written).not.toBe('old content')
     })
 })
