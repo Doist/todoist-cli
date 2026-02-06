@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0](https://github.com/Doist/todoist-cli/compare/v1.7.0...v1.8.0) (2026-02-06)
+
+
+### Features
+
+* resolve entity names in settings view start page ([#43](https://github.com/Doist/todoist-cli/issues/43)) ([b87e034](https://github.com/Doist/todoist-cli/commit/b87e0346cfb8b37cd8f0a962fa4fc38299b4e46a))
+
+
+### Bug Fixes
+
+* add all missing commands to agent skill and add skill update command ([#42](https://github.com/Doist/todoist-cli/issues/42)) ([c824675](https://github.com/Doist/todoist-cli/commit/c8246750cc16014896c39a3eb56620b66a0b32c0))
+* use server-side filtering for task list commands ([#39](https://github.com/Doist/todoist-cli/issues/39)) ([abd2993](https://github.com/Doist/todoist-cli/commit/abd29934d1a2b31cc144585147d45fae974c3f54))
+
 ## [1.7.0](https://github.com/Doist/todoist-cli/compare/v1.6.1...v1.7.0) (2026-02-03)
 
 
