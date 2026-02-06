@@ -14,6 +14,10 @@ vi.mock('../lib/api/filters.js', () => ({
     fetchFilters: vi.fn(),
 }))
 
+vi.mock('../lib/spinner.js', () => ({
+    withSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
+}))
+
 import { registerSettingsCommand } from '../commands/settings.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
