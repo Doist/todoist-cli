@@ -65,6 +65,11 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
             await writeFile(filepath, this.generateContent(), 'utf-8')
         },
 
+        async update(local: boolean): Promise<void> {
+            const filepath = getInstallPath(local)
+            await writeFile(filepath, this.generateContent(), 'utf-8')
+        },
+
         async uninstall(local: boolean): Promise<void> {
             const filepath = getInstallPath(local)
             const exists = await this.isInstalled(local)
