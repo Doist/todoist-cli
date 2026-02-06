@@ -1,5 +1,7 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
+import { getApi } from '../lib/api/core.js'
+import { fetchFilters } from '../lib/api/filters.js'
 import {
     fetchUserSettings,
     type UserSettings,
@@ -81,7 +83,41 @@ function formatBool(value: boolean): string {
     return value ? chalk.green('on') : chalk.dim('off')
 }
 
-function formatSettingsView(settings: UserSettings): string {
+function parseStartPageRef(
+    startPage: string,
+): { type: 'project' | 'filter' | 'label'; id: string } | null {
+    const match = startPage.match(/^(project|filter|label)\?id=(.+)$/)
+    if (!match) return null
+    return { type: match[1] as 'project' | 'filter' | 'label', id: match[2] }
+}
+
+async function resolveStartPageName(startPage: string): Promise<string | null> {
+    const ref = parseStartPageRef(startPage)
+    if (!ref) return null
+
+    try {
+        const api = await getApi()
+        switch (ref.type) {
+            case 'project': {
+                const project = await api.getProject(ref.id)
+                return project.name
+            }
+            case 'label': {
+                const label = await api.getLabel(ref.id)
+                return label.name
+            }
+            case 'filter': {
+                const filters = await fetchFilters()
+                const filter = filters.find((f) => f.id === ref.id)
+                return filter?.name ?? null
+            }
+        }
+    } catch {
+        return null
+    }
+}
+
+function formatSettingsView(settings: UserSettings, startPageName: string | null): string {
     const lines: string[] = []
 
     lines.push(chalk.bold('General'))
@@ -92,7 +128,10 @@ function formatSettingsView(settings: UserSettings): string {
     lines.push(`  Theme:          ${formatTheme(settings.theme)}`)
     lines.push(`  Auto reminder:  ${formatAutoReminder(settings.autoReminder)}`)
     lines.push(`  Next week:      ${formatDay(settings.nextWeek)}`)
-    lines.push(`  Start page:     ${settings.startPage}`)
+    const startPageDisplay = startPageName
+        ? `${settings.startPage} (${startPageName})`
+        : settings.startPage
+    lines.push(`  Start page:     ${startPageDisplay}`)
     lines.push('')
     lines.push(chalk.bold('Notifications'))
     lines.push(`  Push reminders:     ${formatBool(settings.reminderPush)}`)
@@ -108,7 +147,10 @@ interface ViewOptions {
     json?: boolean
 }
 
-function formatSettingsForJson(settings: UserSettings): Record<string, unknown> {
+function formatSettingsForJson(
+    settings: UserSettings,
+    startPageName: string | null,
+): Record<string, unknown> {
     return {
         timezone: settings.timezone,
         timeFormat: settings.timeFormat === 0 ? '24h' : '12h',
@@ -118,6 +160,7 @@ function formatSettingsForJson(settings: UserSettings): Record<string, unknown> 
         autoReminder: settings.autoReminder,
         nextWeek: getDayName(settings.nextWeek),
         startPage: settings.startPage,
+        startPageName,
         reminderPush: settings.reminderPush,
         reminderDesktop: settings.reminderDesktop,
         reminderEmail: settings.reminderEmail,
@@ -128,13 +171,14 @@ function formatSettingsForJson(settings: UserSettings): Record<string, unknown> 
 
 async function viewSettings(options: ViewOptions): Promise<void> {
     const settings = await fetchUserSettings()
+    const startPageName = await resolveStartPageName(settings.startPage)
 
     if (options.json) {
-        console.log(JSON.stringify(formatSettingsForJson(settings), null, 2))
+        console.log(JSON.stringify(formatSettingsForJson(settings, startPageName), null, 2))
         return
     }
 
-    console.log(formatSettingsView(settings))
+    console.log(formatSettingsView(settings, startPageName))
 }
 
 function parseBoolean(value: string): boolean {

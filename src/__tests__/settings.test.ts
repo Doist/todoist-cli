@@ -6,11 +6,23 @@ vi.mock('../lib/api/user-settings.js', () => ({
     updateUserSettings: vi.fn(),
 }))
 
+vi.mock('../lib/api/core.js', () => ({
+    getApi: vi.fn(),
+}))
+
+vi.mock('../lib/api/filters.js', () => ({
+    fetchFilters: vi.fn(),
+}))
+
 import { registerSettingsCommand } from '../commands/settings.js'
+import { getApi } from '../lib/api/core.js'
+import { fetchFilters } from '../lib/api/filters.js'
 import { fetchUserSettings, updateUserSettings } from '../lib/api/user-settings.js'
 
 const mockFetchUserSettings = vi.mocked(fetchUserSettings)
 const mockUpdateUserSettings = vi.mocked(updateUserSettings)
+const mockGetApi = vi.mocked(getApi)
+const mockFetchFilters = vi.mocked(fetchFilters)
 
 function createProgram() {
     const program = new Command()
@@ -103,6 +115,161 @@ describe('settings view', () => {
         await program.parseAsync(['node', 'td', 'settings', 'view'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('MM-DD-YYYY'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('settings view - start page name resolution', () => {
+    let mockApi: {
+        getProject: ReturnType<typeof vi.fn>
+        getLabel: ReturnType<typeof vi.fn>
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = {
+            getProject: vi.fn(),
+            getLabel: vi.fn(),
+        }
+        mockGetApi.mockResolvedValue(mockApi as never)
+    })
+
+    it('resolves project name in text output', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue({
+            ...defaultSettings,
+            startPage: 'project?id=abc123',
+        })
+        mockApi.getProject.mockResolvedValue({ id: 'abc123', name: 'My Project' })
+
+        await program.parseAsync(['node', 'td', 'settings', 'view'])
+
+        expect(mockApi.getProject).toHaveBeenCalledWith('abc123')
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('project?id=abc123 (My Project)'),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves project name in JSON output', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue({
+            ...defaultSettings,
+            startPage: 'project?id=abc123',
+        })
+        mockApi.getProject.mockResolvedValue({ id: 'abc123', name: 'My Project' })
+
+        await program.parseAsync(['node', 'td', 'settings', 'view', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.startPage).toBe('project?id=abc123')
+        expect(parsed.startPageName).toBe('My Project')
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves label name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue({
+            ...defaultSettings,
+            startPage: 'label?id=label-1',
+        })
+        mockApi.getLabel.mockResolvedValue({ id: 'label-1', name: 'Urgent' })
+
+        await program.parseAsync(['node', 'td', 'settings', 'view'])
+
+        expect(mockApi.getLabel).toHaveBeenCalledWith('label-1')
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('label?id=label-1 (Urgent)'),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves filter name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue({
+            ...defaultSettings,
+            startPage: 'filter?id=filter-1',
+        })
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work tasks',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+            {
+                id: 'filter-2',
+                name: 'Personal',
+                query: '@personal',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        await program.parseAsync(['node', 'td', 'settings', 'view'])
+
+        expect(mockFetchFilters).toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('filter?id=filter-1 (Work tasks)'),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('does not call API for simple start page values', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
+
+        await program.parseAsync(['node', 'td', 'settings', 'view'])
+
+        expect(mockGetApi).not.toHaveBeenCalled()
+        expect(mockFetchFilters).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('has null startPageName in JSON for simple values', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
+
+        await program.parseAsync(['node', 'td', 'settings', 'view', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.startPage).toBe('today')
+        expect(parsed.startPageName).toBeNull()
+        consoleSpy.mockRestore()
+    })
+
+    it('gracefully handles API failure', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchUserSettings.mockResolvedValue({
+            ...defaultSettings,
+            startPage: 'project?id=abc123',
+        })
+        mockApi.getProject.mockRejectedValue(new Error('Network error'))
+
+        await program.parseAsync(['node', 'td', 'settings', 'view'])
+
+        // Should show raw value without crashing
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('project?id=abc123'))
+        // Should show raw value without resolved name
+        const output = consoleSpy.mock.calls[0][0] as string
+        expect(output).not.toContain('project?id=abc123 (')
         consoleSpy.mockRestore()
     })
 })
