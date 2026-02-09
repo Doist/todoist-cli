@@ -106,25 +106,33 @@ describe('resolveTaskRef', () => {
 
     it('resolves exact name match (case insensitive)', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [tasks[2]], nextCursor: null }),
         })
 
         const result = await resolveTaskRef(api, 'call mom')
         expect(result.id).toBe('task-3')
+        expect(api.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'search: call mom' }),
+        )
     })
 
     it('resolves unique partial match', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [tasks[2]], nextCursor: null }),
         })
 
         const result = await resolveTaskRef(api, 'mom')
         expect(result.id).toBe('task-3')
+        expect(api.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'search: mom' }),
+        )
     })
 
     it('throws on ambiguous match', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi
+                .fn()
+                .mockResolvedValue({ results: [tasks[0], tasks[1]], nextCursor: null }),
         })
 
         await expect(resolveTaskRef(api, 'Buy')).rejects.toThrow('Multiple tasks match')
@@ -132,7 +140,7 @@ describe('resolveTaskRef', () => {
 
     it('throws when not found', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         })
 
         await expect(resolveTaskRef(api, 'nonexistent')).rejects.toThrow('not found')
@@ -140,7 +148,7 @@ describe('resolveTaskRef', () => {
 
     it('hints about id: prefix when ref looks like a raw ID', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         })
 
         await expect(resolveTaskRef(api, '6fmg66Fr27R59RPg')).rejects.toThrow('id:6fmg66Fr27R59RPg')
@@ -148,11 +156,12 @@ describe('resolveTaskRef', () => {
 
     it('does not hint about id: prefix for plain name searches', async () => {
         const api = createMockApi({
-            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         })
 
-        const error = await resolveTaskRef(api, 'nonexistent').catch((e: Error) => e)
-        expect(error.message).not.toContain('id:nonexistent')
+        const error = await resolveTaskRef(api, 'nonexistent').catch((e: unknown) => e)
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).not.toContain('id:nonexistent')
     })
 })
 

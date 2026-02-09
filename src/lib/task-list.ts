@@ -301,11 +301,9 @@ export async function listTasksForProject(
         tasks = result.results
         nextCursor = result.nextCursor
     } else {
+        const scope = options.parent ? { parentId: options.parent } : projectId ? { projectId } : {}
         const result = await paginate(
-            (cursor, limit) =>
-                projectId
-                    ? api.getTasks({ projectId, cursor: cursor ?? undefined, limit })
-                    : api.getTasks({ cursor: cursor ?? undefined, limit }),
+            (cursor, limit) => api.getTasks({ ...scope, cursor: cursor ?? undefined, limit }),
             { limit: targetLimit, startCursor: options.cursor },
         )
         tasks = result.results
@@ -314,8 +312,13 @@ export async function listTasksForProject(
 
     let filtered = tasks
 
+    // getTasksByFilter doesn't support parentId or projectId scoping,
+    // so apply client-side when using the filter query path
     if (options.parent) {
         filtered = filtered.filter((t) => t.parentId === options.parent)
+    }
+    if (projectId) {
+        filtered = filtered.filter((t) => t.projectId === projectId)
     }
 
     // ID-based assignee filtering requires client-side filtering

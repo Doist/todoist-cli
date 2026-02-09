@@ -26,6 +26,7 @@ const mockUploadFile = vi.mocked(uploadFile)
 function createMockApi() {
     return {
         getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getTask: vi.fn(),
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProject: vi.fn(),
@@ -120,7 +121,7 @@ describe('comment list', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk' }],
             nextCursor: null,
         })
