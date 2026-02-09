@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/Doist/todoist-cli/compare/v1.8.1...v1.9.0) (2026-02-09)
+
+
+### Features
+
+* redesign OAuth success and error pages ([#47](https://github.com/Doist/todoist-cli/issues/47)) ([08c463a](https://github.com/Doist/todoist-cli/commit/08c463a5a6e34cebfad71f6aa737a6461825553a))
+
+
+### Bug Fixes
+
+* clarify id: prefix requirement in error messages ([#49](https://github.com/Doist/todoist-cli/issues/49)) ([317a20a](https://github.com/Doist/todoist-cli/commit/317a20a92c29fb03339efc5135b9c1cd4109649e))
+* normalize dates to UTC midnight for timezone-independent comparisons ([#50](https://github.com/Doist/todoist-cli/issues/50)) ([4d29ef7](https://github.com/Doist/todoist-cli/commit/4d29ef7800f6866cbba255a6919e378b40773ba7))
+
 ## [1.8.1](https://github.com/Doist/todoist-cli/compare/v1.8.0...v1.8.1) (2026-02-06)
 
 
