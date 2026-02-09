@@ -146,22 +146,40 @@ describe('resolveTaskRef', () => {
         await expect(resolveTaskRef(api, 'nonexistent')).rejects.toThrow('not found')
     })
 
-    it('hints about id: prefix when ref looks like a raw ID', async () => {
+    it('auto-retries id-like refs as direct ID lookup', async () => {
         const api = createMockApi({
+            getTask: vi.fn().mockResolvedValue(tasks[0]),
             getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         })
 
-        await expect(resolveTaskRef(api, '6fmg66Fr27R59RPg')).rejects.toThrow('id:6fmg66Fr27R59RPg')
+        // Alphanumeric mix (e.g. Todoist task ID pasted without id: prefix)
+        const result = await resolveTaskRef(api, '6fmg66Fr27R59RPg')
+        expect(result.id).toBe('task-1')
+        expect(api.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'search: 6fmg66Fr27R59RPg' }),
+        )
+        expect(api.getTask).toHaveBeenCalledWith('6fmg66Fr27R59RPg')
     })
 
-    it('does not hint about id: prefix for plain name searches', async () => {
+    it('auto-retries numeric refs as direct ID lookup', async () => {
+        const api = createMockApi({
+            getTask: vi.fn().mockResolvedValue(tasks[0]),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        })
+
+        // Pure numeric (legacy Todoist task ID)
+        const result = await resolveTaskRef(api, '12345678')
+        expect(result.id).toBe('task-1')
+        expect(api.getTask).toHaveBeenCalledWith('12345678')
+    })
+
+    it('does not auto-retry plain text refs', async () => {
         const api = createMockApi({
             getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         })
 
-        const error = await resolveTaskRef(api, 'nonexistent').catch((e: unknown) => e)
-        expect(error).toBeInstanceOf(Error)
-        expect((error as Error).message).not.toContain('id:nonexistent')
+        await expect(resolveTaskRef(api, 'nonexistent')).rejects.toThrow('not found')
+        expect(api.getTask).not.toHaveBeenCalled()
     })
 })
 
