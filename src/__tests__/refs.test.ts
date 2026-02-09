@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
     extractId,
     isIdRef,
+    looksLikeRawId,
     requireIdRef,
     resolveParentTaskId,
     resolveProjectId,
@@ -62,6 +63,30 @@ describe('requireIdRef', () => {
     })
 })
 
+describe('looksLikeRawId', () => {
+    it('detects alphanumeric mixed strings', () => {
+        expect(looksLikeRawId('6fmg66Fr27R59RPg')).toBe(true)
+        expect(looksLikeRawId('abc123')).toBe(true)
+        expect(looksLikeRawId('task1')).toBe(true)
+    })
+
+    it('detects purely numeric strings', () => {
+        expect(looksLikeRawId('123456789')).toBe(true)
+        expect(looksLikeRawId('42')).toBe(true)
+    })
+
+    it('rejects strings with spaces', () => {
+        expect(looksLikeRawId('Buy milk')).toBe(false)
+        expect(looksLikeRawId('task 1')).toBe(false)
+    })
+
+    it('rejects pure alpha strings (likely names)', () => {
+        expect(looksLikeRawId('Work')).toBe(false)
+        expect(looksLikeRawId('Shopping')).toBe(false)
+        expect(looksLikeRawId('mom')).toBe(false)
+    })
+})
+
 describe('resolveTaskRef', () => {
     const tasks = [
         { id: 'task-1', content: 'Buy milk' },
@@ -111,6 +136,23 @@ describe('resolveTaskRef', () => {
         })
 
         await expect(resolveTaskRef(api, 'nonexistent')).rejects.toThrow('not found')
+    })
+
+    it('hints about id: prefix when ref looks like a raw ID', async () => {
+        const api = createMockApi({
+            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+        })
+
+        await expect(resolveTaskRef(api, '6fmg66Fr27R59RPg')).rejects.toThrow('id:6fmg66Fr27R59RPg')
+    })
+
+    it('does not hint about id: prefix for plain name searches', async () => {
+        const api = createMockApi({
+            getTasks: vi.fn().mockResolvedValue({ results: tasks }),
+        })
+
+        const error = await resolveTaskRef(api, 'nonexistent').catch((e: Error) => e)
+        expect(error.message).not.toContain('id:nonexistent')
     })
 })
 

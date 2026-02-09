@@ -11,6 +11,16 @@ export function extractId(ref: string): string {
     return ref.slice(3)
 }
 
+export function looksLikeRawId(ref: string): boolean {
+    if (ref.includes(' ')) return false
+    return /^\d+$/.test(ref) || (/[a-zA-Z]/.test(ref) && /\d/.test(ref))
+}
+
+function idPrefixHint(ref: string): string[] {
+    if (!looksLikeRawId(ref)) return []
+    return [`If "${ref}" is an ID, prefix it: id:${ref}`]
+}
+
 export function requireIdRef(ref: string, entityName: string): string {
     if (!isIdRef(ref)) {
         throw new Error(
@@ -52,7 +62,11 @@ async function resolveRef<T extends { id: string }>(
     }
 
     throw new Error(
-        formatError(`${entityType.toUpperCase()}_NOT_FOUND`, `${entityType} "${ref}" not found.`),
+        formatError(
+            `${entityType.toUpperCase()}_NOT_FOUND`,
+            `${entityType} "${ref}" not found.`,
+            idPrefixHint(ref),
+        ),
     )
 }
 
@@ -118,7 +132,13 @@ export async function resolveSectionId(
         )
     }
 
-    throw new Error(formatError('SECTION_NOT_FOUND', `Section "${ref}" not found in project.`))
+    throw new Error(
+        formatError(
+            'SECTION_NOT_FOUND',
+            `Section "${ref}" not found in project.`,
+            idPrefixHint(ref),
+        ),
+    )
 }
 
 export async function resolveParentTaskId(
@@ -167,7 +187,13 @@ export async function resolveParentTaskId(
         )
     }
 
-    throw new Error(formatError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`))
+    throw new Error(
+        formatError(
+            'PARENT_NOT_FOUND',
+            `Parent task "${ref}" not found in project.`,
+            idPrefixHint(ref),
+        ),
+    )
 }
 
 export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
@@ -198,5 +224,7 @@ export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
         )
     }
 
-    throw new Error(formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`))
+    throw new Error(
+        formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`, idPrefixHint(ref)),
+    )
 }
