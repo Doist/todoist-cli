@@ -7,6 +7,7 @@ import {
     WorkspaceProject,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
+import { getLogger, Verbosity } from '../logger.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
 
@@ -50,14 +51,25 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                 if (spinnerConfig) {
                     return <T extends unknown[]>(...args: T) => {
                         const progressTracker = getProgressTracker()
+                        const logger = getLogger()
 
-                        // Extract cursor from args for paginated methods
+                        // Extract cursor and other options from args for logging
                         let cursor: string | null = null
+                        let callParams: Record<string, unknown> | null = null
                         if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
                             const options = args[0] as Record<string, unknown>
+                            callParams = options
                             if ('cursor' in options && typeof options.cursor === 'string') {
                                 cursor = options.cursor
                             }
+                        }
+
+                        // Verbose: log API method call
+                        logger.info(`api.${property}()`, {
+                            ...(cursor && { cursor }),
+                        })
+                        if (callParams) {
+                            logger.detail(`api.${property}() params`, callParams)
                         }
 
                         // Emit progress event for API call start
@@ -65,12 +77,28 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             progressTracker.emitApiCall(property, cursor)
                         }
 
+                        const startTime = performance.now()
                         const result = originalMethod.apply(target, args)
 
                         // If the method returns a Promise, wrap it with spinner and progress tracking
                         if (result && typeof result.then === 'function') {
                             const wrappedPromise = result
                                 .then((response: unknown) => {
+                                    const durationMs = Math.round(
+                                        performance.now() - startTime,
+                                    )
+
+                                    // Verbose: log response summary with timing
+                                    const respMeta =
+                                        extractResponseMeta(response)
+                                    logger.info(
+                                        `api.${property}() response`,
+                                        {
+                                            duration_ms: durationMs,
+                                            ...respMeta,
+                                        },
+                                    )
+
                                     // Emit progress event for successful response
                                     if (progressTracker.isEnabled()) {
                                         analyzeAndEmitApiResponse(progressTracker, response)
@@ -78,6 +106,19 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                                     return response
                                 })
                                 .catch((error: Error) => {
+                                    const durationMs = Math.round(
+                                        performance.now() - startTime,
+                                    )
+
+                                    // Verbose: log error with timing
+                                    logger.info(
+                                        `api.${property}() FAILED`,
+                                        {
+                                            duration_ms: durationMs,
+                                            error: error.message,
+                                        },
+                                    )
+
                                     // Emit progress event for error
                                     if (progressTracker.isEnabled()) {
                                         progressTracker.emitError(
@@ -130,11 +171,32 @@ function analyzeAndEmitApiResponse(
     progressTracker.emitApiResponse(1, false, null)
 }
 
+/** Extract metadata from SDK response for verbose logging. */
+function extractResponseMeta(response: unknown): Record<string, unknown> {
+    const meta: Record<string, unknown> = {}
+    if (response && typeof response === 'object' && response !== null) {
+        const resp = response as Record<string, unknown>
+        if ('results' in resp && Array.isArray(resp.results)) {
+            meta.result_count = resp.results.length
+            meta.has_more = Boolean(resp.nextCursor)
+            if (resp.nextCursor) meta.next_cursor = resp.nextCursor
+        } else if (Array.isArray(response)) {
+            meta.result_count = response.length
+        } else if ('id' in resp) {
+            meta.id = resp.id
+        }
+    }
+    return meta
+}
+
 export async function getApi(): Promise<TodoistApi> {
     if (!apiClient) {
+        const logger = getLogger()
+        logger.detail('initializing TodoistApi client')
         const token = await getApiToken()
         const rawApi = new TodoistApi(token)
         apiClient = createSpinnerWrappedApi(rawApi)
+        logger.detail('TodoistApi client ready')
     }
     return apiClient
 }
@@ -185,7 +247,16 @@ export function generateUuid(): string {
 }
 
 export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncResponse> {
+    const logger = getLogger()
+    const cmdTypes = commands.map((c) => c.type).join(', ')
+    logger.info(`sync POST commands=[${cmdTypes}]`)
+    logger.detail('sync command details', {
+        command_count: commands.length,
+        types: commands.map((c) => c.type),
+    })
+
     const token = await getApiToken()
+    const startTime = performance.now()
     const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
@@ -196,6 +267,14 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
             commands: JSON.stringify(commands),
         }),
     })
+    const durationMs = Math.round(performance.now() - startTime)
+
+    // Log HTTP response details
+    logger.info('sync response', {
+        status: response.status,
+        duration_ms: durationMs,
+    })
+    logResponseHeaders(logger, response)
 
     if (!response.ok) {
         throw new Error(`Sync API error: ${response.status}`)
@@ -203,17 +282,51 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
 
     const data: SyncResponse = await response.json()
     if (data.error) {
+        logger.info('sync API error', { error: data.error, error_code: data.error_code })
         throw new Error(`Sync API error: ${data.error}`)
     }
 
     for (const cmd of commands) {
         const status = data.sync_status?.[cmd.uuid]
         if (status && typeof status === 'object' && 'error' in status) {
+            logger.info('sync command error', { type: cmd.type, error: status.error })
             throw new Error(status.error)
         }
     }
 
     return data
+}
+
+/** Log interesting response headers at DEBUG/TRACE verbosity. */
+function logResponseHeaders(logger: ReturnType<typeof getLogger>, response: Response): void {
+    // At DEBUG level, log rate-limit and request-id headers
+    const interestingHeaders: Record<string, string> = {}
+    for (const name of [
+        'x-request-id',
+        'x-ratelimit-limit',
+        'x-ratelimit-remaining',
+        'x-ratelimit-reset',
+        'retry-after',
+        'cf-ray',
+    ]) {
+        const val = response.headers.get(name)
+        if (val) interestingHeaders[name] = val
+    }
+    if (Object.keys(interestingHeaders).length > 0) {
+        logger.debug('response headers', interestingHeaders)
+    }
+
+    // At TRACE level, log all response headers
+    if (logger.isEnabled(Verbosity.TRACE)) {
+        const allHeaders: Record<string, string> = {}
+        response.headers.forEach((value, name) => {
+            // Never log auth-related response headers
+            if (!name.toLowerCase().includes('set-cookie')) {
+                allHeaders[name] = value
+            }
+        })
+        logger.trace('all response headers', allHeaders)
+    }
 }
 
 export async function completeTaskForever(taskId: string): Promise<void> {
