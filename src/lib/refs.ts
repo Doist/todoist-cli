@@ -105,7 +105,13 @@ export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task
             ),
         (t) => t.content,
         'task',
-    )
+    ).catch((err) => {
+        // If ref looks like a raw ID (numeric or alphanumeric mix), try as direct ID lookup
+        if (looksLikeRawId(ref)) {
+            return resolveTaskRef(api, `id:${ref}`)
+        }
+        throw err
+    })
 }
 
 export async function resolveProjectRef(api: TodoistApi, ref: string): Promise<Project> {
