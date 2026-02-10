@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { verboseFetch } from '../logger.js'
 import { executeSyncCommand, generateUuid, type SyncCommand, type SyncResponse } from './core.js'
 
 export interface ReminderDue {
@@ -31,7 +32,7 @@ function parseReminder(r: Record<string, unknown>): Reminder {
 
 export async function fetchReminders(): Promise<Reminder[]> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/api/v1/sync', {
+    const response = await verboseFetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,

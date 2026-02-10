@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { verboseFetch } from '../logger.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export interface Streak {
@@ -41,7 +42,7 @@ function parseStreak(s: unknown): Streak {
 
 export async function fetchProductivityStats(): Promise<ProductivityStats> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/api/v1/tasks/completed/stats', {
+    const response = await verboseFetch('https://api.todoist.com/api/v1/tasks/completed/stats', {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,

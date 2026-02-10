@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { verboseFetch } from '../logger.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 interface UserSettingsSyncResponse {
@@ -25,7 +26,7 @@ export interface UserSettings {
 
 export async function fetchUserSettings(): Promise<UserSettings> {
     const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/api/v1/sync', {
+    const response = await verboseFetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,

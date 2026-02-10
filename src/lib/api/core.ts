@@ -7,7 +7,7 @@ import {
     WorkspaceProject,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
-import { getLogger, Verbosity } from '../logger.js'
+import { getLogger, verboseFetch } from '../logger.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
 
@@ -256,8 +256,7 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
     })
 
     const token = await getApiToken()
-    const startTime = performance.now()
-    const response = await fetch('https://api.todoist.com/api/v1/sync', {
+    const response = await verboseFetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -267,14 +266,6 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
             commands: JSON.stringify(commands),
         }),
     })
-    const durationMs = Math.round(performance.now() - startTime)
-
-    // Log HTTP response details
-    logger.info('sync response', {
-        status: response.status,
-        duration_ms: durationMs,
-    })
-    logResponseHeaders(logger, response)
 
     if (!response.ok) {
         throw new Error(`Sync API error: ${response.status}`)
@@ -297,37 +288,6 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
     return data
 }
 
-/** Log interesting response headers at DEBUG/TRACE verbosity. */
-function logResponseHeaders(logger: ReturnType<typeof getLogger>, response: Response): void {
-    // At DEBUG level, log rate-limit and request-id headers
-    const interestingHeaders: Record<string, string> = {}
-    for (const name of [
-        'x-request-id',
-        'x-ratelimit-limit',
-        'x-ratelimit-remaining',
-        'x-ratelimit-reset',
-        'retry-after',
-        'cf-ray',
-    ]) {
-        const val = response.headers.get(name)
-        if (val) interestingHeaders[name] = val
-    }
-    if (Object.keys(interestingHeaders).length > 0) {
-        logger.debug('response headers', interestingHeaders)
-    }
-
-    // At TRACE level, log all response headers
-    if (logger.isEnabled(Verbosity.TRACE)) {
-        const allHeaders: Record<string, string> = {}
-        response.headers.forEach((value, name) => {
-            // Never log auth-related response headers
-            if (!name.toLowerCase().includes('set-cookie')) {
-                allHeaders[name] = value
-            }
-        })
-        logger.trace('all response headers', allHeaders)
-    }
-}
 
 export async function completeTaskForever(taskId: string): Promise<void> {
     const command: SyncCommand = {
