@@ -1,6 +1,7 @@
 import { TodoistApi } from '@doist/todoist-api-typescript'
 import type { Project, Task } from './api/core.js'
 import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
+import { getLogger } from './logger.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
@@ -40,6 +41,8 @@ async function resolveRef<T extends { id: string }>(
     getName: (item: T) => string,
     entityType: string,
 ): Promise<T> {
+    const logger = getLogger()
+
     if (!ref.trim()) {
         throw new Error(
             formatError(
@@ -50,15 +53,23 @@ async function resolveRef<T extends { id: string }>(
     }
 
     if (isIdRef(ref)) {
-        return fetchById(extractId(ref))
+        const id = extractId(ref)
+        logger.debug(`resolve ${entityType}: direct ID lookup`, { id })
+        return fetchById(id)
     }
 
+    logger.debug(`resolve ${entityType}: name search`, { ref })
     const { results } = await fetchAll()
+    logger.debug(`resolve ${entityType}: candidates fetched`, { count: results.length })
     const lower = ref.toLowerCase()
 
     const exact = results.filter((item) => getName(item).toLowerCase() === lower)
-    if (exact.length === 1) return exact[0]
+    if (exact.length === 1) {
+        logger.debug(`resolve ${entityType}: exact match`, { id: exact[0].id, name: getName(exact[0]) })
+        return exact[0]
+    }
     if (exact.length > 1) {
+        logger.debug(`resolve ${entityType}: ambiguous exact matches`, { count: exact.length })
         throw new Error(
             formatError(
                 `AMBIGUOUS_${entityType.toUpperCase()}`,
@@ -69,8 +80,12 @@ async function resolveRef<T extends { id: string }>(
     }
 
     const partial = results.filter((item) => getName(item).toLowerCase().includes(lower))
-    if (partial.length === 1) return partial[0]
+    if (partial.length === 1) {
+        logger.debug(`resolve ${entityType}: partial match`, { id: partial[0].id, name: getName(partial[0]) })
+        return partial[0]
+    }
     if (partial.length > 1) {
+        logger.debug(`resolve ${entityType}: ambiguous partial matches`, { count: partial.length })
         throw new Error(
             formatError(
                 `AMBIGUOUS_${entityType.toUpperCase()}`,
@@ -80,6 +95,7 @@ async function resolveRef<T extends { id: string }>(
         )
     }
 
+    logger.debug(`resolve ${entityType}: not found`, { ref })
     throw new Error(
         formatError(
             `${entityType.toUpperCase()}_NOT_FOUND`,
@@ -108,6 +124,8 @@ export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task
     ).catch((err) => {
         // If ref looks like a raw ID (numeric or alphanumeric mix), try as direct ID lookup
         if (looksLikeRawId(ref)) {
+            const logger = getLogger()
+            logger.debug('resolve task: name search failed, retrying as ID', { ref })
             return resolveTaskRef(api, `id:${ref}`)
         }
         throw err
