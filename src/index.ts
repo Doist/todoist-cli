@@ -3,6 +3,8 @@
 import { program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { registerActivityCommand } from './commands/activity.js'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- side-effect: initialize logger early so it captures all -v flags
+import { initializeLogger } from './lib/logger.js'
 import { registerAddCommand } from './commands/add.js'
 import { registerAuthCommand } from './commands/auth.js'
 import { registerCommentCommand } from './commands/comment.js'
@@ -28,6 +30,7 @@ program
     .version(packageJson.version)
     .option('--no-spinner', 'Disable loading animations')
     .option('--progress-jsonl [path]', 'Output progress events as JSONL to stderr or file')
+    .option('-v, --verbose', 'Increase output verbosity (repeat up to 4x: -v, -vv, -vvv, -vvvv)')
     .addHelpText(
         'after',
         `
@@ -55,6 +58,9 @@ registerStatsCommand(program)
 registerFilterCommand(program)
 registerNotificationCommand(program)
 registerSkillCommand(program)
+
+// Initialize verbose logger before parsing so it captures all -v flags
+initializeLogger()
 
 program.parseAsync().catch((err: Error) => {
     console.error(err.message)
