@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/Doist/todoist-cli/compare/v1.9.0...v1.10.0) (2026-02-10)
+
+
+### Features
+
+* auto-retry id-like task refs as direct ID lookups ([#53](https://github.com/Doist/todoist-cli/issues/53)) ([bcdb7f3](https://github.com/Doist/todoist-cli/commit/bcdb7f3772f603a7a99f1f0577012ad835ee46e2))
+
+
+### Bug Fixes
+
+* use server-side API calls for task list (parent id) and task ref (name search) resolution ([#52](https://github.com/Doist/todoist-cli/issues/52)) ([a2f7776](https://github.com/Doist/todoist-cli/commit/a2f777685c6120e95a84ce8491913513a9bb6d77))
+
 ## [1.9.0](https://github.com/Doist/todoist-cli/compare/v1.8.1...v1.9.0) (2026-02-09)
 
 
