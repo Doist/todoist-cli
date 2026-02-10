@@ -2,6 +2,7 @@ import { TodoistApi } from '@doist/todoist-api-typescript'
 import type { Project, Task } from './api/core.js'
 import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
+import { paginate } from './pagination.js'
 
 export function isIdRef(ref: string): boolean {
     return ref.startsWith('id:')
@@ -39,6 +40,15 @@ async function resolveRef<T extends { id: string }>(
     getName: (item: T) => string,
     entityType: string,
 ): Promise<T> {
+    if (!ref.trim()) {
+        throw new Error(
+            formatError(
+                `INVALID_${entityType.toUpperCase()}`,
+                `${entityType} reference cannot be empty.`,
+            ),
+        )
+    }
+
     if (isIdRef(ref)) {
         return fetchById(extractId(ref))
     }
@@ -46,8 +56,17 @@ async function resolveRef<T extends { id: string }>(
     const { results } = await fetchAll()
     const lower = ref.toLowerCase()
 
-    const exact = results.find((item) => getName(item).toLowerCase() === lower)
-    if (exact) return exact
+    const exact = results.filter((item) => getName(item).toLowerCase() === lower)
+    if (exact.length === 1) return exact[0]
+    if (exact.length > 1) {
+        throw new Error(
+            formatError(
+                `AMBIGUOUS_${entityType.toUpperCase()}`,
+                `Multiple ${entityType}s match "${ref}" exactly:`,
+                exact.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
+            ),
+        )
+    }
 
     const partial = results.filter((item) => getName(item).toLowerCase().includes(lower))
     if (partial.length === 1) return partial[0]
@@ -74,7 +93,16 @@ export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task
     return resolveRef(
         ref,
         (id) => api.getTask(id),
-        () => api.getTasks(),
+        () =>
+            paginate(
+                (cursor, limit) =>
+                    api.getTasksByFilter({
+                        query: `search: ${ref}`,
+                        cursor: cursor ?? undefined,
+                        limit,
+                    }),
+                { limit: 5 }, // Enough for resolveRef to detect and log a sample of ambiguous matches
+            ),
         (t) => t.content,
         'task',
     )

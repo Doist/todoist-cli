@@ -54,8 +54,9 @@ describe('task move command', () => {
     it('throws error when no destination flags provided', async () => {
         const program = createProgram()
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
         })
 
         await expect(
@@ -69,8 +70,9 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-2', name: 'Target Project' }],
@@ -98,8 +100,9 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
         })
         mockApi.getSections.mockResolvedValue({
             results: [{ id: 'sec-1', name: 'Planning' }],
@@ -127,8 +130,9 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-2', name: 'Target Project' }],
@@ -161,24 +165,17 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks
-            .mockResolvedValueOnce({
-                results: [
-                    {
-                        id: 'task-1',
-                        content: 'Child task',
-                        projectId: 'proj-1',
-                        sectionId: null,
-                    },
-                    { id: 'task-2', content: 'Parent task', projectId: 'proj-1' },
-                ],
-            })
-            .mockResolvedValueOnce({
-                results: [
-                    { id: 'task-1', content: 'Child task', projectId: 'proj-1' },
-                    { id: 'task-2', content: 'Parent task', projectId: 'proj-1' },
-                ],
-            })
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Child task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        // resolveParentTaskId uses getTasks to find parent within project
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                { id: 'task-1', content: 'Child task', projectId: 'proj-1' },
+                { id: 'task-2', content: 'Parent task', projectId: 'proj-1' },
+            ],
+        })
         mockApi.moveTask.mockResolvedValue({})
 
         await program.parseAsync([
@@ -201,7 +198,7 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
@@ -210,6 +207,7 @@ describe('task move command', () => {
                     parentId: 'parent-1',
                 },
             ],
+            nextCursor: null,
         })
         mockApi.moveTask.mockResolvedValue({})
 
@@ -225,7 +223,7 @@ describe('task move command', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
@@ -234,6 +232,7 @@ describe('task move command', () => {
                     sectionId: 'section-1',
                 },
             ],
+            nextCursor: null,
         })
         mockApi.moveTask.mockResolvedValue({})
 
@@ -289,7 +288,7 @@ describe('task view', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [
                 {
                     id: 'task-1',
@@ -300,6 +299,7 @@ describe('task view', () => {
                     due: null,
                 },
             ],
+            nextCursor: null,
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Inbox' }],
@@ -404,8 +404,9 @@ describe('task complete', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk', checked: false }],
+            nextCursor: null,
         })
         mockApi.closeTask.mockResolvedValue(undefined)
 
@@ -1022,8 +1023,9 @@ describe('task update', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk' }],
+            nextCursor: null,
         })
         mockApi.updateTask.mockResolvedValue({
             id: 'task-1',
@@ -1194,15 +1196,9 @@ describe('task list --parent', () => {
             content: 'Parent task',
             projectId: 'proj-1',
         })
+        // Mock getTasks to return child tasks when called with parentId
         mockApi.getTasks.mockResolvedValue({
             results: [
-                {
-                    id: 'parent-1',
-                    content: 'Parent task',
-                    parentId: null,
-                    projectId: 'proj-1',
-                    labels: [],
-                },
                 {
                     id: 'child-1',
                     content: 'Child 1',
@@ -1214,13 +1210,6 @@ describe('task list --parent', () => {
                     id: 'child-2',
                     content: 'Child 2',
                     parentId: 'parent-1',
-                    projectId: 'proj-1',
-                    labels: [],
-                },
-                {
-                    id: 'other',
-                    content: 'Other task',
-                    parentId: null,
                     projectId: 'proj-1',
                     labels: [],
                 },
@@ -1238,6 +1227,11 @@ describe('task list --parent', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Child 2'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Parent task'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Other task'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 
@@ -1245,28 +1239,23 @@ describe('task list --parent', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks
-            .mockResolvedValueOnce({
-                results: [{ id: 'parent-1', content: 'Parent task', projectId: 'proj-1' }],
-            })
-            .mockResolvedValueOnce({
-                results: [
-                    {
-                        id: 'parent-1',
-                        content: 'Parent task',
-                        parentId: null,
-                        projectId: 'proj-1',
-                        labels: [],
-                    },
-                    {
-                        id: 'child-1',
-                        content: 'Child task',
-                        parentId: 'parent-1',
-                        projectId: 'proj-1',
-                        labels: [],
-                    },
-                ],
-            })
+        // First call: resolveTaskRef uses getTasksByFilter to find parent by name
+        mockApi.getTasksByFilter.mockResolvedValueOnce({
+            results: [{ id: 'parent-1', content: 'Parent task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        // Second call: getTasks with parentId to fetch child tasks
+        mockApi.getTasks.mockResolvedValueOnce({
+            results: [
+                {
+                    id: 'child-1',
+                    content: 'Child task',
+                    parentId: 'parent-1',
+                    projectId: 'proj-1',
+                    labels: [],
+                },
+            ],
+        })
         mockApi.getProject.mockResolvedValue({
             id: 'proj-1',
             name: 'Test Project',
@@ -1276,6 +1265,11 @@ describe('task list --parent', () => {
         await program.parseAsync(['node', 'td', 'task', 'list', '--parent', 'Parent task'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Child task'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 
@@ -1288,16 +1282,9 @@ describe('task list --parent', () => {
             content: 'Parent task',
             projectId: 'proj-1',
         })
+        // Return empty results when querying by parentId (no children)
         mockApi.getTasks.mockResolvedValue({
-            results: [
-                {
-                    id: 'parent-1',
-                    content: 'Parent task',
-                    parentId: null,
-                    projectId: 'proj-1',
-                    labels: [],
-                },
-            ],
+            results: [],
         })
         mockApi.getProject.mockResolvedValue({
             id: 'proj-1',
@@ -1308,6 +1295,11 @@ describe('task list --parent', () => {
         await program.parseAsync(['node', 'td', 'task', 'list', '--parent', 'id:parent-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No tasks found'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
         consoleSpy.mockRestore()
     })
 })
@@ -1708,8 +1700,9 @@ describe('task browse', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasks.mockResolvedValue({
+        mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk', projectId: 'proj-1' }],
+            nextCursor: null,
         })
 
         await program.parseAsync(['node', 'td', 'task', 'browse', 'Buy milk'])
