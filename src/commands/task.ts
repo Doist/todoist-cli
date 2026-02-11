@@ -430,9 +430,9 @@ export function registerTaskCommand(program: Command): void {
         })
 
     const addCmd = task
-        .command('add')
-        .description('Add a task with explicit flags')
-        .option('--content <text>', 'Task content (required)')
+        .command('add [content]')
+        .description('Add a task')
+        .option('--content <text>', 'Task content (legacy, prefer positional argument)')
         .option('--due <date>', 'Due date (natural language or YYYY-MM-DD)')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--priority <p1-p4>', 'Priority level')
@@ -443,12 +443,16 @@ export function registerTaskCommand(program: Command): void {
         .option('--description <text>', 'Task description')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
-        .action((options) => {
-            if (!options.content) {
+        .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
+            if (contentArg && options.content) {
+                throw new Error('Cannot specify content both as argument and --content flag')
+            }
+            const content = contentArg || options.content
+            if (!content) {
                 addCmd.help()
                 return
             }
-            return addTask(options)
+            return addTask({ ...options, content })
         })
 
     const updateCmd = task

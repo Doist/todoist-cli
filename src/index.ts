@@ -32,6 +32,7 @@ program
         'after',
         `
 Note for AI/LLM agents:
+  Use "td task add" (not "td add") to create tasks with structured flags.
   Use --json or --ndjson flags for unambiguous, parseable output.
   Default JSON shows essential fields; use --full for all fields.`,
     )

@@ -553,7 +553,26 @@ describe('task add', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('creates task with content', async () => {
+    it('creates task with positional content', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'New task',
+            due: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'New task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'New task' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Created: New task')
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --content flag (backward compat)', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -572,7 +591,23 @@ describe('task add', () => {
         consoleSpy.mockRestore()
     })
 
-    it('creates task with --due', async () => {
+    it('errors when both positional and --content are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                'Positional content',
+                '--content',
+                'Flag content',
+            ]),
+        ).rejects.toThrow('Cannot specify content both as argument and --content flag')
+    })
+
+    it('creates task with positional content and --due', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -582,16 +617,7 @@ describe('task add', () => {
             due: { date: '2026-01-10', string: 'tomorrow' },
         })
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'task',
-            'add',
-            '--content',
-            'Task',
-            '--due',
-            'tomorrow',
-        ])
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Task', '--due', 'tomorrow'])
 
         expect(mockApi.addTask).toHaveBeenCalledWith(
             expect.objectContaining({ dueString: 'tomorrow' }),
