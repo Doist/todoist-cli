@@ -45,6 +45,7 @@ Most list commands also support:
 
 - \`--no-spinner\` - Disable loading animations
 - \`--progress-jsonl\` - Machine-readable progress events (JSONL to stderr)
+- \`-v, --verbose\` - Verbose output to stderr (repeat: -v info, -vv detail, -vvv debug, -vvvv trace)
 
 ## Task References
 
