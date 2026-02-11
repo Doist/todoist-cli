@@ -12,7 +12,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td inbox\` - Inbox tasks
 - \`td upcoming\` - Tasks due in next N days
 - \`td completed\` - Recently completed tasks
-- \`td add "task text"\` - Quick add with natural language
+- \`td task add "content"\` - Add a task
 - \`td task list\` - List tasks with filters
 - \`td task complete <ref>\` - Complete a task
 - \`td project list\` - List projects
@@ -60,12 +60,6 @@ Tasks can be referenced by:
 - p4 = Lowest priority (API value 1, default)
 
 ## Commands
-
-### Quick Add
-\`\`\`bash
-td add "Buy milk tomorrow p1 #Shopping"
-td add "Meeting with John at 3pm" --assignee "john@example.com"
-\`\`\`
 
 ### Today
 \`\`\`bash
@@ -120,12 +114,12 @@ td task complete id:123456
 td task complete "task name" --forever  # Stop recurrence
 td task uncomplete id:123456            # Reopen completed task
 
-# Add with explicit flags
-td task add --content "New task" --due "tomorrow" --priority p2
-td task add --content "Task" --deadline "2024-03-01" --project "Work"
-td task add --content "Task" --duration 1h --section id:456
-td task add --content "Task" --labels "urgent,review" --parent "Parent task"
-td task add --content "Task" --description "Details here" --assignee me
+# Add tasks
+td task add "New task" --due "tomorrow" --priority p2
+td task add "Task" --deadline "2024-03-01" --project "Work"
+td task add "Task" --duration 1h --section id:456
+td task add "Task" --labels "urgent,review" --parent "Parent task"
+td task add "Task" --description "Details here" --assignee me
 
 # Update
 td task update "task name" --due "next week"

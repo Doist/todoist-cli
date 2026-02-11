@@ -12,7 +12,7 @@ export function registerAddCommand(program: Command): void {
     const addCmd = program
         .command('add [text]')
         .description(
-            'Quick add task with natural language (e.g., "Buy milk tomorrow p1 #Shopping")',
+            'Quick add with natural language (human shorthand; agents should use "task add")',
         )
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .action(async (text: string | undefined, options: AddOptions) => {

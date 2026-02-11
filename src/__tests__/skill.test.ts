@@ -171,7 +171,7 @@ describe('installer paths', () => {
         expect(content).toContain('description: Manage Todoist tasks')
         expect(content).toContain('# Todoist CLI (td)')
         expect(content).toContain('td today')
-        expect(content).toContain('td add')
+        expect(content).toContain('td task add')
     })
 })
 
