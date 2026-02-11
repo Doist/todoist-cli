@@ -156,113 +156,111 @@ export function getLogger(): Logger {
 }
 
 export function initializeLogger(): void {
-    getLogger().initialize()
+    const log = getLogger()
+    log.initialize()
+
+    // When verbose, patch globalThis.fetch so SDK-internal HTTP calls are also logged.
+    // This is the only way to get HTTP-level visibility for @doist/todoist-api-typescript
+    // since it uses fetch() internally and doesn't expose hooks.
+    if (log.isEnabled()) {
+        patchGlobalFetch()
+    }
+}
+
+/** Save original fetch and replace with logging wrapper. */
+function patchGlobalFetch(): void {
+    const originalFetch = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const log = getLogger()
+        const urlStr =
+            typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+        const method =
+            init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET')
+        const urlObj = new URL(urlStr)
+
+        log.info(`fetch ${method} ${urlObj.pathname}`)
+        log.detail(`fetch ${method} ${urlStr}`)
+
+        // Log request body size at DETAIL
+        if (init?.body) {
+            const bodyStr =
+                typeof init.body === 'string'
+                    ? init.body
+                    : init.body instanceof URLSearchParams
+                      ? init.body.toString()
+                      : null
+            if (bodyStr) {
+                log.detail('request body', { size_bytes: bodyStr.length })
+                if (init.body instanceof URLSearchParams) {
+                    log.trace('request body keys', { keys: Array.from(init.body.keys()) })
+                }
+            }
+        }
+
+        // Log request headers at TRACE (redact Authorization)
+        if (log.isEnabled(Verbosity.TRACE) && init?.headers) {
+            const hdrs: Record<string, string> = {}
+            if (init.headers instanceof Headers) {
+                init.headers.forEach((v, k) => {
+                    hdrs[k] = k.toLowerCase() === 'authorization' ? '[REDACTED]' : v
+                })
+            } else if (typeof init.headers === 'object') {
+                for (const [k, v] of Object.entries(init.headers)) {
+                    hdrs[k] = k.toLowerCase() === 'authorization' ? '[REDACTED]' : String(v)
+                }
+            }
+            log.trace('request headers', hdrs)
+        }
+
+        const startTime = performance.now()
+        const response = await originalFetch(input, init)
+        const durationMs = Math.round(performance.now() - startTime)
+
+        // INFO: status + timing
+        log.info(`fetch ${method} ${urlObj.pathname} => ${response.status}`, {
+            duration_ms: durationMs,
+        })
+
+        // DETAIL: content-length
+        const contentLength = response.headers.get('content-length')
+        if (contentLength) {
+            log.detail('response', { content_length: contentLength })
+        }
+
+        // DEBUG: rate-limit and diagnostic headers
+        const diagHeaders: Record<string, string> = {}
+        for (const name of [
+            'x-request-id',
+            'x-ratelimit-limit',
+            'x-ratelimit-remaining',
+            'x-ratelimit-reset',
+            'retry-after',
+            'cf-ray',
+        ]) {
+            const val = response.headers.get(name)
+            if (val) diagHeaders[name] = val
+        }
+        if (Object.keys(diagHeaders).length > 0) {
+            log.debug('response headers', diagHeaders)
+        }
+
+        // TRACE: all response headers
+        if (log.isEnabled(Verbosity.TRACE)) {
+            const allHeaders: Record<string, string> = {}
+            response.headers.forEach((value, name) => {
+                if (!name.toLowerCase().includes('set-cookie')) {
+                    allHeaders[name] = value
+                }
+            })
+            log.trace('all response headers', allHeaders)
+        }
+
+        return response
+    }
 }
 
 /** Reset for testing. */
 export function resetLogger(): void {
     logger = null
-}
-
-/**
- * Verbose-aware fetch wrapper. Drop-in replacement for global fetch()
- * that logs request/response details at appropriate verbosity levels.
- *
- * - INFO:   method, URL (path only), status, total duration_ms
- * - DETAIL: request body size, response content-length
- * - DEBUG:  rate-limit headers, x-request-id, cf-ray
- * - TRACE:  all request and response headers (auth token redacted)
- */
-export async function verboseFetch(url: string | URL, init?: RequestInit): Promise<Response> {
-    const logger = getLogger()
-    const urlStr = typeof url === 'string' ? url : url.toString()
-
-    if (!logger.isEnabled()) {
-        return fetch(url, init)
-    }
-
-    const method = init?.method ?? 'GET'
-    // Log URL path without query params at INFO (full URL at DETAIL)
-    const urlObj = new URL(urlStr)
-    logger.info(`fetch ${method} ${urlObj.pathname}`)
-    logger.detail(`fetch ${method} ${urlStr}`)
-
-    // Log request body size at DETAIL
-    if (init?.body) {
-        const bodyStr =
-            typeof init.body === 'string'
-                ? init.body
-                : init.body instanceof URLSearchParams
-                  ? init.body.toString()
-                  : null
-        if (bodyStr) {
-            logger.detail('request body', { size_bytes: bodyStr.length })
-            // Log sanitized body keys at TRACE (not raw content — may contain user data)
-            if (init.body instanceof URLSearchParams) {
-                logger.trace('request body keys', {
-                    keys: Array.from(init.body.keys()),
-                })
-            }
-        }
-    }
-
-    // Log request headers at TRACE (redact Authorization)
-    if (logger.isEnabled(Verbosity.TRACE) && init?.headers) {
-        const hdrs: Record<string, string> = {}
-        if (init.headers instanceof Headers) {
-            init.headers.forEach((v, k) => {
-                hdrs[k] = k.toLowerCase() === 'authorization' ? '[REDACTED]' : v
-            })
-        } else if (typeof init.headers === 'object') {
-            for (const [k, v] of Object.entries(init.headers)) {
-                hdrs[k] = k.toLowerCase() === 'authorization' ? '[REDACTED]' : String(v)
-            }
-        }
-        logger.trace('request headers', hdrs)
-    }
-
-    const startTime = performance.now()
-    const response = await fetch(url, init)
-    const durationMs = Math.round(performance.now() - startTime)
-
-    // INFO: status + timing
-    logger.info(`fetch ${method} ${urlObj.pathname} => ${response.status}`, {
-        duration_ms: durationMs,
-    })
-
-    // DETAIL: content-length
-    const contentLength = response.headers.get('content-length')
-    if (contentLength) {
-        logger.detail('response', { content_length: contentLength })
-    }
-
-    // DEBUG: rate-limit and diagnostic headers
-    const diagHeaders: Record<string, string> = {}
-    for (const name of [
-        'x-request-id',
-        'x-ratelimit-limit',
-        'x-ratelimit-remaining',
-        'x-ratelimit-reset',
-        'retry-after',
-        'cf-ray',
-    ]) {
-        const val = response.headers.get(name)
-        if (val) diagHeaders[name] = val
-    }
-    if (Object.keys(diagHeaders).length > 0) {
-        logger.debug('response headers', diagHeaders)
-    }
-
-    // TRACE: all response headers
-    if (logger.isEnabled(Verbosity.TRACE)) {
-        const allHeaders: Record<string, string> = {}
-        response.headers.forEach((value, name) => {
-            if (!name.toLowerCase().includes('set-cookie')) {
-                allHeaders[name] = value
-            }
-        })
-        logger.trace('all response headers', allHeaders)
-    }
-
-    return response
 }

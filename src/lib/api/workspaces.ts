@@ -1,5 +1,4 @@
 import { getApiToken } from '../auth.js'
-import { verboseFetch } from '../logger.js'
 
 export interface Workspace {
     id: string
@@ -34,7 +33,7 @@ async function fetchWorkspaceData(): Promise<{
     }
 
     const token = await getApiToken()
-    const response = await verboseFetch('https://api.todoist.com/api/v1/sync', {
+    const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
