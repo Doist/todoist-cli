@@ -12,12 +12,26 @@ import {
 import { LIMITS, paginate } from './pagination.js'
 import { resolveWorkspaceRef } from './refs.js'
 
-export async function filterByWorkspaceOrPersonal(
-    api: TodoistApi,
-    tasks: Task[],
-    workspace: string | undefined,
-    personal: boolean | undefined,
-): Promise<{ tasks: Task[]; projects: Map<string, Project> }> {
+export async function fetchProjects(api: TodoistApi): Promise<Map<string, Project>> {
+    const { results: allProjects } = await api.getProjects()
+    return new Map(allProjects.map((p) => [p.id, p]))
+}
+
+interface FilterByWorkspaceOrPersonalOptions {
+    api: TodoistApi
+    tasks: Task[]
+    workspace?: string
+    personal?: boolean
+    prefetchedProjects?: Map<string, Project>
+}
+
+export async function filterByWorkspaceOrPersonal({
+    api,
+    tasks,
+    workspace,
+    personal,
+    prefetchedProjects,
+}: FilterByWorkspaceOrPersonalOptions): Promise<{ tasks: Task[]; projects: Map<string, Project> }> {
     if (workspace && personal) {
         throw new Error(
             formatError(
@@ -27,8 +41,7 @@ export async function filterByWorkspaceOrPersonal(
         )
     }
 
-    const { results: allProjects } = await api.getProjects()
-    const projects = new Map(allProjects.map((p) => [p.id, p]))
+    const projects = prefetchedProjects ?? (await fetchProjects(api))
 
     if (!workspace && !personal) {
         return { tasks, projects }

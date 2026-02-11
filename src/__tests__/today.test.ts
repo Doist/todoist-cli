@@ -330,4 +330,79 @@ describe('today command', () => {
             program.parseAsync(['node', 'td', 'today', '--workspace', 'Acme', '--personal']),
         ).rejects.toThrow('mutually exclusive')
     })
+
+    it('uses server-side assignee scoping by default', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'today'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(today | overdue) & (assigned to: me | !assigned)',
+            }),
+        )
+    })
+
+    it('uses broad query with --any-assignee', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'today', '--any-assignee'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: 'today | overdue',
+            }),
+        )
+    })
+
+    it('--any-assignee includes tasks assigned to others', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'My task',
+                    projectId: 'proj-1',
+                    responsibleUid: 'current-user-123',
+                    due: { date: getToday() },
+                },
+                {
+                    id: 'task-2',
+                    content: 'Other task',
+                    projectId: 'proj-1',
+                    responsibleUid: 'other-user-456',
+                    due: { date: getToday() },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'today', '--any-assignee'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('My task'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Other task'))
+    })
+
+    it('fetches projects in parallel with tasks', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'today'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalled()
+        expect(mockApi.getProjects).toHaveBeenCalled()
+    })
 })

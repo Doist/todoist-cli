@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, getCurrentUserId } from '../lib/api/core.js'
+import { getApi } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import {
@@ -10,7 +10,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { filterByWorkspaceOrPersonal } from '../lib/task-list.js'
+import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
 interface TodayOptions {
     limit?: string
@@ -50,33 +50,34 @@ export function registerTodayCommand(program: Command): void {
                   ? parseInt(options.limit, 10)
                   : LIMITS.tasks
 
-            const { results: tasks, nextCursor } = await paginate(
-                (cursor, limit) =>
-                    api.getTasksByFilter({
-                        query: 'today | overdue',
-                        cursor: cursor ?? undefined,
-                        limit,
-                    }),
-                { limit: targetLimit, startCursor: options.cursor },
-            )
+            const baseQuery = 'today | overdue'
+            const query = options.anyAssignee
+                ? baseQuery
+                : `(${baseQuery}) & (assigned to: me | !assigned)`
+
+            const [{ results: tasks, nextCursor }, projects] = await Promise.all([
+                paginate(
+                    (cursor, limit) =>
+                        api.getTasksByFilter({
+                            query,
+                            cursor: cursor ?? undefined,
+                            limit,
+                        }),
+                    { limit: targetLimit, startCursor: options.cursor },
+                ),
+                fetchProjects(api),
+            ])
 
             const today = getLocalDate(0)
 
-            let filteredTasks = tasks
-            if (!options.anyAssignee) {
-                const currentUserId = await getCurrentUserId()
-                filteredTasks = tasks.filter(
-                    (t) => !t.responsibleUid || t.responsibleUid === currentUserId,
-                )
-            }
-
-            const filterResult = await filterByWorkspaceOrPersonal(
+            const filterResult = await filterByWorkspaceOrPersonal({
                 api,
-                filteredTasks,
-                options.workspace,
-                options.personal,
-            )
-            filteredTasks = filterResult.tasks
+                tasks,
+                workspace: options.workspace,
+                personal: options.personal,
+                prefetchedProjects: projects,
+            })
+            const filteredTasks = filterResult.tasks
 
             const overdue = filteredTasks.filter((t) => t.due && isDueBefore(t.due.date, today))
             const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
@@ -115,7 +116,6 @@ export function registerTodayCommand(program: Command): void {
                 return
             }
 
-            const { projects } = filterResult
             if (overdue.length > 0) {
                 console.log(chalk.red.bold(`Overdue (${overdue.length})`))
                 for (const task of overdue) {

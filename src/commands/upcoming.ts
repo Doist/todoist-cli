@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, getCurrentUserId, type Task } from '../lib/api/core.js'
+import { getApi, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import {
@@ -10,7 +10,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { filterByWorkspaceOrPersonal } from '../lib/task-list.js'
+import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
 interface UpcomingOptions {
     limit?: string
@@ -57,33 +57,33 @@ export function registerUpcomingCommand(program: Command): void {
 
             const today = getLocalDate(0)
 
-            const { results: tasks, nextCursor } = await paginate(
-                (cursor, limit) =>
-                    api.getTasksByFilter({
-                        query: `due before: ${days} days`,
-                        cursor: cursor ?? undefined,
-                        limit,
-                    }),
-                { limit: targetLimit, startCursor: options.cursor },
-            )
+            const baseQuery = `due before: ${days} days`
+            const query = options.anyAssignee
+                ? baseQuery
+                : `(${baseQuery}) & (assigned to: me | !assigned)`
 
-            let filteredTasks = tasks
-            if (!options.anyAssignee) {
-                const currentUserId = await getCurrentUserId()
-                filteredTasks = tasks.filter(
-                    (t) => !t.responsibleUid || t.responsibleUid === currentUserId,
-                )
-            }
+            const [{ results: tasks, nextCursor }, projects] = await Promise.all([
+                paginate(
+                    (cursor, limit) =>
+                        api.getTasksByFilter({
+                            query,
+                            cursor: cursor ?? undefined,
+                            limit,
+                        }),
+                    { limit: targetLimit, startCursor: options.cursor },
+                ),
+                fetchProjects(api),
+            ])
 
-            const filterResult = await filterByWorkspaceOrPersonal(
+            const filterResult = await filterByWorkspaceOrPersonal({
                 api,
-                filteredTasks,
-                options.workspace,
-                options.personal,
-            )
-            filteredTasks = filterResult.tasks
+                tasks,
+                workspace: options.workspace,
+                personal: options.personal,
+                prefetchedProjects: projects,
+            })
 
-            const relevantTasks = filteredTasks
+            const relevantTasks = filterResult.tasks
 
             if (options.json) {
                 console.log(
@@ -109,9 +109,8 @@ export function registerUpcomingCommand(program: Command): void {
                 return
             }
 
-            const { projects } = filterResult
             const collaboratorCache = new CollaboratorCache()
-            await collaboratorCache.preload(api, relevantTasks, projects)
+            await collaboratorCache.preload(api, relevantTasks, filterResult.projects)
 
             if (relevantTasks.length === 0) {
                 console.log(`No tasks due in the next ${days} day${days === 1 ? '' : 's'}.`)

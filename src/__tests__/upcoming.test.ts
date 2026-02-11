@@ -283,4 +283,82 @@ describe('upcoming command', () => {
         expect(errorSpy).toHaveBeenCalledWith('Days must be a positive number')
         errorSpy.mockRestore()
     })
+
+    it('uses server-side assignee scoping by default', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'upcoming'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(due before: 7 days) & (assigned to: me | !assigned)',
+            }),
+        )
+    })
+
+    it('uses broad query with --any-assignee', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'upcoming', '--any-assignee'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: 'due before: 7 days',
+            }),
+        )
+    })
+
+    it('--any-assignee includes tasks assigned to others', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'My task',
+                    projectId: 'proj-1',
+                    responsibleUid: 'current-user-123',
+                    due: { date: getDateOffset(1) },
+                },
+                {
+                    id: 'task-2',
+                    content: 'Other task',
+                    projectId: 'proj-1',
+                    responsibleUid: 'other-user-456',
+                    due: { date: getDateOffset(1) },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'upcoming', '--any-assignee'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('My task'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Other task'))
+    })
+
+    it('uses custom days in server-side scoped query', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'upcoming', '14'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(due before: 14 days) & (assigned to: me | !assigned)',
+            }),
+        )
+    })
 })
