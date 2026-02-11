@@ -58,14 +58,14 @@ async function resolveRef<T extends { id: string }>(
         return fetchById(id)
     }
 
-    logger.debug(`resolve ${entityType}: name search`, { ref })
+    logger.debug(`resolve ${entityType}: name search`, { ref_length: ref.length })
     const { results } = await fetchAll()
     logger.debug(`resolve ${entityType}: candidates fetched`, { count: results.length })
     const lower = ref.toLowerCase()
 
     const exact = results.filter((item) => getName(item).toLowerCase() === lower)
     if (exact.length === 1) {
-        logger.debug(`resolve ${entityType}: exact match`, { id: exact[0].id, name: getName(exact[0]) })
+        logger.debug(`resolve ${entityType}: exact match`, { id: exact[0].id })
         return exact[0]
     }
     if (exact.length > 1) {
@@ -81,7 +81,7 @@ async function resolveRef<T extends { id: string }>(
 
     const partial = results.filter((item) => getName(item).toLowerCase().includes(lower))
     if (partial.length === 1) {
-        logger.debug(`resolve ${entityType}: partial match`, { id: partial[0].id, name: getName(partial[0]) })
+        logger.debug(`resolve ${entityType}: partial match`, { id: partial[0].id })
         return partial[0]
     }
     if (partial.length > 1) {
@@ -95,7 +95,7 @@ async function resolveRef<T extends { id: string }>(
         )
     }
 
-    logger.debug(`resolve ${entityType}: not found`, { ref })
+    logger.debug(`resolve ${entityType}: not found`, { ref_length: ref.length })
     throw new Error(
         formatError(
             `${entityType.toUpperCase()}_NOT_FOUND`,

@@ -69,7 +69,16 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             ...(cursor && { cursor }),
                         })
                         if (callParams) {
-                            logger.detail(`api.${property}() params`, callParams)
+                            // Log param keys + non-content values (redact query/content to protect user data)
+                            const safeParams: Record<string, unknown> = {}
+                            for (const [k, v] of Object.entries(callParams)) {
+                                if (k === 'query' || k === 'content') {
+                                    safeParams[k] = `[${String(v).length} chars]`
+                                } else {
+                                    safeParams[k] = v
+                                }
+                            }
+                            logger.detail(`api.${property}() params`, safeParams)
                         }
 
                         // Emit progress event for API call start
@@ -84,20 +93,14 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                         if (result && typeof result.then === 'function') {
                             const wrappedPromise = result
                                 .then((response: unknown) => {
-                                    const durationMs = Math.round(
-                                        performance.now() - startTime,
-                                    )
+                                    const durationMs = Math.round(performance.now() - startTime)
 
                                     // Verbose: log response summary with timing
-                                    const respMeta =
-                                        extractResponseMeta(response)
-                                    logger.info(
-                                        `api.${property}() response`,
-                                        {
-                                            duration_ms: durationMs,
-                                            ...respMeta,
-                                        },
-                                    )
+                                    const respMeta = extractResponseMeta(response)
+                                    logger.info(`api.${property}() response`, {
+                                        duration_ms: durationMs,
+                                        ...respMeta,
+                                    })
 
                                     // Emit progress event for successful response
                                     if (progressTracker.isEnabled()) {
@@ -106,18 +109,13 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                                     return response
                                 })
                                 .catch((error: Error) => {
-                                    const durationMs = Math.round(
-                                        performance.now() - startTime,
-                                    )
+                                    const durationMs = Math.round(performance.now() - startTime)
 
                                     // Verbose: log error with timing
-                                    logger.info(
-                                        `api.${property}() FAILED`,
-                                        {
-                                            duration_ms: durationMs,
-                                            error: error.message,
-                                        },
-                                    )
+                                    logger.info(`api.${property}() FAILED`, {
+                                        duration_ms: durationMs,
+                                        error: error.message,
+                                    })
 
                                     // Emit progress event for error
                                     if (progressTracker.isEnabled()) {
@@ -287,7 +285,6 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
 
     return data
 }
-
 
 export async function completeTaskForever(taskId: string): Promise<void> {
     const command: SyncCommand = {

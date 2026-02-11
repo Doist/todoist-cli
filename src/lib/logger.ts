@@ -11,13 +11,15 @@
  * Can also be activated via TD_VERBOSE=1..4 environment variable.
  */
 
-export enum Verbosity {
-    SILENT = 0,
-    INFO = 1,
-    DETAIL = 2,
-    DEBUG = 3,
-    TRACE = 4,
-}
+export const Verbosity = {
+    SILENT: 0,
+    INFO: 1,
+    DETAIL: 2,
+    DEBUG: 3,
+    TRACE: 4,
+} as const
+
+export type Verbosity = (typeof Verbosity)[keyof typeof Verbosity]
 
 const LEVEL_TAG: Record<number, string> = {
     [Verbosity.INFO]: 'info',
@@ -36,7 +38,7 @@ class Logger {
         if (envLevel) {
             const parsed = parseInt(envLevel, 10)
             if (parsed >= Verbosity.INFO && parsed <= Verbosity.TRACE) {
-                this.level = parsed
+                this.level = parsed as Verbosity
             }
         }
 
@@ -89,7 +91,7 @@ class Logger {
             }
         }
 
-        process.stderr.write(line + '\n')
+        process.stderr.write(`${line}\n`)
     }
 
     /** Level-specific convenience methods. */
@@ -171,10 +173,7 @@ export function resetLogger(): void {
  * - DEBUG:  rate-limit headers, x-request-id, cf-ray
  * - TRACE:  all request and response headers (auth token redacted)
  */
-export async function verboseFetch(
-    url: string | URL,
-    init?: RequestInit,
-): Promise<Response> {
+export async function verboseFetch(url: string | URL, init?: RequestInit): Promise<Response> {
     const logger = getLogger()
     const urlStr = typeof url === 'string' ? url : url.toString()
 
@@ -198,7 +197,12 @@ export async function verboseFetch(
                   : null
         if (bodyStr) {
             logger.detail('request body', { size_bytes: bodyStr.length })
-            logger.trace('request body content', { body: bodyStr })
+            // Log sanitized body keys at TRACE (not raw content — may contain user data)
+            if (init.body instanceof URLSearchParams) {
+                logger.trace('request body keys', {
+                    keys: Array.from(init.body.keys()),
+                })
+            }
         }
     }
 
