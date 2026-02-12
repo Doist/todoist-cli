@@ -9,7 +9,7 @@ import {
     formatPaginatedNdjson,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { requireIdRef, resolveProjectId } from '../lib/refs.js'
+import { lenientIdRef, resolveProjectId } from '../lib/refs.js'
 import { sectionUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -95,7 +95,7 @@ async function createSection(options: CreateOptions): Promise<void> {
 
 async function deleteSection(sectionId: string, options: { yes?: boolean }): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(sectionId, 'section')
+    const id = lenientIdRef(sectionId, 'section')
     const section = await api.getSection(id)
 
     const { results: tasks } = await api.getTasks({ sectionId: id })
@@ -120,7 +120,7 @@ async function deleteSection(sectionId: string, options: { yes?: boolean }): Pro
 
 async function updateSection(sectionId: string, options: { name: string }): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(sectionId, 'section')
+    const id = lenientIdRef(sectionId, 'section')
     const section = await api.getSection(id)
 
     const updated = await api.updateSection(id, { name: options.name })
@@ -128,7 +128,7 @@ async function updateSection(sectionId: string, options: { name: string }): Prom
 }
 
 async function browseSection(sectionId: string): Promise<void> {
-    const id = requireIdRef(sectionId, 'section')
+    const id = lenientIdRef(sectionId, 'section')
     await openInBrowser(sectionUrl(id))
 }
 

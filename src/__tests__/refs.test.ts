@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
     extractId,
     isIdRef,
+    lenientIdRef,
     looksLikeRawId,
-    requireIdRef,
     resolveParentTaskId,
     resolveProjectId,
     resolveProjectRef,
@@ -47,19 +47,28 @@ describe('extractId', () => {
     })
 })
 
-describe('requireIdRef', () => {
+describe('lenientIdRef', () => {
     it('returns ID when valid id: prefix', () => {
-        expect(requireIdRef('id:123', 'task')).toBe('123')
-        expect(requireIdRef('id:sec-1', 'section')).toBe('sec-1')
+        expect(lenientIdRef('id:123', 'task')).toBe('123')
+        expect(lenientIdRef('id:sec-1', 'section')).toBe('sec-1')
     })
 
-    it('throws with formatted error for invalid ref', () => {
-        expect(() => requireIdRef('some-name', 'comment')).toThrow('INVALID_REF')
-        expect(() => requireIdRef('some-name', 'comment')).toThrow('Invalid comment reference')
+    it('accepts raw alphanumeric IDs', () => {
+        expect(lenientIdRef('6fmg66Fr27R59RPg', 'task')).toBe('6fmg66Fr27R59RPg')
+        expect(lenientIdRef('abc123', 'section')).toBe('abc123')
     })
 
-    it('includes hint in error message', () => {
-        expect(() => requireIdRef('abc', 'section')).toThrow('id:abc')
+    it('accepts raw numeric IDs', () => {
+        expect(lenientIdRef('12345678', 'task')).toBe('12345678')
+    })
+
+    it('throws for plain text names', () => {
+        expect(() => lenientIdRef('some-name', 'comment')).toThrow('INVALID_REF')
+        expect(() => lenientIdRef('Shopping', 'project')).toThrow('INVALID_REF')
+    })
+
+    it('throws for strings with spaces', () => {
+        expect(() => lenientIdRef('Buy milk', 'task')).toThrow('INVALID_REF')
     })
 })
 
@@ -246,6 +255,37 @@ describe('resolveProjectRef', () => {
 
         await expect(resolveProjectRef(api, 'nonexistent')).rejects.toThrow('not found')
     })
+
+    it('auto-retries id-like refs as direct ID lookup', async () => {
+        const api = createMockApi({
+            getProject: vi.fn().mockResolvedValue(projects[0]),
+            getProjects: vi.fn().mockResolvedValue({ results: [] }),
+        })
+
+        const result = await resolveProjectRef(api, '6fmg66Fr27R59RPg')
+        expect(result.id).toBe('proj-1')
+        expect(api.getProject).toHaveBeenCalledWith('6fmg66Fr27R59RPg')
+    })
+
+    it('auto-retries numeric refs as direct ID lookup', async () => {
+        const api = createMockApi({
+            getProject: vi.fn().mockResolvedValue(projects[0]),
+            getProjects: vi.fn().mockResolvedValue({ results: [] }),
+        })
+
+        const result = await resolveProjectRef(api, '12345678')
+        expect(result.id).toBe('proj-1')
+        expect(api.getProject).toHaveBeenCalledWith('12345678')
+    })
+
+    it('does not auto-retry plain text refs', async () => {
+        const api = createMockApi({
+            getProjects: vi.fn().mockResolvedValue({ results: projects }),
+        })
+
+        await expect(resolveProjectRef(api, 'nonexistent')).rejects.toThrow('not found')
+        expect(api.getProject).not.toHaveBeenCalled()
+    })
 })
 
 describe('resolveProjectId', () => {
@@ -332,6 +372,16 @@ describe('resolveSectionId', () => {
         await expect(resolveSectionId(api, 'Nonexistent', 'proj-1')).rejects.toThrow(
             'not found in project',
         )
+    })
+
+    it('resolves raw ID-like string as section ID', async () => {
+        const sectionsWithNumericId = [...sections, { id: '99887766', name: 'Done' }]
+        const api = createMockApi({
+            getSections: vi.fn().mockResolvedValue({ results: sectionsWithNumericId }),
+        })
+
+        const result = await resolveSectionId(api, '99887766', 'proj-1')
+        expect(result).toBe('99887766')
     })
 })
 
@@ -420,5 +470,14 @@ describe('resolveParentTaskId', () => {
         await expect(resolveParentTaskId(api, 'Nonexistent', 'proj-1')).rejects.toThrow(
             'not found in project',
         )
+    })
+
+    it('accepts raw ID-like string without id: prefix', async () => {
+        const api = createMockApi({
+            getTasks: vi.fn().mockResolvedValue({ results: [] }),
+        })
+
+        const result = await resolveParentTaskId(api, '6fmg66Fr27R59RPg', 'proj-1')
+        expect(result).toBe('6fmg66Fr27R59RPg')
     })
 })

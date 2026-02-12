@@ -682,7 +682,7 @@ describe('task add', () => {
         consoleSpy.mockRestore()
     })
 
-    it('requires id: prefix for --section', async () => {
+    it('requires --project when --section is a name', async () => {
         const program = createProgram()
 
         await expect(
@@ -696,7 +696,7 @@ describe('task add', () => {
                 '--section',
                 'Planning',
             ]),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toThrow('PROJECT_REQUIRED')
     })
 
     it('creates task with --section using id: prefix', async () => {

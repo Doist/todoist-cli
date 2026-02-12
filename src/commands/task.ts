@@ -25,7 +25,8 @@ import { resolveAssigneeId } from '../lib/collaborators.js'
 import {
     extractId,
     isIdRef,
-    requireIdRef,
+    lenientIdRef,
+    looksLikeRawId,
     resolveParentTaskId,
     resolveProjectId,
     resolveProjectRef,
@@ -130,7 +131,7 @@ async function completeTask(ref: string, options: { forever?: boolean }): Promis
 
 async function uncompleteTask(ref: string): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(ref, 'task')
+    const id = lenientIdRef(ref, 'task')
     await api.reopenTask(id)
     console.log(`Reopened task ${id}`)
 }
@@ -192,7 +193,19 @@ async function addTask(options: AddOptions): Promise<void> {
     }
 
     if (options.section) {
-        args.sectionId = requireIdRef(options.section, 'section')
+        if (isIdRef(options.section) || looksLikeRawId(options.section)) {
+            args.sectionId = lenientIdRef(options.section, 'section')
+        } else if (args.projectId) {
+            args.sectionId = await resolveSectionId(api, options.section, args.projectId)
+        } else {
+            throw new Error(
+                formatError(
+                    'PROJECT_REQUIRED',
+                    'The --project flag is required when using --section with a name.',
+                    ['Use id:xxx format to specify section by ID without a project.'],
+                ),
+            )
+        }
     }
 
     if (options.labels) {
@@ -437,7 +450,7 @@ export function registerTaskCommand(program: Command): void {
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--priority <p1-p4>', 'Priority level')
         .option('--project <name>', 'Project name or id:xxx')
-        .option('--section <id>', 'Section ID')
+        .option('--section <ref>', 'Section (name with --project, or id:xxx)')
         .option('--labels <a,b>', 'Comma-separated labels')
         .option('--parent <ref>', 'Parent task reference')
         .option('--description <text>', 'Task description')

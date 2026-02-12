@@ -10,7 +10,7 @@ import {
     formatPaginatedNdjson,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef } from '../lib/refs.js'
+import { extractId, isIdRef, looksLikeRawId } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -109,11 +109,16 @@ async function deleteLabel(nameOrId: string, options: { yes?: boolean }): Promis
     } else {
         const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
         const label = labels.find((l) => l.name.toLowerCase() === name.toLowerCase())
-        if (!label) {
+        if (label) {
+            labelId = label.id
+            labelName = label.name
+        } else if (looksLikeRawId(nameOrId)) {
+            labelId = nameOrId
+            const byId = labels.find((l) => l.id === nameOrId)
+            if (byId) labelName = byId.name
+        } else {
             throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
         }
-        labelId = label.id
-        labelName = label.name
     }
 
     if (!options.yes) {
@@ -149,11 +154,19 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
     } else {
         const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
         const label = labels.find((l) => l.name.toLowerCase() === name.toLowerCase())
-        if (!label) {
+        if (label) {
+            labelId = label.id
+            labelName = label.name
+        } else if (looksLikeRawId(nameOrId)) {
+            const byId = labels.find((l) => l.id === nameOrId)
+            if (!byId) {
+                throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
+            }
+            labelId = byId.id
+            labelName = byId.name
+        } else {
             throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
         }
-        labelId = label.id
-        labelName = label.name
     }
 
     const args: {
@@ -191,6 +204,11 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     const lower = name.toLowerCase()
     const exact = labels.find((l) => l.name.toLowerCase() === lower)
     if (exact) return exact
+
+    if (looksLikeRawId(nameOrId)) {
+        const byId = labels.find((l) => l.id === nameOrId)
+        if (byId) return byId
+    }
 
     throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
 }

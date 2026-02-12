@@ -168,7 +168,7 @@ describe('section delete', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
@@ -230,7 +230,7 @@ describe('section update', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(

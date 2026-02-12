@@ -11,7 +11,7 @@ import {
     formatPaginatedNdjson,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { requireIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
+import { lenientIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
 import { commentUrl, projectCommentUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -168,7 +168,7 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
 
 async function deleteComment(commentId: string, options: { yes?: boolean }): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(commentId, 'comment')
+    const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
     const preview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
@@ -185,7 +185,7 @@ async function deleteComment(commentId: string, options: { yes?: boolean }): Pro
 
 async function updateComment(commentId: string, options: { content: string }): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(commentId, 'comment')
+    const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
     const oldPreview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
@@ -200,7 +200,7 @@ interface ViewOptions {
 
 async function viewComment(commentId: string, options: ViewOptions): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(commentId, 'comment')
+    const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
 
     const url = comment.taskId
@@ -232,7 +232,7 @@ async function viewComment(commentId: string, options: ViewOptions): Promise<voi
 
 async function browseComment(commentId: string): Promise<void> {
     const api = await getApi()
-    const id = requireIdRef(commentId, 'comment')
+    const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
 
     const url = comment.taskId

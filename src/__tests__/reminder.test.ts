@@ -357,11 +357,19 @@ describe('reminder update', () => {
         consoleSpy.mockRestore()
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync(['node', 'td', 'reminder', 'update', 'rem-1', '--before', '1h']),
+            program.parseAsync([
+                'node',
+                'td',
+                'reminder',
+                'update',
+                'my-reminder',
+                '--before',
+                '1h',
+            ]),
         ).rejects.toThrow('INVALID_REF')
     })
 })
@@ -415,11 +423,11 @@ describe('reminder delete', () => {
         consoleSpy.mockRestore()
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync(['node', 'td', 'reminder', 'delete', 'rem-1', '--yes']),
+            program.parseAsync(['node', 'td', 'reminder', 'delete', 'my-reminder', '--yes']),
         ).rejects.toThrow('INVALID_REF')
     })
 

@@ -17,20 +17,14 @@ export function looksLikeRawId(ref: string): boolean {
     return /^\d+$/.test(ref) || (/[a-zA-Z]/.test(ref) && /\d/.test(ref))
 }
 
-function idPrefixHint(ref: string): string[] {
-    if (!looksLikeRawId(ref)) return []
-    return [`If "${ref}" is an ID, prefix it: id:${ref}`]
-}
-
-export function requireIdRef(ref: string, entityName: string): string {
-    if (!isIdRef(ref)) {
-        throw new Error(
-            formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, [
-                `Use id:xxx format (e.g., id:${ref})`,
-            ]),
-        )
-    }
-    return extractId(ref)
+export function lenientIdRef(ref: string, entityName: string): string {
+    if (isIdRef(ref)) return extractId(ref)
+    if (looksLikeRawId(ref)) return ref
+    throw new Error(
+        formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, [
+            `Use id:xxx format (e.g., id:${ref})`,
+        ]),
+    )
 }
 
 async function resolveRef<T extends { id: string }>(
@@ -80,12 +74,16 @@ async function resolveRef<T extends { id: string }>(
         )
     }
 
+    if (looksLikeRawId(ref)) {
+        try {
+            return await fetchById(ref)
+        } catch {
+            // Already tried as ID — fall through to generic not-found
+        }
+    }
+
     throw new Error(
-        formatError(
-            `${entityType.toUpperCase()}_NOT_FOUND`,
-            `${entityType} "${ref}" not found.`,
-            idPrefixHint(ref),
-        ),
+        formatError(`${entityType.toUpperCase()}_NOT_FOUND`, `${entityType} "${ref}" not found.`),
     )
 }
 
@@ -101,17 +99,11 @@ export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task
                         cursor: cursor ?? undefined,
                         limit,
                     }),
-                { limit: 5 }, // Enough for resolveRef to detect and log a sample of ambiguous matches
+                { limit: 5 },
             ),
         (t) => t.content,
         'task',
-    ).catch((err) => {
-        // If ref looks like a raw ID (numeric or alphanumeric mix), try as direct ID lookup
-        if (looksLikeRawId(ref)) {
-            return resolveTaskRef(api, `id:${ref}`)
-        }
-        throw err
-    })
+    )
 }
 
 export async function resolveProjectRef(api: TodoistApi, ref: string): Promise<Project> {
@@ -166,13 +158,12 @@ export async function resolveSectionId(
         )
     }
 
-    throw new Error(
-        formatError(
-            'SECTION_NOT_FOUND',
-            `Section "${ref}" not found in project.`,
-            idPrefixHint(ref),
-        ),
-    )
+    if (looksLikeRawId(ref)) {
+        const byId = sections.find((s) => s.id === ref)
+        if (byId) return byId.id
+    }
+
+    throw new Error(formatError('SECTION_NOT_FOUND', `Section "${ref}" not found in project.`))
 }
 
 export async function resolveParentTaskId(
@@ -221,13 +212,9 @@ export async function resolveParentTaskId(
         )
     }
 
-    throw new Error(
-        formatError(
-            'PARENT_NOT_FOUND',
-            `Parent task "${ref}" not found in project.`,
-            idPrefixHint(ref),
-        ),
-    )
+    if (looksLikeRawId(ref)) return ref
+
+    throw new Error(formatError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`))
 }
 
 export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
@@ -258,7 +245,10 @@ export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
         )
     }
 
-    throw new Error(
-        formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`, idPrefixHint(ref)),
-    )
+    if (looksLikeRawId(ref)) {
+        const byId = workspaces.find((w) => w.id === ref)
+        if (byId) return byId
+    }
+
+    throw new Error(formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`))
 }

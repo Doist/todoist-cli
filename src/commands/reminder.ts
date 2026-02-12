@@ -12,7 +12,7 @@ import {
 } from '../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../lib/duration.js'
 import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
-import { requireIdRef, resolveTaskRef } from '../lib/refs.js'
+import { lenientIdRef, resolveTaskRef } from '../lib/refs.js'
 
 function formatReminderTime(reminder: Reminder): string {
     if (reminder.minuteOffset != null) {
@@ -191,7 +191,7 @@ async function updateReminderCmd(reminderId: string, options: UpdateOptions): Pr
         return
     }
 
-    const id = requireIdRef(reminderId, 'reminder')
+    const id = lenientIdRef(reminderId, 'reminder')
 
     let minuteOffset: number | undefined
     let due: ReminderDue | undefined
@@ -228,7 +228,7 @@ interface DeleteOptions {
 }
 
 async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Promise<void> {
-    const id = requireIdRef(reminderId, 'reminder')
+    const id = lenientIdRef(reminderId, 'reminder')
 
     const reminders = await fetchReminders()
     const reminder = reminders.find((r) => r.id === id)

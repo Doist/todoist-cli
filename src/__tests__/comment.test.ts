@@ -199,11 +199,11 @@ describe('comment delete', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync(['node', 'td', 'comment', 'delete', 'comment-1', '--yes']),
+            program.parseAsync(['node', 'td', 'comment', 'delete', 'my-comment', '--yes']),
         ).rejects.toThrow('INVALID_REF')
     })
 
@@ -251,7 +251,7 @@ describe('comment update', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
@@ -260,7 +260,7 @@ describe('comment update', () => {
                 'td',
                 'comment',
                 'update',
-                'comment-1',
+                'my-comment',
                 '--content',
                 'New text',
             ]),
@@ -529,11 +529,11 @@ describe('comment view', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('requires id: prefix', async () => {
+    it('rejects plain text references', async () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync(['node', 'td', 'comment', 'view', 'comment-1']),
+            program.parseAsync(['node', 'td', 'comment', 'view', 'my-comment']),
         ).rejects.toThrow('INVALID_REF')
     })
 
