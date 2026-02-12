@@ -96,6 +96,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage coding agent skills/integrations',
         async () => (await import('./commands/skill.js')).registerSkillCommand,
     ],
+    completion: [
+        'Manage shell completions',
+        async () => (await import('./commands/completion.js')).registerCompletionCommand,
+    ],
 }
 
 // Register placeholders so --help lists all commands
@@ -103,23 +107,35 @@ for (const [name, [description]] of Object.entries(commands)) {
     program.command(name).description(description)
 }
 
-// Find which command (if any) is being invoked — match only known command names
-// to avoid treating option values (e.g. --progress-jsonl /tmp/out) as commands
-const commandName = process.argv.slice(2).find((a) => !a.startsWith('-') && a in commands)
+// completion-server needs the full command tree (with all options) to walk
+// it for completions. Load every command module eagerly in that case.
+if (process.argv[2] === 'completion-server') {
+    ;(program.commands as Command[]).length = 0
+    await Promise.all(
+        Object.values(commands).map(async ([, loader]) => {
+            const register = await loader()
+            register(program)
+        }),
+    )
+} else {
+    // Find which command (if any) is being invoked — match only known command names
+    // to avoid treating option values (e.g. --progress-jsonl /tmp/out) as commands
+    const commandName = process.argv.slice(2).find((a) => !a.startsWith('-') && a in commands)
 
-if (commandName && commands[commandName]) {
-    // Remove placeholder, load real command module, register it
-    const idx = program.commands.findIndex((c) => c.name() === commandName)
-    if (idx !== -1) (program.commands as Command[]).splice(idx, 1)
-    const loader = commands[commandName][1]
+    if (commandName && commands[commandName]) {
+        // Remove placeholder, load real command module, register it
+        const idx = program.commands.findIndex((c) => c.name() === commandName)
+        if (idx !== -1) (program.commands as Command[]).splice(idx, 1)
+        const loader = commands[commandName][1]
 
-    startEarlySpinner()
-    try {
-        const register = await loader()
-        register(program)
-    } catch (err) {
-        stopEarlySpinner()
-        throw err
+        startEarlySpinner()
+        try {
+            const register = await loader()
+            register(program)
+        } catch (err) {
+            stopEarlySpinner()
+            throw err
+        }
     }
 }
 

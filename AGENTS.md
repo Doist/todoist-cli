@@ -30,6 +30,7 @@ src/
   commands/             # one file per command group
     add.ts              # td add (quick add)
     auth.ts             # td auth (login, token, status, logout)
+    completion.ts       # td completion (install/uninstall shell completions)
     today.ts            # td today
     inbox.ts            # td inbox
     task.ts             # td task <action>
@@ -40,9 +41,12 @@ src/
   lib/
     api.ts              # API client wrapper, type exports
     auth.ts             # token loading/saving (env var or config file)
+    completion.ts       # Commander tree-walker for shell completions
     output.ts           # formatting utilities
     refs.ts             # id: prefix parsing utilities
     task-list.ts        # shared task listing logic
+  types/
+    pnpm-tabtab.d.ts    # type declarations for @pnpm/tabtab
 ```
 
 ## Key Patterns
