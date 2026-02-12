@@ -326,13 +326,13 @@ export function registerNotificationCommand(program: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .action(listNotifications)
 
-    const viewCmd = notification
-        .command('view [id]')
+    notification
+        .command('view [id]', { isDefault: true })
         .description('View notification details')
         .option('--json', 'Output as JSON')
         .action((id, options) => {
             if (!id) {
-                viewCmd.help()
+                notification.help()
                 return
             }
             return viewNotification(id, options)

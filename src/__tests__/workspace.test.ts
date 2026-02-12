@@ -175,6 +175,13 @@ describe('workspace view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Doist'))
     })
 
+    it('implicit view: td workspace <ref> behaves like td workspace view <ref>', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'id:ws-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Doist'))
+    })
+
     it('shows workspace details', async () => {
         const program = createProgram()
         await program.parseAsync(['node', 'td', 'workspace', 'view', 'Doist'])
@@ -387,6 +394,31 @@ describe('workspace projects', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(no folder)'))
     })
+
+    it('accepts --workspace flag instead of positional arg', async () => {
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'projects', '--workspace', 'Doist'])
+
+        expect(mockApi.getProjects).toHaveBeenCalled()
+    })
+
+    it('errors when both positional and --workspace are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'workspace',
+                'projects',
+                'Doist',
+                '--workspace',
+                'Other',
+            ]),
+        ).rejects.toThrow('Cannot specify workspace both as argument and --workspace flag')
+    })
 })
 
 describe('workspace users', () => {
@@ -557,5 +589,40 @@ describe('workspace users', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results[0].name).toBe('Alice Smith')
         expect(parsed.results[0].email).toBe('alice@example.com')
+    })
+
+    it('accepts --workspace flag instead of positional arg', async () => {
+        mockApi.getWorkspaceUsers.mockResolvedValue({
+            workspaceUsers: [
+                {
+                    userId: 'user-1',
+                    userEmail: 'alice@example.com',
+                    fullName: 'Alice Smith',
+                    role: 'ADMIN',
+                },
+            ],
+            hasMore: false,
+        })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'users', '--workspace', 'Doist'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Alice'))
+    })
+
+    it('errors when both positional and --workspace are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'workspace',
+                'users',
+                'Doist',
+                '--workspace',
+                'Other',
+            ]),
+        ).rejects.toThrow('Cannot specify workspace both as argument and --workspace flag')
     })
 })

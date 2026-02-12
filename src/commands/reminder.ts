@@ -12,7 +12,7 @@ import {
 } from '../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../lib/duration.js'
 import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
-import { requireIdRef, resolveTaskRef } from '../lib/refs.js'
+import { lenientIdRef, resolveTaskRef } from '../lib/refs.js'
 
 function formatReminderTime(reminder: Reminder): string {
     if (reminder.minuteOffset != null) {
@@ -191,7 +191,7 @@ async function updateReminderCmd(reminderId: string, options: UpdateOptions): Pr
         return
     }
 
-    const id = requireIdRef(reminderId, 'reminder')
+    const id = lenientIdRef(reminderId, 'reminder')
 
     let minuteOffset: number | undefined
     let due: ReminderDue | undefined
@@ -228,7 +228,7 @@ interface DeleteOptions {
 }
 
 async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Promise<void> {
-    const id = requireIdRef(reminderId, 'reminder')
+    const id = lenientIdRef(reminderId, 'reminder')
 
     const reminders = await fetchReminders()
     const reminder = reminders.find((r) => r.id === id)
@@ -257,10 +257,15 @@ export function registerReminderCommand(program: Command): void {
     const listCmd = reminder
         .command('list [task]')
         .description('List reminders for a task')
+        .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((task, options) => {
+        .action((taskArg: string | undefined, options: ListOptions & { task?: string }) => {
+            if (taskArg && options.task) {
+                throw new Error('Cannot specify task both as argument and --task flag')
+            }
+            const task = taskArg || options.task
             if (!task) {
                 listCmd.help()
                 return
@@ -271,9 +276,14 @@ export function registerReminderCommand(program: Command): void {
     const addCmd = reminder
         .command('add [task]')
         .description('Add a reminder to a task')
+        .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
-        .action((task, options) => {
+        .action((taskArg: string | undefined, options: AddOptions & { task?: string }) => {
+            if (taskArg && options.task) {
+                throw new Error('Cannot specify task both as argument and --task flag')
+            }
+            const task = taskArg || options.task
             if (!task) {
                 addCmd.help()
                 return

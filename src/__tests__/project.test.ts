@@ -186,6 +186,23 @@ describe('project view', () => {
         expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
     })
 
+    it('implicit view: td project <ref> behaves like td project view <ref>', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            url: 'https://...',
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'project', 'id:proj-1'])
+
+        expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
+    })
+
     it('shows project details', async () => {
         const program = createProgram()
 

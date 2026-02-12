@@ -10,7 +10,7 @@ import {
     formatPaginatedNdjson,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef } from '../lib/refs.js'
+import { extractId, isIdRef, looksLikeRawId } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -96,34 +96,17 @@ async function createLabel(options: CreateOptions): Promise<void> {
 }
 
 async function deleteLabel(nameOrId: string, options: { yes?: boolean }): Promise<void> {
-    const api = await getApi()
-    const { results: labels } = await api.getLabels()
-
-    let labelId: string | undefined
-    let labelName = nameOrId
-
-    if (isIdRef(nameOrId)) {
-        labelId = extractId(nameOrId)
-        const label = labels.find((l) => l.id === labelId)
-        if (label) labelName = label.name
-    } else {
-        const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
-        const label = labels.find((l) => l.name.toLowerCase() === name.toLowerCase())
-        if (!label) {
-            throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
-        }
-        labelId = label.id
-        labelName = label.name
-    }
+    const label = await resolveLabelRef(nameOrId)
 
     if (!options.yes) {
-        console.log(`Would delete: @${labelName}`)
+        console.log(`Would delete: @${label.name}`)
         console.log('Use --yes to confirm.')
         return
     }
 
-    await api.deleteLabel(labelId)
-    console.log(`Deleted: @${labelName}`)
+    const api = await getApi()
+    await api.deleteLabel(label.id)
+    console.log(`Deleted: @${label.name}`)
 }
 
 interface UpdateLabelOptions {
@@ -133,28 +116,7 @@ interface UpdateLabelOptions {
 }
 
 async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promise<void> {
-    const api = await getApi()
-    const { results: labels } = await api.getLabels()
-
-    let labelId: string
-    let labelName: string
-
-    if (isIdRef(nameOrId)) {
-        labelId = extractId(nameOrId)
-        const label = labels.find((l) => l.id === labelId)
-        if (!label) {
-            throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
-        }
-        labelName = label.name
-    } else {
-        const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
-        const label = labels.find((l) => l.name.toLowerCase() === name.toLowerCase())
-        if (!label) {
-            throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
-        }
-        labelId = label.id
-        labelName = label.name
-    }
+    const label = await resolveLabelRef(nameOrId)
 
     const args: {
         name?: string
@@ -170,8 +132,9 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
         throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
     }
 
-    const updated = await api.updateLabel(labelId, args)
-    console.log(`Updated: @${labelName}${options.name ? ` → @${updated.name}` : ''}`)
+    const api = await getApi()
+    const updated = await api.updateLabel(label.id, args)
+    console.log(`Updated: @${label.name}${options.name ? ` → @${updated.name}` : ''}`)
 }
 
 async function resolveLabelRef(nameOrId: string): Promise<Label> {
@@ -191,6 +154,11 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     const lower = name.toLowerCase()
     const exact = labels.find((l) => l.name.toLowerCase() === lower)
     if (exact) return exact
+
+    if (looksLikeRawId(nameOrId)) {
+        const byId = labels.find((l) => l.id === nameOrId)
+        if (byId) return byId
+    }
 
     throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
 }

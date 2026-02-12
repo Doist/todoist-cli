@@ -333,6 +333,26 @@ describe('task view', () => {
         consoleSpy.mockRestore()
     })
 
+    it('implicit view: td task <ref> behaves like td task view <ref>', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+            due: null,
+        })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'task', 'id:task-1'])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
     it('shows full metadata with --full flag', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -682,7 +702,7 @@ describe('task add', () => {
         consoleSpy.mockRestore()
     })
 
-    it('requires id: prefix for --section', async () => {
+    it('requires --project when --section is a name', async () => {
         const program = createProgram()
 
         await expect(
@@ -696,7 +716,7 @@ describe('task add', () => {
                 '--section',
                 'Planning',
             ]),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toThrow('PROJECT_REQUIRED')
     })
 
     it('creates task with --section using id: prefix', async () => {
@@ -722,6 +742,43 @@ describe('task add', () => {
 
         expect(mockApi.addTask).toHaveBeenCalledWith(
             expect.objectContaining({ sectionId: 'sec-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves --section by name with digits when --project is provided', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getSections.mockResolvedValue({
+            results: [{ id: 'sec-q1', name: 'Q1', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--section',
+            'Q1',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ sectionId: 'sec-q1' }),
         )
         consoleSpy.mockRestore()
     })

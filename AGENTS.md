@@ -47,7 +47,9 @@ src/
 
 ## Key Patterns
 
-- **ID references**: All explicit IDs use `id:` prefix. Use `requireIdRef()` for ID-only args, `isIdRef()`/`extractId()` for mixed refs (fuzzy name + explicit ID)
+- **Lenient ID handling**: Raw IDs (alphanumeric or numeric) are accepted everywhere without `id:` prefix. `lenientIdRef()` accepts `id:xxx` or raw ID-like strings, rejects plain text. `resolveRef()` auto-retries raw IDs as direct lookups before giving up. Use `isIdRef()`/`extractId()` for mixed refs (fuzzy name + explicit ID)
+- **Implicit view subcommand**: `td project <ref>` defaults to `td project view <ref>` via Commander's `{ isDefault: true }`. Same for task, workspace, comment, notification. Edge case: if a project/task name matches a subcommand name (e.g., "list"), the subcommand wins — user must use `td project view list`
+- **Named flag aliases**: Where commands accept positional args for context (project, task, workspace), named flags are also accepted (`--project`, `--task`, `--workspace`). Error if both positional and flag are provided
 - **API responses**: Client returns `{ results: T[], nextCursor? }` - always destructure
 - **Priority mapping**: API uses 4=p1 (highest), 1=p4 (lowest)
 - **Command registration**: Each command exports `registerXxxCommand(program: Command)` function
