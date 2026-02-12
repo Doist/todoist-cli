@@ -190,6 +190,17 @@ describe('resolveTaskRef', () => {
         await expect(resolveTaskRef(api, 'nonexistent')).rejects.toThrow('not found')
         expect(api.getTask).not.toHaveBeenCalled()
     })
+
+    it('rethrows non-404 API errors from raw ID fallback', async () => {
+        const { TodoistRequestError } = await import('@doist/todoist-api-typescript')
+        const networkError = new TodoistRequestError('Service Unavailable', 503)
+        const api = createMockApi({
+            getTask: vi.fn().mockRejectedValue(networkError),
+            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        })
+
+        await expect(resolveTaskRef(api, '6fmg66Fr27R59RPg')).rejects.toThrow('Service Unavailable')
+    })
 })
 
 describe('resolveProjectRef', () => {

@@ -1,4 +1,4 @@
-import { TodoistApi } from '@doist/todoist-api-typescript'
+import { TodoistApi, TodoistRequestError } from '@doist/todoist-api-typescript'
 import type { Project, Task } from './api/core.js'
 import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
@@ -77,8 +77,12 @@ async function resolveRef<T extends { id: string }>(
     if (looksLikeRawId(ref)) {
         try {
             return await fetchById(ref)
-        } catch {
-            // Already tried as ID — fall through to generic not-found
+        } catch (error) {
+            if (error instanceof TodoistRequestError && error.httpStatusCode === 404) {
+                // Genuine not-found — fall through to generic error
+            } else {
+                throw error
+            }
         }
     }
 
