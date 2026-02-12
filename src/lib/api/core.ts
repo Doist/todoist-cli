@@ -7,7 +7,6 @@ import {
     WorkspaceProject,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
-import { getLogger } from '../logger.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
 
@@ -51,34 +50,14 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                 if (spinnerConfig) {
                     return <T extends unknown[]>(...args: T) => {
                         const progressTracker = getProgressTracker()
-                        const logger = getLogger()
 
-                        // Extract cursor and other options from args for logging
+                        // Extract cursor from args for paginated methods
                         let cursor: string | null = null
-                        let callParams: Record<string, unknown> | null = null
                         if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
                             const options = args[0] as Record<string, unknown>
-                            callParams = options
                             if ('cursor' in options && typeof options.cursor === 'string') {
                                 cursor = options.cursor
                             }
-                        }
-
-                        // Verbose: log API method call
-                        logger.info(`api.${property}()`, {
-                            ...(cursor && { cursor }),
-                        })
-                        if (callParams) {
-                            // Log param keys + non-content values (redact query/content to protect user data)
-                            const safeParams: Record<string, unknown> = {}
-                            for (const [k, v] of Object.entries(callParams)) {
-                                if (k === 'query' || k === 'content') {
-                                    safeParams[k] = `[${String(v).length} chars]`
-                                } else {
-                                    safeParams[k] = v
-                                }
-                            }
-                            logger.detail(`api.${property}() params`, safeParams)
                         }
 
                         // Emit progress event for API call start
@@ -86,22 +65,12 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             progressTracker.emitApiCall(property, cursor)
                         }
 
-                        const startTime = performance.now()
                         const result = originalMethod.apply(target, args)
 
                         // If the method returns a Promise, wrap it with spinner and progress tracking
                         if (result && typeof result.then === 'function') {
                             const wrappedPromise = result
                                 .then((response: unknown) => {
-                                    const durationMs = Math.round(performance.now() - startTime)
-
-                                    // Verbose: log response summary with timing
-                                    const respMeta = extractResponseMeta(response)
-                                    logger.info(`api.${property}() response`, {
-                                        duration_ms: durationMs,
-                                        ...respMeta,
-                                    })
-
                                     // Emit progress event for successful response
                                     if (progressTracker.isEnabled()) {
                                         analyzeAndEmitApiResponse(progressTracker, response)
@@ -109,14 +78,6 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                                     return response
                                 })
                                 .catch((error: Error) => {
-                                    const durationMs = Math.round(performance.now() - startTime)
-
-                                    // Verbose: log error with timing
-                                    logger.info(`api.${property}() FAILED`, {
-                                        duration_ms: durationMs,
-                                        error: error.message,
-                                    })
-
                                     // Emit progress event for error
                                     if (progressTracker.isEnabled()) {
                                         progressTracker.emitError(
@@ -169,32 +130,11 @@ function analyzeAndEmitApiResponse(
     progressTracker.emitApiResponse(1, false, null)
 }
 
-/** Extract metadata from SDK response for verbose logging. */
-function extractResponseMeta(response: unknown): Record<string, unknown> {
-    const meta: Record<string, unknown> = {}
-    if (response && typeof response === 'object' && response !== null) {
-        const resp = response as Record<string, unknown>
-        if ('results' in resp && Array.isArray(resp.results)) {
-            meta.result_count = resp.results.length
-            meta.has_more = Boolean(resp.nextCursor)
-            if (resp.nextCursor) meta.next_cursor = resp.nextCursor
-        } else if (Array.isArray(response)) {
-            meta.result_count = response.length
-        } else if ('id' in resp) {
-            meta.id = resp.id
-        }
-    }
-    return meta
-}
-
 export async function getApi(): Promise<TodoistApi> {
     if (!apiClient) {
-        const logger = getLogger()
-        logger.detail('initializing TodoistApi client')
         const token = await getApiToken()
         const rawApi = new TodoistApi(token)
         apiClient = createSpinnerWrappedApi(rawApi)
-        logger.detail('TodoistApi client ready')
     }
     return apiClient
 }
@@ -245,14 +185,6 @@ export function generateUuid(): string {
 }
 
 export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncResponse> {
-    const logger = getLogger()
-    const cmdTypes = commands.map((c) => c.type).join(', ')
-    logger.info(`sync POST commands=[${cmdTypes}]`)
-    logger.detail('sync command details', {
-        command_count: commands.length,
-        types: commands.map((c) => c.type),
-    })
-
     const token = await getApiToken()
     const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
@@ -271,14 +203,12 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
 
     const data: SyncResponse = await response.json()
     if (data.error) {
-        logger.info('sync API error', { error: data.error, error_code: data.error_code })
         throw new Error(`Sync API error: ${data.error}`)
     }
 
     for (const cmd of commands) {
         const status = data.sync_status?.[cmd.uuid]
         if (status && typeof status === 'object' && 'error' in status) {
-            logger.info('sync command error', { type: cmd.type, error: status.error })
             throw new Error(status.error)
         }
     }
