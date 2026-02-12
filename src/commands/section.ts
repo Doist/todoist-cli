@@ -138,13 +138,18 @@ export function registerSectionCommand(program: Command): void {
     const listCmd = section
         .command('list [project]')
         .description('List sections in a project')
+        .option('--project <ref>', 'Project name or id:xxx')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each section')
-        .action((project, options) => {
+        .action((projectArg: string | undefined, options: ListOptions & { project?: string }) => {
+            if (projectArg && options.project) {
+                throw new Error('Cannot specify project both as argument and --project flag')
+            }
+            const project = projectArg || options.project
             if (!project) {
                 listCmd.help()
                 return

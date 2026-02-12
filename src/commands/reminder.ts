@@ -257,10 +257,15 @@ export function registerReminderCommand(program: Command): void {
     const listCmd = reminder
         .command('list [task]')
         .description('List reminders for a task')
+        .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((task, options) => {
+        .action((taskArg: string | undefined, options: ListOptions & { task?: string }) => {
+            if (taskArg && options.task) {
+                throw new Error('Cannot specify task both as argument and --task flag')
+            }
+            const task = taskArg || options.task
             if (!task) {
                 listCmd.help()
                 return
@@ -271,9 +276,14 @@ export function registerReminderCommand(program: Command): void {
     const addCmd = reminder
         .command('add [task]')
         .description('Add a reminder to a task')
+        .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
-        .action((task, options) => {
+        .action((taskArg: string | undefined, options: AddOptions & { task?: string }) => {
+            if (taskArg && options.task) {
+                throw new Error('Cannot specify task both as argument and --task flag')
+            }
+            const task = taskArg || options.task
             if (!task) {
                 addCmd.help()
                 return

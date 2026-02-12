@@ -334,13 +334,18 @@ export function registerWorkspaceCommand(program: Command): void {
     const projectsCmd = workspace
         .command('projects [ref]')
         .description('List projects in a workspace')
+        .option('--workspace <ref>', 'Workspace name or id:xxx')
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((ref, options) => {
+        .action((refArg: string | undefined, options: ProjectsOptions & { workspace?: string }) => {
+            if (refArg && options.workspace) {
+                throw new Error('Cannot specify workspace both as argument and --workspace flag')
+            }
+            const ref = refArg || options.workspace
             if (!ref) {
                 projectsCmd.help()
                 return
@@ -351,6 +356,7 @@ export function registerWorkspaceCommand(program: Command): void {
     const usersCmd = workspace
         .command('users [ref]')
         .description('List users in a workspace')
+        .option('--workspace <ref>', 'Workspace name or id:xxx')
         .option('--role <roles>', 'Filter by role (comma-separated: ADMIN,MEMBER,GUEST)')
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
@@ -358,7 +364,11 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((ref, options) => {
+        .action((refArg: string | undefined, options: UsersOptions & { workspace?: string }) => {
+            if (refArg && options.workspace) {
+                throw new Error('Cannot specify workspace both as argument and --workspace flag')
+            }
+            const ref = refArg || options.workspace
             if (!ref) {
                 usersCmd.help()
                 return

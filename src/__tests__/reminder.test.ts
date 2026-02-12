@@ -119,6 +119,35 @@ describe('reminder list', () => {
         expect(parsed.results[0].minuteOffset).toBe(60)
         consoleSpy.mockRestore()
     })
+
+    it('accepts --task flag instead of positional arg', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockGetTaskReminders.mockResolvedValue([])
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', '--task', 'id:task-1'])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both positional and --task are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'reminder',
+                'list',
+                'id:task-1',
+                '--task',
+                'id:task-2',
+            ]),
+        ).rejects.toThrow('Cannot specify task both as argument and --task flag')
+    })
 })
 
 describe('reminder add', () => {
@@ -309,6 +338,54 @@ describe('reminder add', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('NO_DUE_TIME'))
         expect(mockAddReminder).not.toHaveBeenCalled()
         consoleSpy.mockRestore()
+    })
+
+    it('accepts --task flag instead of positional arg', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            due: { date: '2024-01-15T10:00:00' },
+        })
+        mockAddReminder.mockResolvedValue('rem-new')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'add',
+            '--task',
+            'id:task-1',
+            '--before',
+            '30m',
+        ])
+
+        expect(mockAddReminder).toHaveBeenCalledWith({
+            itemId: 'task-1',
+            minuteOffset: 30,
+            due: undefined,
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both positional and --task are provided for add', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'reminder',
+                'add',
+                'id:task-1',
+                '--task',
+                'id:task-2',
+                '--before',
+                '30m',
+            ]),
+        ).rejects.toThrow('Cannot specify task both as argument and --task flag')
     })
 })
 
