@@ -96,6 +96,32 @@ describe('section list', () => {
         expect(parsed.results[0].name).toBe('Planning')
         consoleSpy.mockRestore()
     })
+
+    it('accepts --project flag instead of positional arg', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getSections.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'section', 'list', '--project', 'Work'])
+
+        expect(mockApi.getSections).toHaveBeenCalledWith(
+            expect.objectContaining({ projectId: 'proj-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both positional and --project are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'section', 'list', 'Work', '--project', 'Personal']),
+        ).rejects.toThrow('Cannot specify project both as argument and --project flag')
+    })
 })
 
 describe('section create', () => {
@@ -156,32 +182,6 @@ describe('section create', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('sec-xyz'))
         consoleSpy.mockRestore()
-    })
-
-    it('accepts --project flag instead of positional arg', async () => {
-        const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Work' }],
-            nextCursor: null,
-        })
-        mockApi.getSections.mockResolvedValue({ results: [], nextCursor: null })
-
-        await program.parseAsync(['node', 'td', 'section', 'list', '--project', 'Work'])
-
-        expect(mockApi.getSections).toHaveBeenCalledWith(
-            expect.objectContaining({ projectId: 'proj-1' }),
-        )
-        consoleSpy.mockRestore()
-    })
-
-    it('errors when both positional and --project are provided', async () => {
-        const program = createProgram()
-
-        await expect(
-            program.parseAsync(['node', 'td', 'section', 'list', 'Work', '--project', 'Personal']),
-        ).rejects.toThrow('Cannot specify project both as argument and --project flag')
     })
 })
 
