@@ -240,12 +240,16 @@ describe('label delete', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-123', name: 'urgent' }],
+            nextCursor: null,
+        })
         mockApi.deleteLabel.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'label', 'delete', 'id:label-123', '--yes'])
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-123')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent')
         consoleSpy.mockRestore()
     })
 
