@@ -746,6 +746,43 @@ describe('task add', () => {
         consoleSpy.mockRestore()
     })
 
+    it('resolves --section by name with digits when --project is provided', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getSections.mockResolvedValue({
+            results: [{ id: 'sec-q1', name: 'Q1', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--section',
+            'Q1',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ sectionId: 'sec-q1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
     it('creates task with --labels', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

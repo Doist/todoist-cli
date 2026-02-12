@@ -193,10 +193,12 @@ async function addTask(options: AddOptions): Promise<void> {
     }
 
     if (options.section) {
-        if (isIdRef(options.section) || looksLikeRawId(options.section)) {
-            args.sectionId = lenientIdRef(options.section, 'section')
+        if (isIdRef(options.section)) {
+            args.sectionId = extractId(options.section)
         } else if (args.projectId) {
             args.sectionId = await resolveSectionId(api, options.section, args.projectId)
+        } else if (looksLikeRawId(options.section)) {
+            args.sectionId = options.section
         } else {
             throw new Error(
                 formatError(
