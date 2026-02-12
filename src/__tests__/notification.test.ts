@@ -278,6 +278,18 @@ describe('notification view', () => {
         vi.clearAllMocks()
     })
 
+    it('implicit view: td notification <ref> behaves like td notification view <ref>', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchNotifications.mockResolvedValue([createShareInvite()])
+
+        await program.parseAsync(['node', 'td', 'notification', 'id:notif-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('share_invitation_sent'))
+        consoleSpy.mockRestore()
+    })
+
     it('shows notification details', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

@@ -309,13 +309,13 @@ export function registerCommentCommand(program: Command): void {
             return updateComment(id, options)
         })
 
-    const viewCmd = comment
-        .command('view [id]')
+    comment
+        .command('view [id]', { isDefault: true })
         .description('View a single comment with full details')
         .option('--raw', 'Disable markdown rendering')
         .action((id, options) => {
             if (!id) {
-                viewCmd.help()
+                comment.help()
                 return
             }
             return viewComment(id, options)

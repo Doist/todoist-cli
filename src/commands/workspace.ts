@@ -320,12 +320,12 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .action(listWorkspaces)
 
-    const viewCmd = workspace
-        .command('view [ref]')
+    workspace
+        .command('view [ref]', { isDefault: true })
         .description('View workspace details')
         .action((ref) => {
             if (!ref) {
-                viewCmd.help()
+                workspace.help()
                 return
             }
             return viewWorkspace(ref)

@@ -537,6 +537,23 @@ describe('comment view', () => {
         ).rejects.toThrow('INVALID_REF')
     })
 
+    it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'Test content',
+            postedAt: '2026-01-08T10:00:00Z',
+            fileAttachment: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'id:comment-123'])
+
+        expect(mockApi.getComment).toHaveBeenCalledWith('comment-123')
+        consoleSpy.mockRestore()
+    })
+
     it('shows full comment content', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

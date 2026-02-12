@@ -175,6 +175,13 @@ describe('workspace view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Doist'))
     })
 
+    it('implicit view: td workspace <ref> behaves like td workspace view <ref>', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'id:ws-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Doist'))
+    })
+
     it('shows workspace details', async () => {
         const program = createProgram()
         await program.parseAsync(['node', 'td', 'workspace', 'view', 'Doist'])

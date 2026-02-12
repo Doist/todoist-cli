@@ -393,15 +393,14 @@ export function registerTaskCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action(listTasks)
 
-    const viewCmd = task
-        .command('view [ref]')
+    task.command('view [ref]', { isDefault: true })
         .description('View task details')
         .option('--json', 'Output as JSON')
         .option('--full', 'Include all fields in output')
         .option('--raw', 'Disable markdown rendering')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                task.help()
                 return
             }
             return viewTask(ref, options)

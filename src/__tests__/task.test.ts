@@ -333,6 +333,26 @@ describe('task view', () => {
         consoleSpy.mockRestore()
     })
 
+    it('implicit view: td task <ref> behaves like td task view <ref>', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+            due: null,
+        })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'task', 'id:task-1'])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
     it('shows full metadata with --full flag', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

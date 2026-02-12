@@ -373,12 +373,12 @@ export function registerProjectCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each project')
         .action(listProjects)
 
-    const viewCmd = project
-        .command('view [ref]')
+    project
+        .command('view [ref]', { isDefault: true })
         .description('View project details')
         .action((ref) => {
             if (!ref) {
-                viewCmd.help()
+                project.help()
                 return
             }
             return viewProject(ref)
