@@ -117,7 +117,7 @@ td task uncomplete id:123456            # Reopen completed task
 # Add tasks
 td task add "New task" --due "tomorrow" --priority p2
 td task add "Task" --deadline "2024-03-01" --project "Work"
-td task add "Task" --duration 1h --section id:456
+td task add "Task" --duration 1h --section "Planning" --project "Work"
 td task add "Task" --labels "urgent,review" --parent "Parent task"
 td task add "Task" --description "Details here" --assignee me
 
@@ -178,7 +178,8 @@ td comment browse id:123                      # Open in browser
 
 ### Sections
 \`\`\`bash
-td section list "Work"                        # List sections in project
+td section list "Work"                        # List sections in project (or --project "Work")
+td section list --project "Work"              # Same, using named flag
 td section create --project "Work" --name "In Progress"
 td section update id:123 --name "Done"
 td section delete id:123 --yes
@@ -199,8 +200,8 @@ td filter browse "Urgent work"                # Open in browser
 \`\`\`bash
 td workspace list
 td workspace view "Workspace Name"
-td workspace projects "Workspace Name"
-td workspace users "Workspace Name" --role ADMIN,MEMBER
+td workspace projects "Workspace Name"        # or --workspace "Workspace Name"
+td workspace users "Workspace Name" --role ADMIN,MEMBER  # or --workspace "..."
 \`\`\`
 
 ### Activity
@@ -225,8 +226,8 @@ td notification reject id:123                 # Reject share invitation
 
 ### Reminders
 \`\`\`bash
-td reminder list "task name"
-td reminder add "task name" --before 30m
+td reminder list "task name"                  # or --task "task name"
+td reminder add "task name" --before 30m      # or --task "task name" --before 30m
 td reminder add "task name" --at "2024-01-15 10:00"
 td reminder update id:123 --before 1h
 td reminder delete id:123 --yes
