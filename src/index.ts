@@ -3,8 +3,6 @@
 import { program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { registerActivityCommand } from './commands/activity.js'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- side-effect: initialize logger early so it captures all -v flags
-import { initializeLogger } from './lib/logger.js'
 import { registerAddCommand } from './commands/add.js'
 import { registerAuthCommand } from './commands/auth.js'
 import { registerCommentCommand } from './commands/comment.js'
@@ -23,6 +21,7 @@ import { registerTaskCommand } from './commands/task.js'
 import { registerTodayCommand } from './commands/today.js'
 import { registerUpcomingCommand } from './commands/upcoming.js'
 import { registerWorkspaceCommand } from './commands/workspace.js'
+import { initializeLogger } from './lib/logger.js'
 
 program
     .name('td')
