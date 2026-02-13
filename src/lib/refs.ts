@@ -13,10 +13,6 @@ export interface ParsedTodoistUrl {
 
 const TODOIST_URL_PATTERN = /^https?:\/\/app\.todoist\.com\/app\/(task|project)\/([^?#]+)/
 
-export function isTodoistUrl(ref: string): boolean {
-    return TODOIST_URL_PATTERN.test(ref)
-}
-
 export function parseTodoistUrl(url: string): ParsedTodoistUrl | null {
     const match = url.match(TODOIST_URL_PATTERN)
     if (!match) return null
@@ -44,10 +40,8 @@ export function looksLikeRawId(ref: string): boolean {
 
 export function lenientIdRef(ref: string, entityName: string): string {
     if (isIdRef(ref)) return extractId(ref)
-    if (isTodoistUrl(ref)) {
-        const parsed = parseTodoistUrl(ref)!
-        return parsed.id
-    }
+    const parsedUrl = parseTodoistUrl(ref)
+    if (parsedUrl) return parsedUrl.id
     if (looksLikeRawId(ref)) return ref
     throw new Error(
         formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, [
@@ -73,10 +67,8 @@ async function resolveRef<T extends { id: string }>(
         )
     }
 
-    if (isTodoistUrl(ref)) {
-        const parsed = parseTodoistUrl(ref)!
-        return fetchById(parsed.id)
-    }
+    const parsedUrl = parseTodoistUrl(ref)
+    if (parsedUrl) return fetchById(parsedUrl.id)
 
     if (isIdRef(ref)) {
         return fetchById(extractId(ref))
@@ -211,10 +203,8 @@ export async function resolveParentTaskId(
     projectId: string,
     sectionId?: string,
 ): Promise<string> {
-    if (isTodoistUrl(ref)) {
-        const parsed = parseTodoistUrl(ref)!
-        return parsed.id
-    }
+    const parsedUrl = parseTodoistUrl(ref)
+    if (parsedUrl) return parsedUrl.id
 
     if (isIdRef(ref)) {
         return extractId(ref)

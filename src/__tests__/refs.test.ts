@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
     extractId,
     isIdRef,
-    isTodoistUrl,
     lenientIdRef,
     looksLikeRawId,
     parseTodoistUrl,
@@ -46,34 +45,6 @@ describe('extractId', () => {
 
     it('handles empty id after prefix', () => {
         expect(extractId('id:')).toBe('')
-    })
-})
-
-describe('isTodoistUrl', () => {
-    it('returns true for valid task URLs', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/task/buy-milk-abc123')).toBe(true)
-    })
-
-    it('returns true for valid project URLs', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/project/work-proj123')).toBe(true)
-    })
-
-    it('returns true for http URLs', () => {
-        expect(isTodoistUrl('http://app.todoist.com/app/task/buy-milk-abc123')).toBe(true)
-    })
-
-    it('returns false for wrong domain', () => {
-        expect(isTodoistUrl('https://todoist.com/app/task/buy-milk-abc123')).toBe(false)
-    })
-
-    it('returns false for unsupported entity types', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/settings/abc')).toBe(false)
-    })
-
-    it('returns false for non-URLs', () => {
-        expect(isTodoistUrl('Buy milk')).toBe(false)
-        expect(isTodoistUrl('id:123')).toBe(false)
-        expect(isTodoistUrl('')).toBe(false)
     })
 })
 
