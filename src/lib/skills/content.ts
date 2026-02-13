@@ -51,6 +51,7 @@ Most list commands also support:
 Tasks can be referenced by:
 - Name (fuzzy matched within context)
 - \`id:xxx\` - Explicit task ID
+- Todoist URL - Paste directly from the web app (e.g., \`https://app.todoist.com/app/task/buy-milk-abc123\`)
 
 ## Priority Mapping
 

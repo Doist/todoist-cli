@@ -4,6 +4,32 @@ import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
+type UrlEntityType = 'task' | 'project' | 'label' | 'filter' | 'section'
+
+export interface ParsedTodoistUrl {
+    entityType: UrlEntityType
+    id: string
+}
+
+const TODOIST_URL_PATTERN =
+    /^https?:\/\/app\.todoist\.com\/app\/(task|project|label|filter|section)\/([^?#]+)/
+
+export function isTodoistUrl(ref: string): boolean {
+    return TODOIST_URL_PATTERN.test(ref)
+}
+
+export function parseTodoistUrl(url: string): ParsedTodoistUrl | null {
+    const match = url.match(TODOIST_URL_PATTERN)
+    if (!match) return null
+
+    const entityType = match[1] as UrlEntityType
+    const slugAndId = match[2]
+    const lastHyphenIndex = slugAndId.lastIndexOf('-')
+    const id = lastHyphenIndex === -1 ? slugAndId : slugAndId.slice(lastHyphenIndex + 1)
+
+    return { entityType, id }
+}
+
 export function isIdRef(ref: string): boolean {
     return ref.startsWith('id:')
 }
@@ -19,10 +45,15 @@ export function looksLikeRawId(ref: string): boolean {
 
 export function lenientIdRef(ref: string, entityName: string): string {
     if (isIdRef(ref)) return extractId(ref)
+    if (isTodoistUrl(ref)) {
+        const parsed = parseTodoistUrl(ref)!
+        return parsed.id
+    }
     if (looksLikeRawId(ref)) return ref
     throw new Error(
         formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, [
             `Use id:xxx format (e.g., id:${ref})`,
+            `Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`,
         ]),
     )
 }
@@ -41,6 +72,11 @@ async function resolveRef<T extends { id: string }>(
                 `${entityType} reference cannot be empty.`,
             ),
         )
+    }
+
+    if (isTodoistUrl(ref)) {
+        const parsed = parseTodoistUrl(ref)!
+        return fetchById(parsed.id)
     }
 
     if (isIdRef(ref)) {
@@ -132,6 +168,20 @@ export async function resolveSectionId(
 ): Promise<string> {
     const { results: sections } = await api.getSections({ projectId })
 
+    if (isTodoistUrl(ref)) {
+        const parsed = parseTodoistUrl(ref)!
+        const section = sections.find((s) => s.id === parsed.id)
+        if (!section) {
+            throw new Error(
+                formatError(
+                    'SECTION_NOT_IN_PROJECT',
+                    `Section id:${parsed.id} does not belong to this project.`,
+                ),
+            )
+        }
+        return parsed.id
+    }
+
     if (isIdRef(ref)) {
         const id = extractId(ref)
         const section = sections.find((s) => s.id === id)
@@ -176,6 +226,11 @@ export async function resolveParentTaskId(
     projectId: string,
     sectionId?: string,
 ): Promise<string> {
+    if (isTodoistUrl(ref)) {
+        const parsed = parseTodoistUrl(ref)!
+        return parsed.id
+    }
+
     if (isIdRef(ref)) {
         return extractId(ref)
     }
