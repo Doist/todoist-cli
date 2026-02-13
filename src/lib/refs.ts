@@ -4,15 +4,14 @@ import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
-type UrlEntityType = 'task' | 'project' | 'label' | 'filter' | 'section'
+type UrlEntityType = 'task' | 'project'
 
 export interface ParsedTodoistUrl {
     entityType: UrlEntityType
     id: string
 }
 
-const TODOIST_URL_PATTERN =
-    /^https?:\/\/app\.todoist\.com\/app\/(task|project|label|filter|section)\/([^?#]+)/
+const TODOIST_URL_PATTERN = /^https?:\/\/app\.todoist\.com\/app\/(task|project)\/([^?#]+)/
 
 export function isTodoistUrl(ref: string): boolean {
     return TODOIST_URL_PATTERN.test(ref)
@@ -167,20 +166,6 @@ export async function resolveSectionId(
     projectId: string,
 ): Promise<string> {
     const { results: sections } = await api.getSections({ projectId })
-
-    if (isTodoistUrl(ref)) {
-        const parsed = parseTodoistUrl(ref)!
-        const section = sections.find((s) => s.id === parsed.id)
-        if (!section) {
-            throw new Error(
-                formatError(
-                    'SECTION_NOT_IN_PROJECT',
-                    `Section id:${parsed.id} does not belong to this project.`,
-                ),
-            )
-        }
-        return parsed.id
-    }
 
     if (isIdRef(ref)) {
         const id = extractId(ref)

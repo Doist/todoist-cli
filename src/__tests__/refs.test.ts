@@ -58,18 +58,6 @@ describe('isTodoistUrl', () => {
         expect(isTodoistUrl('https://app.todoist.com/app/project/work-proj123')).toBe(true)
     })
 
-    it('returns true for valid label URLs', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/label/urgent-lbl1')).toBe(true)
-    })
-
-    it('returns true for valid filter URLs', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/filter/today-flt1')).toBe(true)
-    })
-
-    it('returns true for valid section URLs', () => {
-        expect(isTodoistUrl('https://app.todoist.com/app/section/planning-sec1')).toBe(true)
-    })
-
     it('returns true for http URLs', () => {
         expect(isTodoistUrl('http://app.todoist.com/app/task/buy-milk-abc123')).toBe(true)
     })
@@ -447,37 +435,6 @@ describe('resolveSectionId', () => {
 
         const result = await resolveSectionId(api, 'id:sec-2', 'proj-1')
         expect(result).toBe('sec-2')
-    })
-
-    it('resolves ID from Todoist URL', async () => {
-        const sectionsWithSimpleIds = [
-            { id: 'sec1', name: 'Planning' },
-            { id: 'sec2', name: 'In Progress' },
-        ]
-        const api = createMockApi({
-            getSections: vi.fn().mockResolvedValue({ results: sectionsWithSimpleIds }),
-        })
-
-        const result = await resolveSectionId(
-            api,
-            'https://app.todoist.com/app/section/in-progress-sec2',
-            'proj-1',
-        )
-        expect(result).toBe('sec2')
-    })
-
-    it('throws when URL ID not found in project sections', async () => {
-        const api = createMockApi({
-            getSections: vi.fn().mockResolvedValue({ results: sections }),
-        })
-
-        await expect(
-            resolveSectionId(
-                api,
-                'https://app.todoist.com/app/section/other-nonexistent',
-                'proj-1',
-            ),
-        ).rejects.toThrow('does not belong to this project')
     })
 
     it('throws when ID not found in project sections', async () => {
