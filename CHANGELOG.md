@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0](https://github.com/Doist/todoist-cli/compare/v1.11.0...v1.12.0) (2026-02-13)
+
+
+### Features
+
+* add verbose/trace output for API latency debugging (-v to -vvvv) ([#56](https://github.com/Doist/todoist-cli/issues/56)) ([8d43e99](https://github.com/Doist/todoist-cli/commit/8d43e9913de2add12345ab34fdd98053669cf3d0))
+* lenient CLI ergonomics (raw IDs, implicit view, flag aliases) ([#60](https://github.com/Doist/todoist-cli/issues/60)) ([46236b3](https://github.com/Doist/todoist-cli/commit/46236b3290569fbc9bba2d92ab4569ba13d8c87e))
+
+
+### Performance Improvements
+
+* lazy-load commands and show early spinner for instant feedback ([#65](https://github.com/Doist/todoist-cli/issues/65)) ([9a9b79a](https://github.com/Doist/todoist-cli/commit/9a9b79a8f08dd20baba1c66385a1c9fbf8bc8899))
+
 ## [1.11.0](https://github.com/Doist/todoist-cli/compare/v1.10.0...v1.11.0) (2026-02-11)
 
 
