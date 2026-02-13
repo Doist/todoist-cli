@@ -3,6 +3,7 @@
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { initializeLogger } from './lib/logger.js'
+import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
     .name('td')
@@ -112,14 +113,23 @@ if (commandName && commands[commandName]) {
     if (idx !== -1) (program.commands as Command[]).splice(idx, 1)
     const loader = commands[commandName][1]
 
-    const register = await loader()
-    register(program)
+    startEarlySpinner()
+    try {
+        const register = await loader()
+        register(program)
+    } catch (err) {
+        stopEarlySpinner()
+        throw err
+    }
 }
 
 // Initialize verbose logger before parsing so it captures all -v flags
 initializeLogger()
 
-program.parseAsync().catch((err: Error) => {
-    console.error(err.message)
-    process.exit(1)
-})
+program
+    .parseAsync()
+    .catch((err: Error) => {
+        console.error(err.message)
+        process.exit(1)
+    })
+    .finally(() => stopEarlySpinner())
