@@ -46,12 +46,12 @@ Most list commands also support:
 - \`--no-spinner\` - Disable loading animations
 - \`--progress-jsonl\` - Machine-readable progress events (JSONL to stderr)
 
-## Task References
+## References
 
-Tasks can be referenced by:
+Tasks and projects can be referenced by:
 - Name (fuzzy matched within context)
-- \`id:xxx\` - Explicit task ID
-- Todoist URL - Paste directly from the web app (e.g., \`https://app.todoist.com/app/task/buy-milk-abc123\`)
+- \`id:xxx\` - Explicit ID
+- Todoist URL - Paste directly from the web app (e.g., \`https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB\` or \`https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT\`)
 
 ## Priority Mapping
 
