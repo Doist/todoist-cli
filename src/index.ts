@@ -1,26 +1,7 @@
 #!/usr/bin/env node
 
-import { program } from 'commander'
+import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
-import { registerActivityCommand } from './commands/activity.js'
-import { registerAddCommand } from './commands/add.js'
-import { registerAuthCommand } from './commands/auth.js'
-import { registerCommentCommand } from './commands/comment.js'
-import { registerCompletedCommand } from './commands/completed.js'
-import { registerFilterCommand } from './commands/filter.js'
-import { registerInboxCommand } from './commands/inbox.js'
-import { registerLabelCommand } from './commands/label.js'
-import { registerNotificationCommand } from './commands/notification.js'
-import { registerProjectCommand } from './commands/project.js'
-import { registerReminderCommand } from './commands/reminder.js'
-import { registerSectionCommand } from './commands/section.js'
-import { registerSettingsCommand } from './commands/settings.js'
-import { registerSkillCommand } from './commands/skill.js'
-import { registerStatsCommand } from './commands/stats.js'
-import { registerTaskCommand } from './commands/task.js'
-import { registerTodayCommand } from './commands/today.js'
-import { registerUpcomingCommand } from './commands/upcoming.js'
-import { registerWorkspaceCommand } from './commands/workspace.js'
 import { initializeLogger } from './lib/logger.js'
 
 program
@@ -39,25 +20,101 @@ Note for AI/LLM agents:
   Default JSON shows essential fields; use --full for all fields.`,
     )
 
-registerAddCommand(program)
-registerTodayCommand(program)
-registerUpcomingCommand(program)
-registerInboxCommand(program)
-registerCompletedCommand(program)
-registerTaskCommand(program)
-registerProjectCommand(program)
-registerLabelCommand(program)
-registerCommentCommand(program)
-registerSectionCommand(program)
-registerWorkspaceCommand(program)
-registerActivityCommand(program)
-registerReminderCommand(program)
-registerSettingsCommand(program)
-registerAuthCommand(program)
-registerStatsCommand(program)
-registerFilterCommand(program)
-registerNotificationCommand(program)
-registerSkillCommand(program)
+// Lazy command registry: [description, loader]
+const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = {
+    add: [
+        'Quick add task with natural language (e.g., "Buy milk tomorrow p1 #Shopping")',
+        async () => (await import('./commands/add.js')).registerAddCommand,
+    ],
+    today: [
+        'Show tasks due today and overdue',
+        async () => (await import('./commands/today.js')).registerTodayCommand,
+    ],
+    upcoming: [
+        'Show tasks due in the next N days (default: 7)',
+        async () => (await import('./commands/upcoming.js')).registerUpcomingCommand,
+    ],
+    inbox: [
+        'List tasks in Inbox',
+        async () => (await import('./commands/inbox.js')).registerInboxCommand,
+    ],
+    completed: [
+        'Show completed tasks',
+        async () => (await import('./commands/completed.js')).registerCompletedCommand,
+    ],
+    task: ['Manage tasks', async () => (await import('./commands/task.js')).registerTaskCommand],
+    project: [
+        'Manage projects',
+        async () => (await import('./commands/project.js')).registerProjectCommand,
+    ],
+    label: [
+        'Manage labels',
+        async () => (await import('./commands/label.js')).registerLabelCommand,
+    ],
+    comment: [
+        'Manage comments',
+        async () => (await import('./commands/comment.js')).registerCommentCommand,
+    ],
+    section: [
+        'Manage project sections',
+        async () => (await import('./commands/section.js')).registerSectionCommand,
+    ],
+    workspace: [
+        'Manage workspaces',
+        async () => (await import('./commands/workspace.js')).registerWorkspaceCommand,
+    ],
+    activity: [
+        'View activity logs',
+        async () => (await import('./commands/activity.js')).registerActivityCommand,
+    ],
+    reminder: [
+        'Manage task reminders',
+        async () => (await import('./commands/reminder.js')).registerReminderCommand,
+    ],
+    settings: [
+        'Manage user settings',
+        async () => (await import('./commands/settings.js')).registerSettingsCommand,
+    ],
+    auth: [
+        'Manage authentication',
+        async () => (await import('./commands/auth.js')).registerAuthCommand,
+    ],
+    stats: [
+        'View productivity stats and karma',
+        async () => (await import('./commands/stats.js')).registerStatsCommand,
+    ],
+    filter: [
+        'Manage filters',
+        async () => (await import('./commands/filter.js')).registerFilterCommand,
+    ],
+    notification: [
+        'Manage notifications',
+        async () => (await import('./commands/notification.js')).registerNotificationCommand,
+    ],
+    skill: [
+        'Manage coding agent skills/integrations',
+        async () => (await import('./commands/skill.js')).registerSkillCommand,
+    ],
+}
+
+// Register placeholders so --help lists all commands
+for (const [name, [description]] of Object.entries(commands)) {
+    program.command(name).description(description)
+}
+
+// Find which command (if any) is being invoked — match only known command names
+// to avoid treating option values (e.g. --progress-jsonl /tmp/out) as commands
+const commandName = process.argv.slice(2).find((a) => !a.startsWith('-') && a in commands)
+
+if (commandName && commands[commandName]) {
+    // Remove placeholder, load real command module, register it
+    const idx = program.commands.findIndex((c) => c.name() === commandName)
+    if (idx !== -1) (program.commands as Command[]).splice(idx, 1)
+    const loader = commands[commandName][1]
+
+    const register = await loader()
+    register(program)
+}
 
 // Initialize verbose logger before parsing so it captures all -v flags
 initializeLogger()
