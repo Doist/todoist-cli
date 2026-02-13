@@ -4,9 +4,10 @@ import type {
     ActivityObjectType,
 } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -129,10 +130,30 @@ export function registerActivityCommand(program: Command): void {
         .description('View activity logs')
         .option('--since <date>', 'Start date (YYYY-MM-DD)')
         .option('--until <date>', 'End date (YYYY-MM-DD)')
-        .option('--type <type>', 'Filter by object type (task, comment, project)')
-        .option(
-            '--event <type>',
-            'Filter by event type (added, updated, deleted, completed, uncompleted, archived, unarchived, shared, left)',
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--type <type>', 'Filter by object type (task, comment, project)'),
+                ['task', 'comment', 'project'],
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--event <type>',
+                    'Filter by event type (added, updated, deleted, completed, uncompleted, archived, unarchived, shared, left)',
+                ),
+                [
+                    'added',
+                    'updated',
+                    'deleted',
+                    'completed',
+                    'uncompleted',
+                    'archived',
+                    'unarchived',
+                    'shared',
+                    'left',
+                ],
+            ),
         )
         .option('--project <name>', 'Filter by project')
         .option('--by <user>', 'Filter by initiator (use "me" for yourself)')

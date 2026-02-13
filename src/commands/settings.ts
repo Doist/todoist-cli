@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import {
@@ -7,6 +7,7 @@ import {
     type UserSettings,
     updateUserSettings,
 } from '../lib/api/user-settings.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { formatError } from '../lib/output.js'
 import { withSpinner } from '../lib/spinner.js'
 
@@ -46,12 +47,10 @@ function formatThemeList(): string {
     return lines.join('\n')
 }
 
-function parseTheme(value: string): number {
-    const v = value.toLowerCase()
-    const theme = THEMES.find((t) => t.name === v || t.label.toLowerCase() === v)
+export function parseTheme(value: string): number {
+    const theme = THEMES.find((t) => t.name === value)
     if (theme) return theme.id
-
-    throw new Error(`Invalid theme: ${value}\n\n${formatThemeList()}`)
+    throw new Error(`Invalid theme: "${value}"`)
 }
 
 function getThemeName(themeId: number): string {
@@ -195,19 +194,25 @@ function parseBoolean(value: string): boolean {
     throw new Error(`Invalid boolean value: ${value}`)
 }
 
-function parseTimeFormat(value: string): number {
-    if (value === '24' || value === '24h') return 0
-    if (value === '12' || value === '12h') return 1
-    throw new Error(`Invalid time format: ${value}. Use 12 or 24.`)
+/** CLI value → Todoist API time format (0 = 24-hour, 1 = 12-hour) */
+const TIME_FORMAT_MAP: Record<string, number> = {
+    '12': 1,
+    '12h': 1,
+    '24': 0,
+    '24h': 0,
 }
 
-function parseDateFormat(value: string): number {
-    const v = value.toLowerCase()
-    if (v === 'intl' || v === 'dd-mm-yyyy' || v === 'dmy') return 0
-    if (v === 'us' || v === 'mm-dd-yyyy' || v === 'mdy') return 1
-    throw new Error(`Invalid date format: ${value}. Use us or intl.`)
+/** CLI value → Todoist API date format (0 = DD-MM-YYYY, 1 = MM-DD-YYYY) */
+const DATE_FORMAT_MAP: Record<string, number> = {
+    us: 1,
+    'mm-dd-yyyy': 1,
+    mdy: 1,
+    intl: 0,
+    'dd-mm-yyyy': 0,
+    dmy: 0,
 }
 
+/** CLI value → Todoist API day number (1 = Monday, 7 = Sunday) */
 const DAY_MAP: Record<string, number> = {
     monday: 1,
     mon: 1,
@@ -225,13 +230,27 @@ const DAY_MAP: Record<string, number> = {
     sun: 7,
 }
 
-function parseDay(value: string): number {
-    const day = DAY_MAP[value.toLowerCase()]
-    if (day !== undefined) return day
+export const TIME_FORMAT_CHOICES = Object.keys(TIME_FORMAT_MAP)
+export const DATE_FORMAT_CHOICES = Object.keys(DATE_FORMAT_MAP)
+export const DAY_CHOICES = Object.keys(DAY_MAP)
+export const THEME_CHOICES = THEMES.map((t) => t.name)
 
-    throw new Error(
-        `Invalid day: ${value}. Use: monday, tuesday, wednesday, thursday, friday, saturday, sunday (or mon, tue, etc.)`,
-    )
+export function parseTimeFormat(value: string): number {
+    const result = TIME_FORMAT_MAP[value]
+    if (result !== undefined) return result
+    throw new Error(`Invalid time format: "${value}"`)
+}
+
+export function parseDateFormat(value: string): number {
+    const result = DATE_FORMAT_MAP[value.toLowerCase()]
+    if (result !== undefined) return result
+    throw new Error(`Invalid date format: "${value}"`)
+}
+
+export function parseDay(value: string): number {
+    const result = DAY_MAP[value.toLowerCase()]
+    if (result !== undefined) return result
+    throw new Error(`Invalid day: "${value}"`)
 }
 
 function getDayName(day: number): string {
@@ -320,12 +339,37 @@ export function registerSettingsCommand(program: Command): void {
         .command('update')
         .description('Update settings')
         .option('--timezone <tz>', 'Timezone (e.g., UTC, Europe/London)')
-        .option('--time-format <format>', 'Time format: 12 or 24')
-        .option('--date-format <format>', 'Date format: us (MM-DD) or intl (DD-MM)')
-        .option('--start-day <day>', 'Week start: monday, tuesday, etc.')
-        .option('--theme <name>', 'Theme: todoist, dark, moonstone, tangerine, etc.')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--time-format <format>', 'Time format: 12 or 24'),
+                TIME_FORMAT_CHOICES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--date-format <format>', 'Date format: us (MM-DD) or intl (DD-MM)'),
+                DATE_FORMAT_CHOICES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--start-day <day>', 'Week start: monday, tuesday, etc.'),
+                DAY_CHOICES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--theme <name>', 'Theme: todoist, dark, moonstone, tangerine, etc.'),
+                THEME_CHOICES,
+            ),
+        )
         .option('--auto-reminder <min>', 'Default reminder minutes (0 to disable)')
-        .option('--next-week <day>', '"Next week" day: monday, tuesday, etc.')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--next-week <day>', '"Next week" day: monday, tuesday, etc.'),
+                DAY_CHOICES,
+            ),
+        )
         .option('--start-page <page>', 'Default view: inbox, today, or project URL')
         .option('--reminder-push <bool>', 'Push reminders: on/off')
         .option('--reminder-desktop <bool>', 'Desktop reminders: on/off')

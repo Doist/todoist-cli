@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi, isWorkspaceProject } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
 import { formatUserShortName } from '../lib/collaborators.js'
@@ -309,6 +309,16 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
     }
 }
 
+/**
+ * Build the --role option with argChoices for completions but without
+ * Commander validation, since the option accepts comma-separated values.
+ */
+export function roleOption(): Option {
+    const opt = new Option('--role <roles>', 'Filter by role (comma-separated: ADMIN,MEMBER,GUEST)')
+    opt.argChoices = ['ADMIN', 'MEMBER', 'GUEST']
+    return opt
+}
+
 export function registerWorkspaceCommand(program: Command): void {
     const workspace = program.command('workspace').description('Manage workspaces')
 
@@ -357,7 +367,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .command('users [ref]')
         .description('List users in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
-        .option('--role <roles>', 'Filter by role (comma-separated: ADMIN,MEMBER,GUEST)')
+        .addOption(roleOption())
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
         .option('--all', 'Fetch all results (no limit)')

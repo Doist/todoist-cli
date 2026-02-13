@@ -1,45 +1,22 @@
 import type { Command, Option } from 'commander'
 
+/**
+ * Configure an option with choices that accept any casing.
+ * Sets up argChoices for shell completions and Commander validation,
+ * but lowercases the input before checking against the choices list.
+ */
+export function withCaseInsensitiveChoices(opt: Option, values: string[]): Option {
+    opt.choices(values)
+    const original = opt.parseArg
+    if (original) {
+        opt.parseArg = <T>(arg: string, prev: T): T => original(arg.toLowerCase(), prev)
+    }
+    return opt
+}
+
 export interface CompletionItem {
     name: string
     description?: string
-}
-
-/**
- * Known enum values for specific option flags.
- * Keyed by long option name (e.g. '--priority').
- */
-const KNOWN_VALUES: Record<string, string[]> = {
-    '--priority': ['p1', 'p2', 'p3', 'p4'],
-    '--view-style': ['list', 'board'],
-    '--event': [
-        'added',
-        'updated',
-        'deleted',
-        'completed',
-        'uncompleted',
-        'archived',
-        'unarchived',
-        'shared',
-        'left',
-    ],
-    '--type': ['task', 'comment', 'project'],
-    '--theme': [
-        'todoist',
-        'dark',
-        'moonstone',
-        'tangerine',
-        'kale',
-        'blueberry',
-        'lavender',
-        'raspberry',
-    ],
-    '--time-format': ['12', '24'],
-    '--date-format': ['us', 'intl'],
-    '--start-day': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-    '--next-week': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-    '--role': ['ADMIN', 'MEMBER', 'GUEST'],
-    '--vacation': ['on', 'off'],
 }
 
 /** Names to exclude from completion results (internal commands) */
@@ -138,7 +115,7 @@ export function getCompletions(
             const opt = findOption(activeCmd, flag)
             if (opt && optionExpectsValue(opt) && eqIdx < 0) {
                 // Previous word is an option expecting a value — suggest enum values
-                const enumValues = KNOWN_VALUES[opt.long ?? '']
+                const enumValues = opt.argChoices
                 if (enumValues) {
                     return enumValues.filter((v) => v.startsWith(current)).map((v) => ({ name: v }))
                 }
@@ -155,7 +132,7 @@ export function getCompletions(
         const partial = current.slice(eqIdx + 1)
         const opt = findOption(activeCmd, flag)
         if (opt) {
-            const enumValues = KNOWN_VALUES[opt.long ?? '']
+            const enumValues = opt.argChoices
             if (enumValues) {
                 return enumValues
                     .filter((v) => v.startsWith(partial))

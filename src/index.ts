@@ -107,13 +107,23 @@ for (const [name, [description]] of Object.entries(commands)) {
     program.command(name).description(description)
 }
 
-// completion-server needs the full command tree (with all options) to walk
-// it for completions. Load every command module eagerly in that case.
+// completion-server needs the command tree to walk for completions.
+// Only load the completion module + the specific command being completed
+// (extracted from COMP_LINE) to keep startup fast.
 if (process.argv[2] === 'completion-server') {
-    ;(program.commands as Command[]).length = 0
+    const compLine = process.env.COMP_LINE ?? ''
+    const compWords = compLine.split(/\s+/).slice(1) // remove binary name (td)
+    if (compWords[0] === 'completion-server') compWords.shift()
+    const compCmd = compWords.find((w) => !w.startsWith('-') && w in commands)
+
+    const toLoad = ['completion', ...(compCmd && compCmd !== 'completion' ? [compCmd] : [])]
+    for (const name of toLoad) {
+        const idx = program.commands.findIndex((c) => c.name() === name)
+        if (idx !== -1) (program.commands as Command[]).splice(idx, 1)
+    }
     await Promise.all(
-        Object.values(commands).map(async ([, loader]) => {
-            const register = await loader()
+        toLoad.map(async (name) => {
+            const register = await commands[name][1]()
             register(program)
         }),
     )

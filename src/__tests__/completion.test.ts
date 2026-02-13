@@ -1,6 +1,11 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { describe, expect, it } from 'vitest'
-import { type CompletionItem, getCompletions } from '../lib/completion.js'
+import { roleOption } from '../commands/workspace.js'
+import {
+    type CompletionItem,
+    getCompletions,
+    withCaseInsensitiveChoices,
+} from '../lib/completion.js'
 
 function createTestProgram(): Command {
     const program = new Command()
@@ -11,7 +16,14 @@ function createTestProgram(): Command {
     task.command('list')
         .description('List tasks')
         .option('--project <name>', 'Filter by project')
-        .option('--priority <p1-p4>', 'Filter by priority')
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--priority <p1-p4>', 'Filter by priority'), [
+                'p1',
+                'p2',
+                'p3',
+                'p4',
+            ]),
+        )
         .option('--json', 'Output as JSON')
         .option('--limit <n>', 'Limit results')
         .option('--all', 'Fetch all results')
@@ -24,19 +36,84 @@ function createTestProgram(): Command {
     program
         .command('activity')
         .description('View activity logs')
-        .option('--event <type>', 'Filter by event type')
-        .option('--type <type>', 'Filter by object type')
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--event <type>', 'Filter by event type'), [
+                'added',
+                'updated',
+                'deleted',
+                'completed',
+                'uncompleted',
+                'archived',
+                'unarchived',
+                'shared',
+                'left',
+            ]),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--type <type>', 'Filter by object type'), [
+                'task',
+                'comment',
+                'project',
+            ]),
+        )
 
     const settings = program.command('settings').description('Manage settings')
     settings
         .command('update')
         .description('Update settings')
-        .option('--theme <name>', 'Theme name')
-        .option('--time-format <format>', 'Time format')
-        .option('--start-day <day>', 'Week start day')
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--theme <name>', 'Theme name'), [
+                'todoist',
+                'dark',
+                'moonstone',
+                'tangerine',
+                'kale',
+                'blueberry',
+                'lavender',
+                'raspberry',
+            ]),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--time-format <format>', 'Time format'), [
+                '12',
+                '24',
+                '12h',
+                '24h',
+            ]),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--start-day <day>', 'Week start day'), [
+                'monday',
+                'tuesday',
+                'wednesday',
+                'thursday',
+                'friday',
+                'saturday',
+                'sunday',
+                'mon',
+                'tue',
+                'wed',
+                'thu',
+                'fri',
+                'sat',
+                'sun',
+            ]),
+        )
 
     const project = program.command('project').description('Manage projects')
-    project.command('add').description('Add project').option('--view-style <style>', 'View style')
+    project
+        .command('add')
+        .description('Add project')
+        .addOption(
+            withCaseInsensitiveChoices(new Option('--view-style <style>', 'View style'), [
+                'list',
+                'board',
+            ]),
+        )
+
+    // Option with argChoices set directly (no Commander validation) to allow comma-separated values
+    const workspace = program.command('workspace').description('Manage workspaces')
+    workspace.command('users').description('List users').addOption(roleOption())
 
     // Hidden command (like completion-server)
     const hidden = program.command('hidden-cmd').description('Internal command')
@@ -191,7 +268,7 @@ describe('getCompletions', () => {
         it('completes time-format values', () => {
             const program = createTestProgram()
             const result = getCompletions(program, ['settings', 'update', '--time-format', ''], '')
-            expect(names(result)).toEqual(['12', '24'])
+            expect(names(result)).toEqual(['12', '24', '12h', '24h'])
         })
 
         it('completes start-day values', () => {
@@ -200,7 +277,15 @@ describe('getCompletions', () => {
             const valueNames = names(result)
             expect(valueNames).toContain('monday')
             expect(valueNames).toContain('sunday')
-            expect(valueNames).toHaveLength(7)
+            expect(valueNames).toContain('mon')
+            expect(valueNames).toContain('sun')
+            expect(valueNames).toHaveLength(14)
+        })
+
+        it('completes argChoices set without .choices() (no Commander validation)', () => {
+            const program = createTestProgram()
+            const result = getCompletions(program, ['workspace', 'users', '--role', ''], '')
+            expect(names(result)).toEqual(['ADMIN', 'MEMBER', 'GUEST'])
         })
 
         it('returns empty for options with no known enum', () => {

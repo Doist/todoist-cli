@@ -1,10 +1,11 @@
 import type { ProjectViewStyle } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { openInBrowser } from '../lib/browser.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -414,7 +415,12 @@ export function registerProjectCommand(program: Command): void {
         .option('--color <color>', 'Project color')
         .option('--favorite', 'Mark as favorite')
         .option('--parent <ref>', 'Parent project (name or id:xxx)')
-        .option('--view-style <style>', 'View style (list or board)')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--view-style <style>', 'View style (list or board)'),
+                ['list', 'board'],
+            ),
+        )
         .action((options) => {
             if (!options.name) {
                 createCmd.help()
@@ -430,7 +436,12 @@ export function registerProjectCommand(program: Command): void {
         .option('--color <color>', 'New color')
         .option('--favorite', 'Mark as favorite')
         .option('--no-favorite', 'Remove from favorites')
-        .option('--view-style <style>', 'View style (list or board)')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--view-style <style>', 'View style (list or board)'),
+                ['list', 'board'],
+            ),
+        )
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
