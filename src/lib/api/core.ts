@@ -36,6 +36,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         updateSection: { text: 'Updating section...', color: 'yellow' },
         deleteSection: { text: 'Deleting section...', color: 'yellow' },
         quickAddTask: { text: 'Adding task...', color: 'green' },
+        getTasksByFilter: { text: 'Loading tasks...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
