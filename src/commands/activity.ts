@@ -53,6 +53,9 @@ const OBJECT_TYPE_LABELS: Record<string, string> = {
     project: 'project',
 }
 
+const EVENT_CHOICES = Object.keys(EVENT_COLORS)
+const OBJECT_TYPE_CHOICES = [...new Set(Object.values(OBJECT_TYPE_LABELS))]
+
 function formatEventType(eventType: string): string {
     const colorFn = EVENT_COLORS[eventType] || chalk.white
     return colorFn(eventType.padEnd(11))
@@ -133,26 +136,13 @@ export function registerActivityCommand(program: Command): void {
         .addOption(
             withCaseInsensitiveChoices(
                 new Option('--type <type>', 'Filter by object type (task, comment, project)'),
-                ['task', 'comment', 'project'],
+                OBJECT_TYPE_CHOICES,
             ),
         )
         .addOption(
             withCaseInsensitiveChoices(
-                new Option(
-                    '--event <type>',
-                    'Filter by event type (added, updated, deleted, completed, uncompleted, archived, unarchived, shared, left)',
-                ),
-                [
-                    'added',
-                    'updated',
-                    'deleted',
-                    'completed',
-                    'uncompleted',
-                    'archived',
-                    'unarchived',
-                    'shared',
-                    'left',
-                ],
+                new Option('--event <type>', 'Filter by event type'),
+                EVENT_CHOICES,
             ),
         )
         .option('--project <name>', 'Filter by project')

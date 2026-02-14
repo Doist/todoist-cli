@@ -16,6 +16,8 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveProjectRef } from '../lib/refs.js'
 import { projectUrl } from '../lib/urls.js'
 
+const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board']
+
 interface ListOptions {
     limit?: string
     cursor?: string
@@ -418,7 +420,7 @@ export function registerProjectCommand(program: Command): void {
         .addOption(
             withCaseInsensitiveChoices(
                 new Option('--view-style <style>', 'View style (list or board)'),
-                ['list', 'board'],
+                VIEW_STYLE_CHOICES,
             ),
         )
         .action((options) => {
@@ -439,7 +441,7 @@ export function registerProjectCommand(program: Command): void {
         .addOption(
             withCaseInsensitiveChoices(
                 new Option('--view-style <style>', 'View style (list or board)'),
-                ['list', 'board'],
+                VIEW_STYLE_CHOICES,
             ),
         )
         .action((ref, options) => {

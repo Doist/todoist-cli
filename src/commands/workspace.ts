@@ -309,13 +309,18 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
     }
 }
 
+const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
+
 /**
  * Build the --role option with argChoices for completions but without
  * Commander validation, since the option accepts comma-separated values.
  */
 export function roleOption(): Option {
-    const opt = new Option('--role <roles>', 'Filter by role (comma-separated: ADMIN,MEMBER,GUEST)')
-    opt.argChoices = ['ADMIN', 'MEMBER', 'GUEST']
+    const opt = new Option(
+        '--role <roles>',
+        `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
+    )
+    opt.argChoices = WORKSPACE_ROLES
     return opt
 }
 
