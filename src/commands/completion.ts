@@ -1,12 +1,13 @@
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import type { SupportedShell } from '@pnpm/tabtab'
 import { Command } from 'commander'
 import { getCompletions, parseCompLine } from '../lib/completion.js'
 
 // pwsh is included because tabtab supports it — installedShells() needs to
 // detect and clean up pwsh completion files even though we don't advertise it.
-const COMPLETION_EXTENSIONS: Record<string, string> = {
+const COMPLETION_EXTENSIONS: Record<SupportedShell, string> = {
     bash: 'bash',
     zsh: 'zsh',
     fish: 'fish',
@@ -50,7 +51,7 @@ export function registerCompletionCommand(program: Command): void {
             await tabtab.install({
                 name: 'td',
                 completer: 'td',
-                shell: shell as 'bash' | 'zsh' | 'fish' | undefined,
+                shell: shell as SupportedShell,
             })
 
             console.log('Shell completions installed successfully.')
@@ -73,7 +74,7 @@ export function registerCompletionCommand(program: Command): void {
             for (const shell of shells) {
                 await tabtab.uninstall({
                     name: 'td',
-                    shell: shell as 'bash' | 'zsh' | 'fish' | 'pwsh',
+                    shell: shell as SupportedShell,
                 })
             }
             console.log('Shell completions removed.')
