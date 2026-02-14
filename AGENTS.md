@@ -37,6 +37,7 @@ src/
     project.ts          # td project <action>
     label.ts            # td label <action>
     filter.ts           # td filter <action>
+    view.ts             # td view <url> (URL router)
     comment.ts          # td comment <action>
     section.ts          # td section <action>
   lib/
@@ -44,7 +45,7 @@ src/
     auth.ts             # token loading/saving (env var or config file)
     completion.ts       # Commander tree-walker for shell completions
     output.ts           # formatting utilities
-    refs.ts             # id: prefix parsing, URL parsing, ref resolution
+    refs.ts             # id: prefix parsing, URL parsing/classification, ref resolution
     urls.ts             # Todoist web app URL builders
     task-list.ts        # shared task listing logic
   types/

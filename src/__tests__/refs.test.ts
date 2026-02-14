@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+    classifyTodoistUrl,
     extractId,
     isIdRef,
     lenientIdRef,
@@ -658,5 +659,79 @@ describe('resolveParentTaskId', () => {
             ),
         ).rejects.toThrow('Expected a task URL, but got a project URL')
         expect(api.getTasks).not.toHaveBeenCalled()
+    })
+})
+
+describe('classifyTodoistUrl', () => {
+    it('classifies task URLs as entity routes', () => {
+        const result = classifyTodoistUrl(
+            'https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB',
+        )
+        expect(result).toEqual({
+            kind: 'entity',
+            entityType: 'task',
+            id: '8Jx4mVr72kPn3QwB',
+        })
+    })
+
+    it('classifies project URLs as entity routes', () => {
+        const result = classifyTodoistUrl(
+            'https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT',
+        )
+        expect(result).toEqual({
+            kind: 'entity',
+            entityType: 'project',
+            id: '2pN7vKx49mRq6YhT',
+        })
+    })
+
+    it('classifies label URLs as entity routes', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/label/urgent-abc123')
+        expect(result).toEqual({
+            kind: 'entity',
+            entityType: 'label',
+            id: 'abc123',
+        })
+    })
+
+    it('classifies filter URLs as entity routes', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/filter/work-tasks-def456')
+        expect(result).toEqual({
+            kind: 'entity',
+            entityType: 'filter',
+            id: 'def456',
+        })
+    })
+
+    it('classifies today URL as view route', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/today')
+        expect(result).toEqual({ kind: 'view', view: 'today' })
+    })
+
+    it('classifies upcoming URL as view route', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/upcoming')
+        expect(result).toEqual({ kind: 'view', view: 'upcoming' })
+    })
+
+    it('handles today URL with query params', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/today?lang=en')
+        expect(result).toEqual({ kind: 'view', view: 'today' })
+    })
+
+    it('handles upcoming URL with fragment', () => {
+        const result = classifyTodoistUrl('https://app.todoist.com/app/upcoming#section')
+        expect(result).toEqual({ kind: 'view', view: 'upcoming' })
+    })
+
+    it('returns null for non-Todoist URLs', () => {
+        expect(classifyTodoistUrl('https://example.com')).toBeNull()
+    })
+
+    it('returns null for unrecognized Todoist paths', () => {
+        expect(classifyTodoistUrl('https://app.todoist.com/app/settings')).toBeNull()
+    })
+
+    it('returns null for plain text', () => {
+        expect(classifyTodoistUrl('Buy milk')).toBeNull()
     })
 })

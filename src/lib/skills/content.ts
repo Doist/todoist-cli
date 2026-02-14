@@ -25,6 +25,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
+- \`td view <url>\` - View any Todoist entity by URL
 
 ## Output Formats
 
@@ -262,6 +263,18 @@ td completion install bash                    # Install for specific shell
 td completion install zsh
 td completion install fish
 td completion uninstall                       # Remove completions
+\`\`\`
+
+### View (URL Router)
+\`\`\`bash
+td view <todoist-url>                          # Auto-route to appropriate view by URL type
+td view https://app.todoist.com/app/task/buy-milk-abc123
+td view https://app.todoist.com/app/project/work-def456
+td view https://app.todoist.com/app/label/urgent-ghi789
+td view https://app.todoist.com/app/filter/work-tasks-jkl012
+td view https://app.todoist.com/app/today
+td view https://app.todoist.com/app/upcoming
+td view <url> --json                           # JSON output for entity views
 \`\`\`
 
 ## Examples

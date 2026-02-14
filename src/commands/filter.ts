@@ -189,7 +189,7 @@ interface ShowOptions {
     showUrls?: boolean
 }
 
-async function showFilter(nameOrId: string, options: ShowOptions): Promise<void> {
+export async function showFilter(nameOrId: string, options: ShowOptions): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
     const api = await getApi()
 

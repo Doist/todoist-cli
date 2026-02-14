@@ -155,7 +155,7 @@ async function listProjects(options: ListOptions): Promise<void> {
     }
 }
 
-async function viewProject(ref: string): Promise<void> {
+export async function viewProject(ref: string): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
