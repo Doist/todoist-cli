@@ -1228,7 +1228,7 @@ describe('project move', () => {
             '--to-workspace',
             'Acme Corp',
             '--folder',
-            'Engineering',
+            'Eng',
         ])
 
         expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({

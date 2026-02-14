@@ -436,9 +436,11 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
             workspaceId: workspace.id,
         }
 
+        let folderName: string | undefined
         if (options.folder) {
             const folder = await resolveFolderRef(options.folder, workspace.id)
             args.folderId = folder.id
+            folderName = folder.name
         }
 
         if (options.visibility) {
@@ -448,8 +450,8 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
         await api.moveProjectToWorkspace(args)
 
         let output = `Moved "${project.name}" to workspace "${workspace.name}"`
-        if (options.folder) {
-            output += ` (folder: ${options.folder})`
+        if (folderName) {
+            output += ` (folder: ${folderName})`
         }
         console.log(output)
     } else {
