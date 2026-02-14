@@ -41,7 +41,7 @@ export function registerViewCommand(program: Command): void {
                 case 'task':
                     return viewTask(ref, options)
                 case 'project':
-                    return viewProject(ref)
+                    return viewProject(ref, options)
                 case 'label':
                     return viewLabel(ref, options)
                 case 'filter':

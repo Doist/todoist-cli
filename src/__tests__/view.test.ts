@@ -181,6 +181,30 @@ describe('view command', () => {
         ).rejects.toThrow('Not a recognized Todoist URL')
     })
 
+    it('passes --json option to project view', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            isShared: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'view',
+            'https://app.todoist.com/app/project/work-proj1',
+            '--json',
+        ])
+
+        expect(mockApi.getProject).toHaveBeenCalledWith('proj1')
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('"id"')
+    })
+
     it('passes --json option to entity views', async () => {
         const program = createProgram()
 
