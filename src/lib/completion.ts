@@ -36,12 +36,14 @@ export function withCaseInsensitiveChoices(opt: Option, values: string[]): Optio
  * Parse COMP_LINE into words, stripping the binary name and the
  * 'completion-server' token that tabtab injects.
  *
- * NOTE: This splits on whitespace and does not handle quoted arguments.
+ * FIXME: This splits on whitespace and does not handle quoted arguments.
  * A value like `"Buy milk tomorrow"` would be split into three words.
  * In practice this is fine because we only walk command/option names,
  * and shells provide the already-split COMP_WORDS separately. If a
  * positional arg value happens to match a subcommand name, the tree
- * walker could descend incorrectly — but that's a very unlikely edge case.
+ * walker could descend incorrectly (see tests under "parseCompLine
+ * quoted argument limitation"). This can be fixed once tabtab exposes
+ * the shell-provided words: https://github.com/pnpm/tabtab/issues/35
  */
 export function parseCompLine(compLine: string): string[] {
     const words = compLine.split(/\s+/).slice(1) // remove binary name (td)
