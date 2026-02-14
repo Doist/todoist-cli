@@ -286,6 +286,45 @@ describe('project view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Engineering'))
     })
 
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: true,
+            url: 'https://...',
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('proj-1')
+        expect(parsed.name).toBe('Work')
+    })
+
+    it('outputs full JSON with --json --full', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: true,
+            isShared: false,
+            url: 'https://...',
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1', '--json', '--full'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('proj-1')
+        expect(parsed.color).toBe('blue')
+    })
+
     it('shows shared status for shared personal project', async () => {
         const program = createProgram()
 
