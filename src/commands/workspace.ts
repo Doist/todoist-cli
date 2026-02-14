@@ -7,6 +7,8 @@ import { withUnvalidatedChoices } from '../lib/completion.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
 
+const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
+
 interface ListOptions {
     json?: boolean
     ndjson?: boolean
@@ -316,8 +318,6 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
         console.log(chalk.dim(`\n... more items exist. Use --all to fetch everything.`))
     }
 }
-
-const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
 export function registerWorkspaceCommand(program: Command): void {
     const workspace = program.command('workspace').description('Manage workspaces')

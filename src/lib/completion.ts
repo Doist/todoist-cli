@@ -1,11 +1,6 @@
 import type { Command, Option } from 'commander'
 
 /**
- * Configure an option with choices that accept any casing.
- * Sets up argChoices for shell completions and Commander validation,
- * but lowercases the input before checking against the choices list.
- */
-/**
  * Set argChoices on an option without enabling Commander's built-in
  * validation. The choices are surfaced for shell completions but the
  * option still accepts any value at parse time.

@@ -23,12 +23,12 @@ const COMPLETION_EXTENSIONS: Record<SupportedShell, string> = {
  * for ones that were never installed. We detect which shells are actually
  * installed and uninstall only those. Remove once the upstream issue is fixed.
  */
-function installedShells(): string[] {
+function installedShells(): SupportedShell[] {
     return Object.entries(COMPLETION_EXTENSIONS)
         .filter(([shell, ext]) =>
             existsSync(join(homedir(), '.config', 'tabtab', shell, `td.${ext}`)),
         )
-        .map(([shell]) => shell)
+        .map(([shell]) => shell as SupportedShell)
 }
 
 export function registerCompletionCommand(program: Command): void {
@@ -74,7 +74,7 @@ export function registerCompletionCommand(program: Command): void {
             for (const shell of shells) {
                 await tabtab.uninstall({
                     name: 'td',
-                    shell: shell as SupportedShell,
+                    shell,
                 })
             }
             console.log('Shell completions removed.')
@@ -105,7 +105,7 @@ export function registerCompletionCommand(program: Command): void {
             // after '--flag='. Use env.lastPartial (cursor-position-aware) to
             // detect this case and restore the actual word being completed.
             if (current === '' && env.lastPartial.includes('=')) {
-                words.pop()
+                if (words.at(-1) === '') words.pop()
                 current = env.lastPartial
             }
 
