@@ -43,6 +43,8 @@ const EVENT_COLORS: Record<string, (s: string) => string> = {
     unarchived: chalk.cyan,
     shared: chalk.magenta,
     left: chalk.gray,
+    reordered: chalk.cyan,
+    moved: chalk.cyan,
 }
 
 const OBJECT_TYPE_LABELS: Record<string, string> = {

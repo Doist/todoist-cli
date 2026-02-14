@@ -16,7 +16,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveProjectRef } from '../lib/refs.js'
 import { projectUrl } from '../lib/urls.js'
 
-const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board']
+const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board', 'calendar']
 
 interface ListOptions {
     limit?: string
@@ -419,7 +419,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--parent <ref>', 'Parent project (name or id:xxx)')
         .addOption(
             withCaseInsensitiveChoices(
-                new Option('--view-style <style>', 'View style (list or board)'),
+                new Option('--view-style <style>', 'View style (list, board, or calendar)'),
                 VIEW_STYLE_CHOICES,
             ),
         )
@@ -440,7 +440,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--no-favorite', 'Remove from favorites')
         .addOption(
             withCaseInsensitiveChoices(
-                new Option('--view-style <style>', 'View style (list or board)'),
+                new Option('--view-style <style>', 'View style (list, board, or calendar)'),
                 VIEW_STYLE_CHOICES,
             ),
         )
