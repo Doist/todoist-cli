@@ -111,9 +111,8 @@ for (const [name, [description]] of Object.entries(commands)) {
 // Only load the completion module + the specific command being completed
 // (extracted from COMP_LINE) to keep startup fast.
 if (process.argv[2] === 'completion-server') {
-    const compLine = process.env.COMP_LINE ?? ''
-    const compWords = compLine.split(/\s+/).slice(1) // remove binary name (td)
-    if (compWords[0] === 'completion-server') compWords.shift()
+    const { parseCompLine } = await import('./lib/completion.js')
+    const compWords = parseCompLine(process.env.COMP_LINE ?? '')
     const compCmd = compWords.find((w) => !w.startsWith('-') && w in commands)
 
     const toLoad = ['completion', ...(compCmd && compCmd !== 'completion' ? [compCmd] : [])]

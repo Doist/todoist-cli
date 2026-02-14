@@ -14,6 +14,16 @@ export function withCaseInsensitiveChoices(opt: Option, values: string[]): Optio
     return opt
 }
 
+/**
+ * Parse COMP_LINE into words, stripping the binary name and the
+ * 'completion-server' token that tabtab injects.
+ */
+export function parseCompLine(compLine: string): string[] {
+    const words = compLine.split(/\s+/).slice(1) // remove binary name (td)
+    if (words[0] === 'completion-server') words.shift()
+    return words
+}
+
 export interface CompletionItem {
     name: string
     description?: string

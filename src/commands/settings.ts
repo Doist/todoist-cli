@@ -230,6 +230,17 @@ const DAY_MAP: Record<string, number> = {
     sun: 7,
 }
 
+/**
+ * Build an option for boolean settings (on/off). Sets argChoices for
+ * shell completions without Commander validation, since parseBoolean()
+ * also accepts true/false/yes/no/1/0.
+ */
+function boolOption(flags: string, description: string): Option {
+    const opt = new Option(flags, description)
+    opt.argChoices = ['on', 'off']
+    return opt
+}
+
 export const TIME_FORMAT_CHOICES = Object.keys(TIME_FORMAT_MAP)
 export const DATE_FORMAT_CHOICES = Object.keys(DATE_FORMAT_MAP)
 export const DAY_CHOICES = Object.keys(DAY_MAP)
@@ -371,11 +382,13 @@ export function registerSettingsCommand(program: Command): void {
             ),
         )
         .option('--start-page <page>', 'Default view: inbox, today, or project URL')
-        .option('--reminder-push <bool>', 'Push reminders: on/off')
-        .option('--reminder-desktop <bool>', 'Desktop reminders: on/off')
-        .option('--reminder-email <bool>', 'Email reminders: on/off')
-        .option('--completed-sound-desktop <bool>', 'Desktop completion sound: on/off')
-        .option('--completed-sound-mobile <bool>', 'Mobile completion sound: on/off')
+        .addOption(boolOption('--reminder-push <bool>', 'Push reminders: on/off'))
+        .addOption(boolOption('--reminder-desktop <bool>', 'Desktop reminders: on/off'))
+        .addOption(boolOption('--reminder-email <bool>', 'Email reminders: on/off'))
+        .addOption(
+            boolOption('--completed-sound-desktop <bool>', 'Desktop completion sound: on/off'),
+        )
+        .addOption(boolOption('--completed-sound-mobile <bool>', 'Mobile completion sound: on/off'))
         .action(async (options: UpdateOptions, command: Command) => {
             const hasOptions = Object.values(options).some((v) => v !== undefined)
             if (!hasOptions) {

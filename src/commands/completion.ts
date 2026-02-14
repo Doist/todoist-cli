@@ -2,8 +2,10 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { Command } from 'commander'
-import { getCompletions } from '../lib/completion.js'
+import { getCompletions, parseCompLine } from '../lib/completion.js'
 
+// pwsh is included because tabtab supports it — installedShells() needs to
+// detect and clean up pwsh completion files even though we don't advertise it.
 const COMPLETION_EXTENSIONS: Record<string, string> = {
     bash: 'bash',
     zsh: 'zsh',
@@ -93,13 +95,7 @@ export function registerCompletionCommand(program: Command): void {
 
             const shell = tabtab.getShellFromEnv(process.env)
 
-            // Parse the line into words, removing the binary name (td)
-            const words = env.line.split(/\s+/).slice(1)
-
-            // Remove the 'completion-server' part if present (tabtab inserts it)
-            if (words[0] === 'completion-server') {
-                words.shift()
-            }
+            const words = parseCompLine(env.line)
 
             let current = env.last
 
