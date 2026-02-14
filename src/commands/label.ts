@@ -189,7 +189,7 @@ interface ViewOptions {
     showUrls?: boolean
 }
 
-async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
+export async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
     const label = await resolveLabelRef(nameOrId)
     const api = await getApi()
 

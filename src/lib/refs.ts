@@ -5,7 +5,7 @@ import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
 const URL_ENTITY_TYPES = ['task', 'project', 'label', 'filter'] as const
-type UrlEntityType = (typeof URL_ENTITY_TYPES)[number]
+export type UrlEntityType = (typeof URL_ENTITY_TYPES)[number]
 
 export interface ParsedTodoistUrl {
     entityType: UrlEntityType
@@ -26,6 +26,27 @@ export function parseTodoistUrl(url: string): ParsedTodoistUrl | null {
     const id = lastHyphenIndex === -1 ? slugAndId : slugAndId.slice(lastHyphenIndex + 1)
 
     return { entityType, id }
+}
+
+const VIEW_TYPES = ['today', 'upcoming'] as const
+type ViewType = (typeof VIEW_TYPES)[number]
+
+export type TodoistRoute =
+    | { kind: 'entity'; entityType: UrlEntityType; id: string }
+    | { kind: 'view'; view: ViewType }
+
+const VIEW_URL_PATTERN = new RegExp(
+    `^https?://app\\.todoist\\.com/app/(${VIEW_TYPES.join('|')})(?:[?#]|$)`,
+)
+
+export function classifyTodoistUrl(url: string): TodoistRoute | null {
+    const parsed = parseTodoistUrl(url)
+    if (parsed) return { kind: 'entity', entityType: parsed.entityType, id: parsed.id }
+
+    const viewMatch = url.match(VIEW_URL_PATTERN)
+    if (viewMatch) return { kind: 'view', view: viewMatch[1] as ViewType }
+
+    return null
 }
 
 export function isIdRef(ref: string): boolean {

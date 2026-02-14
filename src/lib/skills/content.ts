@@ -24,6 +24,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td reminder add\` - Task reminders
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
+- \`td view <url>\` - View any Todoist entity by URL
 
 ## Output Formats
 
@@ -251,6 +252,18 @@ td settings view --json
 td settings update --timezone "America/New_York"
 td settings update --time-format 24 --date-format intl
 td settings themes                            # List available themes
+\`\`\`
+
+### View (URL Router)
+\`\`\`bash
+td view <todoist-url>                          # Auto-route to appropriate view by URL type
+td view https://app.todoist.com/app/task/buy-milk-abc123
+td view https://app.todoist.com/app/project/work-def456
+td view https://app.todoist.com/app/label/urgent-ghi789
+td view https://app.todoist.com/app/filter/work-tasks-jkl012
+td view https://app.todoist.com/app/today
+td view https://app.todoist.com/app/upcoming
+td view <url> --json                           # JSON output for entity views
 \`\`\`
 
 ## Examples

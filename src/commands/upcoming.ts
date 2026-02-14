@@ -25,6 +25,150 @@ interface UpcomingOptions {
     showUrls?: boolean
 }
 
+export async function showUpcoming(
+    daysArg: string | undefined,
+    options: UpcomingOptions,
+): Promise<void> {
+    const days = daysArg ? parseInt(daysArg, 10) : 7
+    if (Number.isNaN(days) || days < 1) {
+        console.error('Days must be a positive number')
+        process.exitCode = 1
+        return
+    }
+
+    const api = await getApi()
+
+    const targetLimit = options.all
+        ? Number.MAX_SAFE_INTEGER
+        : options.limit
+          ? parseInt(options.limit, 10)
+          : LIMITS.tasks
+
+    const today = getLocalDate(0)
+
+    const baseQuery = `due before: ${days} days`
+    const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
+
+    const [{ results: tasks, nextCursor }, projects] = await Promise.all([
+        paginate(
+            (cursor, limit) =>
+                api.getTasksByFilter({
+                    query,
+                    cursor: cursor ?? undefined,
+                    limit,
+                }),
+            { limit: targetLimit, startCursor: options.cursor },
+        ),
+        fetchProjects(api),
+    ])
+
+    const filterResult = await filterByWorkspaceOrPersonal({
+        api,
+        tasks,
+        workspace: options.workspace,
+        personal: options.personal,
+        prefetchedProjects: projects,
+    })
+
+    const relevantTasks = filterResult.tasks
+
+    if (options.json) {
+        console.log(
+            formatPaginatedJson(
+                { results: relevantTasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(
+            formatPaginatedNdjson(
+                { results: relevantTasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    const collaboratorCache = new CollaboratorCache()
+    await collaboratorCache.preload(api, relevantTasks, filterResult.projects)
+
+    if (relevantTasks.length === 0) {
+        console.log(`No tasks due in the next ${days} day${days === 1 ? '' : 's'}.`)
+        console.log(formatNextCursorFooter(nextCursor))
+        return
+    }
+
+    const overdue: Task[] = []
+    const byDate = new Map<string, Task[]>()
+
+    for (const task of relevantTasks) {
+        const dueDate = task.due?.date
+        if (!dueDate) continue // Skip tasks without due dates
+        if (isDueBefore(dueDate, today)) {
+            overdue.push(task)
+        } else {
+            const list = byDate.get(dueDate) || []
+            list.push(task)
+            byDate.set(dueDate, list)
+        }
+    }
+
+    if (overdue.length > 0) {
+        console.log(chalk.red.bold(`Overdue (${overdue.length})`))
+        for (const task of overdue) {
+            const assignee = formatAssignee({
+                userId: task.responsibleUid,
+                projectId: task.projectId,
+                projects,
+                cache: collaboratorCache,
+            })
+            console.log(
+                formatTaskRow({
+                    task,
+                    projectName: projects.get(task.projectId)?.name,
+                    assignee: assignee ?? undefined,
+                    showUrl: options.showUrls,
+                }),
+            )
+            console.log('')
+        }
+    }
+
+    const sortedDates = Array.from(byDate.keys()).sort()
+    for (const date of sortedDates) {
+        const dateTasks = byDate.get(date)
+        if (!dateTasks) continue // Should not happen since date comes from keys()
+        const header = formatDateHeader(date, today)
+        console.log(chalk.bold(`${header} (${dateTasks.length})`))
+        for (const task of dateTasks) {
+            const assignee = formatAssignee({
+                userId: task.responsibleUid,
+                projectId: task.projectId,
+                projects,
+                cache: collaboratorCache,
+            })
+            console.log(
+                formatTaskRow({
+                    task,
+                    projectName: projects.get(task.projectId)?.name,
+                    assignee: assignee ?? undefined,
+                    showUrl: options.showUrls,
+                }),
+            )
+            console.log('')
+        }
+    }
+
+    console.log(formatNextCursorFooter(nextCursor))
+}
+
 export function registerUpcomingCommand(program: Command): void {
     program
         .command('upcoming [days]')
@@ -39,146 +183,5 @@ export function registerUpcomingCommand(program: Command): void {
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each task')
-        .action(async (daysArg: string | undefined, options: UpcomingOptions) => {
-            const days = daysArg ? parseInt(daysArg, 10) : 7
-            if (Number.isNaN(days) || days < 1) {
-                console.error('Days must be a positive number')
-                process.exitCode = 1
-                return
-            }
-
-            const api = await getApi()
-
-            const targetLimit = options.all
-                ? Number.MAX_SAFE_INTEGER
-                : options.limit
-                  ? parseInt(options.limit, 10)
-                  : LIMITS.tasks
-
-            const today = getLocalDate(0)
-
-            const baseQuery = `due before: ${days} days`
-            const query = options.anyAssignee
-                ? baseQuery
-                : `(${baseQuery}) & (assigned to: me | !assigned)`
-
-            const [{ results: tasks, nextCursor }, projects] = await Promise.all([
-                paginate(
-                    (cursor, limit) =>
-                        api.getTasksByFilter({
-                            query,
-                            cursor: cursor ?? undefined,
-                            limit,
-                        }),
-                    { limit: targetLimit, startCursor: options.cursor },
-                ),
-                fetchProjects(api),
-            ])
-
-            const filterResult = await filterByWorkspaceOrPersonal({
-                api,
-                tasks,
-                workspace: options.workspace,
-                personal: options.personal,
-                prefetchedProjects: projects,
-            })
-
-            const relevantTasks = filterResult.tasks
-
-            if (options.json) {
-                console.log(
-                    formatPaginatedJson(
-                        { results: relevantTasks, nextCursor },
-                        'task',
-                        options.full,
-                        options.showUrls,
-                    ),
-                )
-                return
-            }
-
-            if (options.ndjson) {
-                console.log(
-                    formatPaginatedNdjson(
-                        { results: relevantTasks, nextCursor },
-                        'task',
-                        options.full,
-                        options.showUrls,
-                    ),
-                )
-                return
-            }
-
-            const collaboratorCache = new CollaboratorCache()
-            await collaboratorCache.preload(api, relevantTasks, filterResult.projects)
-
-            if (relevantTasks.length === 0) {
-                console.log(`No tasks due in the next ${days} day${days === 1 ? '' : 's'}.`)
-                console.log(formatNextCursorFooter(nextCursor))
-                return
-            }
-
-            const overdue: Task[] = []
-            const byDate = new Map<string, Task[]>()
-
-            for (const task of relevantTasks) {
-                const dueDate = task.due?.date
-                if (!dueDate) continue // Skip tasks without due dates
-                if (isDueBefore(dueDate, today)) {
-                    overdue.push(task)
-                } else {
-                    const list = byDate.get(dueDate) || []
-                    list.push(task)
-                    byDate.set(dueDate, list)
-                }
-            }
-
-            if (overdue.length > 0) {
-                console.log(chalk.red.bold(`Overdue (${overdue.length})`))
-                for (const task of overdue) {
-                    const assignee = formatAssignee({
-                        userId: task.responsibleUid,
-                        projectId: task.projectId,
-                        projects,
-                        cache: collaboratorCache,
-                    })
-                    console.log(
-                        formatTaskRow({
-                            task,
-                            projectName: projects.get(task.projectId)?.name,
-                            assignee: assignee ?? undefined,
-                            showUrl: options.showUrls,
-                        }),
-                    )
-                    console.log('')
-                }
-            }
-
-            const sortedDates = Array.from(byDate.keys()).sort()
-            for (const date of sortedDates) {
-                const dateTasks = byDate.get(date)
-                if (!dateTasks) continue // Should not happen since date comes from keys()
-                const header = formatDateHeader(date, today)
-                console.log(chalk.bold(`${header} (${dateTasks.length})`))
-                for (const task of dateTasks) {
-                    const assignee = formatAssignee({
-                        userId: task.responsibleUid,
-                        projectId: task.projectId,
-                        projects,
-                        cache: collaboratorCache,
-                    })
-                    console.log(
-                        formatTaskRow({
-                            task,
-                            projectName: projects.get(task.projectId)?.name,
-                            assignee: assignee ?? undefined,
-                            showUrl: options.showUrls,
-                        }),
-                    )
-                    console.log('')
-                }
-            }
-
-            console.log(formatNextCursorFooter(nextCursor))
-        })
+        .action(showUpcoming)
 }

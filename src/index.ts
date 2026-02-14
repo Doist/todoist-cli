@@ -20,6 +20,7 @@ import { registerStatsCommand } from './commands/stats.js'
 import { registerTaskCommand } from './commands/task.js'
 import { registerTodayCommand } from './commands/today.js'
 import { registerUpcomingCommand } from './commands/upcoming.js'
+import { registerViewCommand } from './commands/view.js'
 import { registerWorkspaceCommand } from './commands/workspace.js'
 
 program
@@ -55,6 +56,7 @@ registerAuthCommand(program)
 registerStatsCommand(program)
 registerFilterCommand(program)
 registerNotificationCommand(program)
+registerViewCommand(program)
 registerSkillCommand(program)
 
 program.parseAsync().catch((err: Error) => {
