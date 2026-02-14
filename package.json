@@ -47,7 +47,7 @@
   ],
   "dependencies": {
     "@doist/todoist-api-typescript": "6.2.1",
-    "@pnpm/tabtab": "^0.5.4",
+    "@pnpm/tabtab": "0.5.4",
     "chalk": "5.6.2",
     "commander": "14.0.2",
     "date-fns": "4.1.0",
