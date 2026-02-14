@@ -3,6 +3,7 @@ import { Command, Option } from 'commander'
 import { getApi, isWorkspaceProject } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import { withUnvalidatedChoices } from '../lib/completion.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
 
@@ -318,17 +319,14 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
 
 const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
-/**
- * Build the --role option with argChoices for completions but without
- * Commander validation, since the option accepts comma-separated values.
- */
 export function roleOption(): Option {
-    const opt = new Option(
-        '--role <roles>',
-        `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
+    return withUnvalidatedChoices(
+        new Option(
+            '--role <roles>',
+            `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
+        ),
+        WORKSPACE_ROLES,
     )
-    opt.argChoices = WORKSPACE_ROLES
-    return opt
 }
 
 export function registerWorkspaceCommand(program: Command): void {

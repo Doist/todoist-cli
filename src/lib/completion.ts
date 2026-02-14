@@ -5,18 +5,43 @@ import type { Command, Option } from 'commander'
  * Sets up argChoices for shell completions and Commander validation,
  * but lowercases the input before checking against the choices list.
  */
+/**
+ * Set argChoices on an option without enabling Commander's built-in
+ * validation. The choices are surfaced for shell completions but the
+ * option still accepts any value at parse time.
+ *
+ * Useful when the option accepts values beyond the choices list
+ * (e.g. comma-separated roles, boolean synonyms like true/false/yes/no/1/0).
+ *
+ * This sets Commander's internal `argChoices` property directly.
+ */
+export function withUnvalidatedChoices(opt: Option, values: string[]): Option {
+    opt.argChoices = values
+    return opt
+}
+
 export function withCaseInsensitiveChoices(opt: Option, values: string[]): Option {
     opt.choices(values)
+    // choices() sets parseArg internally — assert so we catch if a future
+    // Commander version changes this, rather than silently losing case-insensitivity.
     const original = opt.parseArg
-    if (original) {
-        opt.parseArg = <T>(arg: string, prev: T): T => original(arg.toLowerCase(), prev)
+    if (!original) {
+        throw new Error('Expected Commander choices() to set parseArg')
     }
+    opt.parseArg = <T>(arg: string, prev: T): T => original(arg.toLowerCase(), prev)
     return opt
 }
 
 /**
  * Parse COMP_LINE into words, stripping the binary name and the
  * 'completion-server' token that tabtab injects.
+ *
+ * NOTE: This splits on whitespace and does not handle quoted arguments.
+ * A value like `"Buy milk tomorrow"` would be split into three words.
+ * In practice this is fine because we only walk command/option names,
+ * and shells provide the already-split COMP_WORDS separately. If a
+ * positional arg value happens to match a subcommand name, the tree
+ * walker could descend incorrectly — but that's a very unlikely edge case.
  */
 export function parseCompLine(compLine: string): string[] {
     const words = compLine.split(/\s+/).slice(1) // remove binary name (td)
@@ -152,9 +177,9 @@ export function getCompletions(
         return []
     }
 
-    // If after --, only suggest subcommands (no options)
+    // After --, everything is positional — no more commands or options
     if (seenDoubleDash) {
-        return getSubcommandCompletions(activeCmd, current)
+        return []
     }
 
     // If current word starts with -, suggest options

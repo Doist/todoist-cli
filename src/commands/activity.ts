@@ -54,7 +54,7 @@ const OBJECT_TYPE_LABELS: Record<string, string> = {
 }
 
 const EVENT_CHOICES = Object.keys(EVENT_COLORS)
-const OBJECT_TYPE_CHOICES = [...new Set(Object.values(OBJECT_TYPE_LABELS))]
+const OBJECT_TYPE_CHOICES = Object.values(OBJECT_TYPE_LABELS)
 
 function formatEventType(eventType: string): string {
     const colorFn = EVENT_COLORS[eventType] || chalk.white

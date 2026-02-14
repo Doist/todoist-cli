@@ -7,7 +7,7 @@ import {
     type UserSettings,
     updateUserSettings,
 } from '../lib/api/user-settings.js'
-import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import { withCaseInsensitiveChoices, withUnvalidatedChoices } from '../lib/completion.js'
 import { formatError } from '../lib/output.js'
 import { withSpinner } from '../lib/spinner.js'
 
@@ -230,15 +230,17 @@ const DAY_MAP: Record<string, number> = {
     sun: 7,
 }
 
-/**
- * Build an option for boolean settings (on/off). Sets argChoices for
- * shell completions without Commander validation, since parseBoolean()
- * also accepts true/false/yes/no/1/0.
- */
 function boolOption(flags: string, description: string): Option {
-    const opt = new Option(flags, description)
-    opt.argChoices = ['on', 'off', 'true', 'false', 'yes', 'no', '1', '0']
-    return opt
+    return withUnvalidatedChoices(new Option(flags, description), [
+        'on',
+        'off',
+        'true',
+        'false',
+        'yes',
+        'no',
+        '1',
+        '0',
+    ])
 }
 
 export const TIME_FORMAT_CHOICES = Object.keys(TIME_FORMAT_MAP)

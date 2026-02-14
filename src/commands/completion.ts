@@ -80,8 +80,8 @@ export function registerCompletionCommand(program: Command): void {
         })
 
     // Hidden command invoked by the shell completion script at TAB time
-    const server = program
-        .command('completion-server')
+    program
+        .command('completion-server', { hidden: true })
         .description('Completion server (internal)')
         .allowUnknownOption()
         .allowExcessArguments()
@@ -125,5 +125,4 @@ export function registerCompletionCommand(program: Command): void {
 
             tabtab.log(completions, shell)
         })
-    ;(server as Command & { _hidden: boolean })._hidden = true
 }

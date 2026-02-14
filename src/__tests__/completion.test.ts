@@ -4,6 +4,7 @@ import { roleOption } from '../commands/workspace.js'
 import {
     type CompletionItem,
     getCompletions,
+    parseCompLine,
     withCaseInsensitiveChoices,
 } from '../lib/completion.js'
 
@@ -116,8 +117,7 @@ function createTestProgram(): Command {
     workspace.command('users').description('List users').addOption(roleOption())
 
     // Hidden command (like completion-server)
-    const hidden = program.command('hidden-cmd').description('Internal command')
-    ;(hidden as Command & { _hidden: boolean })._hidden = true
+    program.command('hidden-cmd', { hidden: true }).description('Internal command')
 
     return program
 }
@@ -383,5 +383,71 @@ describe('getCompletions', () => {
             const commandNames = names(result)
             expect(commandNames).toContain('task')
         })
+    })
+
+    describe('parseCompLine quoted argument limitation', () => {
+        it('splits quoted multi-word arguments into separate tokens', () => {
+            const result = parseCompLine('td task add "Buy milk tomorrow"')
+            // Naive whitespace split breaks the quoted string into 3 tokens
+            expect(result).toEqual(['task', 'add', '"Buy', 'milk', 'tomorrow"'])
+            // Correct would be: ['task', 'add', 'Buy milk tomorrow']
+        })
+
+        it('may descend into wrong subcommand when a quoted arg contains a subcommand name', () => {
+            const program = createTestProgram()
+            // Simulates: td task "review list items" <TAB>
+            // User intends to refer to a task named "review list items", but
+            // parseCompLine splits the quoted arg into ['"review', 'list', 'items"'].
+            // The middle token 'list' has no quote characters and matches the
+            // 'list' subcommand, so the walker incorrectly descends into 'task list'.
+            const words = parseCompLine('td task "review list items" ')
+
+            expect(words).toEqual(['task', '"review', 'list', 'items"', ''])
+
+            const result = getCompletions(program, words, '')
+            const resultNames = names(result)
+
+            // BUG: We get 'task list' options instead of 'task' subcommands.
+            expect(resultNames).toContain('--project') // 'task list' option
+            expect(resultNames).not.toContain('add') // 'task' subcommand — missing
+        })
+    })
+})
+
+// These tests verify assumptions we make about Commander internals.
+// If a Commander upgrade breaks these, grep the codebase for the
+// relevant property name (parseArg, argChoices, _hidden) to find
+// the code that needs updating.
+describe('Commander internal assumptions', () => {
+    it('choices() sets parseArg on the option', () => {
+        // withCaseInsensitiveChoices wraps parseArg to lowercase the input.
+        // It asserts that choices() sets parseArg — this test verifies that
+        // assumption independently so a Commander upgrade surfaces it here.
+        const opt = new Option('--color <c>', 'Pick a color')
+        expect(opt.parseArg).toBeUndefined()
+
+        opt.choices(['red', 'blue'])
+        expect(opt.parseArg).toBeTypeOf('function')
+    })
+
+    it('argChoices set directly is readable by option consumers', () => {
+        // withUnvalidatedChoices sets opt.argChoices directly (bypassing
+        // Commander validation). The completion engine reads argChoices to
+        // suggest values. Verify the property round-trips.
+        const opt = new Option('--role <r>', 'Role')
+        opt.argChoices = ['ADMIN', 'MEMBER']
+        expect(opt.argChoices).toEqual(['ADMIN', 'MEMBER'])
+    })
+
+    it('{ hidden: true } sets _hidden on the command', () => {
+        // getSubcommandCompletions filters commands by checking _hidden.
+        // We set hidden via the public API ({ hidden: true }) but read it
+        // via the internal _hidden property since Commander has no getter.
+        const program = new Command()
+        const visible = program.command('visible')
+        const hidden = program.command('secret', { hidden: true })
+
+        expect((visible as Command & { _hidden: boolean })._hidden).toBe(false)
+        expect((hidden as Command & { _hidden: boolean })._hidden).toBe(true)
     })
 })
