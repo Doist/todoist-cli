@@ -4,9 +4,10 @@ import type {
     ActivityObjectType,
 } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -42,6 +43,8 @@ const EVENT_COLORS: Record<string, (s: string) => string> = {
     unarchived: chalk.cyan,
     shared: chalk.magenta,
     left: chalk.gray,
+    reordered: chalk.cyan,
+    moved: chalk.cyan,
 }
 
 const OBJECT_TYPE_LABELS: Record<string, string> = {
@@ -51,6 +54,9 @@ const OBJECT_TYPE_LABELS: Record<string, string> = {
     note: 'comment',
     project: 'project',
 }
+
+const EVENT_CHOICES = Object.keys(EVENT_COLORS)
+const OBJECT_TYPE_CHOICES = [...new Set(Object.values(OBJECT_TYPE_LABELS))]
 
 function formatEventType(eventType: string): string {
     const colorFn = EVENT_COLORS[eventType] || chalk.white
@@ -129,10 +135,17 @@ export function registerActivityCommand(program: Command): void {
         .description('View activity logs')
         .option('--since <date>', 'Start date (YYYY-MM-DD)')
         .option('--until <date>', 'End date (YYYY-MM-DD)')
-        .option('--type <type>', 'Filter by object type (task, comment, project)')
-        .option(
-            '--event <type>',
-            'Filter by event type (added, updated, deleted, completed, uncompleted, archived, unarchived, shared, left)',
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--type <type>', 'Filter by object type (task, comment, project)'),
+                OBJECT_TYPE_CHOICES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--event <type>', 'Filter by event type'),
+                EVENT_CHOICES,
+            ),
         )
         .option('--project <name>', 'Filter by project')
         .option('--by <user>', 'Filter by initiator (use "me" for yourself)')

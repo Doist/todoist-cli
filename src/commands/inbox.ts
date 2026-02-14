@@ -1,12 +1,18 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi } from '../lib/api/core.js'
-import { listTasksForProject, type TaskListOptions } from '../lib/task-list.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import { listTasksForProject, PRIORITY_CHOICES, type TaskListOptions } from '../lib/task-list.js'
 
 export function registerInboxCommand(program: Command): void {
     program
         .command('inbox')
         .description('List tasks in Inbox')
-        .option('--priority <p1-p4>', 'Filter by priority')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--priority <p1-p4>', 'Filter by priority'),
+                PRIORITY_CHOICES,
+            ),
+        )
         .option('--due <date>', 'Filter by due date (today, overdue, or YYYY-MM-DD)')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--cursor <cursor>', 'Continue from cursor')

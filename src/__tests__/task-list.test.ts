@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { parsePriority } from '../lib/task-list.js'
+import { PRIORITY_CHOICES, parsePriority } from '../lib/task-list.js'
 
 describe('parsePriority', () => {
     it('parses p1 to API priority 4', () => {
@@ -27,7 +27,6 @@ describe('parsePriority', () => {
 
     it('throws for invalid format like "high"', () => {
         expect(() => parsePriority('high')).toThrow('INVALID_PRIORITY')
-        expect(() => parsePriority('high')).toThrow('Use p1, p2, p3, or p4')
     })
 
     it('throws for p0', () => {
@@ -45,6 +44,10 @@ describe('parsePriority', () => {
 
     it('throws for empty string', () => {
         expect(() => parsePriority('')).toThrow('INVALID_PRIORITY')
+    })
+
+    it.each(PRIORITY_CHOICES)('accepts choice "%s"', (value) => {
+        expect(() => parsePriority(value)).not.toThrow()
     })
 })
 

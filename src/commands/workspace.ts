@@ -1,10 +1,13 @@
 import chalk from 'chalk'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { getApi, isWorkspaceProject } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import { withUnvalidatedChoices } from '../lib/completion.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
+
+const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
 interface ListOptions {
     json?: boolean
@@ -221,12 +224,19 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
 
     let roleFilter: Set<string> | null = null
     if (options.role) {
-        roleFilter = new Set(
-            options.role
-                .toUpperCase()
-                .split(',')
-                .map((r) => r.trim()),
-        )
+        const roles = options.role
+            .toUpperCase()
+            .split(',')
+            .map((r) => r.trim())
+        // Mimic Commander's .choices() error format for consistency
+        for (const role of roles) {
+            if (!WORKSPACE_ROLES.includes(role)) {
+                throw new Error(
+                    `error: option '--role <roles>' argument '${role}' is invalid. Allowed choices are ${WORKSPACE_ROLES.join(', ')}.`,
+                )
+            }
+        }
+        roleFilter = new Set(roles)
     }
 
     const allUsers: Array<{
@@ -357,7 +367,15 @@ export function registerWorkspaceCommand(program: Command): void {
         .command('users [ref]')
         .description('List users in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
-        .option('--role <roles>', 'Filter by role (comma-separated: ADMIN,MEMBER,GUEST)')
+        .addOption(
+            withUnvalidatedChoices(
+                new Option(
+                    '--role <roles>',
+                    `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
+                ),
+                WORKSPACE_ROLES,
+            ),
+        )
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
         .option('--all', 'Fetch all results (no limit)')

@@ -24,6 +24,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td reminder add\` - Task reminders
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
+- \`td completion install\` - Install shell completions
 
 ## Output Formats
 
@@ -250,6 +251,15 @@ td settings view --json
 td settings update --timezone "America/New_York"
 td settings update --time-format 24 --date-format intl
 td settings themes                            # List available themes
+\`\`\`
+
+### Shell Completions
+\`\`\`bash
+td completion install                         # Install tab completions (prompts for shell)
+td completion install bash                    # Install for specific shell
+td completion install zsh
+td completion install fish
+td completion uninstall                       # Remove completions
 \`\`\`
 
 ## Examples

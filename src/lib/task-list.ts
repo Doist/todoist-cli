@@ -84,14 +84,20 @@ export interface TaskListOptions {
     showUrls?: boolean
 }
 
+/** CLI value → Todoist API priority (p1=urgent maps to API 4, p4=low maps to API 1) */
+const PRIORITY_MAP: Record<string, number> = {
+    p1: 4,
+    p2: 3,
+    p3: 2,
+    p4: 1,
+}
+
+export const PRIORITY_CHOICES = Object.keys(PRIORITY_MAP)
+
 export function parsePriority(p: string): number {
-    const match = /^p([1-4])$/.exec(p.toLowerCase())
-    if (!match) {
-        throw new Error(
-            formatError('INVALID_PRIORITY', `Invalid priority "${p}". Use p1, p2, p3, or p4.`),
-        )
-    }
-    return 5 - parseInt(match[1], 10)
+    const result = PRIORITY_MAP[p.toLowerCase()]
+    if (result !== undefined) return result
+    throw new Error(formatError('INVALID_PRIORITY', `Invalid priority "${p}".`))
 }
 
 function buildFilterQuery(options: TaskListOptions): string | null {
