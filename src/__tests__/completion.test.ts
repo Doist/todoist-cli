@@ -1,11 +1,11 @@
 import { Command, Option } from 'commander'
 import { describe, expect, it } from 'vitest'
-import { roleOption } from '../commands/workspace.js'
 import {
     type CompletionItem,
     getCompletions,
     parseCompLine,
     withCaseInsensitiveChoices,
+    withUnvalidatedChoices,
 } from '../lib/completion.js'
 
 function createTestProgram(): Command {
@@ -114,7 +114,16 @@ function createTestProgram(): Command {
 
     // Option with argChoices set directly (no Commander validation) to allow comma-separated values
     const workspace = program.command('workspace').description('Manage workspaces')
-    workspace.command('users').description('List users').addOption(roleOption())
+    workspace
+        .command('users')
+        .description('List users')
+        .addOption(
+            withUnvalidatedChoices(new Option('--role <roles>', 'Filter by role'), [
+                'ADMIN',
+                'MEMBER',
+                'GUEST',
+            ]),
+        )
 
     // Hidden command (like completion-server)
     program.command('hidden-cmd', { hidden: true }).description('Internal command')

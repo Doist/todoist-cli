@@ -319,16 +319,6 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
 
 const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
-export function roleOption(): Option {
-    return withUnvalidatedChoices(
-        new Option(
-            '--role <roles>',
-            `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
-        ),
-        WORKSPACE_ROLES,
-    )
-}
-
 export function registerWorkspaceCommand(program: Command): void {
     const workspace = program.command('workspace').description('Manage workspaces')
 
@@ -377,7 +367,15 @@ export function registerWorkspaceCommand(program: Command): void {
         .command('users [ref]')
         .description('List users in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
-        .addOption(roleOption())
+        .addOption(
+            withUnvalidatedChoices(
+                new Option(
+                    '--role <roles>',
+                    `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
+                ),
+                WORKSPACE_ROLES,
+            ),
+        )
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
         .option('--all', 'Fetch all results (no limit)')
