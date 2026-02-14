@@ -221,12 +221,19 @@ async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<v
 
     let roleFilter: Set<string> | null = null
     if (options.role) {
-        roleFilter = new Set(
-            options.role
-                .toUpperCase()
-                .split(',')
-                .map((r) => r.trim()),
-        )
+        const roles = options.role
+            .toUpperCase()
+            .split(',')
+            .map((r) => r.trim())
+        // Mimic Commander's .choices() error format for consistency
+        for (const role of roles) {
+            if (!WORKSPACE_ROLES.includes(role)) {
+                throw new Error(
+                    `error: option '--role <roles>' argument '${role}' is invalid. Allowed choices are ${WORKSPACE_ROLES.join(', ')}.`,
+                )
+            }
+        }
+        roleFilter = new Set(roles)
     }
 
     const allUsers: Array<{
