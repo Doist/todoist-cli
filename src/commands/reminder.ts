@@ -11,6 +11,7 @@ import {
     type ReminderDue,
 } from '../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../lib/duration.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { lenientIdRef, resolveTaskRef } from '../lib/refs.js'
 
@@ -28,13 +29,7 @@ function formatReminderTime(reminder: Reminder): string {
     return 'unknown time'
 }
 
-interface ListOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-}
-
-async function listReminders(taskRef: string, options: ListOptions): Promise<void> {
+async function listReminders(taskRef: string, options: PaginatedViewOptions): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, taskRef)
     const reminders = await getTaskReminders(task.id)
@@ -261,17 +256,19 @@ export function registerReminderCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((taskArg: string | undefined, options: ListOptions & { task?: string }) => {
-            if (taskArg && options.task) {
-                throw new Error('Cannot specify task both as argument and --task flag')
-            }
-            const task = taskArg || options.task
-            if (!task) {
-                listCmd.help()
-                return
-            }
-            return listReminders(task, options)
-        })
+        .action(
+            (taskArg: string | undefined, options: PaginatedViewOptions & { task?: string }) => {
+                if (taskArg && options.task) {
+                    throw new Error('Cannot specify task both as argument and --task flag')
+                }
+                const task = taskArg || options.task
+                if (!task) {
+                    listCmd.help()
+                    return
+                }
+                return listReminders(task, options)
+            },
+        )
 
     const addCmd = reminder
         .command('add [task]')

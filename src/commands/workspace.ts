@@ -3,14 +3,9 @@ import { Command } from 'commander'
 import { getApi, isWorkspaceProject } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
-
-interface ListOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-}
 
 interface UsersOptions {
     role?: string
@@ -31,7 +26,7 @@ interface ProjectsOptions {
     full?: boolean
 }
 
-async function listWorkspaces(options: ListOptions): Promise<void> {
+async function listWorkspaces(options: PaginatedViewOptions): Promise<void> {
     const workspaces = await fetchWorkspaces()
 
     if (workspaces.length === 0) {

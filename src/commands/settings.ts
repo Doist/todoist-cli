@@ -7,6 +7,7 @@ import {
     type UserSettings,
     updateUserSettings,
 } from '../lib/api/user-settings.js'
+import type { ViewOptions } from '../lib/options.js'
 import { formatError } from '../lib/output.js'
 import { withSpinner } from '../lib/spinner.js'
 
@@ -142,10 +143,6 @@ function formatSettingsView(settings: UserSettings, startPageName: string | null
     lines.push(`  Mobile sound:       ${formatBool(settings.completedSoundMobile)}`)
 
     return lines.join('\n')
-}
-
-interface ViewOptions {
-    json?: boolean
 }
 
 function formatSettingsForJson(

@@ -5,6 +5,7 @@ import { getApi, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { openInBrowser } from '../lib/browser.js'
 import { formatUserShortName } from '../lib/collaborators.js'
+import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import {
     formatError,
     formatJson,
@@ -18,16 +19,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveProjectRef } from '../lib/refs.js'
 import { projectUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
-    personal?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
+type ListOptions = PaginatedViewOptions & { personal?: boolean }
 
 async function listProjects(options: ListOptions): Promise<void> {
     const api = await getApi()
@@ -153,13 +145,6 @@ async function listProjects(options: ListOptions): Promise<void> {
             chalk.dim('Tip: Use `td workspace projects <name>` for a detailed view with folders.'),
         )
     }
-}
-
-interface ViewOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
 }
 
 export async function viewProject(ref: string, options: ViewOptions = {}): Promise<void> {

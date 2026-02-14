@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import type { ViewOptions } from '../lib/options.js'
 import { formatError } from '../lib/output.js'
 import { classifyTodoistUrl } from '../lib/refs.js'
 import { showFilter } from './filter.js'
@@ -7,12 +8,6 @@ import { viewProject } from './project.js'
 import { viewTask } from './task.js'
 import { showToday } from './today.js'
 import { showUpcoming } from './upcoming.js'
-
-interface ViewOptions {
-    json?: boolean
-    full?: boolean
-    raw?: boolean
-}
 
 export function registerViewCommand(program: Command): void {
     program
