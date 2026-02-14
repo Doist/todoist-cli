@@ -4,14 +4,17 @@ import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
-type UrlEntityType = 'task' | 'project'
+const URL_ENTITY_TYPES = ['task', 'project'] as const
+type UrlEntityType = (typeof URL_ENTITY_TYPES)[number]
 
 export interface ParsedTodoistUrl {
     entityType: UrlEntityType
     id: string
 }
 
-const TODOIST_URL_PATTERN = /^https?:\/\/app\.todoist\.com\/app\/(task|project)\/([^?#]+)/
+const TODOIST_URL_PATTERN = new RegExp(
+    `^https?://app\\.todoist\\.com/app/(${URL_ENTITY_TYPES.join('|')})/([^?#]+)`,
+)
 
 export function parseTodoistUrl(url: string): ParsedTodoistUrl | null {
     const match = url.match(TODOIST_URL_PATTERN)
@@ -38,17 +41,32 @@ export function looksLikeRawId(ref: string): boolean {
     return /^\d+$/.test(ref) || (/[a-zA-Z]/.test(ref) && /\d/.test(ref))
 }
 
+function isMatchingUrlType(
+    parsedUrl: ParsedTodoistUrl | null,
+    expectedType: string,
+): parsedUrl is ParsedTodoistUrl {
+    if (!parsedUrl) return false
+    if (parsedUrl.entityType !== expectedType) {
+        throw new Error(
+            formatError(
+                'ENTITY_TYPE_MISMATCH',
+                `Expected a ${expectedType} URL, but got a ${parsedUrl.entityType} URL.`,
+            ),
+        )
+    }
+    return true
+}
+
 export function lenientIdRef(ref: string, entityName: string): string {
     if (isIdRef(ref)) return extractId(ref)
     const parsedUrl = parseTodoistUrl(ref)
-    if (parsedUrl) return parsedUrl.id
+    if (isMatchingUrlType(parsedUrl, entityName)) return parsedUrl.id
     if (looksLikeRawId(ref)) return ref
-    throw new Error(
-        formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, [
-            `Use id:xxx format (e.g., id:${ref})`,
-            `Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`,
-        ]),
-    )
+    const hints = [`Use id:xxx format (e.g., id:${ref})`]
+    if (URL_ENTITY_TYPES.includes(entityName as UrlEntityType)) {
+        hints.push(`Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`)
+    }
+    throw new Error(formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, hints))
 }
 
 async function resolveRef<T extends { id: string }>(
@@ -68,7 +86,7 @@ async function resolveRef<T extends { id: string }>(
     }
 
     const parsedUrl = parseTodoistUrl(ref)
-    if (parsedUrl) return fetchById(parsedUrl.id)
+    if (isMatchingUrlType(parsedUrl, entityType)) return fetchById(parsedUrl.id)
 
     if (isIdRef(ref)) {
         return fetchById(extractId(ref))
@@ -204,7 +222,7 @@ export async function resolveParentTaskId(
     sectionId?: string,
 ): Promise<string> {
     const parsedUrl = parseTodoistUrl(ref)
-    if (parsedUrl) return parsedUrl.id
+    if (isMatchingUrlType(parsedUrl, 'task')) return parsedUrl.id
 
     if (isIdRef(ref)) {
         return extractId(ref)

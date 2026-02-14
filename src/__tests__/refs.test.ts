@@ -113,8 +113,28 @@ describe('lenientIdRef', () => {
         )
     })
 
-    it('includes URL hint in error message', () => {
-        expect(() => lenientIdRef('some-name', 'comment')).toThrow('Todoist URL')
+    it('includes URL hint in error message for task', () => {
+        expect(() => lenientIdRef('some-name', 'task')).toThrow('Todoist URL')
+    })
+
+    it('includes URL hint in error message for project', () => {
+        expect(() => lenientIdRef('some-name', 'project')).toThrow('Todoist URL')
+    })
+
+    it('omits URL hint in error message for non-URL entity types', () => {
+        expect(() => lenientIdRef('some-name', 'comment')).not.toThrow('Todoist URL')
+    })
+
+    it('throws on entity type mismatch (project URL for task)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/project/my-project-proj1', 'task'),
+        ).toThrow('Expected a task URL, but got a project URL')
+    })
+
+    it('throws on entity type mismatch (task URL for project)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/task/buy-milk-abc123', 'project'),
+        ).toThrow('Expected a project URL, but got a task URL')
     })
 })
 
@@ -573,5 +593,18 @@ describe('resolveParentTaskId', () => {
 
         const result = await resolveParentTaskId(api, '6fmg66Fr27R59RPg', 'proj-1')
         expect(result).toBe('6fmg66Fr27R59RPg')
+    })
+
+    it('throws on entity type mismatch (project URL for parent task)', async () => {
+        const api = createMockApi()
+
+        await expect(
+            resolveParentTaskId(
+                api,
+                'https://app.todoist.com/app/project/my-project-proj1',
+                'proj-1',
+            ),
+        ).rejects.toThrow('Expected a task URL, but got a project URL')
+        expect(api.getTasks).not.toHaveBeenCalled()
     })
 })
