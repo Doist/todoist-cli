@@ -6,6 +6,7 @@ import {
     type Streak,
     updateGoals,
 } from '../lib/api/stats.js'
+import type { ViewOptions } from '../lib/options.js'
 
 function formatTrend(trend: string): string {
     switch (trend) {
@@ -106,11 +107,6 @@ function formatStatsJson(stats: ProductivityStats, full: boolean): object {
         daysItems: stats.daysItems,
         weekItems: stats.weekItems,
     }
-}
-
-interface ViewOptions {
-    json?: boolean
-    full?: boolean
 }
 
 async function viewStats(options: ViewOptions): Promise<void> {

@@ -9,6 +9,7 @@ import {
     type Notification,
     rejectInvitation,
 } from '../lib/api/notifications.js'
+import type { ViewOptions } from '../lib/options.js'
 import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { extractId, isIdRef } from '../lib/refs.js'
 
@@ -185,10 +186,6 @@ async function resolveNotification(idRef: string): Promise<Notification> {
     }
 
     return notification
-}
-
-interface ViewOptions {
-    json?: boolean
 }
 
 async function viewNotification(idRef: string, options: ViewOptions): Promise<void> {

@@ -4,6 +4,7 @@ import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
 import { openInBrowser } from '../lib/browser.js'
 import { renderMarkdown } from '../lib/markdown.js'
+import type { ViewOptions } from '../lib/options.js'
 import {
     formatFileSize,
     formatNextCursorFooter,
@@ -192,10 +193,6 @@ async function updateComment(commentId: string, options: { content: string }): P
 
     await api.updateComment(id, { content: options.content })
     console.log(`Updated comment: ${oldPreview}`)
-}
-
-interface ViewOptions {
-    raw?: boolean
 }
 
 async function viewComment(commentId: string, options: ViewOptions): Promise<void> {
