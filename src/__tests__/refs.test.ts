@@ -74,6 +74,26 @@ describe('parseTodoistUrl', () => {
         expect(result).toEqual({ entityType: 'task', id: 'abc123' })
     })
 
+    it('extracts ID from label URL', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/label/urgent-label1')
+        expect(result).toEqual({ entityType: 'label', id: 'label1' })
+    })
+
+    it('extracts ID from filter URL', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/filter/work-tasks-filter1')
+        expect(result).toEqual({ entityType: 'filter', id: 'filter1' })
+    })
+
+    it('extracts ID from bare label URL (no slug)', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/label/label1')
+        expect(result).toEqual({ entityType: 'label', id: 'label1' })
+    })
+
+    it('extracts ID from bare filter URL (no slug)', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/filter/filter1')
+        expect(result).toEqual({ entityType: 'filter', id: 'filter1' })
+    })
+
     it('returns null for non-Todoist URLs', () => {
         expect(parseTodoistUrl('https://google.com')).toBeNull()
     })
@@ -121,6 +141,26 @@ describe('lenientIdRef', () => {
         expect(() => lenientIdRef('some-name', 'project')).toThrow('Todoist URL')
     })
 
+    it('extracts ID from label URL', () => {
+        expect(lenientIdRef('https://app.todoist.com/app/label/urgent-label1', 'label')).toBe(
+            'label1',
+        )
+    })
+
+    it('extracts ID from filter URL', () => {
+        expect(
+            lenientIdRef('https://app.todoist.com/app/filter/work-tasks-filter1', 'filter'),
+        ).toBe('filter1')
+    })
+
+    it('includes URL hint in error message for label', () => {
+        expect(() => lenientIdRef('some-name', 'label')).toThrow('Todoist URL')
+    })
+
+    it('includes URL hint in error message for filter', () => {
+        expect(() => lenientIdRef('some-name', 'filter')).toThrow('Todoist URL')
+    })
+
     it('omits URL hint in error message for non-URL entity types', () => {
         expect(() => lenientIdRef('some-name', 'comment')).not.toThrow('Todoist URL')
     })
@@ -135,6 +175,18 @@ describe('lenientIdRef', () => {
         expect(() =>
             lenientIdRef('https://app.todoist.com/app/task/buy-milk-abc123', 'project'),
         ).toThrow('Expected a project URL, but got a task URL')
+    })
+
+    it('throws on entity type mismatch (task URL for label)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/task/buy-milk-abc123', 'label'),
+        ).toThrow('Expected a label URL, but got a task URL')
+    })
+
+    it('throws on entity type mismatch (label URL for filter)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/label/urgent-label1', 'filter'),
+        ).toThrow('Expected a filter URL, but got a label URL')
     })
 })
 

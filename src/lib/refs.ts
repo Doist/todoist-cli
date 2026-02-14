@@ -4,7 +4,7 @@ import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
-const URL_ENTITY_TYPES = ['task', 'project'] as const
+const URL_ENTITY_TYPES = ['task', 'project', 'label', 'filter'] as const
 type UrlEntityType = (typeof URL_ENTITY_TYPES)[number]
 
 export interface ParsedTodoistUrl {

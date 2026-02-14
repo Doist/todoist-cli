@@ -1,16 +1,18 @@
 import type { Label } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi } from '../lib/api/core.js'
+import { getApi, type Project } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
+import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import {
     formatError,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef, looksLikeRawId } from '../lib/refs.js'
+import { extractId, isIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -141,6 +143,21 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     const api = await getApi()
     const { results: labels } = await api.getLabels()
 
+    const parsedUrl = parseTodoistUrl(nameOrId)
+    if (parsedUrl) {
+        if (parsedUrl.entityType !== 'label') {
+            throw new Error(
+                formatError(
+                    'ENTITY_TYPE_MISMATCH',
+                    `Expected a label URL, but got a ${parsedUrl.entityType} URL.`,
+                ),
+            )
+        }
+        const label = labels.find((l) => l.id === parsedUrl.id)
+        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
+        return label
+    }
+
     if (isIdRef(nameOrId)) {
         const id = extractId(nameOrId)
         const label = labels.find((l) => l.id === id)
@@ -163,6 +180,101 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
 }
 
+interface ViewOptions {
+    limit?: string
+    all?: boolean
+    json?: boolean
+    ndjson?: boolean
+    full?: boolean
+    showUrls?: boolean
+}
+
+async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
+    const label = await resolveLabelRef(nameOrId)
+    const api = await getApi()
+
+    const targetLimit = options.all
+        ? Number.MAX_SAFE_INTEGER
+        : options.limit
+          ? parseInt(options.limit, 10)
+          : LIMITS.tasks
+
+    const { results: tasks, nextCursor } = await paginate(
+        (cursor, limit) =>
+            api.getTasksByFilter({
+                query: `@${label.name}`,
+                cursor: cursor ?? undefined,
+                limit,
+            }),
+        { limit: targetLimit },
+    )
+
+    if (options.json) {
+        console.log(
+            formatPaginatedJson(
+                { results: tasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(
+            formatPaginatedNdjson(
+                { results: tasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    console.log(chalk.bold(`@${label.name}`))
+    console.log(chalk.dim(`ID:    ${label.id}`))
+    console.log(chalk.dim(`Color: ${label.color}`))
+    console.log(chalk.dim(`URL:   ${labelUrl(label.id)}`))
+    if (label.isFavorite) console.log(chalk.yellow('★ Favorite'))
+    console.log('')
+
+    if (tasks.length === 0) {
+        console.log('No tasks with this label.')
+        console.log(formatNextCursorFooter(nextCursor))
+        return
+    }
+
+    const { results: projects } = await api.getProjects()
+    const projectMap = new Map<string, Project>()
+    for (const p of projects) {
+        projectMap.set(p.id, p)
+    }
+
+    const collaboratorCache = new CollaboratorCache()
+    await collaboratorCache.preload(api, tasks, projectMap)
+
+    for (const task of tasks) {
+        const assignee = formatAssignee({
+            userId: task.responsibleUid,
+            projectId: task.projectId,
+            projects: projectMap,
+            cache: collaboratorCache,
+        })
+        console.log(
+            formatTaskRow({
+                task,
+                projectName: projectMap.get(task.projectId)?.name,
+                assignee: assignee ?? undefined,
+                showUrl: options.showUrls,
+            }),
+        )
+        console.log('')
+    }
+    console.log(formatNextCursorFooter(nextCursor))
+}
+
 async function browseLabel(nameOrId: string): Promise<void> {
     const label = await resolveLabelRef(nameOrId)
     await openInBrowser(labelUrl(label.id))
@@ -170,6 +282,23 @@ async function browseLabel(nameOrId: string): Promise<void> {
 
 export function registerLabelCommand(program: Command): void {
     const label = program.command('label').description('Manage labels')
+
+    const viewCmd = label
+        .command('view [ref]', { isDefault: true })
+        .description('View label details and tasks')
+        .option('--limit <n>', 'Limit number of results (default: 300)')
+        .option('--all', 'Fetch all results (no limit)')
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .option('--show-urls', 'Show web app URLs for each task')
+        .action((ref, options) => {
+            if (!ref) {
+                viewCmd.help()
+                return
+            }
+            return viewLabel(ref, options)
+        })
 
     label
         .command('list')

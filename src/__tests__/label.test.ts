@@ -16,6 +16,8 @@ function createMockApi() {
         addLabel: vi.fn(),
         deleteLabel: vi.fn(),
         updateLabel: vi.fn(),
+        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
     }
 }
 
@@ -452,5 +454,266 @@ describe('label update', () => {
                 'new-name',
             ]),
         ).rejects.toThrow('LABEL_NOT_FOUND')
+    })
+})
+
+describe('label URL resolution', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('resolves label by URL in delete command', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label1', name: 'urgent' }],
+            nextCursor: null,
+        })
+        mockApi.deleteLabel.mockResolvedValue(undefined)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'delete',
+            'https://app.todoist.com/app/label/urgent-label1',
+            '--yes',
+        ])
+
+        expect(mockApi.deleteLabel).toHaveBeenCalledWith('label1')
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves label by URL in update command', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label1', name: 'urgent' }],
+            nextCursor: null,
+        })
+        mockApi.updateLabel.mockResolvedValue({ id: 'label1', name: 'urgent', color: 'blue' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'update',
+            'https://app.todoist.com/app/label/urgent-label1',
+            '--color',
+            'blue',
+        ])
+
+        expect(mockApi.updateLabel).toHaveBeenCalledWith('label1', { color: 'blue' })
+        consoleSpy.mockRestore()
+    })
+
+    it('throws entity type mismatch for task URL in label command', async () => {
+        const program = createProgram()
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'label',
+                'delete',
+                'https://app.todoist.com/app/task/buy-milk-task1',
+                '--yes',
+            ]),
+        ).rejects.toThrow('Expected a label URL, but got a task URL')
+    })
+
+    it('throws LABEL_NOT_FOUND when URL ID does not match any label', async () => {
+        const program = createProgram()
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'label',
+                'delete',
+                'https://app.todoist.com/app/label/urgent-nonexistent',
+                '--yes',
+            ]),
+        ).rejects.toThrow('LABEL_NOT_FOUND')
+    })
+})
+
+describe('label view', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('shows label metadata and tasks', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Fix bug',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: ['urgent'],
+                },
+            ],
+            nextCursor: null,
+        })
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'urgent'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@urgent' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Fix bug'))
+        consoleSpy.mockRestore()
+    })
+
+    it('shows "No tasks with this label" when empty', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'unused', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'unused'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No tasks with this label.')
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Fix bug',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: ['urgent'],
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'urgent', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].content).toBe('Fix bug')
+        consoleSpy.mockRestore()
+    })
+
+    it('defaults to view subcommand (td label <ref>)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'urgent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves label by URL in view command', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label1', name: 'urgent', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'view',
+            'https://app.todoist.com/app/label/urgent-label1',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
+        consoleSpy.mockRestore()
+    })
+
+    it('shows favorite indicator', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: true }],
+            nextCursor: null,
+        })
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'urgent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Favorite'))
+        consoleSpy.mockRestore()
     })
 })
