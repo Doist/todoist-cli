@@ -58,6 +58,7 @@ td inbox                               # inbox tasks
 td task list                           # all tasks
 td task list --project "Work"          # tasks in project
 td project list                        # all projects
+td task view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB  # paste a URL
 ```
 
 Run `td --help` or `td <command> --help` for more options.
