@@ -16,16 +16,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    limit?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-async function listLabels(options: ListOptions): Promise<void> {
+async function listLabels(options: PaginatedViewOptions): Promise<void> {
     const api = await getApi()
 
     const targetLimit = options.all

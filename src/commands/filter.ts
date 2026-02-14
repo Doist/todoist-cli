@@ -22,14 +22,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-async function listFilters(options: ListOptions): Promise<void> {
+async function listFilters(options: PaginatedViewOptions): Promise<void> {
     const filters = await fetchFilters()
 
     if (options.json) {
