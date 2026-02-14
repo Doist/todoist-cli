@@ -17,7 +17,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td task complete <ref>\` - Complete a task
 - \`td project list\` - List projects
 - \`td label list\` - List labels
-- \`td filter list/show\` - Manage and use saved filters
+- \`td filter list/view\` - Manage and use saved filters
 - \`td workspace list\` - List workspaces
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
@@ -50,7 +50,7 @@ Most list commands also support:
 
 ## References
 
-Tasks and projects can be referenced by:
+Tasks, projects, labels, and filters can be referenced by:
 - Name (fuzzy matched within context)
 - \`id:xxx\` - Explicit ID
 - Todoist URL - Paste directly from the web app (e.g., \`https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB\` or \`https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT\`)
@@ -161,6 +161,7 @@ td project browse "Project Name"              # Open in browser
 ### Labels
 \`\`\`bash
 td label list
+td label view "urgent"                        # View label details and tasks
 td label create --name "urgent" --color "red"
 td label update "urgent" --color "orange"
 td label delete "urgent" --yes
@@ -193,7 +194,7 @@ td section browse id:123                      # Open in browser
 \`\`\`bash
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
-td filter show "Urgent work"                  # Show tasks matching filter
+td filter view "Urgent work"                  # Show tasks matching filter (alias: show)
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
 td filter browse "Urgent work"                # Open in browser

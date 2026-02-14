@@ -18,7 +18,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef } from '../lib/refs.js'
+import { extractId, isIdRef, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -93,6 +93,21 @@ async function createFilter(options: CreateOptions): Promise<void> {
 
 async function resolveFilterRef(nameOrId: string): Promise<Filter> {
     const filters = await fetchFilters()
+
+    const parsedUrl = parseTodoistUrl(nameOrId)
+    if (parsedUrl) {
+        if (parsedUrl.entityType !== 'filter') {
+            throw new Error(
+                formatError(
+                    'ENTITY_TYPE_MISMATCH',
+                    `Expected a filter URL, but got a ${parsedUrl.entityType} URL.`,
+                ),
+            )
+        }
+        const filter = filters.find((f) => f.id === parsedUrl.id)
+        if (!filter) throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
+        return filter
+    }
 
     if (isIdRef(nameOrId)) {
         const id = extractId(nameOrId)
@@ -335,8 +350,9 @@ export function registerFilterCommand(program: Command): void {
             return updateFilterCmd(ref, options)
         })
 
-    const showCmd = filter
-        .command('show [ref]')
+    const viewCmd = filter
+        .command('view [ref]', { isDefault: true })
+        .alias('show')
         .description('Show tasks matching a filter')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--cursor <cursor>', 'Continue from cursor')
@@ -347,7 +363,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                showCmd.help()
+                viewCmd.help()
                 return
             }
             return showFilter(ref, options)
