@@ -4,7 +4,7 @@ import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
 import { openInBrowser } from '../lib/browser.js'
 import { renderMarkdown } from '../lib/markdown.js'
-import type { ViewOptions } from '../lib/options.js'
+import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import {
     formatFileSize,
     formatNextCursorFooter,
@@ -15,17 +15,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
 import { commentUrl, projectCommentUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    limit?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    lines?: string
-    project?: boolean
-    raw?: boolean
-    showUrls?: boolean
-}
+type ListOptions = PaginatedViewOptions & { lines?: string; project?: boolean }
 
 function truncateContent(content: string, maxLines: number): string {
     const lines = content.split('\n')

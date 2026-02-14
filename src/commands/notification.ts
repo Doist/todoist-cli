@@ -9,7 +9,7 @@ import {
     type Notification,
     rejectInvitation,
 } from '../lib/api/notifications.js'
-import type { ViewOptions } from '../lib/options.js'
+import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { extractId, isIdRef } from '../lib/refs.js'
 
@@ -72,15 +72,11 @@ function stripInvitationSecret(n: Notification): Omit<Notification, 'invitationS
     return rest
 }
 
-interface ListOptions {
+type ListOptions = PaginatedViewOptions & {
     type?: string
     unread?: boolean
     read?: boolean
-    limit?: string
     offset?: string
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
 }
 
 async function listNotifications(options: ListOptions): Promise<void> {
