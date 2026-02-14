@@ -42,6 +42,8 @@ function createMockApi() {
         updateProject: vi.fn(),
         archiveProject: vi.fn(),
         unarchiveProject: vi.fn(),
+        moveProjectToWorkspace: vi.fn(),
+        moveProjectToPersonal: vi.fn(),
     }
 }
 
@@ -1049,5 +1051,281 @@ describe('project browse', () => {
         expect(mockOpenInBrowser).toHaveBeenCalledWith(
             'https://app.todoist.com/app/project/proj-123',
         )
+    })
+})
+
+describe('project move', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows help when no ref provided', async () => {
+        const program = createProgram()
+        const helpSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        try {
+            await program.parseAsync(['node', 'td', 'project', 'move'])
+        } catch {
+            // exitOverride throws
+        }
+
+        helpSpy.mockRestore()
+    })
+
+    it('errors when neither --to-workspace nor --to-personal specified', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'move', 'My Project']),
+        ).rejects.toThrow('MISSING_DESTINATION')
+    })
+
+    it('errors when both --to-workspace and --to-personal specified', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'My Project',
+                '--to-workspace',
+                'Acme',
+                '--to-personal',
+            ]),
+        ).rejects.toThrow('INVALID_OPTIONS')
+    })
+
+    it('errors when --folder without --to-workspace', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'My Project',
+                '--to-personal',
+                '--folder',
+                'Engineering',
+            ]),
+        ).rejects.toThrow('INVALID_OPTIONS')
+    })
+
+    it('errors when --visibility without --to-workspace', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'My Project',
+                '--to-personal',
+                '--visibility',
+                'team',
+            ]),
+        ).rejects.toThrow('INVALID_OPTIONS')
+    })
+
+    it('errors when invalid --visibility value', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'My Project',
+                '--to-workspace',
+                'Acme',
+                '--visibility',
+                'invalid',
+            ]),
+        ).rejects.toThrow('INVALID_VISIBILITY')
+    })
+
+    it('moves project to workspace', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+        mockApi.moveProjectToWorkspace.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            workspaceId: 'ws-1',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'My Project',
+            '--to-workspace',
+            'Acme Corp',
+        ])
+
+        expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
+            projectId: 'proj-1',
+            workspaceId: 'ws-1',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Moved "My Project" to workspace "Acme Corp"')
+    })
+
+    it('moves project to workspace with --folder', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+        mockFetchWorkspaceFolders.mockResolvedValue([
+            { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
+        ])
+        mockApi.moveProjectToWorkspace.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            workspaceId: 'ws-1',
+            folderId: 'folder-1',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'My Project',
+            '--to-workspace',
+            'Acme Corp',
+            '--folder',
+            'Engineering',
+        ])
+
+        expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
+            projectId: 'proj-1',
+            workspaceId: 'ws-1',
+            folderId: 'folder-1',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('folder: Engineering'))
+    })
+
+    it('moves project to workspace with --visibility', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+        mockApi.moveProjectToWorkspace.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            workspaceId: 'ws-1',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'My Project',
+            '--to-workspace',
+            'Acme Corp',
+            '--visibility',
+            'team',
+        ])
+
+        expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
+            projectId: 'proj-1',
+            workspaceId: 'ws-1',
+            access: { visibility: 'team' },
+        })
+    })
+
+    it('moves project to personal', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+        })
+        mockApi.moveProjectToPersonal.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'move', 'id:proj-ws-1', '--to-personal'])
+
+        expect(mockApi.moveProjectToPersonal).toHaveBeenCalledWith({
+            projectId: 'proj-ws-1',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Moved "Team Project" to personal')
+    })
+
+    it('errors when moving personal project --to-personal', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'move', 'My Project', '--to-personal']),
+        ).rejects.toThrow('ALREADY_PERSONAL')
+    })
+
+    it('errors when moving workspace project to same workspace', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'id:proj-ws-1',
+                '--to-workspace',
+                'Acme Corp',
+            ]),
+        ).rejects.toThrow('SAME_WORKSPACE')
     })
 })

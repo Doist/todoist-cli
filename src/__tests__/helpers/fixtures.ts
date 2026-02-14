@@ -131,6 +131,16 @@ export const fixtures = {
             viewStyle: 'list',
             url: 'https://todoist.com/app/project/proj-personal',
         } as Project,
+        workspaceProject: {
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            color: 'red',
+            isFavorite: false,
+            workspaceId: 'ws-1',
+            folderId: null,
+            viewStyle: 'list',
+            url: 'https://todoist.com/app/project/proj-ws-1',
+        } as Project,
     },
     sections: {
         planning: {
@@ -216,6 +226,25 @@ export const fixtures = {
             projectId: undefined,
             postedAt: '2026-01-09T17:00:00Z',
         } as Comment,
+    },
+    workspaces: {
+        acme: {
+            id: 'ws-1',
+            name: 'Acme Corp',
+            role: 'ADMIN' as const,
+            plan: 'business',
+            domainName: null,
+            currentMemberCount: 5,
+            currentActiveProjects: 3,
+            memberCountByType: { adminCount: 1, memberCount: 3, guestCount: 1 },
+        },
+    },
+    folders: {
+        engineering: {
+            id: 'folder-1',
+            name: 'Engineering',
+            workspaceId: 'ws-1',
+        },
     },
     user: {
         basic: {

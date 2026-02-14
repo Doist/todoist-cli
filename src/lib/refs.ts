@@ -1,6 +1,11 @@
 import { TodoistApi, TodoistRequestError } from '@doist/todoist-api-typescript'
 import type { Project, Task } from './api/core.js'
-import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
+import {
+    fetchWorkspaceFolders,
+    fetchWorkspaces,
+    type Workspace,
+    type WorkspaceFolder,
+} from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
@@ -324,4 +329,43 @@ export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
     }
 
     throw new Error(formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`))
+}
+
+export async function resolveFolderRef(ref: string, workspaceId: string): Promise<WorkspaceFolder> {
+    const allFolders = await fetchWorkspaceFolders()
+    const folders = allFolders.filter((f) => f.workspaceId === workspaceId)
+
+    if (isIdRef(ref)) {
+        const id = extractId(ref)
+        const folder = folders.find((f) => f.id === id)
+        if (!folder) {
+            throw new Error(
+                formatError('FOLDER_NOT_FOUND', `Folder id:${id} not found in workspace.`),
+            )
+        }
+        return folder
+    }
+
+    const lower = ref.toLowerCase()
+    const exact = folders.find((f) => f.name.toLowerCase() === lower)
+    if (exact) return exact
+
+    const partial = folders.filter((f) => f.name.toLowerCase().includes(lower))
+    if (partial.length === 1) return partial[0]
+    if (partial.length > 1) {
+        throw new Error(
+            formatError(
+                'AMBIGUOUS_FOLDER',
+                `Multiple folders match "${ref}":`,
+                partial.slice(0, 5).map((f) => `"${f.name}" (id:${f.id})`),
+            ),
+        )
+    }
+
+    if (looksLikeRawId(ref)) {
+        const byId = folders.find((f) => f.id === ref)
+        if (byId) return byId
+    }
+
+    throw new Error(formatError('FOLDER_NOT_FOUND', `Folder "${ref}" not found in workspace.`))
 }
