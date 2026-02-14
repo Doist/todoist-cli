@@ -237,7 +237,7 @@ const DAY_MAP: Record<string, number> = {
  */
 function boolOption(flags: string, description: string): Option {
     const opt = new Option(flags, description)
-    opt.argChoices = ['on', 'off']
+    opt.argChoices = ['on', 'off', 'true', 'false', 'yes', 'no', '1', '0']
     return opt
 }
 
