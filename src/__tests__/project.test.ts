@@ -1192,6 +1192,7 @@ describe('project move', () => {
             'My Project',
             '--to-workspace',
             'Acme Corp',
+            '--yes',
         ])
 
         expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
@@ -1229,6 +1230,7 @@ describe('project move', () => {
             'Acme Corp',
             '--folder',
             'Eng',
+            '--yes',
         ])
 
         expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
@@ -1263,6 +1265,7 @@ describe('project move', () => {
             'Acme Corp',
             '--visibility',
             'team',
+            '--yes',
         ])
 
         expect(mockApi.moveProjectToWorkspace).toHaveBeenCalledWith({
@@ -1285,12 +1288,60 @@ describe('project move', () => {
             name: 'Team Project',
         })
 
-        await program.parseAsync(['node', 'td', 'project', 'move', 'id:proj-ws-1', '--to-personal'])
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'id:proj-ws-1',
+            '--to-personal',
+            '--yes',
+        ])
 
         expect(mockApi.moveProjectToPersonal).toHaveBeenCalledWith({
             projectId: 'proj-ws-1',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Moved "Team Project" to personal')
+    })
+
+    it('shows dry-run when moving to workspace without --yes', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project' }],
+            nextCursor: null,
+        })
+        mockFetchWorkspaces.mockResolvedValue([{ id: 'ws-1', name: 'Acme Corp' } as Workspace])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'My Project',
+            '--to-workspace',
+            'Acme Corp',
+        ])
+
+        expect(mockApi.moveProjectToWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would move "My Project" to workspace "Acme Corp"')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+    })
+
+    it('shows dry-run when moving to personal without --yes', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'move', 'id:proj-ws-1', '--to-personal'])
+
+        expect(mockApi.moveProjectToPersonal).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would move "Team Project" to personal')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
     })
 
     it('errors when moving personal project --to-personal', async () => {

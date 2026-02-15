@@ -382,6 +382,7 @@ type MoveOptions = {
     toPersonal?: boolean
     folder?: string
     visibility?: string
+    yes?: boolean
 }
 
 async function moveProject(ref: string, options: MoveOptions): Promise<void> {
@@ -447,6 +448,19 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
             args.access = { visibility: options.visibility as ProjectVisibility }
         }
 
+        if (!options.yes) {
+            let dryRun = `Would move "${project.name}" to workspace "${workspace.name}"`
+            if (folderName) {
+                dryRun += ` (folder: ${folderName})`
+            }
+            if (options.visibility) {
+                dryRun += ` (visibility: ${options.visibility})`
+            }
+            console.log(dryRun)
+            console.log('Use --yes to confirm.')
+            return
+        }
+
         await api.moveProjectToWorkspace(args)
 
         let output = `Moved "${project.name}" to workspace "${workspace.name}"`
@@ -462,6 +476,12 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
                     `Project "${project.name}" is already a personal project.`,
                 ),
             )
+        }
+
+        if (!options.yes) {
+            console.log(`Would move "${project.name}" to personal`)
+            console.log('Use --yes to confirm.')
+            return
         }
 
         await api.moveProjectToPersonal({ projectId: project.id })
@@ -605,6 +625,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--to-personal', 'Move to personal')
         .option('--folder <ref>', 'Target folder in workspace (name or id:xxx)')
         .option('--visibility <level>', 'Access visibility (restricted, team, public)')
+        .option('--yes', 'Confirm move')
         .action((ref, options) => {
             if (!ref) {
                 moveCmd.help()

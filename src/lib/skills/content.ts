@@ -161,6 +161,7 @@ td project move "Project Name" --to-workspace "Acme"
 td project move "Project Name" --to-workspace "Acme" --folder "Engineering"
 td project move "Project Name" --to-workspace "Acme" --visibility team
 td project move "Project Name" --to-personal
+# move requires --yes to confirm (without it, shows a dry-run preview)
 \`\`\`
 
 ### Labels
