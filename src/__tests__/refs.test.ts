@@ -4,6 +4,7 @@ import {
     isIdRef,
     lenientIdRef,
     looksLikeRawId,
+    parseTodoistUrl,
     resolveParentTaskId,
     resolveProjectId,
     resolveProjectRef,
@@ -47,6 +48,41 @@ describe('extractId', () => {
     })
 })
 
+describe('parseTodoistUrl', () => {
+    it('extracts ID from slugged URL', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/task/buy-milk-abc123')
+        expect(result).toEqual({ entityType: 'task', id: 'abc123' })
+    })
+
+    it('extracts ID from bare ID URL (no slug)', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/task/abc123')
+        expect(result).toEqual({ entityType: 'task', id: 'abc123' })
+    })
+
+    it('extracts ID from project URL', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/project/my-project-proj1')
+        expect(result).toEqual({ entityType: 'project', id: 'proj1' })
+    })
+
+    it('handles URLs with query parameters', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/task/buy-milk-abc123?lang=en')
+        expect(result).toEqual({ entityType: 'task', id: 'abc123' })
+    })
+
+    it('handles URLs with hash fragments', () => {
+        const result = parseTodoistUrl('https://app.todoist.com/app/task/buy-milk-abc123#details')
+        expect(result).toEqual({ entityType: 'task', id: 'abc123' })
+    })
+
+    it('returns null for non-Todoist URLs', () => {
+        expect(parseTodoistUrl('https://google.com')).toBeNull()
+    })
+
+    it('returns null for invalid strings', () => {
+        expect(parseTodoistUrl('not a url')).toBeNull()
+    })
+})
+
 describe('lenientIdRef', () => {
     it('returns ID when valid id: prefix', () => {
         expect(lenientIdRef('id:123', 'task')).toBe('123')
@@ -69,6 +105,36 @@ describe('lenientIdRef', () => {
 
     it('throws for strings with spaces', () => {
         expect(() => lenientIdRef('Buy milk', 'task')).toThrow('INVALID_REF')
+    })
+
+    it('extracts ID from Todoist URL', () => {
+        expect(lenientIdRef('https://app.todoist.com/app/task/buy-milk-abc123', 'task')).toBe(
+            'abc123',
+        )
+    })
+
+    it('includes URL hint in error message for task', () => {
+        expect(() => lenientIdRef('some-name', 'task')).toThrow('Todoist URL')
+    })
+
+    it('includes URL hint in error message for project', () => {
+        expect(() => lenientIdRef('some-name', 'project')).toThrow('Todoist URL')
+    })
+
+    it('omits URL hint in error message for non-URL entity types', () => {
+        expect(() => lenientIdRef('some-name', 'comment')).not.toThrow('Todoist URL')
+    })
+
+    it('throws on entity type mismatch (project URL for task)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/project/my-project-proj1', 'task'),
+        ).toThrow('Expected a task URL, but got a project URL')
+    })
+
+    it('throws on entity type mismatch (task URL for project)', () => {
+        expect(() =>
+            lenientIdRef('https://app.todoist.com/app/task/buy-milk-abc123', 'project'),
+        ).toThrow('Expected a project URL, but got a task URL')
     })
 })
 
@@ -111,6 +177,17 @@ describe('resolveTaskRef', () => {
         const result = await resolveTaskRef(api, 'id:task-1')
         expect(result.id).toBe('task-1')
         expect(api.getTask).toHaveBeenCalledWith('task-1')
+    })
+
+    it('fetches by ID extracted from Todoist URL', async () => {
+        const task = { id: 'abc123', content: 'Buy milk' }
+        const api = createMockApi({
+            getTask: vi.fn().mockResolvedValue(task),
+        })
+
+        const result = await resolveTaskRef(api, 'https://app.todoist.com/app/task/buy-milk-abc123')
+        expect(result.id).toBe('abc123')
+        expect(api.getTask).toHaveBeenCalledWith('abc123')
     })
 
     it('resolves exact name match (case insensitive)', async () => {
@@ -218,6 +295,20 @@ describe('resolveProjectRef', () => {
         const result = await resolveProjectRef(api, 'id:proj-work')
         expect(result.id).toBe('proj-work')
         expect(api.getProject).toHaveBeenCalledWith('proj-work')
+    })
+
+    it('fetches by ID extracted from Todoist URL', async () => {
+        const project = { id: 'proj123', name: 'Work' }
+        const api = createMockApi({
+            getProject: vi.fn().mockResolvedValue(project),
+        })
+
+        const result = await resolveProjectRef(
+            api,
+            'https://app.todoist.com/app/project/work-proj123',
+        )
+        expect(result.id).toBe('proj123')
+        expect(api.getProject).toHaveBeenCalledWith('proj123')
     })
 
     it('resolves exact name match', async () => {
@@ -416,6 +507,18 @@ describe('resolveParentTaskId', () => {
         expect(api.getTasks).not.toHaveBeenCalled()
     })
 
+    it('returns ID extracted from Todoist URL', async () => {
+        const api = createMockApi()
+
+        const result = await resolveParentTaskId(
+            api,
+            'https://app.todoist.com/app/task/setup-database-task123',
+            'proj-1',
+        )
+        expect(result).toBe('task123')
+        expect(api.getTasks).not.toHaveBeenCalled()
+    })
+
     it('searches in section first when sectionId provided', async () => {
         const api = createMockApi({
             getTasks: vi.fn().mockResolvedValue({ results: sectionTasks }),
@@ -490,5 +593,18 @@ describe('resolveParentTaskId', () => {
 
         const result = await resolveParentTaskId(api, '6fmg66Fr27R59RPg', 'proj-1')
         expect(result).toBe('6fmg66Fr27R59RPg')
+    })
+
+    it('throws on entity type mismatch (project URL for parent task)', async () => {
+        const api = createMockApi()
+
+        await expect(
+            resolveParentTaskId(
+                api,
+                'https://app.todoist.com/app/project/my-project-proj1',
+                'proj-1',
+            ),
+        ).rejects.toThrow('Expected a task URL, but got a project URL')
+        expect(api.getTasks).not.toHaveBeenCalled()
     })
 })
