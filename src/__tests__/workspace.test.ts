@@ -569,6 +569,15 @@ describe('workspace users', () => {
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Carol'))
     })
 
+    it('rejects invalid role values', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'users', 'Doist', '--role', 'BANANA']),
+        ).rejects.toThrow(
+            "error: option '--role <roles>' argument 'BANANA' is invalid. Allowed choices are ADMIN, MEMBER, GUEST.",
+        )
+    })
+
     it('outputs JSON with --json flag', async () => {
         mockApi.getWorkspaceUsers.mockResolvedValue({
             workspaceUsers: [

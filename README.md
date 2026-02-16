@@ -62,6 +62,21 @@ td project list                        # all projects
 
 Run `td --help` or `td <command> --help` for more options.
 
+## Shell Completions
+
+Tab completion is available for bash, zsh, and fish:
+
+```bash
+td completion install        # prompts for shell
+td completion install bash   # or: zsh, fish
+```
+
+Restart your shell or source your config file to activate. To remove:
+
+```bash
+td completion uninstall
+```
+
 ## Development
 
 ```bash

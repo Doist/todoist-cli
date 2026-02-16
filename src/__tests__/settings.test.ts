@@ -18,7 +18,17 @@ vi.mock('../lib/spinner.js', () => ({
     withSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
 }))
 
-import { registerSettingsCommand } from '../commands/settings.js'
+import {
+    DATE_FORMAT_CHOICES,
+    DAY_CHOICES,
+    parseDateFormat,
+    parseDay,
+    parseTheme,
+    parseTimeFormat,
+    registerSettingsCommand,
+    THEME_CHOICES,
+    TIME_FORMAT_CHOICES,
+} from '../commands/settings.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import { fetchUserSettings, updateUserSettings } from '../lib/api/user-settings.js'
@@ -472,7 +482,7 @@ describe('settings update', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'settings', 'update', '--time-format', '25']),
-        ).rejects.toThrow('Invalid time format')
+        ).rejects.toThrow('Allowed choices are')
     })
 
     it('errors on invalid theme name', async () => {
@@ -480,7 +490,7 @@ describe('settings update', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'settings', 'update', '--theme', 'invalid']),
-        ).rejects.toThrow('Invalid theme')
+        ).rejects.toThrow('Allowed choices are')
     })
 
     it('errors on invalid day name', async () => {
@@ -488,6 +498,24 @@ describe('settings update', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'settings', 'update', '--start-day', 'invalid']),
-        ).rejects.toThrow('Invalid day')
+        ).rejects.toThrow('Allowed choices are')
+    })
+})
+
+describe('choices-parser alignment', () => {
+    it.each(TIME_FORMAT_CHOICES)('parseTimeFormat accepts choice "%s"', (value) => {
+        expect(() => parseTimeFormat(value)).not.toThrow()
+    })
+
+    it.each(DATE_FORMAT_CHOICES)('parseDateFormat accepts choice "%s"', (value) => {
+        expect(() => parseDateFormat(value)).not.toThrow()
+    })
+
+    it.each(DAY_CHOICES)('parseDay accepts choice "%s"', (value) => {
+        expect(() => parseDay(value)).not.toThrow()
+    })
+
+    it.each(THEME_CHOICES)('parseTheme accepts choice "%s"', (value) => {
+        expect(() => parseTheme(value)).not.toThrow()
     })
 })

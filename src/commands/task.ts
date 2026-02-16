@@ -1,7 +1,8 @@
 import type { Task } from '@doist/todoist-api-typescript'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { completeTaskForever, getApi } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
+import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { parseDuration } from '../lib/duration.js'
 import { formatError, formatJson, formatTaskView } from '../lib/output.js'
 import { taskUrl } from '../lib/urls.js'
@@ -33,7 +34,12 @@ import {
     resolveSectionId,
     resolveTaskRef,
 } from '../lib/refs.js'
-import { listTasksForProject, parsePriority, type TaskListOptions } from '../lib/task-list.js'
+import {
+    listTasksForProject,
+    PRIORITY_CHOICES,
+    parsePriority,
+    type TaskListOptions,
+} from '../lib/task-list.js'
 
 interface ListOptions extends TaskListOptions {
     project?: string
@@ -378,7 +384,12 @@ export function registerTaskCommand(program: Command): void {
         .option('--project <name>', 'Filter by project name or id:xxx')
         .option('--parent <ref>', 'Filter subtasks of a parent task')
         .option('--label <name>', 'Filter by label (comma-separated for multiple)')
-        .option('--priority <p1-p4>', 'Filter by priority')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--priority <p1-p4>', 'Filter by priority'),
+                PRIORITY_CHOICES,
+            ),
+        )
         .option('--due <date>', 'Filter by due date (today, overdue, or YYYY-MM-DD)')
         .option('--filter <query>', 'Raw Todoist filter query')
         .option('--assignee <ref>', 'Filter by assignee (me or id:xxx)')
@@ -449,7 +460,12 @@ export function registerTaskCommand(program: Command): void {
         .option('--content <text>', 'Task content (legacy, prefer positional argument)')
         .option('--due <date>', 'Due date (natural language or YYYY-MM-DD)')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
-        .option('--priority <p1-p4>', 'Priority level')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--priority <p1-p4>', 'Priority level'),
+                PRIORITY_CHOICES,
+            ),
+        )
         .option('--project <name>', 'Project name or id:xxx')
         .option('--section <ref>', 'Section (name with --project, or id:xxx)')
         .option('--labels <a,b>', 'Comma-separated labels')
@@ -476,7 +492,12 @@ export function registerTaskCommand(program: Command): void {
         .option('--due <date>', 'New due date')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--no-deadline', 'Remove deadline')
-        .option('--priority <p1-p4>', 'New priority')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--priority <p1-p4>', 'New priority'),
+                PRIORITY_CHOICES,
+            ),
+        )
         .option('--labels <a,b>', 'New labels (replaces existing)')
         .option('--description <text>', 'New description')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
