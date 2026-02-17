@@ -1,19 +1,14 @@
 import { Command } from 'commander'
 import { formatError } from '../lib/output.js'
 import { classifyTodoistUrl } from '../lib/refs.js'
-import { registerFilterCommand } from './filter.js'
-import { registerLabelCommand } from './label.js'
-import { registerProjectCommand } from './project.js'
-import { registerTaskCommand } from './task.js'
-import { registerTodayCommand } from './today.js'
-import { registerUpcomingCommand } from './upcoming.js'
 
 async function runRoutedCommand(
-    register: (program: Command) => void,
+    loadRegister: () => Promise<(program: Command) => void>,
     argv: string[],
 ): Promise<void> {
     const proxy = new Command()
     proxy.exitOverride()
+    const register = await loadRegister()
     register(proxy)
     await proxy.parseAsync(['node', 'td', ...argv])
 }
@@ -48,27 +43,40 @@ Examples:
             if (route.kind === 'view') {
                 switch (route.view) {
                     case 'today':
-                        return runRoutedCommand(registerTodayCommand, ['today', ...args])
+                        return runRoutedCommand(
+                            async () => (await import('./today.js')).registerTodayCommand,
+                            ['today', ...args],
+                        )
                     case 'upcoming':
-                        return runRoutedCommand(registerUpcomingCommand, ['upcoming', ...args])
+                        return runRoutedCommand(
+                            async () => (await import('./upcoming.js')).registerUpcomingCommand,
+                            ['upcoming', ...args],
+                        )
                 }
             }
 
             const ref = `id:${route.id}`
             switch (route.entityType) {
                 case 'task':
-                    return runRoutedCommand(registerTaskCommand, ['task', 'view', ref, ...args])
+                    return runRoutedCommand(
+                        async () => (await import('./task.js')).registerTaskCommand,
+                        ['task', 'view', ref, ...args],
+                    )
                 case 'project':
-                    return runRoutedCommand(registerProjectCommand, [
-                        'project',
-                        'view',
-                        ref,
-                        ...args,
-                    ])
+                    return runRoutedCommand(
+                        async () => (await import('./project.js')).registerProjectCommand,
+                        ['project', 'view', ref, ...args],
+                    )
                 case 'label':
-                    return runRoutedCommand(registerLabelCommand, ['label', 'view', ref, ...args])
+                    return runRoutedCommand(
+                        async () => (await import('./label.js')).registerLabelCommand,
+                        ['label', 'view', ref, ...args],
+                    )
                 case 'filter':
-                    return runRoutedCommand(registerFilterCommand, ['filter', 'show', ref, ...args])
+                    return runRoutedCommand(
+                        async () => (await import('./filter.js')).registerFilterCommand,
+                        ['filter', 'show', ref, ...args],
+                    )
             }
         })
 }
