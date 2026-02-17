@@ -54,7 +54,7 @@ async function updateAllSkills(options: UpdateOptions): Promise<void> {
         console.log(chalk.red('✗'), `Failed to update ${name}`)
     }
 
-    if (result.updated.length === 0) {
+    if (result.updated.length === 0 && result.errors.length === 0) {
         console.log(chalk.dim('No installed skills found to update.'))
     }
 }
