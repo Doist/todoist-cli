@@ -17,7 +17,9 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td task complete <ref>\` - Complete a task
 - \`td project list\` - List projects
 - \`td label list\` - List labels
-- \`td filter list/show\` - Manage and use saved filters
+- \`td label view <ref>\` - Show tasks with a label
+- \`td filter list\` - List saved filters
+- \`td filter show <ref>\` - Show tasks matching a saved filter
 - \`td workspace list\` - List workspaces
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
@@ -95,7 +97,6 @@ td upcoming --any-assignee           # Include tasks assigned to others
 td view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB   # -> td task view id:...
 td view https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT     # -> td project view id:...
 td view https://app.todoist.com/app/filter/unscheduled-2353370974     # -> td filter show id:...
-td view https://app.todoist.com/app/69/filter/q4-frontend-31          # -> td filter show id:31
 td view https://app.todoist.com/app/label/this-week-2183057949        # -> td label view id:...
 td view https://app.todoist.com/app/today                             # -> td today
 td view https://app.todoist.com/app/upcoming                          # -> td upcoming

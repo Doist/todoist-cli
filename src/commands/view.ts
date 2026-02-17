@@ -16,10 +16,6 @@ function extractIdFromSlug(slugAndId: string): string {
     return lastHyphenIndex === -1 ? slugAndId : slugAndId.slice(lastHyphenIndex + 1)
 }
 
-function isWorkspacePathSegment(segment: string): boolean {
-    return /^\d+$/.test(segment)
-}
-
 export function routeViewUrl(url: string): string[] | null {
     let parsed: URL
 
@@ -42,12 +38,7 @@ export function routeViewUrl(url: string): string[] | null {
     const pathSegments = segments.slice(1)
     if (pathSegments.length === 0) return null
 
-    const segmentsWithoutWorkspace = isWorkspacePathSegment(pathSegments[0])
-        ? pathSegments.slice(1)
-        : pathSegments
-    if (segmentsWithoutWorkspace.length === 0) return null
-
-    const [entityPath, slugAndId] = segmentsWithoutWorkspace
+    const [entityPath, slugAndId] = pathSegments
 
     if (entityPath === 'inbox') return ['inbox']
     if (entityPath === 'today') return ['today']
@@ -98,14 +89,30 @@ export async function runRoutedCommand(args: string[]): Promise<void> {
 export function registerViewCommand(program: Command): void {
     program
         .command('view <url>')
-        .description('Route Todoist web app URLs to the matching td command')
+        .description('Route supported Todoist web app URLs to matching td commands')
+        .addHelpText(
+            'after',
+            `
+Routes:
+  /app/task/...      -> td task view id:<id>
+  /app/project/...   -> td project view id:<id>
+  /app/filter/...    -> td filter show id:<id>
+  /app/label/...     -> td label view id:<id>
+  /app/inbox|today|upcoming|settings -> matching command
+
+Examples:
+  td view https://app.todoist.com/app/task/buy-milk-abc123
+  td view https://app.todoist.com/app/project/work-xyz789
+  td view https://app.todoist.com/app/filter/unscheduled-2353370974
+  td view https://app.todoist.com/app/label/this-week-2183057949
+  td view https://app.todoist.com/app/today`,
+        )
         .action(async (url: string) => {
             const route = routeViewUrl(url)
             if (!route) {
                 throw new Error(
                     formatError('UNSUPPORTED_URL', `Unsupported Todoist URL: "${url}"`, [
-                        'Supported URLs: task, project, filter, label, inbox, today, upcoming, settings',
-                        'Workspace filter URLs are also supported: /app/<workspaceId>/filter/...',
+                        'Supported paths: /app/task, /app/project, /app/filter, /app/label, /app/inbox, /app/today, /app/upcoming, /app/settings',
                         'Example: td view https://app.todoist.com/app/task/buy-milk-abc123',
                     ]),
                 )

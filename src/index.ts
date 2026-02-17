@@ -44,7 +44,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         async () => (await import('./commands/completed.js')).registerCompletedCommand,
     ],
     view: [
-        'Route Todoist web app URLs to matching CLI commands',
+        'Route Todoist app URLs (task/project/filter/label/inbox/today/upcoming/settings)',
         async () => (await import('./commands/view.js')).registerViewCommand,
     ],
     task: ['Manage tasks', async () => (await import('./commands/task.js')).registerTaskCommand],

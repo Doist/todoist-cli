@@ -107,11 +107,6 @@ describe('routeViewUrl', () => {
             'show',
             'id:2353370974',
         ])
-        expect(routeViewUrl('https://app.todoist.com/app/69/filter/q4-frontend-31')).toEqual([
-            'filter',
-            'show',
-            'id:31',
-        ])
     })
 
     it('routes label URLs', () => {
@@ -134,6 +129,7 @@ describe('routeViewUrl', () => {
     })
 
     it('returns null for unsupported URLs', () => {
+        expect(routeViewUrl('https://app.todoist.com/app/69/filter/q4-frontend-31')).toBeNull()
         expect(routeViewUrl('https://app.todoist.com/app/team/inbox')).toBeNull()
         expect(routeViewUrl('https://google.com')).toBeNull()
         expect(routeViewUrl('not a url')).toBeNull()
@@ -216,17 +212,17 @@ describe('view command', () => {
         expect(spies.filterShow).toHaveBeenCalledWith('id:2353370974')
     })
 
-    it('dispatches workspace filter URL to filter show', async () => {
+    it('treats workspace filter URL as unsupported', async () => {
         const program = createProgram()
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'view',
-            'https://app.todoist.com/app/69/filter/q4-frontend-31',
-        ])
-
-        expect(spies.filterShow).toHaveBeenCalledWith('id:31')
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'view',
+                'https://app.todoist.com/app/69/filter/q4-frontend-31',
+            ]),
+        ).rejects.toThrow('UNSUPPORTED_URL')
     })
 
     it('dispatches label URL to label view', async () => {
