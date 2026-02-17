@@ -753,3 +753,163 @@ describe('filter show', () => {
         )
     })
 })
+
+describe('filter view (alias)', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('works via "view" subcommand', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'filter', 'view', 'Work'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('defaults to view subcommand (td filter <ref>)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'filter', 'Work'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('filter URL resolution', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('resolves filter by URL in view command', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'view',
+            'https://app.todoist.com/app/filter/work-filter1',
+        ])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@work' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves filter by URL in delete command', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+        mockDeleteFilter.mockResolvedValue(undefined)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'delete',
+            'https://app.todoist.com/app/filter/work-filter1',
+            '--yes',
+        ])
+
+        expect(mockDeleteFilter).toHaveBeenCalledWith('filter1')
+        consoleSpy.mockRestore()
+    })
+
+    it('throws entity type mismatch for task URL in filter command', async () => {
+        const program = createProgram()
+
+        mockFetchFilters.mockResolvedValue([
+            {
+                id: 'filter-1',
+                name: 'Work',
+                query: '@work',
+                isFavorite: false,
+                isDeleted: false,
+            },
+        ])
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'filter',
+                'delete',
+                'https://app.todoist.com/app/task/buy-milk-task1',
+                '--yes',
+            ]),
+        ).rejects.toThrow('Expected a filter URL, but got a task URL')
+    })
+})

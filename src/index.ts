@@ -100,6 +100,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage shell completions',
         async () => (await import('./commands/completion.js')).registerCompletionCommand,
     ],
+    view: [
+        'View a Todoist entity or page by URL',
+        async () => (await import('./commands/view.js')).registerViewCommand,
+    ],
 }
 
 // Register placeholders so --help lists all commands

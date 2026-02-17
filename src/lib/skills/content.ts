@@ -17,7 +17,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td task complete <ref>\` - Complete a task
 - \`td project list\` - List projects
 - \`td label list\` - List labels
-- \`td filter list/show\` - Manage and use saved filters
+- \`td filter list/view\` - Manage and use saved filters
 - \`td workspace list\` - List workspaces
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
@@ -25,6 +25,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
+- \`td view <url>\` - View any Todoist entity by URL
 
 ## Output Formats
 
@@ -50,7 +51,7 @@ Most list commands also support:
 
 ## References
 
-Tasks and projects can be referenced by:
+Tasks, projects, labels, and filters can be referenced by:
 - Name (fuzzy matched within context)
 - \`id:xxx\` - Explicit ID
 - Todoist URL - Paste directly from the web app (e.g., \`https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB\` or \`https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT\`)
@@ -160,12 +161,16 @@ td project browse "Project Name"              # Open in browser
 
 ### Labels
 \`\`\`bash
-td label list
+td label list                                 # Lists personal + shared labels
+td label view "urgent"                        # View label details and tasks
+td label view "team-review"                   # Works for shared labels too
 td label create --name "urgent" --color "red"
 td label update "urgent" --color "orange"
 td label delete "urgent" --yes
 td label browse "urgent"                      # Open in browser
 \`\`\`
+
+Note: Shared labels (from collaborative projects) appear in \`list\` and can be viewed, but cannot be deleted/updated via the standard label commands since they have no ID.
 
 ### Comments
 \`\`\`bash
@@ -193,7 +198,7 @@ td section browse id:123                      # Open in browser
 \`\`\`bash
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
-td filter show "Urgent work"                  # Show tasks matching filter
+td filter view "Urgent work"                  # Show tasks matching filter (alias: show)
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
 td filter browse "Urgent work"                # Open in browser
@@ -261,6 +266,18 @@ td completion install bash                    # Install for specific shell
 td completion install zsh
 td completion install fish
 td completion uninstall                       # Remove completions
+\`\`\`
+
+### View (URL Router)
+\`\`\`bash
+td view <todoist-url>                          # Auto-route to appropriate view by URL type
+td view https://app.todoist.com/app/task/buy-milk-abc123
+td view https://app.todoist.com/app/project/work-def456
+td view https://app.todoist.com/app/label/urgent-ghi789
+td view https://app.todoist.com/app/filter/work-tasks-jkl012
+td view https://app.todoist.com/app/today
+td view https://app.todoist.com/app/upcoming
+td view <url> --json                           # JSON output for entity views
 \`\`\`
 
 ## Examples

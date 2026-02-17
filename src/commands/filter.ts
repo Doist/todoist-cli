@@ -18,7 +18,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef } from '../lib/refs.js'
+import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -94,12 +94,10 @@ async function createFilter(options: CreateOptions): Promise<void> {
 async function resolveFilterRef(nameOrId: string): Promise<Filter> {
     const filters = await fetchFilters()
 
-    if (isIdRef(nameOrId)) {
-        const id = extractId(nameOrId)
+    if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
+        const id = lenientIdRef(nameOrId, 'filter')
         const filter = filters.find((f) => f.id === id)
-        if (!filter) {
-            throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
-        }
+        if (!filter) throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
         return filter
     }
 
@@ -116,6 +114,11 @@ async function resolveFilterRef(nameOrId: string): Promise<Filter> {
                 ...partial.slice(0, 5).map((f) => `${f.name} (id:${f.id})`),
             ]),
         )
+    }
+
+    if (looksLikeRawId(nameOrId)) {
+        const byId = filters.find((f) => f.id === nameOrId)
+        if (byId) return byId
     }
 
     throw new Error(formatError('FILTER_NOT_FOUND', `Filter "${nameOrId}" not found.`))
@@ -174,7 +177,7 @@ interface ShowOptions {
     showUrls?: boolean
 }
 
-async function showFilter(nameOrId: string, options: ShowOptions): Promise<void> {
+export async function showFilter(nameOrId: string, options: ShowOptions): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
     const api = await getApi()
 
@@ -335,8 +338,9 @@ export function registerFilterCommand(program: Command): void {
             return updateFilterCmd(ref, options)
         })
 
-    const showCmd = filter
-        .command('show [ref]')
+    const viewCmd = filter
+        .command('view [ref]', { isDefault: true })
+        .alias('show')
         .description('Show tasks matching a filter')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--cursor <cursor>', 'Continue from cursor')
@@ -347,7 +351,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                showCmd.help()
+                viewCmd.help()
                 return
             }
             return showFilter(ref, options)

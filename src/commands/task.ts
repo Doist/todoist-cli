@@ -75,7 +75,7 @@ async function listTasks(options: ListOptions): Promise<void> {
     await listTasksForProject(projectId, { ...options, parent: parentId })
 }
 
-async function viewTask(ref: string, options: ViewOptions): Promise<void> {
+export async function viewTask(ref: string, options: ViewOptions): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
 

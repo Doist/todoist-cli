@@ -26,6 +26,123 @@ interface TodayOptions {
     showUrls?: boolean
 }
 
+export async function showToday(options: TodayOptions): Promise<void> {
+    const api = await getApi()
+
+    const targetLimit = options.all
+        ? Number.MAX_SAFE_INTEGER
+        : options.limit
+          ? parseInt(options.limit, 10)
+          : LIMITS.tasks
+
+    const baseQuery = 'today | overdue'
+    const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
+
+    const [{ results: tasks, nextCursor }, projects] = await Promise.all([
+        paginate(
+            (cursor, limit) =>
+                api.getTasksByFilter({
+                    query,
+                    cursor: cursor ?? undefined,
+                    limit,
+                }),
+            { limit: targetLimit, startCursor: options.cursor },
+        ),
+        fetchProjects(api),
+    ])
+
+    const today = getLocalDate(0)
+
+    const filterResult = await filterByWorkspaceOrPersonal({
+        api,
+        tasks,
+        workspace: options.workspace,
+        personal: options.personal,
+        prefetchedProjects: projects,
+    })
+    const filteredTasks = filterResult.tasks
+
+    const overdue = filteredTasks.filter((t) => t.due && isDueBefore(t.due.date, today))
+    const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
+    const allTodayTasks = [...overdue, ...dueToday]
+
+    if (options.json) {
+        console.log(
+            formatPaginatedJson(
+                { results: allTodayTasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(
+            formatPaginatedNdjson(
+                { results: allTodayTasks, nextCursor },
+                'task',
+                options.full,
+                options.showUrls,
+            ),
+        )
+        return
+    }
+
+    const collaboratorCache = new CollaboratorCache()
+    await collaboratorCache.preload(api, allTodayTasks, filterResult.projects)
+
+    if (overdue.length === 0 && dueToday.length === 0) {
+        console.log('No tasks due today.')
+        console.log(formatNextCursorFooter(nextCursor))
+        return
+    }
+
+    if (overdue.length > 0) {
+        console.log(chalk.red.bold(`Overdue (${overdue.length})`))
+        for (const task of overdue) {
+            const assignee = formatAssignee({
+                userId: task.responsibleUid,
+                projectId: task.projectId,
+                projects,
+                cache: collaboratorCache,
+            })
+            console.log(
+                formatTaskRow({
+                    task,
+                    projectName: projects.get(task.projectId)?.name,
+                    assignee: assignee ?? undefined,
+                    raw: options.raw,
+                    showUrl: options.showUrls,
+                }),
+            )
+            console.log('')
+        }
+    }
+
+    console.log(chalk.bold(`Today (${dueToday.length})`))
+    for (const task of dueToday) {
+        const assignee = formatAssignee({
+            userId: task.responsibleUid,
+            projectId: task.projectId,
+            projects,
+            cache: collaboratorCache,
+        })
+        console.log(
+            formatTaskRow({
+                task,
+                projectName: projects.get(task.projectId)?.name,
+                assignee: assignee ?? undefined,
+                raw: options.raw,
+                showUrl: options.showUrls,
+            }),
+        )
+        console.log('')
+    }
+    console.log(formatNextCursorFooter(nextCursor))
+}
+
 export function registerTodayCommand(program: Command): void {
     program
         .command('today')
@@ -41,122 +158,5 @@ export function registerTodayCommand(program: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .option('--raw', 'Disable markdown rendering')
         .option('--show-urls', 'Show web app URLs for each task')
-        .action(async (options: TodayOptions) => {
-            const api = await getApi()
-
-            const targetLimit = options.all
-                ? Number.MAX_SAFE_INTEGER
-                : options.limit
-                  ? parseInt(options.limit, 10)
-                  : LIMITS.tasks
-
-            const baseQuery = 'today | overdue'
-            const query = options.anyAssignee
-                ? baseQuery
-                : `(${baseQuery}) & (assigned to: me | !assigned)`
-
-            const [{ results: tasks, nextCursor }, projects] = await Promise.all([
-                paginate(
-                    (cursor, limit) =>
-                        api.getTasksByFilter({
-                            query,
-                            cursor: cursor ?? undefined,
-                            limit,
-                        }),
-                    { limit: targetLimit, startCursor: options.cursor },
-                ),
-                fetchProjects(api),
-            ])
-
-            const today = getLocalDate(0)
-
-            const filterResult = await filterByWorkspaceOrPersonal({
-                api,
-                tasks,
-                workspace: options.workspace,
-                personal: options.personal,
-                prefetchedProjects: projects,
-            })
-            const filteredTasks = filterResult.tasks
-
-            const overdue = filteredTasks.filter((t) => t.due && isDueBefore(t.due.date, today))
-            const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
-            const allTodayTasks = [...overdue, ...dueToday]
-
-            if (options.json) {
-                console.log(
-                    formatPaginatedJson(
-                        { results: allTodayTasks, nextCursor },
-                        'task',
-                        options.full,
-                        options.showUrls,
-                    ),
-                )
-                return
-            }
-
-            if (options.ndjson) {
-                console.log(
-                    formatPaginatedNdjson(
-                        { results: allTodayTasks, nextCursor },
-                        'task',
-                        options.full,
-                        options.showUrls,
-                    ),
-                )
-                return
-            }
-
-            const collaboratorCache = new CollaboratorCache()
-            await collaboratorCache.preload(api, allTodayTasks, filterResult.projects)
-
-            if (overdue.length === 0 && dueToday.length === 0) {
-                console.log('No tasks due today.')
-                console.log(formatNextCursorFooter(nextCursor))
-                return
-            }
-
-            if (overdue.length > 0) {
-                console.log(chalk.red.bold(`Overdue (${overdue.length})`))
-                for (const task of overdue) {
-                    const assignee = formatAssignee({
-                        userId: task.responsibleUid,
-                        projectId: task.projectId,
-                        projects,
-                        cache: collaboratorCache,
-                    })
-                    console.log(
-                        formatTaskRow({
-                            task,
-                            projectName: projects.get(task.projectId)?.name,
-                            assignee: assignee ?? undefined,
-                            raw: options.raw,
-                            showUrl: options.showUrls,
-                        }),
-                    )
-                    console.log('')
-                }
-            }
-
-            console.log(chalk.bold(`Today (${dueToday.length})`))
-            for (const task of dueToday) {
-                const assignee = formatAssignee({
-                    userId: task.responsibleUid,
-                    projectId: task.projectId,
-                    projects,
-                    cache: collaboratorCache,
-                })
-                console.log(
-                    formatTaskRow({
-                        task,
-                        projectName: projects.get(task.projectId)?.name,
-                        assignee: assignee ?? undefined,
-                        raw: options.raw,
-                        showUrl: options.showUrls,
-                    }),
-                )
-                console.log('')
-            }
-            console.log(formatNextCursorFooter(nextCursor))
-        })
+        .action(showToday)
 }

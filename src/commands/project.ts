@@ -8,9 +8,12 @@ import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import {
     formatError,
+    formatJson,
+    formatNdjson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveProjectRef } from '../lib/refs.js'
@@ -155,9 +158,33 @@ async function listProjects(options: ListOptions): Promise<void> {
     }
 }
 
-async function viewProject(ref: string): Promise<void> {
+interface ViewOptions {
+    json?: boolean
+    ndjson?: boolean
+    full?: boolean
+    showUrls?: boolean
+}
+
+export async function viewProject(ref: string, options: ViewOptions = {}): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    if (options.json) {
+        console.log(formatJson(project, 'project', options.full, options.showUrls))
+        return
+    }
+
+    const { results: tasks } = await api.getTasks({ projectId: project.id })
+
+    if (options.ndjson) {
+        const lines: string[] = []
+        lines.push(formatNdjson([project], 'project', options.full, options.showUrls))
+        if (tasks.length > 0) {
+            lines.push(formatNdjson(tasks, 'task', options.full, options.showUrls))
+        }
+        console.log(lines.join('\n'))
+        return
+    }
 
     console.log(chalk.bold(project.name))
     console.log('')
@@ -186,14 +213,12 @@ async function viewProject(ref: string): Promise<void> {
     console.log(`Favorite: ${project.isFavorite ? 'Yes' : 'No'}`)
     console.log(`URL:      ${projectUrl(project.id)}`)
 
-    const { results: tasks } = await api.getTasks({ projectId: project.id })
-
     if (tasks.length > 0) {
         console.log('')
         console.log(chalk.dim(`--- Tasks (${tasks.length}) ---`))
         for (const task of tasks) {
-            const priority = chalk.dim(`p${5 - task.priority}`)
-            console.log(`  ${priority}  ${task.content}`)
+            console.log(formatTaskRow({ task, showUrl: options.showUrls }))
+            console.log('')
         }
     }
 }
@@ -376,15 +401,19 @@ export function registerProjectCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each project')
         .action(listProjects)
 
-    project
+    const viewCmd = project
         .command('view [ref]', { isDefault: true })
         .description('View project details')
-        .action((ref) => {
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .option('--show-urls', 'Show web app URLs for each task')
+        .action((ref, options) => {
             if (!ref) {
-                project.help()
+                viewCmd.help()
                 return
             }
-            return viewProject(ref)
+            return viewProject(ref, options)
         })
 
     const collaboratorsCmd = project

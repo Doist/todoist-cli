@@ -36,6 +36,8 @@ src/
     task.ts             # td task <action>
     project.ts          # td project <action>
     label.ts            # td label <action>
+    filter.ts           # td filter <action>
+    view.ts             # td view <url> (URL router)
     comment.ts          # td comment <action>
     section.ts          # td section <action>
   lib/
@@ -43,7 +45,7 @@ src/
     auth.ts             # token loading/saving (env var or config file)
     completion.ts       # Commander tree-walker for shell completions
     output.ts           # formatting utilities
-    refs.ts             # id: prefix parsing, URL parsing, ref resolution
+    refs.ts             # id: prefix parsing, URL parsing/classification, ref resolution
     urls.ts             # Todoist web app URL builders
     task-list.ts        # shared task listing logic
   types/
@@ -52,7 +54,7 @@ src/
 
 ## Key Patterns
 
-- **Lenient ID handling**: Raw IDs (alphanumeric or numeric) are accepted everywhere without `id:` prefix. Todoist web app URLs for tasks and projects are also accepted — `isTodoistUrl()`/`parseTodoistUrl()` extract the ID from the URL slug. `lenientIdRef()` accepts `id:xxx`, URLs, or raw ID-like strings, rejects plain text. `resolveRef()` auto-retries raw IDs as direct lookups before giving up. Use `isIdRef()`/`extractId()` for mixed refs (fuzzy name + explicit ID)
+- **Lenient ID handling**: Raw IDs (alphanumeric or numeric) are accepted everywhere without `id:` prefix. Todoist web app URLs for tasks, projects, labels, and filters are also accepted — `parseTodoistUrl()` extracts the ID from the URL slug. `lenientIdRef()` accepts `id:xxx`, URLs, or raw ID-like strings, rejects plain text. `resolveRef()` auto-retries raw IDs as direct lookups before giving up. Use `isIdRef()`/`extractId()` for mixed refs (fuzzy name + explicit ID)
 - **Implicit view subcommand**: `td project <ref>` defaults to `td project view <ref>` via Commander's `{ isDefault: true }`. Same for task, workspace, comment, notification. Edge case: if a project/task name matches a subcommand name (e.g., "list"), the subcommand wins — user must use `td project view list`
 - **Named flag aliases**: Where commands accept positional args for context (project, task, workspace), named flags are also accepted (`--project`, `--task`, `--workspace`). Error if both positional and flag are provided
 - **API responses**: Client returns `{ results: T[], nextCursor? }` - always destructure
