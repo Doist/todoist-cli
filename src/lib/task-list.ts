@@ -2,6 +2,7 @@ import type { Task, TodoistApi } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
+import type { PaginatedViewOptions } from './options.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -64,7 +65,7 @@ export async function filterByWorkspaceOrPersonal({
     return { tasks: filtered, projects }
 }
 
-export interface TaskListOptions {
+export type TaskListOptions = PaginatedViewOptions & {
     priority?: string
     due?: string
     filter?: string
@@ -74,14 +75,6 @@ export interface TaskListOptions {
     unassigned?: boolean
     workspace?: string
     personal?: boolean
-    limit?: string
-    cursor?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    raw?: boolean
-    showUrls?: boolean
 }
 
 /** CLI value → Todoist API priority (p1=urgent maps to API 4, p4=low maps to API 1) */

@@ -6,6 +6,7 @@ import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/a
 import { openInBrowser } from '../lib/browser.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import {
     formatError,
     formatJson,
@@ -21,16 +22,7 @@ import { projectUrl } from '../lib/urls.js'
 
 const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board', 'calendar']
 
-interface ListOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
-    personal?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
+type ListOptions = PaginatedViewOptions & { personal?: boolean }
 
 async function listProjects(options: ListOptions): Promise<void> {
     const api = await getApi()
@@ -156,13 +148,6 @@ async function listProjects(options: ListOptions): Promise<void> {
             chalk.dim('Tip: Use `td workspace projects <name>` for a detailed view with folders.'),
         )
     }
-}
-
-interface ViewOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
 }
 
 export async function viewProject(ref: string, options: ViewOptions = {}): Promise<void> {

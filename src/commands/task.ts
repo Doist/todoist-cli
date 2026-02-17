@@ -23,6 +23,7 @@ function applyDuration(args: DurationArgs, durationStr: string): void {
 }
 
 import { resolveAssigneeId } from '../lib/collaborators.js'
+import type { ViewOptions } from '../lib/options.js'
 import {
     extractId,
     isIdRef,
@@ -41,21 +42,7 @@ import {
     type TaskListOptions,
 } from '../lib/task-list.js'
 
-interface ListOptions extends TaskListOptions {
-    project?: string
-    parent?: string
-    label?: string
-    assignee?: string
-    unassigned?: boolean
-    workspace?: string
-    personal?: boolean
-}
-
-interface ViewOptions {
-    full?: boolean
-    json?: boolean
-    raw?: boolean
-}
+type ListOptions = TaskListOptions & { project?: string }
 
 async function listTasks(options: ListOptions): Promise<void> {
     const api = await getApi()

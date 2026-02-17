@@ -10,6 +10,7 @@ import {
 } from '../lib/api/filters.js'
 import { openInBrowser } from '../lib/browser.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -21,14 +22,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-async function listFilters(options: ListOptions): Promise<void> {
+async function listFilters(options: PaginatedViewOptions): Promise<void> {
     const filters = await fetchFilters()
 
     if (options.json) {
@@ -167,17 +161,7 @@ async function updateFilterCmd(nameOrId: string, options: UpdateOptions): Promis
     console.log(`Updated: ${filter.name}${options.name ? ` -> ${options.name}` : ''}`)
 }
 
-interface ShowOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-export async function showFilter(nameOrId: string, options: ShowOptions): Promise<void> {
+export async function showFilter(nameOrId: string, options: PaginatedViewOptions): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
     const api = await getApi()
 

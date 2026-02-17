@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -15,16 +16,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    limit?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-async function listLabels(options: ListOptions): Promise<void> {
+async function listLabels(options: PaginatedViewOptions): Promise<void> {
     const api = await getApi()
 
     const targetLimit = options.all
@@ -230,16 +222,7 @@ async function resolveLabelNameForView(nameOrId: string): Promise<ResolvedLabelF
     throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
 }
 
-interface ViewOptions {
-    limit?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-export async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
+export async function viewLabel(nameOrId: string, options: PaginatedViewOptions): Promise<void> {
     const resolved = await resolveLabelNameForView(nameOrId)
     const api = await getApi()
 

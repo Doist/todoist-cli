@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
     formatNextCursorFooter,
@@ -12,16 +13,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectId } from '../lib/refs.js'
 import { sectionUrl } from '../lib/urls.js'
 
-interface ListOptions {
-    limit?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
-}
-
-async function listSections(projectRef: string, options: ListOptions): Promise<void> {
+async function listSections(projectRef: string, options: PaginatedViewOptions): Promise<void> {
     const api = await getApi()
     const projectId = await resolveProjectId(api, projectRef)
 
@@ -145,17 +137,22 @@ export function registerSectionCommand(program: Command): void {
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each section')
-        .action((projectArg: string | undefined, options: ListOptions & { project?: string }) => {
-            if (projectArg && options.project) {
-                throw new Error('Cannot specify project both as argument and --project flag')
-            }
-            const project = projectArg || options.project
-            if (!project) {
-                listCmd.help()
-                return
-            }
-            return listSections(project, options)
-        })
+        .action(
+            (
+                projectArg: string | undefined,
+                options: PaginatedViewOptions & { project?: string },
+            ) => {
+                if (projectArg && options.project) {
+                    throw new Error('Cannot specify project both as argument and --project flag')
+                }
+                const project = projectArg || options.project
+                if (!project) {
+                    listCmd.help()
+                    return
+                }
+                return listSections(project, options)
+            },
+        )
 
     const createCmd = section
         .command('create')
