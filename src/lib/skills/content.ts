@@ -25,6 +25,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
+- \`td view <url>\` - Route Todoist app URLs to the right command
 
 ## Output Formats
 
@@ -87,6 +88,16 @@ td upcoming 14                       # Next 14 days
 td upcoming --workspace "Work"       # Filter to workspace
 td upcoming --personal               # Personal projects only
 td upcoming --any-assignee           # Include tasks assigned to others
+\`\`\`
+
+### URL Router
+\`\`\`bash
+td view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB   # -> td task view id:...
+td view https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT     # -> td project view id:...
+td view https://app.todoist.com/app/today                             # -> td today
+td view https://app.todoist.com/app/upcoming                          # -> td upcoming
+td view https://app.todoist.com/app/inbox                             # -> td inbox
+td view https://app.todoist.com/app/settings                          # -> td settings view
 \`\`\`
 
 ### Completed
