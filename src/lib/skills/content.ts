@@ -96,7 +96,7 @@ td view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB   # -> td tas
 td view https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT     # -> td project view id:...
 td view https://app.todoist.com/app/filter/unscheduled-2353370974     # -> td filter show id:...
 td view https://app.todoist.com/app/69/filter/q4-frontend-31          # -> td filter show id:31
-td view https://app.todoist.com/app/label/this-week-2183057949        # -> td task list --label "this-week"
+td view https://app.todoist.com/app/label/this-week-2183057949        # -> td label list
 td view https://app.todoist.com/app/today                             # -> td today
 td view https://app.todoist.com/app/upcoming                          # -> td upcoming
 td view https://app.todoist.com/app/inbox                             # -> td inbox

@@ -1,10 +1,15 @@
 import { Command } from 'commander'
-import { getApi } from '../lib/api/core.js'
 import { formatError } from '../lib/output.js'
 
-type RoutableCommand = 'task' | 'project' | 'inbox' | 'today' | 'upcoming' | 'settings' | 'filter'
-
-type ViewRoute = { kind: 'command'; args: string[] } | { kind: 'label'; id: string }
+type RoutableCommand =
+    | 'task'
+    | 'project'
+    | 'inbox'
+    | 'today'
+    | 'upcoming'
+    | 'settings'
+    | 'filter'
+    | 'label'
 
 function extractIdFromSlug(slugAndId: string): string {
     const lastHyphenIndex = slugAndId.lastIndexOf('-')
@@ -15,7 +20,7 @@ function isWorkspacePathSegment(segment: string): boolean {
     return /^\d+$/.test(segment)
 }
 
-export function routeViewUrl(url: string): ViewRoute | null {
+export function routeViewUrl(url: string): string[] | null {
     let parsed: URL
 
     try {
@@ -44,18 +49,18 @@ export function routeViewUrl(url: string): ViewRoute | null {
 
     const [entityPath, slugAndId] = segmentsWithoutWorkspace
 
-    if (entityPath === 'inbox') return { kind: 'command', args: ['inbox'] }
-    if (entityPath === 'today') return { kind: 'command', args: ['today'] }
-    if (entityPath === 'upcoming') return { kind: 'command', args: ['upcoming'] }
-    if (entityPath === 'settings') return { kind: 'command', args: ['settings', 'view'] }
+    if (entityPath === 'inbox') return ['inbox']
+    if (entityPath === 'today') return ['today']
+    if (entityPath === 'upcoming') return ['upcoming']
+    if (entityPath === 'settings') return ['settings', 'view']
 
     if (!slugAndId) return null
     const id = extractIdFromSlug(slugAndId)
 
-    if (entityPath === 'task') return { kind: 'command', args: ['task', 'view', `id:${id}`] }
-    if (entityPath === 'project') return { kind: 'command', args: ['project', 'view', `id:${id}`] }
-    if (entityPath === 'filter') return { kind: 'command', args: ['filter', 'show', `id:${id}`] }
-    if (entityPath === 'label') return { kind: 'label', id }
+    if (entityPath === 'task') return ['task', 'view', `id:${id}`]
+    if (entityPath === 'project') return ['project', 'view', `id:${id}`]
+    if (entityPath === 'filter') return ['filter', 'show', `id:${id}`]
+    if (entityPath === 'label') return ['label', 'list']
 
     return null
 }
@@ -76,6 +81,8 @@ async function loadCommand(name: RoutableCommand): Promise<(program: Command) =>
             return (await import('./settings.js')).registerSettingsCommand
         case 'filter':
             return (await import('./filter.js')).registerFilterCommand
+        case 'label':
+            return (await import('./label.js')).registerLabelCommand
     }
 }
 
@@ -104,13 +111,6 @@ export function registerViewCommand(program: Command): void {
                 )
             }
 
-            if (route.kind === 'command') {
-                await runRoutedCommand(route.args)
-                return
-            }
-
-            const api = await getApi()
-            const label = await api.getLabel(route.id)
-            await runRoutedCommand(['task', 'list', '--label', label.name])
+            await runRoutedCommand(route)
         })
 }
