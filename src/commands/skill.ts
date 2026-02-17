@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { formatError } from '../lib/output.js'
 import { getInstaller, listAgents, skillInstallers } from '../lib/skills/index.js'
+import { updateAllInstalledSkills } from '../lib/skills/update-installed.js'
 
 interface InstallOptions {
     local?: boolean
@@ -35,6 +36,27 @@ async function installSkill(agent: string, options: InstallOptions): Promise<voi
     const filepath = installer.getInstallPath(local)
     console.log(chalk.green('✓'), `Installed ${installer.name} skill`)
     console.log(chalk.dim(filepath))
+}
+
+async function updateAllSkills(options: UpdateOptions): Promise<void> {
+    const local = options.local ?? false
+    const result = await updateAllInstalledSkills(local)
+
+    for (const name of result.updated) {
+        console.log(chalk.green('✓'), `Updated ${name} skill`)
+    }
+
+    for (const name of result.skipped) {
+        console.log(chalk.dim(`  Skipped ${name} (not installed)`))
+    }
+
+    for (const name of result.errors) {
+        console.log(chalk.red('✗'), `Failed to update ${name}`)
+    }
+
+    if (result.updated.length === 0) {
+        console.log(chalk.dim('No installed skills found to update.'))
+    }
 }
 
 async function updateSkill(agent: string, options: UpdateOptions): Promise<void> {
@@ -131,6 +153,9 @@ export function registerSkillCommand(program: Command): void {
             if (!agent) {
                 updateCmd.help()
                 return
+            }
+            if (agent === 'all') {
+                return updateAllSkills(options)
             }
             return updateSkill(agent, options)
         })
