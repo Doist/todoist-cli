@@ -38,7 +38,10 @@ vi.mock('../commands/filter.js', () => ({
             .command('filter')
             .command('show')
             .argument('<ref>')
-            .action((ref: string) => spies.filterShow(ref))
+            .option('--json')
+            .action((ref: string, options: { json?: boolean }) =>
+                spies.filterShow(ref, options.json ?? false),
+            )
     }),
 }))
 
@@ -48,7 +51,10 @@ vi.mock('../commands/label.js', () => ({
             .command('label')
             .command('view')
             .argument('<ref>')
-            .action((ref: string) => spies.labelView(ref))
+            .option('--json')
+            .action((ref: string, options: { json?: boolean }) =>
+                spies.labelView(ref, options.json ?? false),
+            )
     }),
 }))
 
@@ -209,7 +215,7 @@ describe('view command', () => {
             'https://app.todoist.com/app/filter/unscheduled-2353370974',
         ])
 
-        expect(spies.filterShow).toHaveBeenCalledWith('id:2353370974')
+        expect(spies.filterShow).toHaveBeenCalledWith('id:2353370974', false)
     })
 
     it('treats workspace filter URL as unsupported', async () => {
@@ -235,7 +241,21 @@ describe('view command', () => {
             'https://app.todoist.com/app/label/this-week-2183057949',
         ])
 
-        expect(spies.labelView).toHaveBeenCalledWith('id:2183057949')
+        expect(spies.labelView).toHaveBeenCalledWith('id:2183057949', false)
+    })
+
+    it('passes through additional args to routed commands', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'view',
+            'https://app.todoist.com/app/filter/unscheduled-2353370974',
+            '--json',
+        ])
+
+        expect(spies.filterShow).toHaveBeenCalledWith('id:2353370974', true)
     })
 
     it('throws helpful error for unsupported URL', async () => {

@@ -88,8 +88,9 @@ export async function runRoutedCommand(args: string[]): Promise<void> {
 
 export function registerViewCommand(program: Command): void {
     program
-        .command('view <url>')
+        .command('view <url> [args...]')
         .description('Route supported Todoist web app URLs to matching td commands')
+        .allowUnknownOption(true)
         .addHelpText(
             'after',
             `
@@ -104,10 +105,11 @@ Examples:
   td view https://app.todoist.com/app/task/buy-milk-abc123
   td view https://app.todoist.com/app/project/work-xyz789
   td view https://app.todoist.com/app/filter/unscheduled-2353370974
+  td view https://app.todoist.com/app/filter/unscheduled-2353370974 --json
   td view https://app.todoist.com/app/label/this-week-2183057949
   td view https://app.todoist.com/app/today`,
         )
-        .action(async (url: string) => {
+        .action(async (url: string, args: string[] = []) => {
             const route = routeViewUrl(url)
             if (!route) {
                 throw new Error(
@@ -118,6 +120,6 @@ Examples:
                 )
             }
 
-            await runRoutedCommand(route)
+            await runRoutedCommand([...route, ...args])
         })
 }
