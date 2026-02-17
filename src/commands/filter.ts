@@ -18,7 +18,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef, parseTodoistUrl } from '../lib/refs.js'
+import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -94,27 +94,10 @@ async function createFilter(options: CreateOptions): Promise<void> {
 async function resolveFilterRef(nameOrId: string): Promise<Filter> {
     const filters = await fetchFilters()
 
-    const parsedUrl = parseTodoistUrl(nameOrId)
-    if (parsedUrl) {
-        if (parsedUrl.entityType !== 'filter') {
-            throw new Error(
-                formatError(
-                    'ENTITY_TYPE_MISMATCH',
-                    `Expected a filter URL, but got a ${parsedUrl.entityType} URL.`,
-                ),
-            )
-        }
-        const filter = filters.find((f) => f.id === parsedUrl.id)
-        if (!filter) throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
-        return filter
-    }
-
-    if (isIdRef(nameOrId)) {
-        const id = extractId(nameOrId)
+    if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
+        const id = lenientIdRef(nameOrId, 'filter')
         const filter = filters.find((f) => f.id === id)
-        if (!filter) {
-            throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
-        }
+        if (!filter) throw new Error(formatError('FILTER_NOT_FOUND', 'Filter not found.'))
         return filter
     }
 
@@ -131,6 +114,11 @@ async function resolveFilterRef(nameOrId: string): Promise<Filter> {
                 ...partial.slice(0, 5).map((f) => `${f.name} (id:${f.id})`),
             ]),
         )
+    }
+
+    if (looksLikeRawId(nameOrId)) {
+        const byId = filters.find((f) => f.id === nameOrId)
+        if (byId) return byId
     }
 
     throw new Error(formatError('FILTER_NOT_FOUND', `Filter "${nameOrId}" not found.`))

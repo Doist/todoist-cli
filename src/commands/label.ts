@@ -12,7 +12,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { extractId, isIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
+import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { labelUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -143,27 +143,12 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     const api = await getApi()
     const { results: labels } = await api.getLabels()
 
-    const parsedUrl = parseTodoistUrl(nameOrId)
-    if (parsedUrl) {
-        if (parsedUrl.entityType !== 'label') {
-            throw new Error(
-                formatError(
-                    'ENTITY_TYPE_MISMATCH',
-                    `Expected a label URL, but got a ${parsedUrl.entityType} URL.`,
-                ),
-            )
-        }
-        const label = labels.find((l) => l.id === parsedUrl.id)
-        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
-        return label
-    }
-
-    if (isIdRef(nameOrId)) {
-        const id = extractId(nameOrId)
+    // NOTE: Shared labels are not currently supported. The API does not return them
+    // via getLabels(), and their URLs use a different ID format.
+    if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
+        const id = lenientIdRef(nameOrId, 'label')
         const label = labels.find((l) => l.id === id)
-        if (!label) {
-            throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
-        }
+        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
         return label
     }
 
