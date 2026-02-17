@@ -17,8 +17,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td task complete <ref>\` - Complete a task
 - \`td project list\` - List projects
 - \`td label list\` - List labels
-- \`td label view <ref>\` - View label details and tasks
-- \`td filter show <ref>\` - Show tasks matching a saved filter
+- \`td filter list/view\` - Manage and use saved filters
 - \`td workspace list\` - List workspaces
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
@@ -26,7 +25,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
-- \`td view <url>\` - View Todoist entities/pages by URL
+- \`td view <url>\` - View any Todoist entity by URL
 
 ## Output Formats
 
@@ -163,7 +162,6 @@ td project browse "Project Name"              # Open in browser
 ### Labels
 \`\`\`bash
 td label list                                 # Lists personal + shared labels
-td label view <ref>                           # Ref can be name, id:xxx, or label URL
 td label view "urgent"                        # View label details and tasks
 td label view "team-review"                   # Works for shared labels too
 td label create --name "urgent" --color "red"
@@ -200,8 +198,7 @@ td section browse id:123                      # Open in browser
 \`\`\`bash
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
-td filter show <ref>                          # Ref can be name, id:xxx, or filter URL
-td filter view "Urgent work"                  # Alias of "filter show"
+td filter view "Urgent work"                  # Show tasks matching filter (alias: show)
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
 td filter browse "Urgent work"                # Open in browser
@@ -280,7 +277,7 @@ td view https://app.todoist.com/app/label/urgent-ghi789
 td view https://app.todoist.com/app/filter/work-tasks-jkl012
 td view https://app.todoist.com/app/today
 td view https://app.todoist.com/app/upcoming
-td view <url> --json                           # Passthrough to routed command JSON output
+td view <url> --json                           # JSON output for entity views
 td view <url> --limit 25 --ndjson              # Passthrough list options where supported
 \`\`\`
 
