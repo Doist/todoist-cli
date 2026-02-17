@@ -10,25 +10,6 @@ import { resolveWorkspaceRef } from '../lib/refs.js'
 
 const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
-interface UsersOptions {
-    role?: string
-    limit?: string
-    cursor?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-}
-
-interface ProjectsOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-}
-
 async function listWorkspaces(options: PaginatedViewOptions): Promise<void> {
     const workspaces = await fetchWorkspaces()
 
@@ -98,7 +79,7 @@ async function viewWorkspace(ref: string): Promise<void> {
     console.log(`Projects: ${workspace.currentActiveProjects} active`)
 }
 
-async function listWorkspaceProjects(ref: string, options: ProjectsOptions): Promise<void> {
+async function listWorkspaceProjects(ref: string, options: PaginatedViewOptions): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -207,7 +188,10 @@ async function listWorkspaceProjects(ref: string, options: ProjectsOptions): Pro
     }
 }
 
-async function listWorkspaceUsers(ref: string, options: UsersOptions): Promise<void> {
+async function listWorkspaceUsers(
+    ref: string,
+    options: PaginatedViewOptions & { role?: string },
+): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -346,17 +330,24 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((refArg: string | undefined, options: ProjectsOptions & { workspace?: string }) => {
-            if (refArg && options.workspace) {
-                throw new Error('Cannot specify workspace both as argument and --workspace flag')
-            }
-            const ref = refArg || options.workspace
-            if (!ref) {
-                projectsCmd.help()
-                return
-            }
-            return listWorkspaceProjects(ref, options)
-        })
+        .action(
+            (
+                refArg: string | undefined,
+                options: PaginatedViewOptions & { workspace?: string },
+            ) => {
+                if (refArg && options.workspace) {
+                    throw new Error(
+                        'Cannot specify workspace both as argument and --workspace flag',
+                    )
+                }
+                const ref = refArg || options.workspace
+                if (!ref) {
+                    projectsCmd.help()
+                    return
+                }
+                return listWorkspaceProjects(ref, options)
+            },
+        )
 
     const usersCmd = workspace
         .command('users [ref]')
@@ -377,15 +368,22 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((refArg: string | undefined, options: UsersOptions & { workspace?: string }) => {
-            if (refArg && options.workspace) {
-                throw new Error('Cannot specify workspace both as argument and --workspace flag')
-            }
-            const ref = refArg || options.workspace
-            if (!ref) {
-                usersCmd.help()
-                return
-            }
-            return listWorkspaceUsers(ref, options)
-        })
+        .action(
+            (
+                refArg: string | undefined,
+                options: PaginatedViewOptions & { role?: string; workspace?: string },
+            ) => {
+                if (refArg && options.workspace) {
+                    throw new Error(
+                        'Cannot specify workspace both as argument and --workspace flag',
+                    )
+                }
+                const ref = refArg || options.workspace
+                if (!ref) {
+                    usersCmd.help()
+                    return
+                }
+                return listWorkspaceUsers(ref, options)
+            },
+        )
 }
