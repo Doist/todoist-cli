@@ -25,7 +25,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
-- \`td view <url>\` - View any Todoist entity by URL
+- \`td view <url>\` - View supported Todoist entities/pages by URL
 
 ## Output Formats
 
@@ -278,6 +278,7 @@ td view https://app.todoist.com/app/filter/work-tasks-jkl012
 td view https://app.todoist.com/app/today
 td view https://app.todoist.com/app/upcoming
 td view <url> --json                           # JSON output for entity views
+td view <url> --limit 25 --ndjson              # Passthrough list options where supported
 \`\`\`
 
 ## Examples
