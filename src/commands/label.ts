@@ -235,8 +235,8 @@ export function registerLabelCommand(program: Command): void {
             return updateLabel(ref, options)
         })
 
-    const viewCmd = label
-        .command('view [ref]')
+    label
+        .command('view <ref>')
         .description('Show tasks with a label')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--cursor <cursor>', 'Continue from cursor')
@@ -246,13 +246,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .option('--raw', 'Disable markdown rendering')
         .option('--show-urls', 'Show web app URLs for each task')
-        .action((ref, options: ViewOptions) => {
-            if (!ref) {
-                viewCmd.help()
-                return
-            }
-            return viewLabel(ref, options)
-        })
+        .action((ref: string, options: ViewOptions) => viewLabel(ref, options))
 
     const browseCmd = label
         .command('browse [ref]')
