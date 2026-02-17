@@ -6,7 +6,7 @@ const spies = vi.hoisted(() => ({
     taskView: vi.fn(),
     projectView: vi.fn(),
     filterShow: vi.fn(),
-    labelList: vi.fn(),
+    labelView: vi.fn(),
     inbox: vi.fn(),
     today: vi.fn(),
     upcoming: vi.fn(),
@@ -46,8 +46,9 @@ vi.mock('../commands/label.js', () => ({
     registerLabelCommand: vi.fn((program: Command) => {
         program
             .command('label')
-            .command('list')
-            .action(() => spies.labelList())
+            .command('view')
+            .argument('<ref>')
+            .action((ref: string) => spies.labelView(ref))
     }),
 }))
 
@@ -116,7 +117,8 @@ describe('routeViewUrl', () => {
     it('routes label URLs', () => {
         expect(routeViewUrl('https://app.todoist.com/app/label/this-week-2183057949')).toEqual([
             'label',
-            'list',
+            'view',
+            'id:2183057949',
         ])
     })
 
@@ -227,7 +229,7 @@ describe('view command', () => {
         expect(spies.filterShow).toHaveBeenCalledWith('id:31')
     })
 
-    it('dispatches label URL to label list', async () => {
+    it('dispatches label URL to label view', async () => {
         const program = createProgram()
 
         await program.parseAsync([
@@ -237,7 +239,7 @@ describe('view command', () => {
             'https://app.todoist.com/app/label/this-week-2183057949',
         ])
 
-        expect(spies.labelList).toHaveBeenCalledTimes(1)
+        expect(spies.labelView).toHaveBeenCalledWith('id:2183057949')
     })
 
     it('throws helpful error for unsupported URL', async () => {

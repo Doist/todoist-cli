@@ -60,7 +60,7 @@ export function routeViewUrl(url: string): string[] | null {
     if (entityPath === 'task') return ['task', 'view', `id:${id}`]
     if (entityPath === 'project') return ['project', 'view', `id:${id}`]
     if (entityPath === 'filter') return ['filter', 'show', `id:${id}`]
-    if (entityPath === 'label') return ['label', 'list']
+    if (entityPath === 'label') return ['label', 'view', `id:${id}`]
 
     return null
 }
