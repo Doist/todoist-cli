@@ -235,6 +235,35 @@ describe('view command', () => {
         expect(output).toContain('"id"')
     })
 
+    it('forwards flags placed before URL to routed commands', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task1',
+            content: 'Buy milk',
+            description: '',
+            priority: 1,
+            projectId: 'proj1',
+            sectionId: null,
+            parentId: null,
+            labels: [],
+            due: null,
+            checked: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'view',
+            '--json',
+            'https://app.todoist.com/app/task/buy-milk-task1',
+        ])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task1')
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('"id"')
+    })
+
     it('forwards passthrough list flags to routed filter view', async () => {
         const program = createProgram()
 
