@@ -13,9 +13,14 @@ vi.mock('chalk', () => ({
     },
 }))
 
+vi.mock('../lib/skills/update-installed.js', () => ({
+    updateAllInstalledSkills: vi.fn(),
+}))
+
 import { registerSkillCommand } from '../commands/skill.js'
 import { createInstaller } from '../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../lib/skills/index.js'
+import { updateAllInstalledSkills } from '../lib/skills/update-installed.js'
 
 function createProgram() {
     const program = new Command()
@@ -77,6 +82,36 @@ describe('skill command', () => {
             await expect(
                 program.parseAsync(['node', 'td', 'skill', 'update', 'unknown-agent']),
             ).rejects.toThrow('Unknown agent: unknown-agent')
+        })
+
+        it('updates all installed agents when "all" is passed', async () => {
+            vi.mocked(updateAllInstalledSkills).mockResolvedValue({
+                updated: ['claude-code', 'cursor'],
+                skipped: ['codex'],
+                errors: [],
+            })
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'skill', 'update', 'all'])
+
+            expect(updateAllInstalledSkills).toHaveBeenCalledWith(false)
+            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Updated claude-code skill')
+            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Updated cursor skill')
+            expect(consoleSpy).toHaveBeenCalledWith('  Skipped codex (not installed)')
+        })
+
+        it('shows message when no agents are installed for "all"', async () => {
+            vi.mocked(updateAllInstalledSkills).mockResolvedValue({
+                updated: [],
+                skipped: ['claude-code', 'codex', 'cursor'],
+                errors: [],
+            })
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'skill', 'update', 'all'])
+
+            expect(updateAllInstalledSkills).toHaveBeenCalledWith(false)
+            expect(consoleSpy).toHaveBeenCalledWith('No installed skills found to update.')
         })
     })
 

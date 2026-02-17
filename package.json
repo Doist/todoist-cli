@@ -16,6 +16,7 @@
     "lint:write": "biome lint --write",
     "format": "biome check --write --unsafe && prettier --write \"**/*.{md,yml,yaml,css}\"",
     "format:check": "biome check && prettier --check \"**/*.{md,yml,yaml,css}\"",
+    "postinstall": "node dist/postinstall.js || true",
     "test": "vitest run",
     "test:watch": "vitest"
   },
