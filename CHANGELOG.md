@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0](https://github.com/Doist/todoist-cli/compare/v1.14.0...v1.15.0) (2026-02-17)
+
+
+### Features
+
+* auto-update agent skills on npm package update ([#76](https://github.com/Doist/todoist-cli/issues/76)) ([cb12178](https://github.com/Doist/todoist-cli/commit/cb1217856e9b45769fee9fb7df016f192c6b0604))
+
 ## [1.14.0](https://github.com/Doist/todoist-cli/compare/v1.13.0...v1.14.0) (2026-02-17)
 
 
