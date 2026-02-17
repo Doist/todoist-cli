@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0](https://github.com/Doist/todoist-cli/compare/v1.13.0...v1.14.0) (2026-02-17)
+
+
+### Features
+
+* accept Todoist web app task and project URLs as CLI parameters ([#64](https://github.com/Doist/todoist-cli/issues/64)) ([4c637c1](https://github.com/Doist/todoist-cli/commit/4c637c1cc0da85c84020ba3461803596ef0a4943))
+* enhance Todoist URL support for labels, filters, and add view router ([#69](https://github.com/Doist/todoist-cli/issues/69)) ([109ab08](https://github.com/Doist/todoist-cli/commit/109ab0858638ec27b066080d60d5d353db7679da))
+
 ## [1.13.0](https://github.com/Doist/todoist-cli/compare/v1.12.0...v1.13.0) (2026-02-16)
 
 
