@@ -1,19 +1,23 @@
 import { Command } from 'commander'
+import { getApi } from '../lib/api/core.js'
 import { formatError } from '../lib/output.js'
-import { parseTodoistUrl } from '../lib/refs.js'
 
-type RoutableCommand = 'task' | 'project' | 'inbox' | 'today' | 'upcoming' | 'settings'
+type RoutableCommand = 'task' | 'project' | 'inbox' | 'today' | 'upcoming' | 'settings' | 'filter'
 
-export function routeViewUrl(url: string): string[] | null {
-    const parsedEntity = parseTodoistUrl(url)
-    if (parsedEntity?.entityType === 'task') {
-        return ['task', 'view', `id:${parsedEntity.id}`]
-    }
-    if (parsedEntity?.entityType === 'project') {
-        return ['project', 'view', `id:${parsedEntity.id}`]
-    }
+type ViewRoute = { kind: 'command'; args: string[] } | { kind: 'label'; id: string }
 
+function extractIdFromSlug(slugAndId: string): string {
+    const lastHyphenIndex = slugAndId.lastIndexOf('-')
+    return lastHyphenIndex === -1 ? slugAndId : slugAndId.slice(lastHyphenIndex + 1)
+}
+
+function isWorkspacePathSegment(segment: string): boolean {
+    return /^\d+$/.test(segment)
+}
+
+export function routeViewUrl(url: string): ViewRoute | null {
     let parsed: URL
+
     try {
         parsed = new URL(url)
     } catch {
@@ -27,14 +31,31 @@ export function routeViewUrl(url: string): string[] | null {
         return null
     }
 
-    const path = parsed.pathname.replace(/^\/+|\/+$/g, '')
-    if (!path.startsWith('app')) return null
-    const appPath = path.slice('app'.length).replace(/^\/+/, '')
+    const segments = parsed.pathname.split('/').filter(Boolean)
+    if (segments[0] !== 'app') return null
 
-    if (appPath === 'inbox') return ['inbox']
-    if (appPath === 'today') return ['today']
-    if (appPath === 'upcoming') return ['upcoming']
-    if (appPath === 'settings' || appPath.startsWith('settings/')) return ['settings', 'view']
+    const pathSegments = segments.slice(1)
+    if (pathSegments.length === 0) return null
+
+    const segmentsWithoutWorkspace = isWorkspacePathSegment(pathSegments[0])
+        ? pathSegments.slice(1)
+        : pathSegments
+    if (segmentsWithoutWorkspace.length === 0) return null
+
+    const [entityPath, slugAndId] = segmentsWithoutWorkspace
+
+    if (entityPath === 'inbox') return { kind: 'command', args: ['inbox'] }
+    if (entityPath === 'today') return { kind: 'command', args: ['today'] }
+    if (entityPath === 'upcoming') return { kind: 'command', args: ['upcoming'] }
+    if (entityPath === 'settings') return { kind: 'command', args: ['settings', 'view'] }
+
+    if (!slugAndId) return null
+    const id = extractIdFromSlug(slugAndId)
+
+    if (entityPath === 'task') return { kind: 'command', args: ['task', 'view', `id:${id}`] }
+    if (entityPath === 'project') return { kind: 'command', args: ['project', 'view', `id:${id}`] }
+    if (entityPath === 'filter') return { kind: 'command', args: ['filter', 'show', `id:${id}`] }
+    if (entityPath === 'label') return { kind: 'label', id }
 
     return null
 }
@@ -53,6 +74,8 @@ async function loadCommand(name: RoutableCommand): Promise<(program: Command) =>
             return (await import('./upcoming.js')).registerUpcomingCommand
         case 'settings':
             return (await import('./settings.js')).registerSettingsCommand
+        case 'filter':
+            return (await import('./filter.js')).registerFilterCommand
     }
 }
 
@@ -70,16 +93,24 @@ export function registerViewCommand(program: Command): void {
         .command('view <url>')
         .description('Route Todoist web app URLs to the matching td command')
         .action(async (url: string) => {
-            const routedArgs = routeViewUrl(url)
-            if (!routedArgs) {
+            const route = routeViewUrl(url)
+            if (!route) {
                 throw new Error(
                     formatError('UNSUPPORTED_URL', `Unsupported Todoist URL: "${url}"`, [
-                        'Supported URLs: task, project, inbox, today, upcoming, settings',
+                        'Supported URLs: task, project, filter, label, inbox, today, upcoming, settings',
+                        'Workspace filter URLs are also supported: /app/<workspaceId>/filter/...',
                         'Example: td view https://app.todoist.com/app/task/buy-milk-abc123',
                     ]),
                 )
             }
 
-            await runRoutedCommand(routedArgs)
+            if (route.kind === 'command') {
+                await runRoutedCommand(route.args)
+                return
+            }
+
+            const api = await getApi()
+            const label = await api.getLabel(route.id)
+            await runRoutedCommand(['task', 'list', '--label', label.name])
         })
 }
