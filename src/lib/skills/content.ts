@@ -161,13 +161,16 @@ td project browse "Project Name"              # Open in browser
 
 ### Labels
 \`\`\`bash
-td label list
+td label list                                 # Lists personal + shared labels
 td label view "urgent"                        # View label details and tasks
+td label view "team-review"                   # Works for shared labels too
 td label create --name "urgent" --color "red"
 td label update "urgent" --color "orange"
 td label delete "urgent" --yes
 td label browse "urgent"                      # Open in browser
 \`\`\`
+
+Note: Shared labels (from collaborative projects) appear in \`list\` and can be viewed, but cannot be deleted/updated via the standard label commands since they have no ID.
 
 ### Comments
 \`\`\`bash

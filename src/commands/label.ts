@@ -38,8 +38,19 @@ async function listLabels(options: ListOptions): Promise<void> {
         { limit: targetLimit },
     )
 
+    // Fetch shared-only labels (not in personal labels)
+    const { results: sharedLabels } = await paginate(
+        (cursor, limit) =>
+            api.getSharedLabels({
+                omitPersonal: true,
+                cursor: cursor ?? undefined,
+                limit,
+            }),
+        { limit: targetLimit },
+    )
+
     if (options.json) {
-        console.log(
+        const base = JSON.parse(
             formatPaginatedJson(
                 { results: labels, nextCursor },
                 'label',
@@ -47,6 +58,8 @@ async function listLabels(options: ListOptions): Promise<void> {
                 options.showUrls,
             ),
         )
+        base.sharedLabels = sharedLabels
+        console.log(JSON.stringify(base, null, 2))
         return
     }
 
@@ -59,10 +72,13 @@ async function listLabels(options: ListOptions): Promise<void> {
                 options.showUrls,
             ),
         )
+        for (const name of sharedLabels) {
+            console.log(JSON.stringify({ _type: 'sharedLabel', name }))
+        }
         return
     }
 
-    if (labels.length === 0) {
+    if (labels.length === 0 && sharedLabels.length === 0) {
         console.log('No labels found.')
         return
     }
@@ -75,6 +91,11 @@ async function listLabels(options: ListOptions): Promise<void> {
             console.log(`  ${chalk.dim(labelUrl(label.id))}`)
         }
     }
+
+    for (const name of sharedLabels) {
+        console.log(`${chalk.dim('(shared)')}  @${name}`)
+    }
+
     console.log(formatNextCursorFooter(nextCursor))
 }
 
@@ -139,12 +160,13 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
     console.log(`Updated: @${label.name}${options.name ? ` → @${updated.name}` : ''}`)
 }
 
+// Resolves a label ref to a personal Label object. Used by delete/update/browse
+// which require an ID. Does NOT fall back to shared labels — use
+// resolveLabelNameForView() for view which only needs a name.
 async function resolveLabelRef(nameOrId: string): Promise<Label> {
     const api = await getApi()
     const { results: labels } = await api.getLabels()
 
-    // NOTE: Shared labels are not currently supported. The API does not return them
-    // via getLabels(), and their URLs use a different ID format.
     if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
         const id = lenientIdRef(nameOrId, 'label')
         const label = labels.find((l) => l.id === id)
@@ -165,6 +187,49 @@ async function resolveLabelRef(nameOrId: string): Promise<Label> {
     throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
 }
 
+interface ResolvedLabelForView {
+    name: string
+    label: Label | null // null for shared-only labels
+}
+
+// Resolves a label ref for viewing. Falls back to shared labels when no
+// personal label matches, since view only needs a name for the filter query.
+async function resolveLabelNameForView(nameOrId: string): Promise<ResolvedLabelForView> {
+    const api = await getApi()
+    const { results: labels } = await api.getLabels()
+
+    // URL or id: ref → must be a personal label (shared labels have no IDs)
+    if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
+        const id = lenientIdRef(nameOrId, 'label')
+        const label = labels.find((l) => l.id === id)
+        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
+        return { name: label.name, label }
+    }
+
+    const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
+    const lower = name.toLowerCase()
+
+    // Personal label by name (case-insensitive)
+    const exact = labels.find((l) => l.name.toLowerCase() === lower)
+    if (exact) return { name: exact.name, label: exact }
+
+    // Raw ID fallback in personal labels
+    if (looksLikeRawId(nameOrId)) {
+        const byId = labels.find((l) => l.id === nameOrId)
+        if (byId) return { name: byId.name, label: byId }
+    }
+
+    // Shared labels fallback — fetch and find by name
+    const { results: sharedLabels } = await paginate(
+        (cursor, limit) => api.getSharedLabels({ cursor: cursor ?? undefined, limit }),
+        { limit: Number.MAX_SAFE_INTEGER },
+    )
+    const sharedMatch = sharedLabels.find((s) => s.toLowerCase() === lower)
+    if (sharedMatch) return { name: sharedMatch, label: null }
+
+    throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
+}
+
 interface ViewOptions {
     limit?: string
     all?: boolean
@@ -175,7 +240,7 @@ interface ViewOptions {
 }
 
 export async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
-    const label = await resolveLabelRef(nameOrId)
+    const resolved = await resolveLabelNameForView(nameOrId)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -187,7 +252,7 @@ export async function viewLabel(nameOrId: string, options: ViewOptions): Promise
     const { results: tasks, nextCursor } = await paginate(
         (cursor, limit) =>
             api.getTasksByFilter({
-                query: `@${label.name}`,
+                query: `@${resolved.name}`,
                 cursor: cursor ?? undefined,
                 limit,
             }),
@@ -218,11 +283,15 @@ export async function viewLabel(nameOrId: string, options: ViewOptions): Promise
         return
     }
 
-    console.log(chalk.bold(`@${label.name}`))
-    console.log(chalk.dim(`ID:    ${label.id}`))
-    console.log(chalk.dim(`Color: ${label.color}`))
-    console.log(chalk.dim(`URL:   ${labelUrl(label.id)}`))
-    if (label.isFavorite) console.log(chalk.yellow('★ Favorite'))
+    console.log(chalk.bold(`@${resolved.name}`))
+    if (resolved.label) {
+        console.log(chalk.dim(`ID:    ${resolved.label.id}`))
+        console.log(chalk.dim(`Color: ${resolved.label.color}`))
+        console.log(chalk.dim(`URL:   ${labelUrl(resolved.label.id)}`))
+        if (resolved.label.isFavorite) console.log(chalk.yellow('★ Favorite'))
+    } else {
+        console.log(chalk.dim('Type:  shared label'))
+    }
     console.log('')
 
     if (tasks.length === 0) {

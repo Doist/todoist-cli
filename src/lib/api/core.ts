@@ -19,6 +19,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getTasks: { text: 'Loading tasks...', color: 'blue' },
         getProjects: { text: 'Loading projects...', color: 'blue' },
         getLabels: { text: 'Loading labels...', color: 'blue' },
+        getSharedLabels: { text: 'Loading shared labels...', color: 'blue' },
         getSections: { text: 'Loading sections...', color: 'blue' },
         getComments: { text: 'Loading comments...', color: 'blue' },
         addTask: { text: 'Creating task...', color: 'green' },

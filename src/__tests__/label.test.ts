@@ -16,6 +16,7 @@ function createMockApi() {
         addLabel: vi.fn(),
         deleteLabel: vi.fn(),
         updateLabel: vi.fn(),
+        getSharedLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
     }
@@ -715,5 +716,191 @@ describe('label view', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Favorite'))
         consoleSpy.mockRestore()
+    })
+})
+
+describe('shared labels', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    describe('label list', () => {
+        it('shows shared labels after personal labels', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({
+                results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
+                nextCursor: null,
+            })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+
+            await program.parseAsync(['node', 'td', 'label', 'list'])
+
+            const calls = consoleSpy.mock.calls.map((c) => c[0])
+            const urgentIdx = calls.findIndex((c: string) => c.includes('@urgent'))
+            const sharedIdx = calls.findIndex((c: string) => c.includes('@team-review'))
+            expect(urgentIdx).toBeGreaterThanOrEqual(0)
+            expect(sharedIdx).toBeGreaterThan(urgentIdx)
+            expect(calls[sharedIdx]).toContain('(shared)')
+            consoleSpy.mockRestore()
+        })
+
+        it('shows only shared labels when no personal labels exist', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+
+            await program.parseAsync(['node', 'td', 'label', 'list'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-review'))
+            expect(consoleSpy).not.toHaveBeenCalledWith('No labels found.')
+            consoleSpy.mockRestore()
+        })
+
+        it('fetches shared labels with omitPersonal: true', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({ results: [], nextCursor: null })
+
+            await program.parseAsync(['node', 'td', 'label', 'list'])
+
+            expect(mockApi.getSharedLabels).toHaveBeenCalledWith(
+                expect.objectContaining({ omitPersonal: true }),
+            )
+            consoleSpy.mockRestore()
+        })
+
+        it('includes sharedLabels array in JSON output', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({
+                results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
+                nextCursor: null,
+            })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review', 'external'],
+                nextCursor: null,
+            })
+
+            await program.parseAsync(['node', 'td', 'label', 'list', '--json'])
+
+            const output = consoleSpy.mock.calls[0][0]
+            const parsed = JSON.parse(output)
+            expect(parsed.sharedLabels).toEqual(['team-review', 'external'])
+            expect(parsed.results[0].name).toBe('urgent')
+            consoleSpy.mockRestore()
+        })
+    })
+
+    describe('label view', () => {
+        it('resolves shared-only label by name', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+            mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+
+            await program.parseAsync(['node', 'td', 'label', 'view', 'team-review'])
+
+            expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+                expect.objectContaining({ query: '@team-review' }),
+            )
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-review'))
+            consoleSpy.mockRestore()
+        })
+
+        it('prefers personal label over shared with same name', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({
+                results: [{ id: 'label-1', name: 'review', color: 'blue', isFavorite: false }],
+                nextCursor: null,
+            })
+            mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+
+            await program.parseAsync(['node', 'td', 'label', 'view', 'review'])
+
+            // Should show personal label metadata (ID, color)
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('label-1'))
+            // Should NOT call getSharedLabels (personal match found first)
+            expect(mockApi.getSharedLabels).not.toHaveBeenCalled()
+            consoleSpy.mockRestore()
+        })
+
+        it('shows "shared label" type for shared-only labels', async () => {
+            const program = createProgram()
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+            mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+
+            await program.parseAsync(['node', 'td', 'label', 'view', 'team-review'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('shared label'))
+            consoleSpy.mockRestore()
+        })
+    })
+
+    describe('delete/update do not fall back to shared', () => {
+        it('delete throws LABEL_NOT_FOUND for shared-only label', async () => {
+            const program = createProgram()
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+
+            await expect(
+                program.parseAsync(['node', 'td', 'label', 'delete', 'team-review', '--yes']),
+            ).rejects.toThrow('LABEL_NOT_FOUND')
+        })
+
+        it('update throws LABEL_NOT_FOUND for shared-only label', async () => {
+            const program = createProgram()
+
+            mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+            mockApi.getSharedLabels.mockResolvedValue({
+                results: ['team-review'],
+                nextCursor: null,
+            })
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'label',
+                    'update',
+                    'team-review',
+                    '--name',
+                    'new-name',
+                ]),
+            ).rejects.toThrow('LABEL_NOT_FOUND')
+        })
     })
 })
