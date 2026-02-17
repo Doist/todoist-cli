@@ -234,4 +234,82 @@ describe('view command', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
+
+    it('forwards passthrough list flags to routed filter view', async () => {
+        const program = createProgram()
+
+        mockFetchFilters.mockResolvedValue([
+            { id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue', isFavorite: false },
+        ])
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task1',
+                    content: 'Ship release',
+                    description: '',
+                    priority: 1,
+                    projectId: 'proj1',
+                    sectionId: null,
+                    parentId: null,
+                    labels: [],
+                    due: null,
+                    checked: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'view',
+            'https://app.todoist.com/app/filter/work-tasks-filter1',
+            '--limit',
+            '1',
+            '--ndjson',
+        ])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '#Work',
+                limit: 1,
+            }),
+        )
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('"id":"task1"')
+    })
+
+    it('rejects workspace filter URLs as generic unsupported URLs', async () => {
+        const program = createProgram()
+        let thrown: unknown
+
+        try {
+            await program.parseAsync([
+                'node',
+                'td',
+                'view',
+                'https://app.todoist.com/app/69/filter/25-q4-lovable-teams-frontend-31',
+            ])
+        } catch (error) {
+            thrown = error
+        }
+
+        const message = thrown instanceof Error ? thrown.message : String(thrown)
+        expect(message).toContain('Not a recognized Todoist URL')
+        expect(message.toLowerCase()).not.toContain('workspace')
+    })
+
+    it('shows route mapping and passthrough examples in view help', async () => {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        await expect(program.parseAsync(['node', 'td', 'view', '--help'])).rejects.toThrow()
+        const help = stdoutSpy.mock.calls.map((call) => String(call[0])).join('')
+        stdoutSpy.mockRestore()
+
+        expect(help).toContain('Route mapping:')
+        expect(help).toContain('/app/filter/...     -> td filter show <ref>')
+        expect(help).toContain('--limit 25 --ndjson')
+    })
 })
