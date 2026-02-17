@@ -11,6 +11,7 @@ import {
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { extractId, isIdRef, looksLikeRawId } from '../lib/refs.js'
+import { listTasksForProject, type TaskListOptions } from '../lib/task-list.js'
 import { labelUrl } from '../lib/urls.js'
 
 interface ListOptions {
@@ -168,6 +169,17 @@ async function browseLabel(nameOrId: string): Promise<void> {
     await openInBrowser(labelUrl(label.id))
 }
 
+interface ViewOptions
+    extends Pick<
+        TaskListOptions,
+        'limit' | 'cursor' | 'all' | 'json' | 'ndjson' | 'full' | 'raw' | 'showUrls'
+    > {}
+
+async function viewLabel(nameOrId: string, options: ViewOptions): Promise<void> {
+    const label = await resolveLabelRef(nameOrId)
+    await listTasksForProject(null, { ...options, label: label.name })
+}
+
 export function registerLabelCommand(program: Command): void {
     const label = program.command('label').description('Manage labels')
 
@@ -221,6 +233,25 @@ export function registerLabelCommand(program: Command): void {
                 return
             }
             return updateLabel(ref, options)
+        })
+
+    const viewCmd = label
+        .command('view [ref]')
+        .description('Show tasks with a label')
+        .option('--limit <n>', 'Limit number of results (default: 300)')
+        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--all', 'Fetch all results (no limit)')
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .option('--raw', 'Disable markdown rendering')
+        .option('--show-urls', 'Show web app URLs for each task')
+        .action((ref, options: ViewOptions) => {
+            if (!ref) {
+                viewCmd.help()
+                return
+            }
+            return viewLabel(ref, options)
         })
 
     const browseCmd = label

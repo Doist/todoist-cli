@@ -13,6 +13,7 @@ const mockGetApi = vi.mocked(getApi)
 function createMockApi() {
     return {
         getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         addLabel: vi.fn(),
         deleteLabel: vi.fn(),
         updateLabel: vi.fn(),
@@ -190,6 +191,85 @@ describe('label create', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('label-xyz'))
         consoleSpy.mockRestore()
+    })
+})
+
+describe('label view', () => {
+    let mockApi: ReturnType<typeof createMockApi>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('shows tasks with label by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'urgent' }],
+            nextCursor: null,
+        })
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Pay bills', priority: 1, projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'urgent', '--json'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@urgent' }),
+        )
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toHaveLength(1)
+        expect(parsed.results[0].id).toBe('task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows tasks with label by id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-123', name: 'important' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', 'id:label-123', '--json'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@important' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('handles @-prefixed label names', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'home' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'view', '@home', '--json'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: '@home' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('throws for non-existent label', async () => {
+        const program = createProgram()
+
+        mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'label', 'view', 'nonexistent', '--json']),
+        ).rejects.toThrow('LABEL_NOT_FOUND')
     })
 })
 
