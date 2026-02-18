@@ -1,6 +1,11 @@
 import { TodoistApi, TodoistRequestError } from '@doist/todoist-api-typescript'
 import type { Project, Task } from './api/core.js'
-import { fetchWorkspaces, type Workspace } from './api/workspaces.js'
+import {
+    fetchWorkspaceFolders,
+    fetchWorkspaces,
+    type Workspace,
+    type WorkspaceFolder,
+} from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
 
@@ -88,6 +93,71 @@ export function lenientIdRef(ref: string, entityName: string): string {
         hints.push(`Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`)
     }
     throw new Error(formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, hints))
+}
+
+function fuzzyMatchInList<T extends { id: string }>(
+    ref: string,
+    items: T[],
+    getName: (item: T) => string,
+    entityType: string,
+    context?: string,
+): T | null {
+    const lower = ref.toLowerCase()
+    const exact = items.find((item) => getName(item).toLowerCase() === lower)
+    if (exact) return exact
+
+    const partial = items.filter((item) => getName(item).toLowerCase().includes(lower))
+    if (partial.length === 1) return partial[0]
+    if (partial.length > 1) {
+        const suffix = context ? ` ${context}` : ''
+        throw new Error(
+            formatError(
+                `AMBIGUOUS_${entityType.toUpperCase()}`,
+                `Multiple ${entityType}s match "${ref}"${suffix}:`,
+                partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
+            ),
+        )
+    }
+
+    return null
+}
+
+function resolveFromList<T extends { id: string }>(
+    ref: string,
+    items: T[],
+    getName: (item: T) => string,
+    entityType: string,
+    context?: string,
+): T {
+    const label = entityType.charAt(0).toUpperCase() + entityType.slice(1)
+    const suffix = context ? ` ${context}` : ''
+
+    if (isIdRef(ref)) {
+        const id = extractId(ref)
+        const match = items.find((item) => item.id === id)
+        if (match) return match
+        throw new Error(
+            formatError(
+                `${entityType.toUpperCase()}_NOT_FOUND`,
+                `${label} id:${id} not found${suffix}.`,
+            ),
+        )
+    }
+
+    const match = fuzzyMatchInList(ref, items, getName, entityType)
+    if (match) return match
+
+    if (looksLikeRawId(ref)) {
+        const byId = items.find((item) => item.id === ref)
+        if (byId) return byId
+    }
+
+    throw new Error(
+        formatError(
+            `${entityType.toUpperCase()}_NOT_FOUND`,
+            `${label} "${ref}" not found${suffix}.`,
+        ),
+    )
 }
 
 async function resolveRef<T extends { id: string }>(
@@ -197,43 +267,8 @@ export async function resolveSectionId(
     projectId: string,
 ): Promise<string> {
     const { results: sections } = await api.getSections({ projectId })
-
-    if (isIdRef(ref)) {
-        const id = extractId(ref)
-        const section = sections.find((s) => s.id === id)
-        if (!section) {
-            throw new Error(
-                formatError(
-                    'SECTION_NOT_IN_PROJECT',
-                    `Section id:${id} does not belong to this project.`,
-                ),
-            )
-        }
-        return id
-    }
-
-    const lower = ref.toLowerCase()
-    const exact = sections.find((s) => s.name.toLowerCase() === lower)
-    if (exact) return exact.id
-
-    const partial = sections.filter((s) => s.name.toLowerCase().includes(lower))
-    if (partial.length === 1) return partial[0].id
-    if (partial.length > 1) {
-        throw new Error(
-            formatError(
-                'AMBIGUOUS_SECTION',
-                `Multiple sections match "${ref}":`,
-                partial.slice(0, 5).map((s) => `"${s.name}" (id:${s.id})`),
-            ),
-        )
-    }
-
-    if (looksLikeRawId(ref)) {
-        const byId = sections.find((s) => s.id === ref)
-        if (byId) return byId.id
-    }
-
-    throw new Error(formatError('SECTION_NOT_FOUND', `Section "${ref}" not found in project.`))
+    const section = resolveFromList(ref, sections, (s) => s.name, 'section', 'in project')
+    return section.id
 }
 
 export async function resolveParentTaskId(
@@ -249,41 +284,15 @@ export async function resolveParentTaskId(
         return extractId(ref)
     }
 
-    const lower = ref.toLowerCase()
-
     if (sectionId) {
         const { results: sectionTasks } = await api.getTasks({ sectionId })
-        const exact = sectionTasks.find((t) => t.content.toLowerCase() === lower)
-        if (exact) return exact.id
-
-        const partial = sectionTasks.filter((t) => t.content.toLowerCase().includes(lower))
-        if (partial.length === 1) return partial[0].id
-        if (partial.length > 1) {
-            throw new Error(
-                formatError(
-                    'AMBIGUOUS_PARENT',
-                    `Multiple tasks match "${ref}" in section:`,
-                    partial.slice(0, 5).map((t) => `"${t.content}" (id:${t.id})`),
-                ),
-            )
-        }
+        const match = fuzzyMatchInList(ref, sectionTasks, (t) => t.content, 'task', 'in section')
+        if (match) return match.id
     }
 
     const { results: projectTasks } = await api.getTasks({ projectId })
-    const exact = projectTasks.find((t) => t.content.toLowerCase() === lower)
-    if (exact) return exact.id
-
-    const partial = projectTasks.filter((t) => t.content.toLowerCase().includes(lower))
-    if (partial.length === 1) return partial[0].id
-    if (partial.length > 1) {
-        throw new Error(
-            formatError(
-                'AMBIGUOUS_PARENT',
-                `Multiple tasks match "${ref}" in project:`,
-                partial.slice(0, 5).map((t) => `"${t.content}" (id:${t.id})`),
-            ),
-        )
-    }
+    const match = fuzzyMatchInList(ref, projectTasks, (t) => t.content, 'task', 'in project')
+    if (match) return match.id
 
     if (looksLikeRawId(ref)) return ref
 
@@ -292,36 +301,11 @@ export async function resolveParentTaskId(
 
 export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
     const workspaces = await fetchWorkspaces()
+    return resolveFromList(ref, workspaces, (w) => w.name, 'workspace')
+}
 
-    if (isIdRef(ref)) {
-        const id = extractId(ref)
-        const workspace = workspaces.find((w) => w.id === id)
-        if (!workspace) {
-            throw new Error(formatError('WORKSPACE_NOT_FOUND', `Workspace id:${id} not found.`))
-        }
-        return workspace
-    }
-
-    const lower = ref.toLowerCase()
-    const exact = workspaces.find((w) => w.name.toLowerCase() === lower)
-    if (exact) return exact
-
-    const partial = workspaces.filter((w) => w.name.toLowerCase().includes(lower))
-    if (partial.length === 1) return partial[0]
-    if (partial.length > 1) {
-        throw new Error(
-            formatError(
-                'AMBIGUOUS_WORKSPACE',
-                `Multiple workspaces match "${ref}":`,
-                partial.slice(0, 5).map((w) => `"${w.name}" (id:${w.id})`),
-            ),
-        )
-    }
-
-    if (looksLikeRawId(ref)) {
-        const byId = workspaces.find((w) => w.id === ref)
-        if (byId) return byId
-    }
-
-    throw new Error(formatError('WORKSPACE_NOT_FOUND', `Workspace "${ref}" not found.`))
+export async function resolveFolderRef(ref: string, workspaceId: string): Promise<WorkspaceFolder> {
+    const allFolders = await fetchWorkspaceFolders()
+    const folders = allFolders.filter((f) => f.workspaceId === workspaceId)
+    return resolveFromList(ref, folders, (f) => f.name, 'folder', 'in workspace')
 }
