@@ -54,7 +54,13 @@ src/
 
 ## Key Patterns
 
-- **Lenient ID handling**: Raw IDs (alphanumeric or numeric) are accepted everywhere without `id:` prefix. Todoist web app URLs for tasks, projects, labels, and filters are also accepted — `parseTodoistUrl()` extracts the ID from the URL slug. `lenientIdRef()` accepts `id:xxx`, URLs, or raw ID-like strings, rejects plain text. `resolveRef()` auto-retries raw IDs as direct lookups before giving up. Use `isIdRef()`/`extractId()` for mixed refs (fuzzy name + explicit ID)
+- **Ref resolution** (`src/lib/refs.ts`): Entity references are resolved through three strategies:
+  - **Full name resolution** (`resolveRef` wrappers — `resolveTaskRef`, `resolveProjectRef`): Async, returns the full entity object. Tries URL → `id:` prefix → exact name match → partial substring match → raw ID fallback. Use for entities with user-facing names. Add new wrappers in `refs.ts` — `resolveRef` is private.
+  - **ID-only validation** (`lenientIdRef`): Synchronous, no API calls, returns an ID string. Tries `id:` prefix → URL → raw ID → error. Use for entities without a `fetchAll` endpoint (e.g., comments, reminders).
+  - **Context-scoped resolution** (`resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`): Async, searches within a parent context (e.g., sections within a project). Each has custom logic in `refs.ts`.
+  - **Shared helpers**:
+    - `looksLikeRawId()` decides when a ref is tried as an ID — pure alpha strings (`"Work"`) and strings with spaces are names; mixed alphanumeric without spaces (`"abc123"`) are potential IDs
+    - `parseTodoistUrl()` extracts IDs from web URLs (task, project, label, filter)
 - **Implicit view subcommand**: `td project <ref>` defaults to `td project view <ref>` via Commander's `{ isDefault: true }`. Same for task, workspace, comment, notification. Edge case: if a project/task name matches a subcommand name (e.g., "list"), the subcommand wins — user must use `td project view list`
 - **Named flag aliases**: Where commands accept positional args for context (project, task, workspace), named flags are also accepted (`--project`, `--task`, `--workspace`). Error if both positional and flag are provided
 - **API responses**: Client returns `{ results: T[], nextCursor? }` - always destructure

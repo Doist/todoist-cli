@@ -83,6 +83,24 @@ function isMatchingUrlType(
     return true
 }
 
+/**
+ * Synchronous ID extraction — validates ref format and returns an ID string
+ * without making any API calls. Use for entities where name matching isn't
+ * feasible (e.g., comments, reminders) or when only the ID is needed.
+ *
+ * Returns a `string` ID, not the entity object (contrast with `resolveRef`
+ * which returns the full entity `T`).
+ *
+ * Resolution order:
+ *  1. `id:` prefix → extract and return the ID
+ *  2. Todoist URL → validate entity type matches, return parsed ID
+ *  3. `looksLikeRawId()` → return ref as-is
+ *  4. Throw `INVALID_REF` with contextual hints
+ *
+ * Error hints include "paste a Todoist URL" only for entity types that have
+ * web URLs (task, project, label, filter). Other entities (comment, section,
+ * reminder) omit the URL hint.
+ */
 export function lenientIdRef(ref: string, entityName: string): string {
     if (isIdRef(ref)) return extractId(ref)
     const parsedUrl = parseTodoistUrl(ref)
@@ -160,6 +178,30 @@ function resolveFromList<T extends { id: string }>(
     )
 }
 
+/**
+ * Generic resolver for entities that have names. **Private** — do not export.
+ * Create entity-specific wrappers (e.g., `resolveTaskRef`, `resolveProjectRef`).
+ *
+ * @param ref       - User-supplied reference (name, URL, `id:xxx`, or raw ID)
+ * @param fetchById - Fetches a single entity by ID
+ * @param fetchAll  - Returns candidates for name matching as `{ results: T[] }`.
+ *                    Does not have to fetch all items — can be a filtered search
+ *                    (e.g., `resolveTaskRef` passes a server-side search query).
+ * @param getName   - Extracts the display name from an entity (for matching)
+ * @param entityType - Lowercase entity name, used in error codes and messages
+ *
+ * Resolution order:
+ *  1. Empty/blank ref → throw `INVALID_{ENTITY}`
+ *  2. Todoist URL → validate type matches, `fetchById` (throws `ENTITY_TYPE_MISMATCH` on mismatch)
+ *  3. `id:` prefix → `extractId` → `fetchById`
+ *  4. `fetchAll()` → case-insensitive exact match (`===` after `.toLowerCase()`)
+ *  5. `fetchAll()` results → case-insensitive substring match (`.includes()`)
+ *  6. `looksLikeRawId(ref)` → `fetchById` (swallows 404, re-throws other errors)
+ *  7. Throw `{ENTITY}_NOT_FOUND`
+ *
+ * Ambiguity at step 4 or 5 throws `AMBIGUOUS_{ENTITY}` immediately (no
+ * fallthrough) and lists up to 5 candidates with their `id:` values.
+ */
 async function resolveRef<T extends { id: string }>(
     ref: string,
     fetchById: (id: string) => Promise<T>,
