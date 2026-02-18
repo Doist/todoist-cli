@@ -1,4 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('../lib/api/workspaces.js', () => ({
+    fetchWorkspaces: vi.fn(),
+    fetchWorkspaceFolders: vi.fn(),
+}))
+
+import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import {
     classifyTodoistUrl,
     extractId,
@@ -6,14 +13,19 @@ import {
     lenientIdRef,
     looksLikeRawId,
     parseTodoistUrl,
+    resolveFolderRef,
     resolveParentTaskId,
     resolveProjectId,
     resolveProjectRef,
     resolveSectionId,
     resolveTaskRef,
+    resolveWorkspaceRef,
 } from '../lib/refs.js'
 import { fixtures } from './helpers/fixtures.js'
 import { createMockApi } from './helpers/mock-api.js'
+
+const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
+const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 
 describe('isIdRef', () => {
     it('returns true for "id:xxx" format', () => {
@@ -659,6 +671,140 @@ describe('resolveParentTaskId', () => {
             ),
         ).rejects.toThrow('Expected a task URL, but got a project URL')
         expect(api.getTasks).not.toHaveBeenCalled()
+    })
+})
+
+describe('resolveWorkspaceRef', () => {
+    const workspaces = [
+        { id: 'ws-1', name: 'Doist' },
+        { id: 'ws-2', name: 'Playground' },
+        { id: 'ws-3', name: 'Design Team' },
+    ] as Workspace[]
+
+    it('resolves by id: prefix', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        const result = await resolveWorkspaceRef('id:ws-2')
+        expect(result).toEqual(workspaces[1])
+    })
+
+    it('throws when ID not found', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        await expect(resolveWorkspaceRef('id:nonexistent')).rejects.toThrow('not found')
+    })
+
+    it('resolves exact name match (case insensitive)', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        const result = await resolveWorkspaceRef('doist')
+        expect(result).toEqual(workspaces[0])
+    })
+
+    it('resolves partial name match when unique', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        const result = await resolveWorkspaceRef('Play')
+        expect(result).toEqual(workspaces[1])
+    })
+
+    it('throws on ambiguous match', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        // "D" matches "Doist" and "Design Team"
+        await expect(resolveWorkspaceRef('D')).rejects.toThrow('Multiple workspaces match')
+    })
+
+    it('throws when not found', async () => {
+        mockFetchWorkspaces.mockResolvedValue(workspaces)
+
+        await expect(resolveWorkspaceRef('nonexistent')).rejects.toThrow('not found')
+    })
+
+    it('resolves raw ID-like string as workspace ID', async () => {
+        const workspacesWithNumericId = [
+            ...workspaces,
+            { id: '99887766', name: 'Test' },
+        ] as Workspace[]
+        mockFetchWorkspaces.mockResolvedValue(workspacesWithNumericId)
+
+        const result = await resolveWorkspaceRef('99887766')
+        expect(result).toEqual({ id: '99887766', name: 'Test' })
+    })
+})
+
+describe('resolveFolderRef', () => {
+    const folders = [
+        { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
+        { id: 'folder-2', name: 'Marketing', workspaceId: 'ws-1' },
+        { id: 'folder-3', name: 'Design', workspaceId: 'ws-2' },
+    ]
+
+    it('resolves by id: prefix', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        const result = await resolveFolderRef('id:folder-1', 'ws-1')
+        expect(result).toEqual(folders[0])
+    })
+
+    it('throws when ID not found in workspace', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        await expect(resolveFolderRef('id:nonexistent', 'ws-1')).rejects.toThrow(
+            'not found in workspace',
+        )
+    })
+
+    it('resolves exact name match (case insensitive)', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        const result = await resolveFolderRef('engineering', 'ws-1')
+        expect(result).toEqual(folders[0])
+    })
+
+    it('resolves partial name match when unique', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        const result = await resolveFolderRef('Market', 'ws-1')
+        expect(result).toEqual(folders[1])
+    })
+
+    it('throws on ambiguous match', async () => {
+        const foldersWithAmbiguity = [
+            { id: 'folder-1', name: 'Engineering Frontend', workspaceId: 'ws-1' },
+            { id: 'folder-2', name: 'Engineering Backend', workspaceId: 'ws-1' },
+        ]
+        mockFetchWorkspaceFolders.mockResolvedValue(foldersWithAmbiguity)
+
+        await expect(resolveFolderRef('Engineering', 'ws-1')).rejects.toThrow(
+            'Multiple folders match',
+        )
+    })
+
+    it('throws when not found', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        await expect(resolveFolderRef('nonexistent', 'ws-1')).rejects.toThrow(
+            'not found in workspace',
+        )
+    })
+
+    it('only searches folders in the given workspace', async () => {
+        mockFetchWorkspaceFolders.mockResolvedValue(folders)
+
+        // "Design" folder exists in ws-2 but not ws-1
+        await expect(resolveFolderRef('Design', 'ws-1')).rejects.toThrow('not found in workspace')
+    })
+
+    it('resolves raw ID-like string as folder ID', async () => {
+        const foldersWithNumericId = [
+            ...folders,
+            { id: '99887766', name: 'Test', workspaceId: 'ws-1' },
+        ]
+        mockFetchWorkspaceFolders.mockResolvedValue(foldersWithNumericId)
+
+        const result = await resolveFolderRef('99887766', 'ws-1')
+        expect(result).toEqual({ id: '99887766', name: 'Test', workspaceId: 'ws-1' })
     })
 })
 
