@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0](https://github.com/Doist/todoist-cli/compare/v1.15.0...v1.16.0) (2026-02-18)
+
+
+### Features
+
+* add `td project move` command ([#72](https://github.com/Doist/todoist-cli/issues/72)) ([f71206d](https://github.com/Doist/todoist-cli/commit/f71206d0bb412f360ef7f0728ec14bc69a5ea11d))
+* **view:** improve URL routing passthrough and lazy loading ([#79](https://github.com/Doist/todoist-cli/issues/79)) ([aff25df](https://github.com/Doist/todoist-cli/commit/aff25df1badc536ccf283881bdc4117f71a6f1fb))
+
 ## [1.15.0](https://github.com/Doist/todoist-cli/compare/v1.14.0...v1.15.0) (2026-02-17)
 
 
