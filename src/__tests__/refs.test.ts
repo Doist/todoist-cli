@@ -487,7 +487,7 @@ describe('resolveSectionId', () => {
         })
 
         await expect(resolveSectionId(api, 'id:nonexistent', 'proj-1')).rejects.toThrow(
-            'does not belong to this project',
+            'not found in project',
         )
     })
 
