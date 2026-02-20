@@ -67,7 +67,7 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
     }
 
     const pm = detectPackageManager()
-    console.log(chalk.dim(`Running ${pm} install -g ${PACKAGE_NAME}@latest...`))
+    console.log(chalk.dim(`Updating to v${latestVersion}...`))
 
     try {
         const exitCode = await runInstall(pm)
