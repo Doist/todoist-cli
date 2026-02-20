@@ -104,6 +104,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'View a Todoist entity or page by URL',
         async () => (await import('./commands/view.js')).registerViewCommand,
     ],
+    update: [
+        'Update the CLI to the latest version',
+        async () => (await import('./commands/update.js')).registerUpdateCommand,
+    ],
 }
 
 // Register placeholders so --help lists all commands
