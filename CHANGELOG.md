@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0](https://github.com/Doist/todoist-cli/compare/v1.16.0...v1.17.0) (2026-02-20)
+
+
+### Features
+
+* add `td update` self-update command ([#88](https://github.com/Doist/todoist-cli/issues/88)) ([3f9fe80](https://github.com/Doist/todoist-cli/commit/3f9fe80743b195874b437c795ffc38989c832c9e))
+
 ## [1.16.0](https://github.com/Doist/todoist-cli/compare/v1.15.0...v1.16.0) (2026-02-18)
 
 
