@@ -67,6 +67,19 @@ td task view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB  # paste
 
 Run `td --help` or `td <command> --help` for more options.
 
+## Accessibility
+
+For users who rely on screen readers or cannot distinguish colors, use the `--accessible` flag or set `TD_ACCESSIBLE=1` to add text labels to color-coded output:
+
+```bash
+td today --accessible
+# or
+export TD_ACCESSIBLE=1
+td today
+```
+
+When active, due dates get a `due:` prefix, deadlines get a `deadline:` prefix, durations get a `~` prefix, and favorite items get a `★` suffix. Default output without the flag is unchanged.
+
 ## Shell Completions
 
 Tab completion is available for bash, zsh, and fish:

@@ -1,5 +1,5 @@
 import type { Task } from '@doist/todoist-api-typescript'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
     formatDue,
     formatError,
@@ -11,6 +11,7 @@ import {
     formatPriority,
     formatTaskRow,
     formatTaskView,
+    isAccessible,
 } from '../lib/output.js'
 import { fixtures } from './helpers/fixtures.js'
 
@@ -117,6 +118,79 @@ describe('formatTaskRow', () => {
         const lines = result.split('\n')
         expect(lines[0]).toBe(`      ${task.content}`)
         expect(lines[1]).toMatch(/^\s{6}/)
+    })
+
+    it('adds due: prefix when accessible is true', () => {
+        const task = fixtures.tasks.withDue
+        const result = formatTaskRow({ task, accessible: true })
+        const lines = result.split('\n')
+        expect(lines[1]).toContain('due:today')
+    })
+
+    it('adds deadline: prefix when accessible is true', () => {
+        const task = {
+            ...fixtures.tasks.basic,
+            deadline: { date: '2026-03-15', lang: 'en' },
+        } as Task
+        const result = formatTaskRow({ task, accessible: true })
+        const lines = result.split('\n')
+        expect(lines[1]).toContain('deadline:2026-03-15')
+    })
+
+    it('adds ~ prefix to duration when accessible is true', () => {
+        const task = {
+            ...fixtures.tasks.basic,
+            duration: { amount: 90, unit: 'minute' as const },
+        } as Task
+        const result = formatTaskRow({ task, accessible: true })
+        const lines = result.split('\n')
+        expect(lines[1]).toContain('~1h30m')
+    })
+
+    it('does not add prefixes when accessible is false', () => {
+        const task = {
+            ...fixtures.tasks.withDue,
+            deadline: { date: '2026-03-15', lang: 'en' },
+            duration: { amount: 60, unit: 'minute' as const },
+        } as Task
+        const result = formatTaskRow({ task, accessible: false })
+        const lines = result.split('\n')
+        expect(lines[1]).not.toContain('due:')
+        expect(lines[1]).not.toContain('deadline:')
+        expect(lines[1]).not.toContain('~')
+        expect(lines[1]).toContain('today')
+        expect(lines[1]).toContain('2026-03-15')
+        expect(lines[1]).toContain('1h')
+    })
+})
+
+describe('isAccessible', () => {
+    const originalArgv = process.argv
+    const originalEnv = process.env.TD_ACCESSIBLE
+
+    afterEach(() => {
+        process.argv = originalArgv
+        if (originalEnv === undefined) {
+            delete process.env.TD_ACCESSIBLE
+        } else {
+            process.env.TD_ACCESSIBLE = originalEnv
+        }
+    })
+
+    it('returns true when TD_ACCESSIBLE=1', () => {
+        process.env.TD_ACCESSIBLE = '1'
+        expect(isAccessible()).toBe(true)
+    })
+
+    it('returns true when --accessible is in argv', () => {
+        process.argv = ['node', 'td', 'today', '--accessible']
+        expect(isAccessible()).toBe(true)
+    })
+
+    it('returns false by default', () => {
+        delete process.env.TD_ACCESSIBLE
+        process.argv = ['node', 'td', 'today']
+        expect(isAccessible()).toBe(false)
     })
 })
 

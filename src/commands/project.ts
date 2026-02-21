@@ -20,6 +20,7 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
+    isAccessible,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../lib/refs.js'
@@ -71,7 +72,9 @@ async function listProjects(options: ListOptions): Promise<void> {
         const personalOnly = projects.filter((p) => !isWorkspaceProject(p))
         for (const project of personalOnly) {
             const id = chalk.dim(project.id)
-            let name = project.isFavorite ? chalk.yellow(project.name) : project.name
+            let name = project.isFavorite
+                ? chalk.yellow(`${project.name}${isAccessible() ? ' ★' : ''}`)
+                : project.name
             if (project.isShared) {
                 name = `${name} ${chalk.dim('[shared]')}`
             }
@@ -109,7 +112,9 @@ async function listProjects(options: ListOptions): Promise<void> {
         }
         for (const project of personalProjects) {
             const id = chalk.dim(project.id)
-            let name = project.isFavorite ? chalk.yellow(project.name) : project.name
+            let name = project.isFavorite
+                ? chalk.yellow(`${project.name}${isAccessible() ? ' ★' : ''}`)
+                : project.name
             if (project.isShared) {
                 name = `${name} ${chalk.dim('[shared]')}`
             }
@@ -138,7 +143,9 @@ async function listProjects(options: ListOptions): Promise<void> {
         console.log(chalk.bold(workspaceName))
         for (const project of wprojects) {
             const id = chalk.dim(project.id)
-            const name = project.isFavorite ? chalk.yellow(project.name) : project.name
+            const name = project.isFavorite
+                ? chalk.yellow(`${project.name}${isAccessible() ? ' ★' : ''}`)
+                : project.name
             console.log(`  ${id}  ${name}`)
             if (options.showUrls) {
                 console.log(`    ${chalk.dim(projectUrl(project.id))}`)

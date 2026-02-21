@@ -13,6 +13,10 @@ import {
     taskUrl,
 } from './urls.js'
 
+export function isAccessible(): boolean {
+    return process.env.TD_ACCESSIBLE === '1' || process.argv.includes('--accessible')
+}
+
 const PRIORITY_COLORS: Record<number, (s: string) => string> = {
     4: chalk.red, // p1 = priority 4 in API (highest)
     3: chalk.yellow, // p2
@@ -55,6 +59,7 @@ export interface FormatTaskRowOptions {
     raw?: boolean
     indent?: number
     showUrl?: boolean
+    accessible?: boolean
 }
 
 export function formatTaskRow({
@@ -64,18 +69,22 @@ export function formatTaskRow({
     raw = false,
     indent = 0,
     showUrl = false,
+    accessible,
 }: FormatTaskRowOptions): string {
+    const a11y = accessible ?? isAccessible()
     const content = raw ? task.content : renderMarkdown(task.content)
     const baseIndent = '  '
     const extraIndent = '  '.repeat(indent)
     const line1 = baseIndent + extraIndent + content
     const metaParts = [chalk.dim(`id:${task.id}`), formatPriority(task.priority)]
     const due = formatDue(task.due)
-    if (due) metaParts.push(chalk.green(due))
+    if (due) metaParts.push(chalk.green(a11y ? `due:${due}` : due))
     if (task.duration) {
-        metaParts.push(chalk.yellow(formatDuration(task.duration.amount, task.duration.unit)))
+        const dur = formatDuration(task.duration.amount, task.duration.unit)
+        metaParts.push(chalk.yellow(a11y ? `~${dur}` : dur))
     }
-    if (task.deadline) metaParts.push(chalk.red(task.deadline.date))
+    if (task.deadline)
+        metaParts.push(chalk.red(a11y ? `deadline:${task.deadline.date}` : task.deadline.date))
     if (projectName) metaParts.push(chalk.cyan(projectName))
     if (assignee) metaParts.push(chalk.magenta(assignee))
     const line2 = baseIndent + extraIndent + metaParts.join('  ')

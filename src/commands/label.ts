@@ -11,6 +11,7 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
+    isAccessible,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
@@ -77,7 +78,9 @@ async function listLabels(options: PaginatedViewOptions): Promise<void> {
 
     for (const label of labels) {
         const id = chalk.dim(label.id)
-        const name = label.isFavorite ? chalk.yellow(`@${label.name}`) : `@${label.name}`
+        const name = label.isFavorite
+            ? chalk.yellow(`@${label.name}${isAccessible() ? ' ★' : ''}`)
+            : `@${label.name}`
         console.log(`${id}  ${name}`)
         if (options.showUrls) {
             console.log(`  ${chalk.dim(labelUrl(label.id))}`)
