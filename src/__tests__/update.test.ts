@@ -158,6 +158,21 @@ describe('update command', () => {
                 expect.stringContaining('Updated to v99.99.99'),
             )
         })
+
+        it('uses pnpm add when pnpm is detected', async () => {
+            mockFetch('99.99.99')
+            mockSpawnSuccess()
+            vi.stubEnv('npm_execpath', '/usr/local/lib/node_modules/pnpm/bin/pnpm.cjs')
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update'])
+
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'pnpm',
+                ['add', '-g', '@doist/todoist-cli@latest'],
+                { stdio: 'inherit' },
+            )
+        })
     })
 
     describe('registry errors', () => {
