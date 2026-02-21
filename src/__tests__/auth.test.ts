@@ -57,6 +57,7 @@ import { getApi } from '../lib/api/core.js'
 import { clearApiToken, saveApiToken } from '../lib/auth.js'
 import { exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
+import { createMockApi } from './helpers/mock-api.js'
 
 const mockCreateInterface = vi.mocked(createInterface)
 
@@ -182,7 +183,7 @@ describe('auth command', () => {
             })
             mockExchangeCodeForToken.mockResolvedValue(accessToken)
             mockSaveApiToken.mockResolvedValue(undefined)
-            mockOpen.mockResolvedValue({} as ReturnType<typeof open>)
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
             await program.parseAsync(['node', 'td', 'auth', 'login'])
 
@@ -201,7 +202,7 @@ describe('auth command', () => {
                 promise: Promise.reject(new Error('OAuth callback timed out')),
                 cleanup: mockCleanup,
             })
-            mockOpen.mockResolvedValue({} as ReturnType<typeof open>)
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
             await expect(program.parseAsync(['node', 'td', 'auth', 'login'])).rejects.toThrow(
                 'OAuth callback timed out',
@@ -220,7 +221,7 @@ describe('auth command', () => {
                 cleanup: mockCleanup,
             })
             mockExchangeCodeForToken.mockRejectedValue(new Error('Token exchange failed: 400'))
-            mockOpen.mockResolvedValue({} as ReturnType<typeof open>)
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
             await expect(program.parseAsync(['node', 'td', 'auth', 'login'])).rejects.toThrow(
                 'Token exchange failed',
@@ -253,8 +254,8 @@ describe('auth command', () => {
         it('shows authenticated status when logged in', async () => {
             const program = createProgram()
             const mockUser = { email: 'test@example.com', fullName: 'Test User' }
-            const mockApi = { getUser: vi.fn().mockResolvedValue(mockUser) }
-            mockGetApi.mockResolvedValue(mockApi as ReturnType<typeof getApi>)
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            mockGetApi.mockResolvedValue(mockApi)
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 

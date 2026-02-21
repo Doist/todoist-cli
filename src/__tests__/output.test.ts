@@ -62,7 +62,7 @@ describe('formatDue', () => {
     })
 
     it('uses date when string is undefined', () => {
-        const due: Task['due'] = { date: '2026-01-15', isRecurring: false }
+        const due = { date: '2026-01-15', isRecurring: false } as unknown as Task['due']
         expect(formatDue(due)).toBe('2026-01-15')
     })
 })

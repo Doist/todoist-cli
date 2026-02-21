@@ -23,19 +23,14 @@ import {
     updateReminder,
 } from '../lib/api/reminders.js'
 
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
+
 const mockGetApi = vi.mocked(getApi)
 const mockGetTaskReminders = vi.mocked(getTaskReminders)
 const mockFetchReminders = vi.mocked(fetchReminders)
 const mockAddReminder = vi.mocked(addReminder)
 const mockUpdateReminder = vi.mocked(updateReminder)
 const mockDeleteReminder = vi.mocked(deleteReminder)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTask: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -45,7 +40,7 @@ function createProgram() {
 }
 
 describe('reminder list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -151,7 +146,7 @@ describe('reminder list', () => {
 })
 
 describe('reminder add', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()

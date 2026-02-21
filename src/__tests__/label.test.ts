@@ -7,20 +7,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerLabelCommand } from '../commands/label.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        addLabel: vi.fn(),
-        deleteLabel: vi.fn(),
-        updateLabel: vi.fn(),
-        getSharedLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -30,7 +19,7 @@ function createProgram() {
 }
 
 describe('label list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -109,7 +98,7 @@ describe('label list', () => {
 })
 
 describe('label create', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -197,7 +186,7 @@ describe('label create', () => {
 })
 
 describe('label delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -284,7 +273,7 @@ describe('label delete', () => {
 })
 
 describe('label update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -459,7 +448,7 @@ describe('label update', () => {
 })
 
 describe('label URL resolution', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -556,7 +545,7 @@ describe('label URL resolution', () => {
 })
 
 describe('label view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -720,7 +709,7 @@ describe('label view', () => {
 })
 
 describe('shared labels', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()

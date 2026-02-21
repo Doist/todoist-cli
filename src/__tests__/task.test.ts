@@ -13,27 +13,11 @@ vi.mock('../lib/browser.js', () => ({
 import { registerTaskCommand } from '../commands/task.js'
 import { completeTaskForever, getApi } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockCompleteTaskForever = vi.mocked(completeTaskForever)
 const mockOpenInBrowser = vi.mocked(openInBrowser)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTask: vi.fn(),
-        getSections: vi.fn().mockResolvedValue({ results: [] }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        addTask: vi.fn(),
-        updateTask: vi.fn(),
-        closeTask: vi.fn(),
-        reopenTask: vi.fn(),
-        deleteTask: vi.fn(),
-        moveTask: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -43,7 +27,7 @@ function createProgram() {
 }
 
 describe('task move command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -276,7 +260,7 @@ describe('task move command', () => {
 })
 
 describe('task view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -377,7 +361,7 @@ describe('task view', () => {
 })
 
 describe('task complete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -496,7 +480,7 @@ describe('task complete', () => {
 })
 
 describe('task uncomplete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -527,7 +511,7 @@ describe('task uncomplete', () => {
 })
 
 describe('task delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -565,7 +549,7 @@ describe('task delete', () => {
 })
 
 describe('task add', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1008,7 +992,7 @@ describe('task add', () => {
 })
 
 describe('task update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1149,7 +1133,7 @@ describe('task update', () => {
 })
 
 describe('task list --label', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1262,7 +1246,7 @@ describe('task list --label', () => {
 })
 
 describe('task list --parent', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1388,7 +1372,7 @@ describe('task list --parent', () => {
 })
 
 describe('task add --assignee', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1447,7 +1431,7 @@ describe('task add --assignee', () => {
 })
 
 describe('task update --assignee', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1508,7 +1492,7 @@ describe('task update --assignee', () => {
 })
 
 describe('task add --deadline', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1582,7 +1566,7 @@ describe('task add --deadline', () => {
 })
 
 describe('task update --deadline', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1634,7 +1618,7 @@ describe('task update --deadline', () => {
 })
 
 describe('task list --filter', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -1771,7 +1755,7 @@ describe('task list --filter', () => {
 })
 
 describe('task browse', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()

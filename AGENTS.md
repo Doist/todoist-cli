@@ -5,12 +5,14 @@ TypeScript CLI for Todoist. Binary name: `td`.
 ## Build & Run
 
 ```bash
-npm run build       # compile TypeScript
-npm run dev         # watch mode
-npm run type-check  # type check
+npm run build       # compile TypeScript (uses tsconfig.build.json, excludes tests)
+npm run dev         # watch mode (uses tsconfig.build.json)
+npm run type-check  # type check source + tests (uses tsconfig.json)
 npm run format      # format code
 npm test            # run tests
 ```
+
+**Two-tsconfig setup:** `tsconfig.json` includes both source and test files — used by `type-check` and IDEs. `tsconfig.build.json` extends it but excludes `src/__tests__/` — used by `build` and `dev` to keep test files out of `dist/`.
 
 **Run the CLI directly** (no linking needed):
 

@@ -24,6 +24,7 @@ import { registerProjectCommand } from '../commands/project.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { openInBrowser } from '../lib/browser.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 
@@ -31,21 +32,6 @@ const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        deleteProject: vi.fn(),
-        addProject: vi.fn(),
-        updateProject: vi.fn(),
-        archiveProject: vi.fn(),
-        unarchiveProject: vi.fn(),
-        moveProjectToWorkspace: vi.fn(),
-        moveProjectToPersonal: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -55,7 +41,7 @@ function createProgram() {
 }
 
 describe('project list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -135,7 +121,7 @@ describe('project list', () => {
 })
 
 describe('project view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -348,7 +334,7 @@ describe('project view', () => {
 })
 
 describe('project list grouping', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -505,19 +491,12 @@ describe('project list grouping', () => {
 })
 
 describe('project collaborators', () => {
-    let mockApi: ReturnType<typeof createMockApi> & {
-        getWorkspaceUsers: ReturnType<typeof vi.fn>
-        getProjectCollaborators: ReturnType<typeof vi.fn>
-    }
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = {
-            ...createMockApi(),
-            getWorkspaceUsers: vi.fn(),
-            getProjectCollaborators: vi.fn(),
-        }
+        mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -587,7 +566,7 @@ describe('project collaborators', () => {
 })
 
 describe('project delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -667,7 +646,7 @@ describe('project delete', () => {
 })
 
 describe('project create', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -793,7 +772,7 @@ describe('project create', () => {
 })
 
 describe('project update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -918,7 +897,7 @@ describe('project update', () => {
 })
 
 describe('project archive', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -966,7 +945,7 @@ describe('project archive', () => {
 })
 
 describe('project unarchive', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -1014,7 +993,7 @@ describe('project unarchive', () => {
 })
 
 describe('project browse', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -1055,7 +1034,7 @@ describe('project browse', () => {
 })
 
 describe('project move', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {

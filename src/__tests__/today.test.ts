@@ -16,17 +16,10 @@ vi.mock('../lib/api/workspaces.js', () => ({
 import { registerTodayCommand } from '../commands/today.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -47,7 +40,7 @@ function getYesterday(): string {
 }
 
 describe('today command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {

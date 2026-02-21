@@ -9,16 +9,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerUpcomingCommand } from '../commands/upcoming.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -34,7 +27,7 @@ function getDateOffset(days: number): string {
 }
 
 describe('upcoming command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {

@@ -16,17 +16,11 @@ vi.mock('../lib/api/workspaces.js', () => ({
 import { registerWorkspaceCommand } from '../commands/workspace.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
-
-function createMockApi() {
-    return {
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getWorkspaceUsers: vi.fn().mockResolvedValue({ workspaceUsers: [], hasMore: false }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -59,7 +53,7 @@ const mockWorkspaces = [
 ]
 
 describe('workspace list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -137,7 +131,7 @@ describe('workspace list', () => {
 })
 
 describe('workspace view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -220,7 +214,7 @@ describe('workspace view', () => {
 })
 
 describe('workspace projects', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -422,7 +416,7 @@ describe('workspace projects', () => {
 })
 
 describe('workspace users', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {

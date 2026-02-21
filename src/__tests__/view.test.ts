@@ -28,21 +28,10 @@ vi.mock('../lib/browser.js', () => ({
 import { registerViewCommand } from '../commands/view.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTask: vi.fn(),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -52,7 +41,7 @@ function createProgram() {
 }
 
 describe('view command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
@@ -142,7 +131,14 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            { id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue', isFavorite: false },
+            {
+                id: 'filter1',
+                name: 'Work tasks',
+                query: '#Work',
+                color: 'blue',
+                isFavorite: false,
+                isDeleted: false,
+            },
         ])
 
         await program.parseAsync([
@@ -201,7 +197,7 @@ describe('view command', () => {
         ])
 
         expect(mockApi.getProject).toHaveBeenCalledWith('proj1')
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -231,7 +227,7 @@ describe('view command', () => {
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task1')
         // JSON output should be produced
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -260,7 +256,7 @@ describe('view command', () => {
         ])
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task1')
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -268,7 +264,14 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            { id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue', isFavorite: false },
+            {
+                id: 'filter1',
+                name: 'Work tasks',
+                query: '#Work',
+                color: 'blue',
+                isFavorite: false,
+                isDeleted: false,
+            },
         ])
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -305,7 +308,7 @@ describe('view command', () => {
             }),
         )
 
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id":"task1"')
     })
 

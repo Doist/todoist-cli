@@ -32,6 +32,7 @@ import {
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import { fetchUserSettings, updateUserSettings } from '../lib/api/user-settings.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockFetchUserSettings = vi.mocked(fetchUserSettings)
 const mockUpdateUserSettings = vi.mocked(updateUserSettings)
@@ -134,18 +135,12 @@ describe('settings view', () => {
 })
 
 describe('settings view - start page name resolution', () => {
-    let mockApi: {
-        getProject: ReturnType<typeof vi.fn>
-        getLabel: ReturnType<typeof vi.fn>
-    }
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = {
-            getProject: vi.fn(),
-            getLabel: vi.fn(),
-        }
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('resolves project name in text output', async () => {
