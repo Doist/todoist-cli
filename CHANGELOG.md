@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0](https://github.com/Doist/todoist-cli/compare/v1.17.0...v1.18.0) (2026-02-21)
+
+
+### Features
+
+* add --accessible flag for screen reader and color-blind users ([#95](https://github.com/Doist/todoist-cli/issues/95)) ([d1cd90d](https://github.com/Doist/todoist-cli/commit/d1cd90d824c8c5a01f75fce3433a35c456ea3262))
+* add Gemini CLI skill ([#96](https://github.com/Doist/todoist-cli/issues/96)) ([ad85fe3](https://github.com/Doist/todoist-cli/commit/ad85fe31ed1b576bc1d793badf356033bb28d899))
+
+
+### Bug Fixes
+
+* use pnpm add instead of pnpm install for global updates ([#92](https://github.com/Doist/todoist-cli/issues/92)) ([eacbbb7](https://github.com/Doist/todoist-cli/commit/eacbbb7bce9c47f98661309c7c77d8cf4c4b2e04))
+
 ## [1.17.0](https://github.com/Doist/todoist-cli/compare/v1.16.0...v1.17.0) (2026-02-20)
 
 
