@@ -12,6 +12,7 @@ program
     .option('--no-spinner', 'Disable loading animations')
     .option('--progress-jsonl [path]', 'Output progress events as JSONL to stderr or file')
     .option('-v, --verbose', 'Increase output verbosity (repeat up to 4x: -v, -vv, -vvv, -vvvv)')
+    .option('--accessible', 'Add text labels to color-coded output (also: TD_ACCESSIBLE=1)')
     .addHelpText(
         'after',
         `

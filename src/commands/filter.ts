@@ -17,6 +17,7 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
+    isAccessible,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
@@ -56,7 +57,9 @@ async function listFilters(options: PaginatedViewOptions): Promise<void> {
 
     for (const filter of filters) {
         const id = chalk.dim(`id:${filter.id}`)
-        const name = filter.isFavorite ? chalk.yellow(filter.name) : filter.name
+        const name = filter.isFavorite
+            ? chalk.yellow(`${filter.name}${isAccessible() ? ' ★' : ''}`)
+            : filter.name
         const query = chalk.dim(`"${filter.query}"`)
         console.log(`${id}  ${name}  ${query}`)
         if (options.showUrls) {
