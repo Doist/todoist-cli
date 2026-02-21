@@ -22,17 +22,7 @@ vi.mock('yocto-spinner', () => ({
 }))
 
 // Mock chalk to avoid colors in tests
-vi.mock('chalk', () => ({
-    default: {
-        green: vi.fn((text) => text),
-        yellow: vi.fn((text) => text),
-        blue: vi.fn((text) => text),
-        red: vi.fn((text) => text),
-        gray: vi.fn((text) => text),
-        cyan: vi.fn((text) => text),
-        magenta: vi.fn((text) => text),
-    },
-}))
+vi.mock('chalk')
 
 describe('withSpinner', () => {
     beforeEach(() => {

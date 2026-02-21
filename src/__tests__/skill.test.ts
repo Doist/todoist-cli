@@ -4,14 +4,7 @@ import { join } from 'node:path'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('chalk', () => ({
-    default: {
-        green: vi.fn((text) => text),
-        dim: vi.fn((text) => text),
-        bold: vi.fn((text) => text),
-        red: vi.fn((text) => text),
-    },
-}))
+vi.mock('chalk')
 
 vi.mock('../lib/skills/update-installed.js', () => ({
     updateAllInstalledSkills: vi.fn(),

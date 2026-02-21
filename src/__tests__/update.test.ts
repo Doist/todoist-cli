@@ -7,13 +7,7 @@ vi.mock('node:child_process', () => ({
 }))
 
 // Mock chalk to avoid colors in tests
-vi.mock('chalk', () => ({
-    default: {
-        green: vi.fn((text: string) => text),
-        red: vi.fn((text: string) => text),
-        dim: vi.fn((text: string) => text),
-    },
-}))
+vi.mock('chalk')
 
 // Mock spinner — pass through to the callback
 vi.mock('../lib/spinner.js', () => ({
@@ -96,6 +90,7 @@ describe('update command', () => {
     afterEach(() => {
         vi.restoreAllMocks()
         vi.unstubAllGlobals()
+        vi.unstubAllEnvs()
         process.exitCode = undefined
     })
 
@@ -156,6 +151,21 @@ describe('update command', () => {
             expect(consoleSpy).toHaveBeenCalledWith(
                 expect.anything(),
                 expect.stringContaining('Updated to v99.99.99'),
+            )
+        })
+
+        it('uses pnpm add when pnpm is detected', async () => {
+            mockFetch('99.99.99')
+            mockSpawnSuccess()
+            vi.stubEnv('npm_execpath', '/usr/local/lib/node_modules/pnpm/bin/pnpm.cjs')
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update'])
+
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'pnpm',
+                ['add', '-g', '@doist/todoist-cli@latest'],
+                { stdio: 'inherit' },
             )
         })
     })
