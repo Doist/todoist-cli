@@ -8,19 +8,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerInboxCommand } from '../commands/inbox.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getUser: vi.fn(),
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getSections: vi.fn().mockResolvedValue({ results: [] }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -30,13 +20,13 @@ function createProgram() {
 }
 
 describe('inbox command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

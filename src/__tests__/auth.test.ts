@@ -57,6 +57,7 @@ import { getApi } from '../lib/api/core.js'
 import { clearApiToken, saveApiToken } from '../lib/auth.js'
 import { exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
+import { createMockApi } from './helpers/mock-api.js'
 
 const mockCreateInterface = vi.mocked(createInterface)
 
@@ -253,8 +254,8 @@ describe('auth command', () => {
         it('shows authenticated status when logged in', async () => {
             const program = createProgram()
             const mockUser = { email: 'test@example.com', fullName: 'Test User' }
-            const mockApi = { getUser: vi.fn().mockResolvedValue(mockUser) }
-            mockGetApi.mockResolvedValue(mockApi as never)
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            mockGetApi.mockResolvedValue(mockApi)
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 

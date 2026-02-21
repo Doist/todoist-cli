@@ -7,16 +7,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerAddCommand } from '../commands/add.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        quickAddTask: vi.fn(),
-        getProject: vi.fn(),
-        updateTask: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -26,12 +19,12 @@ function createProgram() {
 }
 
 describe('add command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('calls quickAddTask with text', async () => {

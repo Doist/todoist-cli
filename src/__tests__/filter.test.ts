@@ -15,19 +15,13 @@ vi.mock('../lib/api/filters.js', () => ({
 import { registerFilterCommand } from '../commands/filter.js'
 import { getApi } from '../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../lib/api/filters.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 const mockAddFilter = vi.mocked(addFilter)
 const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
-
-function createMockApi() {
-    return {
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -533,12 +527,12 @@ describe('filter update', () => {
 })
 
 describe('filter show', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('shows tasks matching filter', async () => {
@@ -755,12 +749,12 @@ describe('filter show', () => {
 })
 
 describe('filter view (alias)', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('works via "view" subcommand', async () => {
@@ -819,12 +813,12 @@ describe('filter view (alias)', () => {
 })
 
 describe('filter URL resolution', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('resolves filter by URL in view command', async () => {

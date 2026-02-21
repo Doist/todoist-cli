@@ -16,17 +16,11 @@ vi.mock('../lib/api/workspaces.js', () => ({
 import { registerWorkspaceCommand } from '../commands/workspace.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
-
-function createMockApi() {
-    return {
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getWorkspaceUsers: vi.fn().mockResolvedValue({ workspaceUsers: [], hasMore: false }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -59,13 +53,13 @@ const mockWorkspaces = [
 ]
 
 describe('workspace list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -137,13 +131,13 @@ describe('workspace list', () => {
 })
 
 describe('workspace view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -220,13 +214,13 @@ describe('workspace view', () => {
 })
 
 describe('workspace projects', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
@@ -422,13 +416,13 @@ describe('workspace projects', () => {
 })
 
 describe('workspace users', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

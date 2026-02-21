@@ -7,20 +7,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerLabelCommand } from '../commands/label.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        addLabel: vi.fn(),
-        deleteLabel: vi.fn(),
-        updateLabel: vi.fn(),
-        getSharedLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -30,12 +19,12 @@ function createProgram() {
 }
 
 describe('label list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('lists all labels', async () => {
@@ -109,12 +98,12 @@ describe('label list', () => {
 })
 
 describe('label create', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('creates label with name', async () => {
@@ -197,12 +186,12 @@ describe('label create', () => {
 })
 
 describe('label delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('shows dry-run without --yes', async () => {
@@ -284,12 +273,12 @@ describe('label delete', () => {
 })
 
 describe('label update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('updates label name', async () => {
@@ -459,12 +448,12 @@ describe('label update', () => {
 })
 
 describe('label URL resolution', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('resolves label by URL in delete command', async () => {
@@ -556,12 +545,12 @@ describe('label URL resolution', () => {
 })
 
 describe('label view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('shows label metadata and tasks', async () => {
@@ -720,12 +709,12 @@ describe('label view', () => {
 })
 
 describe('shared labels', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     describe('label list', () => {

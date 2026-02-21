@@ -7,21 +7,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerSectionCommand } from '../commands/section.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        getSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getSection: vi.fn(),
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        addSection: vi.fn(),
-        deleteSection: vi.fn(),
-        updateSection: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -31,12 +19,12 @@ function createProgram() {
 }
 
 describe('section list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('resolves project and lists sections', async () => {
@@ -125,12 +113,12 @@ describe('section list', () => {
 })
 
 describe('section create', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('creates section in project', async () => {
@@ -186,12 +174,12 @@ describe('section create', () => {
 })
 
 describe('section delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('rejects plain text references', async () => {
@@ -248,12 +236,12 @@ describe('section delete', () => {
 })
 
 describe('section update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('rejects plain text references', async () => {

@@ -19,24 +19,10 @@ vi.mock('../lib/api/uploads.js', () => ({
 import { registerCommentCommand } from '../commands/comment.js'
 import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockUploadFile = vi.mocked(uploadFile)
-
-function createMockApi() {
-    return {
-        getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getTask: vi.fn(),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getProject: vi.fn(),
-        getComments: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-        getComment: vi.fn(),
-        addComment: vi.fn(),
-        deleteComment: vi.fn(),
-        updateComment: vi.fn(),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -46,12 +32,12 @@ function createProgram() {
 }
 
 describe('comment list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('resolves task and lists comments', async () => {
@@ -137,12 +123,12 @@ describe('comment list', () => {
 })
 
 describe('comment add', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('adds comment to task', async () => {
@@ -191,12 +177,12 @@ describe('comment add', () => {
 })
 
 describe('comment delete', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('rejects plain text references', async () => {
@@ -243,12 +229,12 @@ describe('comment delete', () => {
 })
 
 describe('comment update', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('rejects plain text references', async () => {
@@ -327,12 +313,12 @@ describe('comment update', () => {
 })
 
 describe('comment add with attachment', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('uploads file and attaches to comment', async () => {
@@ -402,12 +388,12 @@ describe('comment add with attachment', () => {
 })
 
 describe('comment list with attachments', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('shows [file] marker for comments with attachments', async () => {
@@ -521,12 +507,12 @@ describe('comment list with attachments', () => {
 })
 
 describe('comment view', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('rejects plain text references', async () => {
@@ -604,12 +590,12 @@ describe('comment view', () => {
 })
 
 describe('project comment list', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('lists comments on a project with --project flag', async () => {
@@ -658,12 +644,12 @@ describe('project comment list', () => {
 })
 
 describe('project comment add', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
     })
 
     it('adds comment to project with --project flag', async () => {

@@ -7,17 +7,9 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { registerCompletedCommand } from '../commands/completed.js'
 import { getApi } from '../lib/api/core.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-
-function createMockApi() {
-    return {
-        getCompletedTasksByCompletionDate: vi
-            .fn()
-            .mockResolvedValue({ items: [], nextCursor: null }),
-        getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-    }
-}
 
 function createProgram() {
     const program = new Command()
@@ -38,13 +30,13 @@ function getTomorrow(): string {
 }
 
 describe('completed command', () => {
-    let mockApi: ReturnType<typeof createMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi as never)
+        mockGetApi.mockResolvedValue(mockApi)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

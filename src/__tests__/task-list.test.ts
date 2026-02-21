@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PRIORITY_CHOICES, parsePriority } from '../lib/task-list.js'
+import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 describe('parsePriority', () => {
     it('parses p1 to API priority 4', () => {
@@ -52,27 +53,17 @@ describe('parsePriority', () => {
 })
 
 describe('listTasksForProject', () => {
-    let mockApi: ReturnType<typeof createTestMockApi>
+    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
-
-    function createTestMockApi() {
-        return {
-            getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-            getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
-            getProject: vi.fn(),
-            getSections: vi.fn().mockResolvedValue({ results: [] }),
-            getProjects: vi.fn().mockResolvedValue({ results: [] }),
-        }
-    }
 
     beforeEach(async () => {
         vi.resetModules()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi = createTestMockApi()
+        mockApi = createMockApi()
 
         vi.doMock('../lib/api/core.js', () => ({
-            getApi: vi.fn().mockResolvedValue(mockApi as never),
+            getApi: vi.fn().mockResolvedValue(mockApi),
             isWorkspaceProject: vi.fn(
                 (project: { workspaceId?: string }) => project.workspaceId !== undefined,
             ),
