@@ -36,7 +36,7 @@ describe('section list', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('resolves project and lists sections', async () => {
@@ -130,7 +130,7 @@ describe('section create', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('creates section in project', async () => {
@@ -191,7 +191,7 @@ describe('section delete', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('rejects plain text references', async () => {
@@ -253,7 +253,7 @@ describe('section update', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('rejects plain text references', async () => {

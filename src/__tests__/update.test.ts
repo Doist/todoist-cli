@@ -96,7 +96,9 @@ describe('update command', () => {
 
     describe('already up to date', () => {
         it('prints up-to-date message when versions match', async () => {
-            const { version } = await import('../../package.json')
+            const {
+                default: { version },
+            } = await import('../../package.json')
             mockFetch(version)
 
             const program = createProgram()
@@ -122,7 +124,9 @@ describe('update command', () => {
         })
 
         it('shows up-to-date message when already current', async () => {
-            const { version } = await import('../../package.json')
+            const {
+                default: { version },
+            } = await import('../../package.json')
             mockFetch(version)
 
             const program = createProgram()

@@ -35,7 +35,7 @@ describe('label list', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('lists all labels', async () => {
@@ -114,7 +114,7 @@ describe('label create', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('creates label with name', async () => {
@@ -202,7 +202,7 @@ describe('label delete', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('shows dry-run without --yes', async () => {
@@ -289,7 +289,7 @@ describe('label update', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('updates label name', async () => {
@@ -464,7 +464,7 @@ describe('label URL resolution', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('resolves label by URL in delete command', async () => {
@@ -561,7 +561,7 @@ describe('label view', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('shows label metadata and tasks', async () => {
@@ -725,7 +725,7 @@ describe('shared labels', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     describe('label list', () => {

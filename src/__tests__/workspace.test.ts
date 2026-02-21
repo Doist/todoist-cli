@@ -65,7 +65,7 @@ describe('workspace list', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -143,7 +143,7 @@ describe('workspace view', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -226,7 +226,7 @@ describe('workspace projects', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
@@ -428,7 +428,7 @@ describe('workspace users', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

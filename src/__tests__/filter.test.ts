@@ -538,7 +538,7 @@ describe('filter show', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('shows tasks matching filter', async () => {
@@ -760,7 +760,7 @@ describe('filter view (alias)', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('works via "view" subcommand', async () => {
@@ -824,7 +824,7 @@ describe('filter URL resolution', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
     })
 
     it('resolves filter by URL in view command', async () => {

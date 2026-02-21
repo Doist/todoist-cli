@@ -35,7 +35,7 @@ describe('activity command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         mockGetCurrentUserId.mockResolvedValue('user-123')
         mockIsWorkspaceProject.mockReturnValue(false)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

@@ -36,7 +36,7 @@ describe('inbox command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

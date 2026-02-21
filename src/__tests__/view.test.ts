@@ -58,7 +58,7 @@ describe('view command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockGetApi.mockResolvedValue(mockApi as never)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -142,7 +142,14 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            { id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue', isFavorite: false },
+            {
+                id: 'filter1',
+                name: 'Work tasks',
+                query: '#Work',
+                color: 'blue',
+                isFavorite: false,
+                isDeleted: false,
+            },
         ])
 
         await program.parseAsync([
@@ -201,7 +208,7 @@ describe('view command', () => {
         ])
 
         expect(mockApi.getProject).toHaveBeenCalledWith('proj1')
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -231,7 +238,7 @@ describe('view command', () => {
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task1')
         // JSON output should be produced
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -260,7 +267,7 @@ describe('view command', () => {
         ])
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task1')
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id"')
     })
 
@@ -268,7 +275,14 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            { id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue', isFavorite: false },
+            {
+                id: 'filter1',
+                name: 'Work tasks',
+                query: '#Work',
+                color: 'blue',
+                isFavorite: false,
+                isDeleted: false,
+            },
         ])
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -305,7 +319,7 @@ describe('view command', () => {
             }),
         )
 
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(output).toContain('"id":"task1"')
     })
 
