@@ -90,6 +90,7 @@ describe('update command', () => {
     afterEach(() => {
         vi.restoreAllMocks()
         vi.unstubAllGlobals()
+        vi.unstubAllEnvs()
         process.exitCode = undefined
     })
 
