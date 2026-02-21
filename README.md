@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/td-cli.png" alt="Todoist CLI" width="150" height="150" />
+</p>
+
 # Todoist CLI
 
 A command-line interface for Todoist.
