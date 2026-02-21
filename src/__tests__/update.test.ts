@@ -7,13 +7,7 @@ vi.mock('node:child_process', () => ({
 }))
 
 // Mock chalk to avoid colors in tests
-vi.mock('chalk', () => ({
-    default: {
-        green: vi.fn((text: string) => text),
-        red: vi.fn((text: string) => text),
-        dim: vi.fn((text: string) => text),
-    },
-}))
+vi.mock('chalk')
 
 // Mock spinner — pass through to the callback
 vi.mock('../lib/spinner.js', () => ({

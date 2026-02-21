@@ -13,14 +13,7 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 // Mock chalk to avoid colors in tests
-vi.mock('chalk', () => ({
-    default: {
-        green: vi.fn((text) => text),
-        red: vi.fn((text) => text),
-        yellow: vi.fn((text) => text),
-        dim: vi.fn((text) => text),
-    },
-}))
+vi.mock('chalk')
 
 // Mock PKCE module
 vi.mock('../lib/pkce.js', () => ({
