@@ -242,6 +242,61 @@ describe('activity command', () => {
         expect(lines).toHaveLength(2)
     })
 
+    it('outputs markdown with --markdown flag', async () => {
+        const program = createProgram()
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [
+                {
+                    id: 'event-1',
+                    objectType: 'task',
+                    objectId: 'task-1',
+                    eventType: 'completed',
+                    eventDate: '2025-01-10T14:30:00Z',
+                    parentProjectId: 'proj-1',
+                    parentItemId: null,
+                    initiatorId: null,
+                    extraData: { content: 'Buy groceries' },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Shopping' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'activity', '--markdown'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        expect(output).toContain('# Activity Log')
+        expect(output).toContain('## 2025-01-10')
+        expect(output).toMatch(
+            /^- \d{2}:\d{2} - completed task: Buy groceries \(project: Shopping\)$/m,
+        )
+    })
+
+    it('outputs markdown header when no activity and --markdown is used', async () => {
+        const program = createProgram()
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'activity', '--markdown'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('# Activity Log')
+    })
+
+    it('rejects conflicting output format flags', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'activity', '--markdown', '--json']),
+        ).rejects.toThrow('mutually exclusive')
+    })
+
     it('respects --limit option', async () => {
         const program = createProgram()
 
