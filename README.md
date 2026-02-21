@@ -12,6 +12,14 @@ A command-line interface for Todoist.
 > npm install -g @doist/todoist-cli
 > ```
 
+### Arch Linux (AUR)
+
+```bash
+yay -S todoist-cli-bin
+# or
+paru -S todoist-cli-bin
+```
+
 ### Local Setup (for now)
 
 ```bash
