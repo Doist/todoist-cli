@@ -17,6 +17,11 @@ export const skillInstallers: Record<string, SkillInstaller> = {
         description: 'Cursor skill for Todoist CLI',
         dirName: '.cursor',
     }),
+    gemini: createInstaller({
+        name: 'gemini',
+        description: 'Gemini CLI skill for Todoist CLI',
+        dirName: '.gemini',
+    }),
 }
 
 export function getInstaller(agent: string): SkillInstaller | undefined {

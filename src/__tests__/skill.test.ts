@@ -43,6 +43,7 @@ describe('skill command', () => {
             expect(consoleSpy).toHaveBeenCalledWith('  claude-code')
             expect(consoleSpy).toHaveBeenCalledWith('  codex')
             expect(consoleSpy).toHaveBeenCalledWith('  cursor')
+            expect(consoleSpy).toHaveBeenCalledWith('  gemini')
         })
     })
 
@@ -144,6 +145,12 @@ describe('skills registry', () => {
         expect(installer?.name).toBe('cursor')
     })
 
+    it('returns gemini installer', () => {
+        const installer = getInstaller('gemini')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('gemini')
+    })
+
     it('returns undefined for unknown agent', () => {
         const installer = getInstaller('unknown')
         expect(installer).toBeUndefined()
@@ -154,6 +161,7 @@ describe('skills registry', () => {
         expect(agents).toContain('claude-code')
         expect(agents).toContain('codex')
         expect(agents).toContain('cursor')
+        expect(agents).toContain('gemini')
     })
 })
 
@@ -162,6 +170,7 @@ describe('installer paths', () => {
         { agent: 'claude-code', dir: '.claude', desc: 'Claude Code skill for Todoist CLI' },
         { agent: 'codex', dir: '.codex', desc: 'Codex skill for Todoist CLI' },
         { agent: 'cursor', dir: '.cursor', desc: 'Cursor skill for Todoist CLI' },
+        { agent: 'gemini', dir: '.gemini', desc: 'Gemini CLI skill for Todoist CLI' },
     ] as const
 
     for (const { agent, dir, desc } of cases) {
