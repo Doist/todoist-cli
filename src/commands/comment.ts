@@ -1,5 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
+import { addCommentViaSync } from '../lib/api/comments.js'
 import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
 import { openInBrowser } from '../lib/browser.js'
@@ -108,6 +109,7 @@ interface AddOptions {
     content: string
     file?: string
     project?: boolean
+    notifyUids?: string
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
@@ -123,6 +125,17 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         const task = await resolveTaskRef(api, ref)
         targetArgs = { taskId: task.id }
         targetName = task.content
+    }
+
+    const notifyUids = options.notifyUids
+        ? options.notifyUids
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : []
+
+    if (notifyUids.length > 0 && options.file) {
+        throw new Error('Cannot use --notify-uids with --file yet')
     }
 
     let attachment:
@@ -144,11 +157,22 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         }
     }
 
-    const comment = await api.addComment({
-        ...targetArgs,
-        content: options.content,
-        ...(attachment && { attachment }),
-    })
+    // If we need notifications, use the Sync API so we can pass uids_to_notify.
+    // Attachments are not supported via this path yet.
+    const comment =
+        notifyUids.length > 0
+            ? {
+                  id: await addCommentViaSync({
+                      ...targetArgs,
+                      content: options.content,
+                      uidsToNotify: notifyUids,
+                  }),
+              }
+            : await api.addComment({
+                  ...targetArgs,
+                  content: options.content,
+                  ...(attachment && { attachment }),
+              })
 
     console.log(`Added comment to "${targetName}"`)
     if (attachment) {
@@ -264,6 +288,10 @@ export function registerCommentCommand(program: Command): void {
         .option('-P, --project', 'Target a project instead of a task')
         .option('--content <text>', 'Comment content (required)')
         .option('--file <path>', 'Attach a file to the comment')
+        .option(
+            '--notify-uids <uids>',
+            'Comma-separated Todoist user IDs to notify (uses Sync API note_add)',
+        )
         .action((ref, options) => {
             if (!ref || !options.content) {
                 addCmd.help()
