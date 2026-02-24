@@ -1,4 +1,5 @@
 import {
+    Label,
     PersonalProject,
     Section,
     Task,
@@ -9,6 +10,8 @@ import {
 import { getApiToken } from '../auth.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
+import { markResourcesDirty, setCachedCurrentUserId, upsertCachedEntity } from '../sync/engine.js'
+import type { CoreSyncResource } from '../sync/types.js'
 
 let apiClient: TodoistApi | null = null
 
@@ -40,7 +43,65 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getTasksByFilter: { text: 'Loading tasks...', color: 'blue' },
         moveProjectToWorkspace: { text: 'Moving project to workspace...', color: 'yellow' },
         moveProjectToPersonal: { text: 'Moving project to personal...', color: 'yellow' },
+        moveTask: { text: 'Moving task...', color: 'yellow' },
+        archiveProject: { text: 'Archiving project...', color: 'yellow' },
+        unarchiveProject: { text: 'Unarchiving project...', color: 'yellow' },
     }
+
+const UPSERT_METHODS = new Set([
+    'addTask',
+    'updateTask',
+    'quickAddTask',
+    'addProject',
+    'updateProject',
+    'addLabel',
+    'updateLabel',
+    'addSection',
+    'updateSection',
+])
+
+const DIRTY_RESOURCE_BY_METHOD: Partial<Record<string, CoreSyncResource[]>> = {
+    closeTask: ['items'],
+    reopenTask: ['items'],
+    deleteTask: ['items'],
+    moveTask: ['items'],
+    deleteProject: ['projects', 'items', 'sections'],
+    archiveProject: ['projects'],
+    unarchiveProject: ['projects'],
+    moveProjectToWorkspace: ['projects', 'workspaces', 'folders'],
+    moveProjectToPersonal: ['projects', 'workspaces', 'folders'],
+    deleteLabel: ['labels', 'items'],
+    deleteSection: ['sections', 'items'],
+}
+
+async function onMutationSuccess(method: string, response: unknown): Promise<void> {
+    if (response && typeof response === 'object') {
+        switch (method) {
+            case 'addTask':
+            case 'updateTask':
+            case 'quickAddTask':
+                await upsertCachedEntity({ resource: 'items', value: response as Task })
+                break
+            case 'addProject':
+            case 'updateProject':
+                await upsertCachedEntity({ resource: 'projects', value: response as Project })
+                break
+            case 'addLabel':
+            case 'updateLabel':
+                await upsertCachedEntity({ resource: 'labels', value: response as Label })
+                break
+            case 'addSection':
+            case 'updateSection':
+                await upsertCachedEntity({ resource: 'sections', value: response as Section })
+                break
+        }
+    }
+
+    const dirtyResources = DIRTY_RESOURCE_BY_METHOD[method]
+    if (dirtyResources && dirtyResources.length > 0) {
+        await markResourcesDirty(dirtyResources)
+    }
+}
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
     return new Proxy(api, {
@@ -50,8 +111,10 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
             // Only wrap methods (functions) and only if they're likely async API calls
             if (typeof originalMethod === 'function' && typeof property === 'string') {
                 const spinnerConfig = API_SPINNER_MESSAGES[property]
+                const tracksMutation =
+                    UPSERT_METHODS.has(property) || property in DIRTY_RESOURCE_BY_METHOD
 
-                if (spinnerConfig) {
+                if (spinnerConfig || tracksMutation) {
                     return <T extends unknown[]>(...args: T) => {
                         const progressTracker = getProgressTracker()
 
@@ -74,16 +137,21 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                         // If the method returns a Promise, wrap it with spinner and progress tracking
                         if (result && typeof result.then === 'function') {
                             const wrappedPromise = result
-                                .then((response: unknown) => {
+                                .then(async (response: unknown) => {
                                     // Emit progress event for successful response
-                                    if (progressTracker.isEnabled()) {
+                                    if (spinnerConfig && progressTracker.isEnabled()) {
                                         analyzeAndEmitApiResponse(progressTracker, response)
                                     }
+
+                                    if (tracksMutation) {
+                                        await onMutationSuccess(property, response)
+                                    }
+
                                     return response
                                 })
                                 .catch((error: Error) => {
                                     // Emit progress event for error
-                                    if (progressTracker.isEnabled()) {
+                                    if (spinnerConfig && progressTracker.isEnabled()) {
                                         progressTracker.emitError(
                                             error.name || 'API_ERROR',
                                             error.message,
@@ -92,7 +160,10 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                                     throw error
                                 })
 
-                            return withSpinner(spinnerConfig, () => wrappedPromise)
+                            if (spinnerConfig) {
+                                return withSpinner(spinnerConfig, () => wrappedPromise)
+                            }
+                            return wrappedPromise
                         }
 
                         return result
@@ -160,6 +231,7 @@ export async function getCurrentUserId(): Promise<string> {
     const api = await getApi()
     const user = await api.getUser()
     currentUserIdCache = user.id
+    await setCachedCurrentUserId(user.id)
     return currentUserIdCache
 }
 
@@ -215,6 +287,30 @@ export async function executeSyncCommand(commands: SyncCommand[]): Promise<SyncR
         if (status && typeof status === 'object' && 'error' in status) {
             throw new Error(status.error)
         }
+    }
+
+    const dirtyResources = new Set<CoreSyncResource>()
+    for (const cmd of commands) {
+        const type = cmd.type
+        if (type.startsWith('item_') || type.startsWith('task_')) {
+            dirtyResources.add('items')
+        } else if (type.startsWith('project_')) {
+            dirtyResources.add('projects')
+        } else if (type.startsWith('section_')) {
+            dirtyResources.add('sections')
+        } else if (type.startsWith('label_')) {
+            dirtyResources.add('labels')
+        } else if (type.startsWith('filter_')) {
+            dirtyResources.add('filters')
+        } else if (type.startsWith('workspace_') || type.includes('invitation')) {
+            dirtyResources.add('workspaces')
+        } else if (type === 'user_update' || type === 'user_settings_update') {
+            dirtyResources.add('users')
+        }
+    }
+
+    if (dirtyResources.size > 0) {
+        await markResourcesDirty([...dirtyResources])
     }
 
     return data

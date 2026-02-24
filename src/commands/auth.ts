@@ -7,6 +7,7 @@ import { clearApiToken, saveApiToken } from '../lib/auth.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
+import { clearSyncCache } from '../lib/sync/engine.js'
 
 function promptHiddenInput(prompt: string): Promise<string> {
     return new Promise((resolve) => {
@@ -86,6 +87,7 @@ async function showStatus(): Promise<void> {
 }
 
 async function logout(): Promise<void> {
+    await clearSyncCache()
     await clearApiToken()
     console.log(chalk.green('✓'), 'Logged out')
     console.log(chalk.dim('Token removed from ~/.config/todoist-cli/config.json'))

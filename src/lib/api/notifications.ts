@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { markResourcesDirty } from '../sync/engine.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export type NotificationType =
@@ -168,6 +169,7 @@ export async function acceptInvitation(invitationId: string, secret: string): Pr
         },
     }
     await executeSyncCommand([command])
+    await markResourcesDirty(['projects', 'workspaces'])
 }
 
 export async function rejectInvitation(invitationId: string, secret: string): Promise<void> {
@@ -180,4 +182,5 @@ export async function rejectInvitation(invitationId: string, secret: string): Pr
         },
     }
     await executeSyncCommand([command])
+    await markResourcesDirty(['projects', 'workspaces'])
 }

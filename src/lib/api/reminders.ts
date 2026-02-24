@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { markResourcesDirty } from '../sync/engine.js'
 import { executeSyncCommand, generateUuid, type SyncCommand, type SyncResponse } from './core.js'
 
 export interface ReminderDue {
@@ -83,6 +84,7 @@ export async function addReminder(args: AddReminderArgs): Promise<string> {
     }
 
     const result = await executeSyncCommand([command])
+    await markResourcesDirty(['items'])
     return result.temp_id_mapping?.[tempId] ?? tempId
 }
 
@@ -105,6 +107,7 @@ export async function updateReminder(id: string, args: UpdateReminderArgs): Prom
     }
 
     await executeSyncCommand([command])
+    await markResourcesDirty(['items'])
 }
 
 export async function deleteReminder(id: string): Promise<void> {
@@ -115,4 +118,5 @@ export async function deleteReminder(id: string): Promise<void> {
     }
 
     await executeSyncCommand([command])
+    await markResourcesDirty(['items'])
 }

@@ -12,8 +12,16 @@ import {
 } from './output.js'
 import { LIMITS, paginate } from './pagination.js'
 import { resolveWorkspaceRef } from './refs.js'
+import { ensureFresh, getCachedCurrentUserId } from './sync/engine.js'
+import type { SyncRepository } from './sync/repository.js'
 
 export async function fetchProjects(api: TodoistApi): Promise<Map<string, Project>> {
+    const repo = await ensureFresh(['projects'])
+    if (repo) {
+        const projects = await repo.listProjects()
+        return new Map(projects.map((project) => [project.id, project]))
+    }
+
     const { results: allProjects } = await api.getProjects()
     return new Map(allProjects.map((p) => [p.id, p]))
 }
@@ -247,6 +255,71 @@ interface FormatFlatTaskListOptions {
     showUrl?: boolean
 }
 
+interface CachedTaskQueryResult {
+    repo: SyncRepository
+    tasks: Task[]
+    nextCursor: string | null
+}
+
+async function queryTasksFromCache(
+    projectId: string | null,
+    options: TaskListOptions,
+    targetLimit: number,
+): Promise<CachedTaskQueryResult | null> {
+    if (options.filter) return null
+    if (
+        options.assignee &&
+        !options.assignee.startsWith('id:') &&
+        options.assignee.toLowerCase() !== 'me'
+    ) {
+        return null
+    }
+
+    const repo = await ensureFresh(['items', 'projects', 'sections', 'workspaces', 'folders'])
+    if (!repo) return null
+
+    let assigneeId: string | undefined
+    if (options.assignee?.startsWith('id:')) {
+        assigneeId = options.assignee.slice(3)
+    } else if (options.assignee?.toLowerCase() === 'me') {
+        assigneeId = (await getCachedCurrentUserId()) ?? undefined
+        if (!assigneeId) return null
+    }
+
+    const labels = options.label
+        ? options.label
+              .split(',')
+              .map((label) => label.trim())
+              .filter((label) => label.length > 0)
+        : undefined
+
+    let workspaceId: string | undefined
+    if (options.workspace) {
+        const workspace = await resolveWorkspaceRef(options.workspace)
+        workspaceId = workspace.id
+    }
+
+    const result = await repo.queryTasks({
+        projectId: projectId ?? undefined,
+        parentId: options.parent,
+        priority: options.priority ? parsePriority(options.priority) : undefined,
+        due: options.due,
+        labels,
+        assigneeId,
+        unassigned: options.unassigned,
+        workspaceId,
+        personal: options.personal,
+        limit: targetLimit,
+        cursor: options.cursor,
+    })
+
+    return {
+        repo,
+        tasks: result.results,
+        nextCursor: result.nextCursor,
+    }
+}
+
 function formatFlatTaskList({
     tasks,
     projects,
@@ -292,34 +365,46 @@ export async function listTasksForProject(
 
     let tasks: Task[]
     let nextCursor: string | null
+    let cachedRepo: SyncRepository | null = null
 
-    const builtFilter = buildFilterQuery(options)
-    const filterQuery = options.filter
-        ? builtFilter
-            ? `(${options.filter}) & (${builtFilter})`
-            : options.filter
-        : builtFilter
-
-    if (filterQuery) {
-        const result = await paginate(
-            (cursor, limit) =>
-                api.getTasksByFilter({
-                    query: filterQuery,
-                    cursor: cursor ?? undefined,
-                    limit,
-                }),
-            { limit: targetLimit, startCursor: options.cursor },
-        )
-        tasks = result.results
-        nextCursor = result.nextCursor
+    const cachedResult = await queryTasksFromCache(projectId, options, targetLimit)
+    if (cachedResult) {
+        tasks = cachedResult.tasks
+        nextCursor = cachedResult.nextCursor
+        cachedRepo = cachedResult.repo
     } else {
-        const scope = options.parent ? { parentId: options.parent } : projectId ? { projectId } : {}
-        const result = await paginate(
-            (cursor, limit) => api.getTasks({ ...scope, cursor: cursor ?? undefined, limit }),
-            { limit: targetLimit, startCursor: options.cursor },
-        )
-        tasks = result.results
-        nextCursor = result.nextCursor
+        const builtFilter = buildFilterQuery(options)
+        const filterQuery = options.filter
+            ? builtFilter
+                ? `(${options.filter}) & (${builtFilter})`
+                : options.filter
+            : builtFilter
+
+        if (filterQuery) {
+            const result = await paginate(
+                (cursor, limit) =>
+                    api.getTasksByFilter({
+                        query: filterQuery,
+                        cursor: cursor ?? undefined,
+                        limit,
+                    }),
+                { limit: targetLimit, startCursor: options.cursor },
+            )
+            tasks = result.results
+            nextCursor = result.nextCursor
+        } else {
+            const scope = options.parent
+                ? { parentId: options.parent }
+                : projectId
+                  ? { projectId }
+                  : {}
+            const result = await paginate(
+                (cursor, limit) => api.getTasks({ ...scope, cursor: cursor ?? undefined, limit }),
+                { limit: targetLimit, startCursor: options.cursor },
+            )
+            tasks = result.results
+            nextCursor = result.nextCursor
+        }
     }
 
     let filtered = tasks
@@ -368,10 +453,12 @@ export async function listTasksForProject(
 
     if (projectId) {
         // When listing tasks for a specific project, we only need that project's info
-        const [projectRes, sectionsRes] = await Promise.all([
-            api.getProject(projectId),
-            api.getSections({ projectId }),
-        ])
+        const cachedProject = cachedRepo ? await cachedRepo.getProject(projectId) : null
+        const cachedSections = cachedRepo ? await cachedRepo.listSections(projectId) : null
+        const projectRes = cachedProject ?? (await api.getProject(projectId))
+        const sectionsRes = cachedSections
+            ? { results: cachedSections }
+            : await api.getSections({ projectId })
 
         const projects = new Map([[projectRes.id, projectRes]])
         await collaboratorCache.preload(api, filtered, projects)
@@ -389,7 +476,9 @@ export async function listTasksForProject(
         )
     } else {
         // When listing tasks across all projects, we need all projects for formatting
-        const { results: allProjects } = await api.getProjects()
+        const allProjects = cachedRepo
+            ? await cachedRepo.listProjects()
+            : (await api.getProjects()).results
         const projects = new Map(allProjects.map((p) => [p.id, p]))
         await collaboratorCache.preload(api, filtered, projects)
 

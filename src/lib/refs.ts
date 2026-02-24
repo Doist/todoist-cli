@@ -8,6 +8,7 @@ import {
 } from './api/workspaces.js'
 import { formatError } from './output.js'
 import { paginate } from './pagination.js'
+import { ensureFresh } from './sync/engine.js'
 
 const URL_ENTITY_TYPES = ['task', 'project', 'label', 'filter'] as const
 export type UrlEntityType = (typeof URL_ENTITY_TYPES)[number]
@@ -270,6 +271,21 @@ async function resolveRef<T extends { id: string }>(
 }
 
 export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task> {
+    const repo = await ensureFresh(['items'])
+    if (repo) {
+        return resolveRef(
+            ref,
+            async (id) => {
+                const task = await repo.getTask(id)
+                if (task) return task
+                return api.getTask(id)
+            },
+            async () => ({ results: await repo.listTasks() }),
+            (t) => t.content,
+            'task',
+        )
+    }
+
     return resolveRef(
         ref,
         (id) => api.getTask(id),
@@ -289,6 +305,21 @@ export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task
 }
 
 export async function resolveProjectRef(api: TodoistApi, ref: string): Promise<Project> {
+    const repo = await ensureFresh(['projects'])
+    if (repo) {
+        return resolveRef(
+            ref,
+            async (id) => {
+                const project = await repo.getProject(id)
+                if (project) return project
+                return api.getProject(id)
+            },
+            async () => ({ results: await repo.listProjects() }),
+            (p) => p.name,
+            'project',
+        )
+    }
+
     return resolveRef(
         ref,
         (id) => api.getProject(id),
@@ -308,6 +339,13 @@ export async function resolveSectionId(
     ref: string,
     projectId: string,
 ): Promise<string> {
+    const repo = await ensureFresh(['sections'])
+    if (repo) {
+        const sections = await repo.listSections(projectId)
+        const section = resolveFromList(ref, sections, (s) => s.name, 'section', 'in project')
+        return section.id
+    }
+
     const { results: sections } = await api.getSections({ projectId })
     const section = resolveFromList(ref, sections, (s) => s.name, 'section', 'in project')
     return section.id
@@ -326,15 +364,47 @@ export async function resolveParentTaskId(
         return extractId(ref)
     }
 
-    if (sectionId) {
-        const { results: sectionTasks } = await api.getTasks({ sectionId })
-        const match = fuzzyMatchInList(ref, sectionTasks, (t) => t.content, 'task', 'in section')
+    const repo = await ensureFresh(['items'])
+    if (repo) {
+        const allTasks = await repo.listTasks()
+        if (sectionId) {
+            const sectionTasks = allTasks.filter((task) => task.sectionId === sectionId)
+            const sectionMatch = fuzzyMatchInList(
+                ref,
+                sectionTasks,
+                (t) => t.content,
+                'task',
+                'in section',
+            )
+            if (sectionMatch) return sectionMatch.id
+        }
+
+        const projectTasks = allTasks.filter((task) => task.projectId === projectId)
+        const projectMatch = fuzzyMatchInList(
+            ref,
+            projectTasks,
+            (t) => t.content,
+            'task',
+            'in project',
+        )
+        if (projectMatch) return projectMatch.id
+    } else {
+        if (sectionId) {
+            const { results: sectionTasks } = await api.getTasks({ sectionId })
+            const match = fuzzyMatchInList(
+                ref,
+                sectionTasks,
+                (t) => t.content,
+                'task',
+                'in section',
+            )
+            if (match) return match.id
+        }
+
+        const { results: projectTasks } = await api.getTasks({ projectId })
+        const match = fuzzyMatchInList(ref, projectTasks, (t) => t.content, 'task', 'in project')
         if (match) return match.id
     }
-
-    const { results: projectTasks } = await api.getTasks({ projectId })
-    const match = fuzzyMatchInList(ref, projectTasks, (t) => t.content, 'task', 'in project')
-    if (match) return match.id
 
     if (looksLikeRawId(ref)) return ref
 

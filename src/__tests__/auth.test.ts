@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/auth.js', () => ({
     saveApiToken: vi.fn(),
     clearApiToken: vi.fn(),
+    getSyncSettings: vi.fn().mockResolvedValue({
+        enabled: false,
+        ttlSeconds: 60,
+        dbPath: '/tmp/todoist-cli-cache-test.db',
+    }),
 }))
 
 // Mock the api module

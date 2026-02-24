@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { ensureFresh } from '../sync/engine.js'
 
 export interface Workspace {
     id: string
@@ -28,6 +29,12 @@ async function fetchWorkspaceData(): Promise<{
     workspaces: Workspace[]
     folders: WorkspaceFolder[]
 }> {
+    const repo = await ensureFresh(['workspaces', 'folders'])
+    if (repo) {
+        const [workspaces, folders] = await Promise.all([repo.listWorkspaces(), repo.listFolders()])
+        return { workspaces, folders }
+    }
+
     if (workspaceCache !== null && folderCache !== null) {
         return { workspaces: workspaceCache, folders: folderCache }
     }

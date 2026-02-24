@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi } from '../lib/api/core.js'
+import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import {
@@ -10,6 +10,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
+import { ensureFresh, getCachedCurrentUserId } from '../lib/sync/engine.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
 interface TodayOptions {
@@ -26,6 +27,20 @@ interface TodayOptions {
     showUrls?: boolean
 }
 
+function parseLocalCursor(cursor: string | undefined): number {
+    if (!cursor) return 0
+    if (cursor.startsWith('local:')) {
+        const parsed = Number.parseInt(cursor.slice(6), 10)
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+    }
+    const parsed = Number.parseInt(cursor, 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+function formatLocalCursor(offset: number): string {
+    return `local:${offset}`
+}
+
 export async function showToday(options: TodayOptions): Promise<void> {
     const api = await getApi()
 
@@ -35,36 +50,82 @@ export async function showToday(options: TodayOptions): Promise<void> {
           ? parseInt(options.limit, 10)
           : LIMITS.tasks
 
-    const baseQuery = 'today | overdue'
-    const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
-
-    const [{ results: tasks, nextCursor }, projects] = await Promise.all([
-        paginate(
-            (cursor, limit) =>
-                api.getTasksByFilter({
-                    query,
-                    cursor: cursor ?? undefined,
-                    limit,
-                }),
-            { limit: targetLimit, startCursor: options.cursor },
-        ),
-        fetchProjects(api),
-    ])
-
     const today = getLocalDate(0)
+    let allTodayTasks: Task[]
+    let nextCursor: string | null
+    let projects: Map<string, Project>
 
-    const filterResult = await filterByWorkspaceOrPersonal({
-        api,
-        tasks,
-        workspace: options.workspace,
-        personal: options.personal,
-        prefetchedProjects: projects,
-    })
-    const filteredTasks = filterResult.tasks
+    const repo = await ensureFresh(['items', 'projects'])
+    const cachedCurrentUserId = options.anyAssignee ? null : await getCachedCurrentUserId()
+    if (repo && (options.anyAssignee || cachedCurrentUserId)) {
+        const allCachedTasks = await repo.listTasks()
+        let scopedTasks = allCachedTasks.filter(
+            (task) =>
+                task.due &&
+                (isDueBefore(task.due.date, today) || isDueOnDate(task.due.date, today)),
+        )
 
-    const overdue = filteredTasks.filter((t) => t.due && isDueBefore(t.due.date, today))
-    const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
-    const allTodayTasks = [...overdue, ...dueToday]
+        if (!options.anyAssignee && cachedCurrentUserId) {
+            scopedTasks = scopedTasks.filter(
+                (task) => task.responsibleUid === cachedCurrentUserId || !task.responsibleUid,
+            )
+        }
+
+        const cachedProjects = await repo.listProjects()
+        projects = new Map(cachedProjects.map((project) => [project.id, project]))
+
+        const filtered = await filterByWorkspaceOrPersonal({
+            api,
+            tasks: scopedTasks,
+            workspace: options.workspace,
+            personal: options.personal,
+            prefetchedProjects: projects,
+        })
+        const start = parseLocalCursor(options.cursor)
+        const paged = filtered.tasks.slice(start, start + targetLimit)
+        allTodayTasks = paged
+        nextCursor =
+            start + targetLimit < filtered.tasks.length
+                ? formatLocalCursor(start + targetLimit)
+                : null
+    } else {
+        const baseQuery = 'today | overdue'
+        const query = options.anyAssignee
+            ? baseQuery
+            : `(${baseQuery}) & (assigned to: me | !assigned)`
+
+        const [{ results: tasks, nextCursor: cursor }, prefetchedProjects] = await Promise.all([
+            paginate(
+                (cursor, limit) =>
+                    api.getTasksByFilter({
+                        query,
+                        cursor: cursor ?? undefined,
+                        limit,
+                    }),
+                { limit: targetLimit, startCursor: options.cursor },
+            ),
+            fetchProjects(api),
+        ])
+        projects = prefetchedProjects
+        const filterResult = await filterByWorkspaceOrPersonal({
+            api,
+            tasks,
+            workspace: options.workspace,
+            personal: options.personal,
+            prefetchedProjects: projects,
+        })
+        const overdue = filterResult.tasks.filter(
+            (task) => task.due && isDueBefore(task.due.date, today),
+        )
+        const dueToday = filterResult.tasks.filter(
+            (task) => task.due && isDueOnDate(task.due.date, today),
+        )
+        allTodayTasks = [...overdue, ...dueToday]
+        nextCursor = cursor
+    }
+
+    const overdue = allTodayTasks.filter((task) => task.due && isDueBefore(task.due.date, today))
+    const dueToday = allTodayTasks.filter((task) => task.due && isDueOnDate(task.due.date, today))
 
     if (options.json) {
         console.log(
@@ -91,7 +152,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
     }
 
     const collaboratorCache = new CollaboratorCache()
-    await collaboratorCache.preload(api, allTodayTasks, filterResult.projects)
+    await collaboratorCache.preload(api, allTodayTasks, projects)
 
     if (overdue.length === 0 && dueToday.length === 0) {
         console.log('No tasks due today.')

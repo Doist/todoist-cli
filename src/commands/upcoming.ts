@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, type Task } from '../lib/api/core.js'
+import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import {
@@ -10,6 +10,7 @@ import {
     formatTaskRow,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
+import { ensureFresh, getCachedCurrentUserId } from '../lib/sync/engine.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
 interface UpcomingOptions {
@@ -23,6 +24,20 @@ interface UpcomingOptions {
     ndjson?: boolean
     full?: boolean
     showUrls?: boolean
+}
+
+function parseLocalCursor(cursor: string | undefined): number {
+    if (!cursor) return 0
+    if (cursor.startsWith('local:')) {
+        const parsed = Number.parseInt(cursor.slice(6), 10)
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+    }
+    const parsed = Number.parseInt(cursor, 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+function formatLocalCursor(offset: number): string {
+    return `local:${offset}`
 }
 
 export async function showUpcoming(
@@ -45,32 +60,72 @@ export async function showUpcoming(
           : LIMITS.tasks
 
     const today = getLocalDate(0)
+    let relevantTasks: Task[]
+    let nextCursor: string | null
+    let projects: Map<string, Project>
 
-    const baseQuery = `due before: ${days} days`
-    const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
+    const repo = await ensureFresh(['items', 'projects'])
+    const cachedCurrentUserId = options.anyAssignee ? null : await getCachedCurrentUserId()
+    if (repo && (options.anyAssignee || cachedCurrentUserId)) {
+        const upperBound = getLocalDate(days - 1)
+        let scopedTasks = (await repo.listTasks()).filter((task) => {
+            const dueDate = task.due?.date?.split('T')[0]
+            if (!dueDate) return false
+            return dueDate <= upperBound
+        })
 
-    const [{ results: tasks, nextCursor }, projects] = await Promise.all([
-        paginate(
-            (cursor, limit) =>
-                api.getTasksByFilter({
-                    query,
-                    cursor: cursor ?? undefined,
-                    limit,
-                }),
-            { limit: targetLimit, startCursor: options.cursor },
-        ),
-        fetchProjects(api),
-    ])
+        if (!options.anyAssignee && cachedCurrentUserId) {
+            scopedTasks = scopedTasks.filter(
+                (task) => task.responsibleUid === cachedCurrentUserId || !task.responsibleUid,
+            )
+        }
 
-    const filterResult = await filterByWorkspaceOrPersonal({
-        api,
-        tasks,
-        workspace: options.workspace,
-        personal: options.personal,
-        prefetchedProjects: projects,
-    })
+        const cachedProjects = await repo.listProjects()
+        projects = new Map(cachedProjects.map((project) => [project.id, project]))
+        const filtered = await filterByWorkspaceOrPersonal({
+            api,
+            tasks: scopedTasks,
+            workspace: options.workspace,
+            personal: options.personal,
+            prefetchedProjects: projects,
+        })
 
-    const relevantTasks = filterResult.tasks
+        const start = parseLocalCursor(options.cursor)
+        relevantTasks = filtered.tasks.slice(start, start + targetLimit)
+        nextCursor =
+            start + targetLimit < filtered.tasks.length
+                ? formatLocalCursor(start + targetLimit)
+                : null
+    } else {
+        const baseQuery = `due before: ${days} days`
+        const query = options.anyAssignee
+            ? baseQuery
+            : `(${baseQuery}) & (assigned to: me | !assigned)`
+
+        const [{ results: tasks, nextCursor: cursor }, prefetchedProjects] = await Promise.all([
+            paginate(
+                (cursor, limit) =>
+                    api.getTasksByFilter({
+                        query,
+                        cursor: cursor ?? undefined,
+                        limit,
+                    }),
+                { limit: targetLimit, startCursor: options.cursor },
+            ),
+            fetchProjects(api),
+        ])
+        projects = prefetchedProjects
+
+        const filterResult = await filterByWorkspaceOrPersonal({
+            api,
+            tasks,
+            workspace: options.workspace,
+            personal: options.personal,
+            prefetchedProjects: projects,
+        })
+        relevantTasks = filterResult.tasks
+        nextCursor = cursor
+    }
 
     if (options.json) {
         console.log(
@@ -97,7 +152,7 @@ export async function showUpcoming(
     }
 
     const collaboratorCache = new CollaboratorCache()
-    await collaboratorCache.preload(api, relevantTasks, filterResult.projects)
+    await collaboratorCache.preload(api, relevantTasks, projects)
 
     if (relevantTasks.length === 0) {
         console.log(`No tasks due in the next ${days} day${days === 1 ? '' : 's'}.`)

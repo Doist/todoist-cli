@@ -47,6 +47,7 @@
     "dist"
   ],
   "dependencies": {
+    "@libsql/client": "0.15.15",
     "@doist/todoist-api-typescript": "6.5.0",
     "@pnpm/tabtab": "0.5.4",
     "chalk": "5.6.2",

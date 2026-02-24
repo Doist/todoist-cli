@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { markResourcesDirty } from '../sync/engine.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export interface Streak {
@@ -115,4 +116,5 @@ export async function updateGoals(args: UpdateGoalsArgs): Promise<void> {
     }
 
     await executeSyncCommand([command])
+    await markResourcesDirty(['users'])
 }

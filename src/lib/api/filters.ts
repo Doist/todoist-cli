@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { ensureFresh, markResourcesDirty, upsertCachedEntity } from '../sync/engine.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 export interface Filter {
@@ -30,6 +31,11 @@ function parseFilter(f: Record<string, unknown>): Filter {
 }
 
 export async function fetchFilters(): Promise<Filter[]> {
+    const repo = await ensureFresh(['filters'])
+    if (repo) {
+        return repo.listFilters()
+    }
+
     const token = await getApiToken()
     const response = await fetch('https://api.todoist.com/api/v1/sync', {
         method: 'POST',
@@ -77,12 +83,12 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
     }
 
     const result = await executeSyncCommand([command])
-    const mapping = result as unknown as {
+    const mapping = result as {
         temp_id_mapping?: Record<string, string>
     }
     const id = mapping.temp_id_mapping?.[tempId] ?? tempId
 
-    return {
+    const created: Filter = {
         id,
         name: args.name,
         query: args.query,
@@ -90,6 +96,9 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
         isFavorite: args.isFavorite ?? false,
         isDeleted: false,
     }
+
+    await upsertCachedEntity({ resource: 'filters', value: created })
+    return created
 }
 
 export interface UpdateFilterArgs {
@@ -113,6 +122,7 @@ export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<
     }
 
     await executeSyncCommand([command])
+    await markResourcesDirty(['filters'])
 }
 
 export async function deleteFilter(id: string): Promise<void> {
@@ -123,4 +133,5 @@ export async function deleteFilter(id: string): Promise<void> {
     }
 
     await executeSyncCommand([command])
+    await markResourcesDirty(['filters'])
 }

@@ -2,6 +2,8 @@ import type { TodoistApi } from '@doist/todoist-api-typescript'
 import { getCurrentUserId, isWorkspaceProject, type Project, type Task } from './api/core.js'
 import { formatError } from './output.js'
 import { extractId, isIdRef } from './refs.js'
+import { getRepositoryWithoutSync } from './sync/engine.js'
+import type { SyncRepository } from './sync/repository.js'
 
 export interface CollaboratorInfo {
     id: string
@@ -12,8 +14,11 @@ export interface CollaboratorInfo {
 export class CollaboratorCache {
     private workspaceUsers = new Map<string, Map<string, CollaboratorInfo>>()
     private projectCollaborators = new Map<string, Map<string, CollaboratorInfo>>()
+    private static readonly PERSISTED_TTL_SECONDS = 6 * 60 * 60
 
     async preload(api: TodoistApi, tasks: Task[], projects: Map<string, Project>): Promise<void> {
+        const repo = await getRepositoryWithoutSync()
+
         const projectsWithAssignees = new Set<string>()
         for (const task of tasks) {
             if (task.responsibleUid) {
@@ -41,20 +46,78 @@ export class CollaboratorCache {
 
         for (const workspaceId of workspaceIds) {
             if (!this.workspaceUsers.has(workspaceId)) {
-                fetches.push(this.fetchWorkspaceUsers(api, workspaceId))
+                if (
+                    repo &&
+                    (await this.loadWorkspaceUsersFromRepo(
+                        repo,
+                        workspaceId,
+                        CollaboratorCache.PERSISTED_TTL_SECONDS,
+                    ))
+                ) {
+                    continue
+                }
+                fetches.push(this.fetchWorkspaceUsers(api, workspaceId, repo))
             }
         }
 
         for (const projectId of sharedPersonalProjectIds) {
             if (!this.projectCollaborators.has(projectId)) {
-                fetches.push(this.fetchProjectCollaborators(api, projectId))
+                if (
+                    repo &&
+                    (await this.loadProjectCollaboratorsFromRepo(
+                        repo,
+                        projectId,
+                        CollaboratorCache.PERSISTED_TTL_SECONDS,
+                    ))
+                ) {
+                    continue
+                }
+                fetches.push(this.fetchProjectCollaborators(api, projectId, repo))
             }
         }
 
         await Promise.all(fetches)
     }
 
-    private async fetchWorkspaceUsers(api: TodoistApi, workspaceId: string): Promise<void> {
+    private async loadWorkspaceUsersFromRepo(
+        repo: SyncRepository,
+        workspaceId: string,
+        ttlSeconds: number,
+    ): Promise<boolean> {
+        const cached = await repo.getWorkspaceUsers(workspaceId, ttlSeconds)
+        if (!cached || cached.length === 0) {
+            return false
+        }
+        const userMap = new Map<string, CollaboratorInfo>()
+        for (const user of cached) {
+            userMap.set(user.id, user)
+        }
+        this.workspaceUsers.set(workspaceId, userMap)
+        return true
+    }
+
+    private async loadProjectCollaboratorsFromRepo(
+        repo: SyncRepository,
+        projectId: string,
+        ttlSeconds: number,
+    ): Promise<boolean> {
+        const cached = await repo.getProjectCollaborators(projectId, ttlSeconds)
+        if (!cached || cached.length === 0) {
+            return false
+        }
+        const userMap = new Map<string, CollaboratorInfo>()
+        for (const user of cached) {
+            userMap.set(user.id, user)
+        }
+        this.projectCollaborators.set(projectId, userMap)
+        return true
+    }
+
+    private async fetchWorkspaceUsers(
+        api: TodoistApi,
+        workspaceId: string,
+        repo?: SyncRepository | null,
+    ): Promise<void> {
         const userMap = new Map<string, CollaboratorInfo>()
         let cursor: string | undefined
 
@@ -79,9 +142,17 @@ export class CollaboratorCache {
         }
 
         this.workspaceUsers.set(workspaceId, userMap)
+
+        if (repo) {
+            await repo.replaceWorkspaceUsers(workspaceId, [...userMap.values()])
+        }
     }
 
-    private async fetchProjectCollaborators(api: TodoistApi, projectId: string): Promise<void> {
+    private async fetchProjectCollaborators(
+        api: TodoistApi,
+        projectId: string,
+        repo?: SyncRepository | null,
+    ): Promise<void> {
         const userMap = new Map<string, CollaboratorInfo>()
         let cursor: string | undefined
 
@@ -101,6 +172,10 @@ export class CollaboratorCache {
         }
 
         this.projectCollaborators.set(projectId, userMap)
+
+        if (repo) {
+            await repo.replaceProjectCollaborators(projectId, [...userMap.values()])
+        }
     }
 
     getUserName({

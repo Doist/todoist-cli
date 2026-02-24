@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { markResourcesDirty } from '../sync/engine.js'
 import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
 
 interface UserSettingsSyncResponse {
@@ -125,4 +126,5 @@ export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<
     }
 
     await executeSyncCommand(commands)
+    await markResourcesDirty(['users'])
 }
