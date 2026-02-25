@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0](https://github.com/Doist/todoist-cli/compare/v1.18.0...v1.19.0) (2026-02-25)
+
+
+### Features
+
+* replace OAuth page logo with td-cli icon ([#102](https://github.com/Doist/todoist-cli/issues/102)) ([61f0975](https://github.com/Doist/todoist-cli/commit/61f09753611a92695e25a5c19acf6bbed4a79505))
+
 ## [1.18.0](https://github.com/Doist/todoist-cli/compare/v1.17.0...v1.18.0) (2026-02-21)
 
 
