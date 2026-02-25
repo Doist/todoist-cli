@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0](https://github.com/Doist/todoist-cli/compare/v1.19.0...v1.20.0) (2026-02-25)
+
+
+### Features
+
+* suppress package manager output during update ([#104](https://github.com/Doist/todoist-cli/issues/104)) ([06030b8](https://github.com/Doist/todoist-cli/commit/06030b80917875228ead96973edc6a7782143329))
+
 ## [1.19.0](https://github.com/Doist/todoist-cli/compare/v1.18.0...v1.19.0) (2026-02-25)
 
 
