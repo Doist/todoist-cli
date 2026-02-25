@@ -28,6 +28,7 @@ vi.mock('../lib/browser.js', () => ({
 import { registerViewCommand } from '../commands/view.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
+import { makeFilter } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -131,14 +132,7 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter1',
-                name: 'Work tasks',
-                query: '#Work',
-                color: 'blue',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue' }),
         ])
 
         await program.parseAsync([
@@ -264,14 +258,7 @@ describe('view command', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter1',
-                name: 'Work tasks',
-                query: '#Work',
-                color: 'blue',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter1', name: 'Work tasks', query: '#Work', color: 'blue' }),
         ])
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [

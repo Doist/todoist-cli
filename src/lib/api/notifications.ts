@@ -1,5 +1,5 @@
-import { getApiToken } from '../auth.js'
-import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
+import { createCommand, type LiveNotification } from '@doist/todoist-api-typescript'
+import { getApi } from './core.js'
 
 export type NotificationType =
     | 'share_invitation_sent'
@@ -49,77 +49,58 @@ export interface Notification {
     invitationSecret?: string
 }
 
-function parseNotification(n: Record<string, unknown>): Notification {
+function parseNotification(n: LiveNotification): Notification {
+    // The SDK type uses passthrough() so extra fields are preserved
+    const raw = n as Record<string, unknown>
+
     let fromUser: NotificationUser | undefined
-    if (n.from_uid) {
-        const fromUserData = n.from_user as Record<string, unknown> | undefined
+    if (n.fromUid) {
+        const fromUserData = raw.from_user as Record<string, unknown> | undefined
         fromUser = {
-            id: String(n.from_uid),
+            id: String(n.fromUid),
             name: String(fromUserData?.full_name ?? fromUserData?.name ?? ''),
             email: String(fromUserData?.email ?? ''),
         }
     }
 
     let project: NotificationProject | undefined
-    if (n.project_id) {
+    if (n.projectId) {
         project = {
-            id: String(n.project_id),
-            name: String(n.project_name ?? ''),
+            id: String(n.projectId),
+            name: String(raw.project_name ?? ''),
         }
     }
 
     let task: NotificationTask | undefined
-    if (n.item_id) {
+    if (n.itemId) {
         task = {
-            id: String(n.item_id),
-            content: String(n.item_content ?? ''),
+            id: String(n.itemId),
+            content: String(n.itemContent ?? ''),
         }
     }
 
     return {
         id: String(n.id),
-        type: (n.notification_type ?? n.type) as NotificationType,
-        isUnread: Boolean(n.is_unread),
-        isDeleted: Boolean(n.is_deleted),
-        createdAt: String(n.created_at ?? n.created ?? ''),
+        type: n.notificationType as NotificationType,
+        isUnread: n.isUnread,
+        isDeleted: Boolean(raw.is_deleted ?? false),
+        createdAt: n.createdAt,
         fromUser,
         project,
         task,
-        invitationId: n.invitation_id ? String(n.invitation_id) : undefined,
-        invitationSecret: n.invitation_secret ? String(n.invitation_secret) : undefined,
+        invitationId: n.invitationId ? String(n.invitationId) : undefined,
+        invitationSecret: raw.invitation_secret ? String(raw.invitation_secret) : undefined,
     }
-}
-
-interface NotificationFetchResponse {
-    live_notifications?: Array<Record<string, unknown>>
-    live_notifications_last_read_id?: number
-    error?: string
 }
 
 export async function fetchNotifications(): Promise<Notification[]> {
-    const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/api/v1/sync', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            sync_token: '*',
-            resource_types: '["live_notifications"]',
-        }),
+    const api = await getApi()
+    const response = await api.sync({
+        resourceTypes: ['live_notifications'],
+        syncToken: '*',
     })
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.status}`)
-    }
-
-    const data: NotificationFetchResponse = await response.json()
-    if (data.error) {
-        throw new Error(`Notifications API error: ${data.error}`)
-    }
-
-    const notifications = (data.live_notifications ?? [])
+    const notifications = (response.liveNotifications ?? [])
         .map(parseNotification)
         .filter((n: Notification) => !n.isDeleted)
 
@@ -132,52 +113,46 @@ export async function fetchNotifications(): Promise<Notification[]> {
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-    const command: SyncCommand = {
-        type: 'live_notifications_mark_read',
-        uuid: generateUuid(),
-        args: { ids: [id] },
-    }
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [createCommand('live_notifications_mark_read', { ids: [id] })],
+    })
 }
 
 export async function markNotificationUnread(id: string): Promise<void> {
-    const command: SyncCommand = {
-        type: 'live_notifications_mark_unread',
-        uuid: generateUuid(),
-        args: { ids: [id] },
-    }
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [createCommand('live_notifications_mark_unread', { ids: [id] })],
+    })
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-    const command: SyncCommand = {
-        type: 'live_notifications_mark_read_all',
-        uuid: generateUuid(),
-        args: {},
-    }
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [createCommand('live_notifications_mark_read_all', {} as Record<never, never>)],
+    })
 }
 
 export async function acceptInvitation(invitationId: string, secret: string): Promise<void> {
-    const command: SyncCommand = {
-        type: 'accept_invitation',
-        uuid: generateUuid(),
-        args: {
-            invitation_id: Number(invitationId),
-            invitation_secret: secret,
-        },
-    }
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [
+            createCommand('accept_invitation', {
+                invitationId,
+                invitationSecret: secret,
+            }),
+        ],
+    })
 }
 
 export async function rejectInvitation(invitationId: string, secret: string): Promise<void> {
-    const command: SyncCommand = {
-        type: 'reject_invitation',
-        uuid: generateUuid(),
-        args: {
-            invitation_id: Number(invitationId),
-            invitation_secret: secret,
-        },
-    }
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [
+            createCommand('reject_invitation', {
+                invitationId,
+                invitationSecret: secret,
+            }),
+        ],
+    })
 }

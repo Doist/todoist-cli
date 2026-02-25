@@ -1,5 +1,6 @@
 import type { Comment, Label, Task } from '@doist/todoist-api-typescript'
 import type { Project, Section } from '../../lib/api/core.js'
+import type { Filter } from '../../lib/api/filters.js'
 
 const taskDefaults = {
     isUncompletable: false,
@@ -246,6 +247,28 @@ export const fixtures = {
             workspaceId: 'ws-1',
         },
     },
+    filters: {
+        work: {
+            id: 'filter-1',
+            name: 'Work tasks',
+            query: '@work',
+            color: 'charcoal',
+            isFavorite: false,
+            isDeleted: false,
+            isFrozen: false,
+            itemOrder: 0,
+        } as Filter,
+        urgent: {
+            id: 'filter-2',
+            name: 'Urgent',
+            query: 'p1',
+            color: 'charcoal',
+            isFavorite: true,
+            isDeleted: false,
+            isFrozen: false,
+            itemOrder: 1,
+        } as Filter,
+    },
     user: {
         basic: {
             id: 'user-1',
@@ -254,4 +277,21 @@ export const fixtures = {
             inboxProjectId: 'proj-inbox',
         },
     },
+}
+
+const filterDefaults: Filter = {
+    id: '',
+    name: '',
+    query: '',
+    color: 'charcoal',
+    isFavorite: false,
+    isDeleted: false,
+    isFrozen: false,
+    itemOrder: 0,
+}
+
+export function makeFilter(
+    overrides: Partial<Filter> & { id: string; name: string; query: string },
+): Filter {
+    return { ...filterDefaults, ...overrides }
 }
