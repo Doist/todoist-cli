@@ -1,5 +1,5 @@
 import { createCommand } from '@doist/todoist-api-typescript'
-import { getApi } from './core.js'
+import { getApi, pickDefined } from './core.js'
 
 export interface UserSettings {
     timezone: string
@@ -63,28 +63,28 @@ export interface UpdateUserSettingsArgs {
 export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<void> {
     const commands = []
 
-    const userArgs: Record<string, unknown> = {}
-    if (args.timezone !== undefined) userArgs.timezone = args.timezone
-    if (args.timeFormat !== undefined) userArgs.time_format = args.timeFormat
-    if (args.dateFormat !== undefined) userArgs.date_format = args.dateFormat
-    if (args.startDay !== undefined) userArgs.start_day = args.startDay
-    if (args.theme !== undefined) userArgs.theme_id = String(args.theme)
-    if (args.autoReminder !== undefined) userArgs.auto_reminder = args.autoReminder
-    if (args.nextWeek !== undefined) userArgs.next_week = args.nextWeek
-    if (args.startPage !== undefined) userArgs.start_page = args.startPage
+    const userArgs = pickDefined({
+        timezone: args.timezone,
+        time_format: args.timeFormat,
+        date_format: args.dateFormat,
+        start_day: args.startDay,
+        theme_id: args.theme !== undefined ? String(args.theme) : undefined,
+        auto_reminder: args.autoReminder,
+        next_week: args.nextWeek,
+        start_page: args.startPage,
+    })
 
     if (Object.keys(userArgs).length > 0) {
         commands.push(createCommand('user_update', userArgs))
     }
 
-    const settingsArgs: Record<string, unknown> = {}
-    if (args.reminderPush !== undefined) settingsArgs.reminderPush = args.reminderPush
-    if (args.reminderDesktop !== undefined) settingsArgs.reminderDesktop = args.reminderDesktop
-    if (args.reminderEmail !== undefined) settingsArgs.reminderEmail = args.reminderEmail
-    if (args.completedSoundDesktop !== undefined)
-        settingsArgs.completedSoundDesktop = args.completedSoundDesktop
-    if (args.completedSoundMobile !== undefined)
-        settingsArgs.completedSoundMobile = args.completedSoundMobile
+    const settingsArgs = pickDefined({
+        reminderPush: args.reminderPush,
+        reminderDesktop: args.reminderDesktop,
+        reminderEmail: args.reminderEmail,
+        completedSoundDesktop: args.completedSoundDesktop,
+        completedSoundMobile: args.completedSoundMobile,
+    })
 
     if (Object.keys(settingsArgs).length > 0) {
         commands.push(createCommand('user_settings_update', settingsArgs))

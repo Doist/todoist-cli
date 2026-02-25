@@ -1,5 +1,5 @@
 import { createCommand, type Filter as SdkFilter } from '@doist/todoist-api-typescript'
-import { getApi } from './core.js'
+import { getApi, pickDefined } from './core.js'
 
 export type Filter = SdkFilter
 
@@ -29,8 +29,10 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
                 {
                     name: args.name,
                     query: args.query,
-                    ...(args.color && { color: args.color }),
-                    ...(args.isFavorite !== undefined && { isFavorite: args.isFavorite }),
+                    ...pickDefined({
+                        color: args.color,
+                        isFavorite: args.isFavorite,
+                    }),
                 },
                 tempId,
             ),
@@ -63,10 +65,12 @@ export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<
         commands: [
             createCommand('filter_update', {
                 id,
-                ...(args.name !== undefined && { name: args.name }),
-                ...(args.query !== undefined && { query: args.query }),
-                ...(args.color !== undefined && { color: args.color }),
-                ...(args.isFavorite !== undefined && { isFavorite: args.isFavorite }),
+                ...pickDefined({
+                    name: args.name,
+                    query: args.query,
+                    color: args.color,
+                    isFavorite: args.isFavorite,
+                }),
             }),
         ],
     })

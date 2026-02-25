@@ -1,6 +1,6 @@
 import { createCommand } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
-import { getApi } from './core.js'
+import { getApi, pickDefined } from './core.js'
 
 export interface Streak {
     count: number
@@ -98,12 +98,15 @@ export interface UpdateGoalsArgs {
 }
 
 export async function updateGoals(args: UpdateGoalsArgs): Promise<void> {
-    const goalsArgs: Record<string, unknown> = {}
-    if (args.dailyGoal !== undefined) goalsArgs.dailyGoal = args.dailyGoal
-    if (args.weeklyGoal !== undefined) goalsArgs.weeklyGoal = args.weeklyGoal
-    if (args.vacationMode !== undefined) goalsArgs.vacationMode = args.vacationMode ? 1 : 0
-    if (args.karmaDisabled !== undefined) goalsArgs.karmaDisabled = args.karmaDisabled ? 1 : 0
-    if (args.ignoreDays !== undefined) goalsArgs.ignoreDays = args.ignoreDays
+    const goalsArgs = pickDefined({
+        dailyGoal: args.dailyGoal,
+        weeklyGoal: args.weeklyGoal,
+        vacationMode:
+            args.vacationMode !== undefined ? ((args.vacationMode ? 1 : 0) as 0 | 1) : undefined,
+        karmaDisabled:
+            args.karmaDisabled !== undefined ? ((args.karmaDisabled ? 1 : 0) as 0 | 1) : undefined,
+        ignoreDays: args.ignoreDays,
+    })
 
     if (Object.keys(goalsArgs).length === 0) {
         throw new Error('No goals to update')

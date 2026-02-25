@@ -1,5 +1,5 @@
 import { createCommand, type Reminder as SdkReminder } from '@doist/todoist-api-typescript'
-import { getApi } from './core.js'
+import { getApi, pickDefined } from './core.js'
 
 export interface ReminderDue {
     date: string
@@ -54,32 +54,18 @@ export async function addReminder(args: AddReminderArgs): Promise<string> {
     const api = await getApi()
     const tempId = crypto.randomUUID()
 
-    if (args.minuteOffset !== undefined) {
-        const response = await api.sync({
-            commands: [
-                createCommand(
-                    'reminder_add',
-                    {
-                        type: 'relative',
-                        itemId: args.itemId,
-                        minuteOffset: args.minuteOffset,
-                        ...(args.due && { due: args.due }),
-                    },
-                    tempId,
-                ),
-            ],
-        })
-        return response.tempIdMapping?.[tempId] ?? tempId
-    }
-
+    const type = args.minuteOffset !== undefined ? ('relative' as const) : ('absolute' as const)
     const response = await api.sync({
         commands: [
             createCommand(
                 'reminder_add',
                 {
-                    type: 'absolute',
+                    type,
                     itemId: args.itemId,
-                    ...(args.due && { due: args.due }),
+                    ...pickDefined({
+                        minuteOffset: args.minuteOffset,
+                        due: args.due,
+                    }),
                 },
                 tempId,
             ),
@@ -99,8 +85,10 @@ export async function updateReminder(id: string, args: UpdateReminderArgs): Prom
         commands: [
             createCommand('reminder_update', {
                 id,
-                ...(args.minuteOffset !== undefined && { minuteOffset: args.minuteOffset }),
-                ...(args.due && { due: args.due }),
+                ...pickDefined({
+                    minuteOffset: args.minuteOffset,
+                    due: args.due,
+                }),
             }),
         ],
     })
