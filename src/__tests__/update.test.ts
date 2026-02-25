@@ -52,6 +52,9 @@ function mockFetchNetworkError(message: string) {
 
 function mockSpawnSuccess() {
     mockSpawn.mockReturnValue({
+        stderr: {
+            on: vi.fn(),
+        },
         on: vi.fn((event: string, cb: (arg?: unknown) => void) => {
             if (event === 'close') cb(0)
         }),
@@ -60,6 +63,9 @@ function mockSpawnSuccess() {
 
 function mockSpawnFailure(exitCode: number) {
     mockSpawn.mockReturnValue({
+        stderr: {
+            on: vi.fn(),
+        },
         on: vi.fn((event: string, cb: (arg?: unknown) => void) => {
             if (event === 'close') cb(exitCode)
         }),
@@ -68,6 +74,9 @@ function mockSpawnFailure(exitCode: number) {
 
 function mockSpawnPermissionError() {
     mockSpawn.mockReturnValue({
+        stderr: {
+            on: vi.fn(),
+        },
         on: vi.fn((event: string, cb: (arg?: unknown) => void) => {
             if (event === 'error') {
                 const err = Object.assign(new Error('EACCES'), { code: 'EACCES' })
@@ -150,7 +159,7 @@ describe('update command', () => {
             expect(mockSpawn).toHaveBeenCalledWith(
                 'npm',
                 ['install', '-g', '@doist/todoist-cli@latest'],
-                { stdio: 'inherit' },
+                { stdio: 'pipe' },
             )
             expect(consoleSpy).toHaveBeenCalledWith(
                 expect.anything(),
@@ -169,7 +178,7 @@ describe('update command', () => {
             expect(mockSpawn).toHaveBeenCalledWith(
                 'pnpm',
                 ['add', '-g', '@doist/todoist-cli@latest'],
-                { stdio: 'inherit' },
+                { stdio: 'pipe' },
             )
         })
     })
