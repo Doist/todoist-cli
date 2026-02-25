@@ -26,15 +26,20 @@ function detectPackageManager(): string {
     return 'npm'
 }
 
-function runInstall(pm: string): Promise<number> {
+function runInstall(pm: string): Promise<{ exitCode: number; stderr: string }> {
     const command = pm === 'pnpm' ? 'add' : 'install'
     return new Promise((resolve, reject) => {
         const child = spawn(pm, [command, '-g', `${PACKAGE_NAME}@latest`], {
-            stdio: 'inherit',
+            stdio: 'pipe',
+        })
+
+        let stderr = ''
+        child.stderr?.on('data', (data: Buffer) => {
+            stderr += data.toString()
         })
 
         child.on('error', reject)
-        child.on('close', (code) => resolve(code ?? 1))
+        child.on('close', (code) => resolve({ exitCode: code ?? 1, stderr }))
     })
 }
 
@@ -68,15 +73,13 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
     }
 
     const pm = detectPackageManager()
-    console.log(chalk.dim(`Updating to v${latestVersion}...`))
 
+    let result: { exitCode: number; stderr: string }
     try {
-        const exitCode = await runInstall(pm)
-        if (exitCode !== 0) {
-            console.error(chalk.red('Error:'), `${pm} exited with code ${exitCode}`)
-            process.exitCode = 1
-            return
-        }
+        result = await withSpinner(
+            { text: `Updating to v${latestVersion}...`, color: 'blue' },
+            () => runInstall(pm),
+        )
     } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'EACCES') {
             console.error(chalk.red('Error:'), 'Permission denied. Try running with sudo:')
@@ -88,6 +91,15 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         } else {
             const message = error instanceof Error ? error.message : String(error)
             console.error(chalk.red('Error:'), `Install failed: ${message}`)
+        }
+        process.exitCode = 1
+        return
+    }
+
+    if (result.exitCode !== 0) {
+        console.error(chalk.red('Error:'), `${pm} exited with code ${result.exitCode}`)
+        if (result.stderr) {
+            console.error(chalk.dim(result.stderr.trim()))
         }
         process.exitCode = 1
         return
