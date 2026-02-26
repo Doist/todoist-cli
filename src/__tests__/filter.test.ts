@@ -15,6 +15,7 @@ vi.mock('../lib/api/filters.js', () => ({
 import { registerFilterCommand } from '../commands/filter.js'
 import { getApi } from '../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../lib/api/filters.js'
+import { makeFilter } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -40,20 +41,8 @@ describe('filter list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work tasks',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
-            {
-                id: 'filter-2',
-                name: 'Urgent',
-                query: 'p1',
-                isFavorite: true,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work tasks', query: '@work' }),
+            makeFilter({ id: 'filter-2', name: 'Urgent', query: 'p1', isFavorite: true }),
         ])
 
         await program.parseAsync(['node', 'td', 'filter', 'list'])
@@ -80,13 +69,7 @@ describe('filter list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         await program.parseAsync(['node', 'td', 'filter', 'list', '--json'])
@@ -103,20 +86,8 @@ describe('filter list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
-            {
-                id: 'filter-2',
-                name: 'Home',
-                query: '@home',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+            makeFilter({ id: 'filter-2', name: 'Home', query: '@home' }),
         ])
 
         await program.parseAsync(['node', 'td', 'filter', 'list', '--ndjson'])
@@ -137,13 +108,9 @@ describe('filter create', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockAddFilter.mockResolvedValue({
-            id: 'filter-new',
-            name: 'Work',
-            query: '@work',
-            isFavorite: false,
-            isDeleted: false,
-        })
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-new', name: 'Work', query: '@work' }),
+        )
 
         await program.parseAsync([
             'node',
@@ -167,14 +134,9 @@ describe('filter create', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockAddFilter.mockResolvedValue({
-            id: 'filter-new',
-            name: 'Urgent',
-            query: 'p1',
-            color: 'red',
-            isFavorite: false,
-            isDeleted: false,
-        })
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-new', name: 'Urgent', query: 'p1', color: 'red' }),
+        )
 
         await program.parseAsync([
             'node',
@@ -199,13 +161,9 @@ describe('filter create', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockAddFilter.mockResolvedValue({
-            id: 'filter-new',
-            name: 'Important',
-            query: 'p1 | p2',
-            isFavorite: true,
-            isDeleted: false,
-        })
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-new', name: 'Important', query: 'p1 | p2', isFavorite: true }),
+        )
 
         await program.parseAsync([
             'node',
@@ -229,13 +187,9 @@ describe('filter create', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockAddFilter.mockResolvedValue({
-            id: 'filter-xyz',
-            name: 'Test',
-            query: 'today',
-            isFavorite: false,
-            isDeleted: false,
-        })
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-xyz', name: 'Test', query: 'today' }),
+        )
 
         await program.parseAsync([
             'node',
@@ -263,13 +217,7 @@ describe('filter delete', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work'])
@@ -285,13 +233,7 @@ describe('filter delete', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
         mockDeleteFilter.mockResolvedValue(undefined)
 
@@ -307,13 +249,7 @@ describe('filter delete', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-123',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
         ])
         mockDeleteFilter.mockResolvedValue(undefined)
 
@@ -344,13 +280,7 @@ describe('filter update', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Old Name',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Old Name', query: '@work' }),
         ])
         mockUpdateFilter.mockResolvedValue(undefined)
 
@@ -376,13 +306,7 @@ describe('filter update', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
         mockUpdateFilter.mockResolvedValue(undefined)
 
@@ -407,13 +331,7 @@ describe('filter update', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
         mockUpdateFilter.mockResolvedValue(undefined)
 
@@ -440,13 +358,7 @@ describe('filter update', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: true,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work', isFavorite: true }),
         ])
         mockUpdateFilter.mockResolvedValue(undefined)
 
@@ -463,13 +375,7 @@ describe('filter update', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-123',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
         ])
         mockUpdateFilter.mockResolvedValue(undefined)
 
@@ -493,13 +399,7 @@ describe('filter update', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         await expect(
@@ -540,13 +440,7 @@ describe('filter show', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -582,13 +476,7 @@ describe('filter show', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Empty',
-                query: 'nonexistent',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Empty', query: 'nonexistent' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -607,13 +495,7 @@ describe('filter show', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -643,13 +525,7 @@ describe('filter show', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-123',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -680,13 +556,7 @@ describe('filter show', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work Tasks',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work Tasks', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -706,20 +576,8 @@ describe('filter show', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work Tasks',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
-            {
-                id: 'filter-2',
-                name: 'Work Projects',
-                query: '#work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work Tasks', query: '@work' }),
+            makeFilter({ id: 'filter-2', name: 'Work Projects', query: '#work' }),
         ])
 
         await expect(program.parseAsync(['node', 'td', 'filter', 'show', 'work'])).rejects.toThrow(
@@ -731,13 +589,7 @@ describe('filter show', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Bad',
-                query: '(((',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Bad', query: '(((' }),
         ])
 
         mockApi.getTasksByFilter.mockRejectedValue(new Error('HTTP 400: Bad Request'))
@@ -762,13 +614,7 @@ describe('filter view (alias)', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -789,13 +635,7 @@ describe('filter view (alias)', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -826,13 +666,7 @@ describe('filter URL resolution', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
         ])
 
         mockApi.getTasksByFilter.mockResolvedValue({
@@ -859,13 +693,7 @@ describe('filter URL resolution', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
         ])
         mockDeleteFilter.mockResolvedValue(undefined)
 
@@ -886,13 +714,7 @@ describe('filter URL resolution', () => {
         const program = createProgram()
 
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
         ])
 
         await expect(

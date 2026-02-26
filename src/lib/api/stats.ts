@@ -1,5 +1,6 @@
+import { createCommand } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
-import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
+import { getApi, pickDefined } from './core.js'
 
 export interface Streak {
     count: number
@@ -97,22 +98,22 @@ export interface UpdateGoalsArgs {
 }
 
 export async function updateGoals(args: UpdateGoalsArgs): Promise<void> {
-    const goalsArgs: Record<string, unknown> = {}
-    if (args.dailyGoal !== undefined) goalsArgs.daily_goal = args.dailyGoal
-    if (args.weeklyGoal !== undefined) goalsArgs.weekly_goal = args.weeklyGoal
-    if (args.vacationMode !== undefined) goalsArgs.vacation_mode = args.vacationMode ? 1 : 0
-    if (args.karmaDisabled !== undefined) goalsArgs.karma_disabled = args.karmaDisabled ? 1 : 0
-    if (args.ignoreDays !== undefined) goalsArgs.ignore_days = args.ignoreDays
+    const goalsArgs = pickDefined({
+        dailyGoal: args.dailyGoal,
+        weeklyGoal: args.weeklyGoal,
+        vacationMode:
+            args.vacationMode !== undefined ? ((args.vacationMode ? 1 : 0) as 0 | 1) : undefined,
+        karmaDisabled:
+            args.karmaDisabled !== undefined ? ((args.karmaDisabled ? 1 : 0) as 0 | 1) : undefined,
+        ignoreDays: args.ignoreDays,
+    })
 
     if (Object.keys(goalsArgs).length === 0) {
         throw new Error('No goals to update')
     }
 
-    const command: SyncCommand = {
-        type: 'update_goals',
-        uuid: generateUuid(),
-        args: goalsArgs,
-    }
-
-    await executeSyncCommand([command])
+    const api = await getApi()
+    await api.sync({
+        commands: [createCommand('update_goals', goalsArgs)],
+    })
 }

@@ -1,11 +1,5 @@
-import { getApiToken } from '../auth.js'
-import { executeSyncCommand, generateUuid, type SyncCommand } from './core.js'
-
-interface UserSettingsSyncResponse {
-    user?: Record<string, unknown>
-    user_settings?: Record<string, unknown>
-    error?: string
-}
+import { createCommand } from '@doist/todoist-api-typescript'
+import { getApi, pickDefined } from './core.js'
 
 export interface UserSettings {
     timezone: string
@@ -24,45 +18,29 @@ export interface UserSettings {
 }
 
 export async function fetchUserSettings(): Promise<UserSettings> {
-    const token = await getApiToken()
-    const response = await fetch('https://api.todoist.com/api/v1/sync', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            sync_token: '*',
-            resource_types: '["user","user_settings"]',
-        }),
+    const api = await getApi()
+    const response = await api.sync({
+        resourceTypes: ['user', 'user_settings'],
+        syncToken: '*',
     })
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch user settings: ${response.status}`)
-    }
-
-    const data: UserSettingsSyncResponse = await response.json()
-    if (data.error) {
-        throw new Error(`User settings API error: ${data.error}`)
-    }
-
-    const user = data.user ?? {}
-    const settings = data.user_settings ?? {}
+    const user = response.user
+    const settings = response.userSettings
 
     return {
-        timezone: String(user.timezone ?? 'UTC'),
-        timeFormat: Number(user.time_format ?? 0),
-        dateFormat: Number(user.date_format ?? 0),
-        startDay: Number(user.start_day ?? 1),
-        theme: Number(user.theme_id ?? user.theme ?? 0),
-        autoReminder: Number(user.auto_reminder ?? 0),
-        nextWeek: Number(user.next_week ?? 1),
-        startPage: String(user.start_page ?? 'today'),
-        reminderPush: Boolean(settings.reminder_push ?? true),
-        reminderDesktop: Boolean(settings.reminder_desktop ?? true),
-        reminderEmail: Boolean(settings.reminder_email ?? false),
-        completedSoundDesktop: Boolean(settings.completed_sound_desktop ?? true),
-        completedSoundMobile: Boolean(settings.completed_sound_mobile ?? true),
+        timezone: user?.tzInfo?.timezone ?? 'UTC',
+        timeFormat: user?.timeFormat ?? 0,
+        dateFormat: user?.dateFormat ?? 0,
+        startDay: user?.startDay ?? 1,
+        theme: Number(user?.themeId ?? 0),
+        autoReminder: user?.autoReminder ?? 0,
+        nextWeek: user?.nextWeek ?? 1,
+        startPage: user?.startPage ?? 'today',
+        reminderPush: settings?.reminderPush ?? true,
+        reminderDesktop: settings?.reminderDesktop ?? true,
+        reminderEmail: settings?.reminderEmail ?? false,
+        completedSoundDesktop: settings?.completedSoundDesktop ?? true,
+        completedSoundMobile: settings?.completedSoundMobile ?? true,
     }
 }
 
@@ -83,46 +61,39 @@ export interface UpdateUserSettingsArgs {
 }
 
 export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<void> {
-    const commands: SyncCommand[] = []
+    const commands = []
 
-    const userArgs: Record<string, unknown> = {}
-    if (args.timezone !== undefined) userArgs.timezone = args.timezone
-    if (args.timeFormat !== undefined) userArgs.time_format = args.timeFormat
-    if (args.dateFormat !== undefined) userArgs.date_format = args.dateFormat
-    if (args.startDay !== undefined) userArgs.start_day = args.startDay
-    if (args.theme !== undefined) userArgs.theme_id = String(args.theme)
-    if (args.autoReminder !== undefined) userArgs.auto_reminder = args.autoReminder
-    if (args.nextWeek !== undefined) userArgs.next_week = args.nextWeek
-    if (args.startPage !== undefined) userArgs.start_page = args.startPage
+    const userArgs = pickDefined({
+        timezone: args.timezone,
+        time_format: args.timeFormat,
+        date_format: args.dateFormat,
+        start_day: args.startDay,
+        theme_id: args.theme !== undefined ? String(args.theme) : undefined,
+        auto_reminder: args.autoReminder,
+        next_week: args.nextWeek,
+        start_page: args.startPage,
+    })
 
     if (Object.keys(userArgs).length > 0) {
-        commands.push({
-            type: 'user_update',
-            uuid: generateUuid(),
-            args: userArgs,
-        })
+        commands.push(createCommand('user_update', userArgs))
     }
 
-    const settingsArgs: Record<string, unknown> = {}
-    if (args.reminderPush !== undefined) settingsArgs.reminder_push = args.reminderPush
-    if (args.reminderDesktop !== undefined) settingsArgs.reminder_desktop = args.reminderDesktop
-    if (args.reminderEmail !== undefined) settingsArgs.reminder_email = args.reminderEmail
-    if (args.completedSoundDesktop !== undefined)
-        settingsArgs.completed_sound_desktop = args.completedSoundDesktop
-    if (args.completedSoundMobile !== undefined)
-        settingsArgs.completed_sound_mobile = args.completedSoundMobile
+    const settingsArgs = pickDefined({
+        reminderPush: args.reminderPush,
+        reminderDesktop: args.reminderDesktop,
+        reminderEmail: args.reminderEmail,
+        completedSoundDesktop: args.completedSoundDesktop,
+        completedSoundMobile: args.completedSoundMobile,
+    })
 
     if (Object.keys(settingsArgs).length > 0) {
-        commands.push({
-            type: 'user_settings_update',
-            uuid: generateUuid(),
-            args: settingsArgs,
-        })
+        commands.push(createCommand('user_settings_update', settingsArgs))
     }
 
     if (commands.length === 0) {
         throw new Error('No settings to update')
     }
 
-    await executeSyncCommand(commands)
+    const api = await getApi()
+    await api.sync({ commands })
 }

@@ -32,6 +32,7 @@ import {
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import { fetchUserSettings, updateUserSettings } from '../lib/api/user-settings.js'
+import { makeFilter } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockFetchUserSettings = vi.mocked(fetchUserSettings)
@@ -209,20 +210,8 @@ describe('settings view - start page name resolution', () => {
             startPage: 'filter?id=filter-1',
         })
         mockFetchFilters.mockResolvedValue([
-            {
-                id: 'filter-1',
-                name: 'Work tasks',
-                query: '@work',
-                isFavorite: false,
-                isDeleted: false,
-            },
-            {
-                id: 'filter-2',
-                name: 'Personal',
-                query: '@personal',
-                isFavorite: false,
-                isDeleted: false,
-            },
+            makeFilter({ id: 'filter-1', name: 'Work tasks', query: '@work' }),
+            makeFilter({ id: 'filter-2', name: 'Personal', query: '@personal' }),
         ])
 
         await program.parseAsync(['node', 'td', 'settings', 'view'])
