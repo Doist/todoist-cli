@@ -226,6 +226,7 @@ td activity --since 2024-01-01 --until 2024-01-31
 td activity --type task --event completed
 td activity --project "Work"
 td activity --by me
+td activity --markdown                        # LLM-friendly Markdown output
 \`\`\`
 
 ### Notifications
