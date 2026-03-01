@@ -26,6 +26,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
 - \`td view <url>\` - View supported Todoist entities/pages by URL
+- \`td auth login --read-only\` - Authenticate with read-only OAuth scope
 - \`td update\` - Self-update the CLI to the latest version
 
 ## Output Formats
@@ -264,6 +265,15 @@ td settings view --json
 td settings update --timezone "America/New_York"
 td settings update --time-format 24 --date-format intl
 td settings themes                            # List available themes
+\`\`\`
+
+### Auth
+\`\`\`bash
+td auth login                                # OAuth login (read-write)
+td auth login --read-only                    # OAuth login with scope data:read
+td auth token "your-token"                    # Save manual token (scope unknown; assumed write-capable)
+td auth status                               # Show auth state + mode
+td auth logout                               # Remove token + auth metadata
 \`\`\`
 
 ### Shell Completions

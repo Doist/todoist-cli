@@ -4,8 +4,23 @@ import { dirname, join } from 'node:path'
 
 const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 
+export type AuthMode = 'read-only' | 'read-write' | 'unknown'
+
 interface Config {
     api_token?: string
+    auth_mode?: AuthMode
+    auth_scope?: string
+}
+
+export interface SaveApiTokenOptions {
+    authMode?: AuthMode
+    authScope?: string
+}
+
+export interface AuthMetadata {
+    authMode: AuthMode
+    authScope?: string
+    source: 'env' | 'config'
 }
 
 export async function getApiToken(): Promise<string> {
@@ -31,7 +46,36 @@ export async function getApiToken(): Promise<string> {
     )
 }
 
-export async function saveApiToken(token: string): Promise<void> {
+export async function getAuthMetadata(): Promise<AuthMetadata> {
+    const envToken = process.env.TODOIST_API_TOKEN
+    if (envToken) {
+        return {
+            authMode: 'unknown',
+            source: 'env',
+        }
+    }
+
+    try {
+        const content = await readFile(CONFIG_PATH, 'utf-8')
+        const config: Config = JSON.parse(content)
+        if (!config.api_token) {
+            throw new Error('No API token found')
+        }
+
+        return {
+            authMode: config.auth_mode ?? 'unknown',
+            authScope: config.auth_scope,
+            source: 'config',
+        }
+    } catch {
+        throw new Error('No API token found')
+    }
+}
+
+export async function saveApiToken(
+    token: string,
+    options: SaveApiTokenOptions = {},
+): Promise<void> {
     // Validate token (non-empty, reasonable length)
     if (!token || token.trim().length < 10) {
         throw new Error('Invalid token: Token must be at least 10 characters')
@@ -54,6 +98,8 @@ export async function saveApiToken(token: string): Promise<void> {
     const newConfig: Config = {
         ...existingConfig,
         api_token: token.trim(),
+        auth_mode: options.authMode ?? 'unknown',
+        auth_scope: options.authScope,
     }
 
     // Write config file with proper formatting
@@ -70,6 +116,8 @@ export async function clearApiToken(): Promise<void> {
     }
 
     delete config.api_token
+    delete config.auth_mode
+    delete config.auth_scope
 
     if (Object.keys(config).length === 0) {
         await unlink(CONFIG_PATH)
