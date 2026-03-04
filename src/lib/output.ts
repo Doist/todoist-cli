@@ -86,7 +86,7 @@ export function formatTaskRow({
     if (task.deadline)
         metaParts.push(chalk.red(a11y ? `deadline:${task.deadline.date}` : task.deadline.date))
     if (projectName) metaParts.push(chalk.cyan(projectName))
-    if (assignee) metaParts.push(chalk.magenta(assignee))
+    if (assignee) metaParts.push(chalk.magenta(`+${assignee}`))
     const line2 = baseIndent + extraIndent + metaParts.join('  ')
     if (showUrl) {
         const line3 = baseIndent + extraIndent + chalk.dim(taskUrl(task.id))
@@ -182,6 +182,7 @@ const TASK_ESSENTIAL_FIELDS = [
     'labels',
     'url',
     'responsibleUid',
+    'assigneeName',
     'isUncompletable',
 ] as const
 const PROJECT_ESSENTIAL_FIELDS = [
