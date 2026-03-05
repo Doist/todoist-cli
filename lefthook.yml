@@ -2,9 +2,9 @@ pre-commit:
     commands:
         type-check:
             run: npm run type-check
-        biome:
-            glob: '*.{ts,js,json}'
-            run: npx biome lint --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+        oxlint:
+            glob: '*.{ts,js}'
+            run: npx oxlint --fix {staged_files}
             stage_fixed: true
         oxfmt:
             run: npx oxfmt --no-error-on-unmatched-pattern {staged_files}
