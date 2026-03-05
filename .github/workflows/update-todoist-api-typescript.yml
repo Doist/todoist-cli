@@ -1,120 +1,120 @@
 name: Update Todoist API TypeScript
 
 on:
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  update:
-    runs-on: ubuntu-latest
-    outputs:
-      updates-available: ${{ steps.check-updates.outputs.updates-available }}
-      current-version: ${{ steps.check-updates.outputs.current-version }}
-      latest-version: ${{ steps.check-updates.outputs.latest-version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    update:
+        runs-on: ubuntu-latest
+        outputs:
+            updates-available: ${{ steps.check-updates.outputs.updates-available }}
+            current-version: ${{ steps.check-updates.outputs.current-version }}
+            latest-version: ${{ steps.check-updates.outputs.latest-version }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+            - name: Setup Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Check for @doist/todoist-api-typescript updates
-        id: check-updates
-        run: |
-          CURRENT_VERSION=$(npm list @doist/todoist-api-typescript --json | jq -r '.dependencies."@doist/todoist-api-typescript".version // empty')
-          LATEST_VERSION=$(npm view @doist/todoist-api-typescript version)
+            - name: Check for @doist/todoist-api-typescript updates
+              id: check-updates
+              run: |
+                  CURRENT_VERSION=$(npm list @doist/todoist-api-typescript --json | jq -r '.dependencies."@doist/todoist-api-typescript".version // empty')
+                  LATEST_VERSION=$(npm view @doist/todoist-api-typescript version)
 
-          echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "latest-version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+                  echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+                  echo "latest-version=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
-          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
-            echo "updates-available=true" >> $GITHUB_OUTPUT
-            echo "Found update: $CURRENT_VERSION → $LATEST_VERSION"
-          else
-            echo "updates-available=false" >> $GITHUB_OUTPUT
-            echo "@doist/todoist-api-typescript is already at the latest version ($CURRENT_VERSION)"
-          fi
+                  if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+                    echo "updates-available=true" >> $GITHUB_OUTPUT
+                    echo "Found update: $CURRENT_VERSION → $LATEST_VERSION"
+                  else
+                    echo "updates-available=false" >> $GITHUB_OUTPUT
+                    echo "@doist/todoist-api-typescript is already at the latest version ($CURRENT_VERSION)"
+                  fi
 
-      - name: Update @doist/todoist-api-typescript to latest
-        if: steps.check-updates.outputs.updates-available == 'true'
-        run: |
-          echo "Updating @doist/todoist-api-typescript from ${{ steps.check-updates.outputs.current-version }} to ${{ steps.check-updates.outputs.latest-version }}"
-          npm install @doist/todoist-api-typescript@latest
+            - name: Update @doist/todoist-api-typescript to latest
+              if: steps.check-updates.outputs.updates-available == 'true'
+              run: |
+                  echo "Updating @doist/todoist-api-typescript from ${{ steps.check-updates.outputs.current-version }} to ${{ steps.check-updates.outputs.latest-version }}"
+                  npm install @doist/todoist-api-typescript@latest
 
-      - name: Upload updated package files
-        if: steps.check-updates.outputs.updates-available == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: updated-packages
-          path: |
-            package.json
-            package-lock.json
+            - name: Upload updated package files
+              if: steps.check-updates.outputs.updates-available == 'true'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: updated-packages
+                  path: |
+                      package.json
+                      package-lock.json
 
-  test:
-    needs: update
-    if: needs.update.outputs.updates-available == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    test:
+        needs: update
+        if: needs.update.outputs.updates-available == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Download updated package files
-        uses: actions/download-artifact@v4
-        with:
-          name: updated-packages
+            - name: Download updated package files
+              uses: actions/download-artifact@v4
+              with:
+                  name: updated-packages
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+            - name: Setup Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Run build
-        run: npm run build
+            - name: Run build
+              run: npm run build
 
-      - name: Run tests
-        run: npm test
+            - name: Run tests
+              run: npm test
 
-      - name: Run type check
-        run: npm run type-check
+            - name: Run type check
+              run: npm run type-check
 
-      - name: Run lint check
-        run: npm run lint:check
+            - name: Run lint check
+              run: npm run lint:check
 
-      - name: Run format check
-        run: npm run format:check
+            - name: Run format check
+              run: npm run format:check
 
-  release:
-    needs: [update, test]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    release:
+        needs: [update, test]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Download updated package files
-        uses: actions/download-artifact@v4
-        with:
-          name: updated-packages
+            - name: Download updated package files
+              uses: actions/download-artifact@v4
+              with:
+                  name: updated-packages
 
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add package.json package-lock.json
-          git commit -m "fix(deps): update to latest \`@doist/todoist-api-typescript\` package
+            - name: Commit and push changes
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git add package.json package-lock.json
+                  git commit -m "fix(deps): update to latest \`@doist/todoist-api-typescript\` package
 
-          Updated @doist/todoist-api-typescript from ${{ needs.update.outputs.current-version }} to ${{ needs.update.outputs.latest-version }}"
-          git push
+                  Updated @doist/todoist-api-typescript from ${{ needs.update.outputs.current-version }} to ${{ needs.update.outputs.latest-version }}"
+                  git push
 
-      - name: Trigger release workflow
-        run: gh workflow run release-please.yml --repo ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+            - name: Trigger release workflow
+              run: gh workflow run release-please.yml --repo ${{ github.repository }}
+              env:
+                  GH_TOKEN: ${{ github.token }}
