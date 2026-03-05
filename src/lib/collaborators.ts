@@ -154,9 +154,9 @@ export function formatAssignee({
 
     const name = cache.getUserName({ userId, projectId, projects })
     if (name) {
-        return `+${formatUserShortName(name)}`
+        return formatUserShortName(name)
     }
-    return `+${userId}`
+    return userId
 }
 
 async function fetchCollaboratorsForProject(

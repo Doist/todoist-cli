@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
+    isWorkspaceProject: vi.fn(
+        (project: { workspaceId?: string }) => project.workspaceId !== undefined,
+    ),
 }))
 
 import { registerCompletedCommand } from '../commands/completed.js'
@@ -171,6 +174,29 @@ describe('completed command', () => {
         expect(lines).toHaveLength(2)
     })
 
+    it('outputs NDJSON meta cursor when no tasks are returned', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'completed',
+            '--ndjson',
+            '--limit',
+            '0',
+            '--cursor',
+            'cursor-123',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(1)
+        const meta = JSON.parse(lines[0])
+        expect(meta._meta).toBe(true)
+        expect(meta.nextCursor).toBe('cursor-123')
+        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+    })
+
     it('includes project names in text output', async () => {
         const program = createProgram()
 
@@ -198,5 +224,122 @@ describe('completed command', () => {
                 limit: 10,
             }),
         )
+    })
+
+    it('displays assignee for shared project tasks', async () => {
+        const program = createProgram()
+
+        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+            items: [
+                {
+                    id: 'task-1',
+                    content: 'Assigned task',
+                    projectId: 'proj-shared',
+                    priority: 1,
+                    responsibleUid: 'user-123',
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
+            nextCursor: null,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-123', name: 'Alice Smith', email: 'alice@example.com' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'completed'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('+Alice S.'))
+    })
+
+    it('displays assignee for workspace project tasks', async () => {
+        const program = createProgram()
+
+        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+            items: [
+                {
+                    id: 'task-1',
+                    content: 'Workspace task',
+                    projectId: 'proj-ws',
+                    priority: 1,
+                    responsibleUid: 'user-456',
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-ws', name: 'Team Project', workspaceId: 'ws-1' }],
+            nextCursor: null,
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({
+            workspaceUsers: [
+                { userId: 'user-456', fullName: 'Bob Jones', userEmail: 'bob@example.com' },
+            ],
+            hasMore: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'completed'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('+Bob J.'))
+    })
+
+    it('does not fetch collaborators when no tasks have assignees', async () => {
+        const program = createProgram()
+
+        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+            items: [
+                {
+                    id: 'task-1',
+                    content: 'Unassigned task',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    responsibleUid: null,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work', isShared: true }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'completed'])
+
+        expect(mockApi.getProjectCollaborators).not.toHaveBeenCalled()
+        expect(mockApi.getWorkspaceUsers).not.toHaveBeenCalled()
+    })
+
+    it('includes assigneeName in JSON output', async () => {
+        const program = createProgram()
+
+        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+            items: [
+                {
+                    id: 'task-1',
+                    content: 'Assigned task',
+                    projectId: 'proj-shared',
+                    priority: 1,
+                    responsibleUid: 'user-123',
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
+            nextCursor: null,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-123', name: 'Alice Smith', email: 'alice@example.com' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'completed', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0].assigneeName).toBe('Alice S.')
     })
 })
