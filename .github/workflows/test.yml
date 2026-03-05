@@ -1,31 +1,31 @@
 name: Tests
 
 on:
-  pull_request:
+    pull_request:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+    test:
+        name: Test
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Build
-        run: npm run build
+            - name: Build
+              run: npm run build
 
-      - name: Run tests
-        run: npm test
+            - name: Run tests
+              run: npm test

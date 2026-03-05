@@ -1,17 +1,16 @@
 pre-commit:
-  commands:
-    type-check:
-      run: npm run type-check
-    biome:
-      glob: '*.{ts,js,json}'
-      run: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
-      stage_fixed: true
-    prettier:
-      glob: '*.{md,yml,yaml,css}'
-      run: npx prettier --write {staged_files}
-      stage_fixed: true
+    commands:
+        type-check:
+            run: npm run type-check
+        oxlint:
+            glob: '*.{ts,js}'
+            run: npx oxlint --fix {staged_files}
+            stage_fixed: true
+        oxfmt:
+            run: npx oxfmt --no-error-on-unmatched-pattern {staged_files}
+            stage_fixed: true
 
 pre-push:
-  commands:
-    test:
-      run: npm test
+    commands:
+        test:
+            run: npm test

@@ -4,8 +4,8 @@ import { Command } from 'commander'
 import open from 'open'
 import { getApi } from '../lib/api/core.js'
 import { clearApiToken, saveApiToken } from '../lib/auth.js'
-import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
+import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
 
 function promptHiddenInput(prompt: string): Promise<string> {
