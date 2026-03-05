@@ -174,6 +174,29 @@ describe('completed command', () => {
         expect(lines).toHaveLength(2)
     })
 
+    it('outputs NDJSON meta cursor when no tasks are returned', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'completed',
+            '--ndjson',
+            '--limit',
+            '0',
+            '--cursor',
+            'cursor-123',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(1)
+        const meta = JSON.parse(lines[0])
+        expect(meta._meta).toBe(true)
+        expect(meta.nextCursor).toBe('cursor-123')
+        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+    })
+
     it('includes project names in text output', async () => {
         const program = createProgram()
 

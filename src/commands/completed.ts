@@ -77,9 +77,23 @@ export function registerCompletedCommand(program: Command): void {
 
             if (tasks.length === 0) {
                 if (options.json) {
-                    console.log(JSON.stringify({ results: [], nextCursor }, null, 2))
+                    console.log(
+                        formatPaginatedJson(
+                            { results: [], nextCursor },
+                            'task',
+                            options.full,
+                            options.showUrls,
+                        ),
+                    )
                 } else if (options.ndjson) {
-                    // Empty output for ndjson
+                    console.log(
+                        formatPaginatedNdjson(
+                            { results: [], nextCursor },
+                            'task',
+                            options.full,
+                            options.showUrls,
+                        ),
+                    )
                 } else {
                     console.log('No completed tasks in this period.')
                     console.log(formatNextCursorFooter(nextCursor))
