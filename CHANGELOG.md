@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.1](https://github.com/Doist/todoist-cli/compare/v1.21.0...v1.21.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* address PR [#112](https://github.com/Doist/todoist-cli/issues/112) review feedback ([#115](https://github.com/Doist/todoist-cli/issues/115)) ([6e5a0ff](https://github.com/Doist/todoist-cli/commit/6e5a0ffb746797ced326f17af626ad6b7eebf8a7))
+
 ## [1.21.0](https://github.com/Doist/todoist-cli/compare/v1.20.0...v1.21.0) (2026-03-05)
 
 
