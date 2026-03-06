@@ -32,6 +32,14 @@ td auth login
 
 This opens your browser to authenticate with Todoist. Once approved, the token is saved automatically.
 
+For a read-only OAuth token (scope `data:read`), run:
+
+```bash
+td auth login --read-only
+```
+
+In read-only mode, commands that change Todoist data (create/update/delete/complete/move/archive, etc.) are blocked by the CLI.
+
 ### Alternative methods
 
 **Manual token:** Get your API token from [Todoist Settings > Integrations > Developer](https://todoist.com/app/settings/integrations/developer):
@@ -46,11 +54,19 @@ td auth token "your-token"
 export TODOIST_API_TOKEN="your-token"
 ```
 
+Note: externally provided tokens (`TODOIST_API_TOKEN` or `td auth token`) are treated as unknown scope and assumed write-capable. The CLI cannot currently auto-detect OAuth scope for these tokens.
+
 ### Auth commands
 
 ```bash
-td auth status   # check if authenticated
-td auth logout   # remove saved token
+td auth status   # check if authenticated + mode (read-only/read-write/unknown)
+td auth logout   # remove saved token and auth metadata
+```
+
+To switch back to normal write access, re-run:
+
+```bash
+td auth login
 ```
 
 ## Usage

@@ -3,7 +3,8 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import open from 'open'
 import { getApi } from '../lib/api/core.js'
-import { clearApiToken, saveApiToken } from '../lib/auth.js'
+import { clearApiToken, getAuthMetadata, saveApiToken } from '../lib/auth.js'
+import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
@@ -39,19 +40,21 @@ async function loginWithToken(token?: string): Promise<void> {
             return
         }
     }
-    await saveApiToken(token.trim())
+    await saveApiToken(token.trim(), { authMode: 'unknown' })
     console.log(chalk.green('✓'), 'API token saved successfully!')
     console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
 }
 
-async function loginWithOAuth(): Promise<void> {
+async function loginWithOAuth(options: { readOnly?: boolean }): Promise<void> {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
     const state = generateState()
 
     console.log('Opening browser for Todoist authorization...')
 
-    const authUrl = buildAuthorizationUrl(codeChallenge, state)
+    const authUrl = buildAuthorizationUrl(codeChallenge, state, {
+        readOnly: options.readOnly,
+    })
     const { promise: callbackPromise, cleanup } = startCallbackServer(state)
 
     try {
@@ -62,7 +65,12 @@ async function loginWithOAuth(): Promise<void> {
         console.log(chalk.dim('Exchanging code for token...'))
 
         const accessToken = await exchangeCodeForToken(code, codeVerifier)
-        await saveApiToken(accessToken)
+        await saveApiToken(accessToken, {
+            authMode: options.readOnly ? 'read-only' : 'read-write',
+            authScope: options.readOnly
+                ? 'data:read'
+                : 'data:read_write,data:delete,project:delete',
+        })
 
         console.log(chalk.green('✓'), 'Successfully logged in!')
         console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
@@ -76,9 +84,18 @@ async function showStatus(): Promise<void> {
     try {
         const api = await getApi()
         const user = await api.getUser()
+        const metadata = await getAuthMetadata()
+        const modeLabel =
+            metadata.authMode === 'read-only'
+                ? 'read-only (OAuth scope data:read)'
+                : metadata.authMode === 'read-write'
+                  ? 'read-write'
+                  : 'unknown (manual token or env var; assuming write access)'
+
         console.log(chalk.green('✓'), 'Authenticated')
         console.log(`  Email: ${user.email}`)
         console.log(`  Name:  ${user.fullName}`)
+        console.log(`  Mode:  ${modeLabel}`)
     } catch {
         console.log(chalk.yellow('Not authenticated'))
         console.log(chalk.dim('Run `td auth login` or `td auth token <token>` to authenticate'))
@@ -94,7 +111,10 @@ async function logout(): Promise<void> {
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    auth.command('login').description('Authenticate with Todoist via OAuth').action(loginWithOAuth)
+    auth.command('login')
+        .description('Authenticate with Todoist via OAuth')
+        .option('--read-only', 'Authenticate with read-only scope (data:read)')
+        .action(loginWithOAuth)
 
     auth.command('token [token]')
         .description('Save API token to config file (manual authentication)')

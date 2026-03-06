@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/auth.js', () => ({
     saveApiToken: vi.fn(),
     clearApiToken: vi.fn(),
+    getAuthMetadata: vi.fn(),
 }))
 
 // Mock the api module
@@ -54,7 +55,8 @@ import { createInterface, type Interface } from 'node:readline'
 import open from 'open'
 import { registerAuthCommand } from '../commands/auth.js'
 import { getApi } from '../lib/api/core.js'
-import { clearApiToken, saveApiToken } from '../lib/auth.js'
+import { clearApiToken, getAuthMetadata, saveApiToken } from '../lib/auth.js'
+import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { exchangeCodeForToken } from '../lib/oauth.js'
 import { createMockApi } from './helpers/mock-api.js'
@@ -63,8 +65,10 @@ const mockCreateInterface = vi.mocked(createInterface)
 
 const mockSaveApiToken = vi.mocked(saveApiToken)
 const mockClearApiToken = vi.mocked(clearApiToken)
+const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 const mockGetApi = vi.mocked(getApi)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
+const mockBuildAuthorizationUrl = vi.mocked(buildAuthorizationUrl)
 const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
 const mockOpen = vi.mocked(open)
 
@@ -96,7 +100,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token', token])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'API token saved successfully!')
             expect(consoleSpy).toHaveBeenCalledWith(
                 'Token saved to ~/.config/todoist-cli/config.json',
@@ -113,7 +117,7 @@ describe('auth command', () => {
                 program.parseAsync(['node', 'td', 'auth', 'token', token]),
             ).rejects.toThrow('Permission denied')
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
         })
 
         it('trims whitespace from token', async () => {
@@ -125,7 +129,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token', tokenWithWhitespace])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(expectedToken)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(expectedToken, { authMode: 'unknown' })
         })
 
         it('prompts interactively when no token argument given', async () => {
@@ -145,7 +149,9 @@ describe('auth command', () => {
 
             expect(mockRl.question).toHaveBeenCalled()
             expect(mockRl.close).toHaveBeenCalled()
-            expect(mockSaveApiToken).toHaveBeenCalledWith('interactive_token_456')
+            expect(mockSaveApiToken).toHaveBeenCalledWith('interactive_token_456', {
+                authMode: 'unknown',
+            })
             writeSpy.mockRestore()
         })
 
@@ -190,8 +196,38 @@ describe('auth command', () => {
             expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
             expect(mockStartCallbackServer).toHaveBeenCalledWith('test_state')
             expect(mockExchangeCodeForToken).toHaveBeenCalledWith(authCode, 'test_code_verifier')
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope: 'data:read_write,data:delete,project:delete',
+            })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
+        })
+
+        it('requests data:read scope when --read-only is set', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_123'
+            const accessToken = 'oauth_access_token_456'
+
+            mockStartCallbackServer.mockReturnValue({
+                promise: Promise.resolve(authCode),
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue(undefined)
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--read-only'])
+
+            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
+                'test_code_challenge',
+                'test_state',
+                { readOnly: true },
+            )
+            expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-only',
+                authScope: 'data:read',
+            })
         })
 
         it('handles OAuth callback server error', async () => {
@@ -256,6 +292,11 @@ describe('auth command', () => {
             const mockUser = { email: 'test@example.com', fullName: 'Test User' }
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
             mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-only',
+                authScope: 'data:read',
+                source: 'config',
+            })
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
@@ -264,6 +305,7 @@ describe('auth command', () => {
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated')
             expect(consoleSpy).toHaveBeenCalledWith('  Email: test@example.com')
             expect(consoleSpy).toHaveBeenCalledWith('  Name:  Test User')
+            expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-only (OAuth scope data:read)')
         })
 
         it('shows not authenticated when no token', async () => {
