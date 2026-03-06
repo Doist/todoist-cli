@@ -312,7 +312,7 @@ describe('completed command', () => {
         expect(mockApi.getWorkspaceUsers).not.toHaveBeenCalled()
     })
 
-    it('includes assigneeName in JSON output', async () => {
+    it('includes responsibleName in JSON output', async () => {
         const program = createProgram()
 
         mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
@@ -340,6 +340,6 @@ describe('completed command', () => {
 
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
-        expect(parsed.results[0].assigneeName).toBe('Alice S.')
+        expect(parsed.results[0].responsibleName).toBe('Alice S.')
     })
 })
