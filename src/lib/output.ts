@@ -182,7 +182,7 @@ const TASK_ESSENTIAL_FIELDS = [
     'labels',
     'url',
     'responsibleUid',
-    'assigneeName',
+    'responsibleName',
     'isUncompletable',
 ] as const
 const PROJECT_ESSENTIAL_FIELDS = [

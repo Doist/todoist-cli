@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, type Project } from '../lib/api/core.js'
+import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import {
     formatNextCursorFooter,
@@ -108,7 +108,7 @@ export function registerCompletedCommand(program: Command): void {
             await collaboratorCache.preload(api, tasks, projects)
 
             // Helper to get assignee name for a task
-            const getAssigneeName = (task: (typeof tasks)[0]): string | null => {
+            const getAssigneeName = (task: Task): string | null => {
                 return formatAssignee({
                     userId: task.responsibleUid,
                     projectId: task.projectId,
@@ -120,7 +120,7 @@ export function registerCompletedCommand(program: Command): void {
             if (options.json) {
                 const tasksWithAssignee = tasks.map((task) => ({
                     ...task,
-                    assigneeName: getAssigneeName(task),
+                    responsibleName: getAssigneeName(task),
                 }))
                 console.log(
                     formatPaginatedJson(
@@ -136,7 +136,7 @@ export function registerCompletedCommand(program: Command): void {
             if (options.ndjson) {
                 const tasksWithAssignee = tasks.map((task) => ({
                     ...task,
-                    assigneeName: getAssigneeName(task),
+                    responsibleName: getAssigneeName(task),
                 }))
                 console.log(
                     formatPaginatedNdjson(
