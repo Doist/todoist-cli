@@ -1,0 +1,28 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=todoist-cli-bin
+pkgver=1.13.0
+pkgrel=1
+pkgdesc='Command-line interface for Todoist'
+arch=('any')
+url='https://github.com/Doist/todoist-cli'
+license=('MIT')
+depends=('nodejs>=20')
+provides=('todoist-cli')
+conflicts=('todoist-cli')
+source=("https://registry.npmjs.org/@doist/todoist-cli/-/todoist-cli-${pkgver}.tgz")
+sha256sums=('2b7864c3170d8515be1411e23ef995054805c58cd30a42b08299a3cc895e0b56')
+noextract=("todoist-cli-${pkgver}.tgz")
+
+package() {
+    npm install -g \
+        --prefix "${pkgdir}/usr" \
+        --cache "${srcdir}/npm-cache" \
+        "${srcdir}/todoist-cli-${pkgver}.tgz"
+
+    # Fix permissions
+    chmod -R go-w "${pkgdir}/usr"
+
+    # Non-deterministic files
+    find "${pkgdir}" -name 'package.json' -exec sed -i '/_where/d' {} +
+    find "${pkgdir}" -name '.package-lock.json' -delete
+}
