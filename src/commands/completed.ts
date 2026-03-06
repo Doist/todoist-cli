@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, type Project } from '../lib/api/core.js'
+import { getApi, type Project, type Task } from '../lib/api/core.js'
+import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -74,10 +75,56 @@ export function registerCompletedCommand(program: Command): void {
                 { limit: targetLimit, startCursor: options.cursor },
             )
 
+            if (tasks.length === 0) {
+                if (options.json) {
+                    console.log(
+                        formatPaginatedJson(
+                            { results: [], nextCursor },
+                            'task',
+                            options.full,
+                            options.showUrls,
+                        ),
+                    )
+                } else if (options.ndjson) {
+                    console.log(
+                        formatPaginatedNdjson(
+                            { results: [], nextCursor },
+                            'task',
+                            options.full,
+                            options.showUrls,
+                        ),
+                    )
+                } else {
+                    console.log('No completed tasks in this period.')
+                    console.log(formatNextCursorFooter(nextCursor))
+                }
+                return
+            }
+
+            const { results: allProjects } = await api.getProjects()
+            const projects = new Map<string, Project>(allProjects.map((p) => [p.id, p]))
+
+            const collaboratorCache = new CollaboratorCache()
+            await collaboratorCache.preload(api, tasks, projects)
+
+            // Helper to get assignee name for a task
+            const getAssigneeName = (task: Task): string | null => {
+                return formatAssignee({
+                    userId: task.responsibleUid,
+                    projectId: task.projectId,
+                    projects,
+                    cache: collaboratorCache,
+                })
+            }
+
             if (options.json) {
+                const tasksWithAssignee = tasks.map((task) => ({
+                    ...task,
+                    responsibleName: getAssigneeName(task),
+                }))
                 console.log(
                     formatPaginatedJson(
-                        { results: tasks, nextCursor },
+                        { results: tasksWithAssignee, nextCursor },
                         'task',
                         options.full,
                         options.showUrls,
@@ -87,9 +134,13 @@ export function registerCompletedCommand(program: Command): void {
             }
 
             if (options.ndjson) {
+                const tasksWithAssignee = tasks.map((task) => ({
+                    ...task,
+                    responsibleName: getAssigneeName(task),
+                }))
                 console.log(
                     formatPaginatedNdjson(
-                        { results: tasks, nextCursor },
+                        { results: tasksWithAssignee, nextCursor },
                         'task',
                         options.full,
                         options.showUrls,
@@ -98,22 +149,20 @@ export function registerCompletedCommand(program: Command): void {
                 return
             }
 
-            if (tasks.length === 0) {
-                console.log('No completed tasks in this period.')
-                console.log(formatNextCursorFooter(nextCursor))
-                return
-            }
-
-            const { results: allProjects } = await api.getProjects()
-            const projects = new Map<string, Project>(allProjects.map((p) => [p.id, p]))
-
             const dateRange = since === until ? since : `${since} to ${until}`
             console.log(chalk.bold(`Completed (${tasks.length}) - ${dateRange}`))
             console.log('')
 
             for (const task of tasks) {
                 const projectName = projects.get(task.projectId)?.name
-                console.log(formatTaskRow({ task, projectName, showUrl: options.showUrls }))
+                console.log(
+                    formatTaskRow({
+                        task,
+                        projectName,
+                        assignee: getAssigneeName(task) ?? undefined,
+                        showUrl: options.showUrls,
+                    }),
+                )
                 console.log('')
             }
             console.log(formatNextCursorFooter(nextCursor))

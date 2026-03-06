@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0](https://github.com/Doist/todoist-cli/compare/v1.20.0...v1.21.0) (2026-03-05)
+
+
+### Features
+
+* add assignee display to completed tasks command ([#112](https://github.com/Doist/todoist-cli/issues/112)) ([863fe8b](https://github.com/Doist/todoist-cli/commit/863fe8b3f42b8528d2302ba69db7992a3ed70484))
+
 ## [1.20.0](https://github.com/Doist/todoist-cli/compare/v1.19.0...v1.20.0) (2026-02-25)
 
 

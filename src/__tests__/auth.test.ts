@@ -58,6 +58,7 @@ import { getApi } from '../lib/api/core.js'
 import { clearApiToken, getAuthMetadata, saveApiToken } from '../lib/auth.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
+import { exchangeCodeForToken } from '../lib/oauth.js'
 import { createMockApi } from './helpers/mock-api.js'
 
 const mockCreateInterface = vi.mocked(createInterface)
