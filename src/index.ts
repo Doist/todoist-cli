@@ -3,6 +3,7 @@
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { initializeLogger } from './lib/logger.js'
+import { preloadMarkdown } from './lib/markdown.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
@@ -148,7 +149,16 @@ if (process.argv[2] === 'completion-server') {
 
         startEarlySpinner()
         try {
+            // Preload markdown renderer in parallel with the command module
+            // when output will be pretty-printed (not JSON/NDJSON/raw)
+            const args = process.argv.slice(2)
+            const needsMarkdown = !args.some(
+                (a) => a === '--json' || a === '--ndjson' || a === '--raw',
+            )
+            const markdownReady = needsMarkdown ? preloadMarkdown() : undefined
+
             const register = await loader()
+            await markdownReady
             register(program)
         } catch (err) {
             stopEarlySpinner()
