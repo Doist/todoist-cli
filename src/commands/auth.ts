@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import open from 'open'
 import { getApi } from '../lib/api/core.js'
-import { clearApiToken, saveApiToken } from '../lib/auth.js'
+import { clearApiToken, saveApiToken, type TokenStorageResult } from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
@@ -39,9 +39,9 @@ async function loginWithToken(token?: string): Promise<void> {
             return
         }
     }
-    await saveApiToken(token.trim())
+    const result = await saveApiToken(token.trim())
     console.log(chalk.green('✓'), 'API token saved successfully!')
-    console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+    logTokenStorageResult(result, 'Token stored securely in the system credential manager')
 }
 
 async function loginWithOAuth(): Promise<void> {
@@ -62,10 +62,10 @@ async function loginWithOAuth(): Promise<void> {
         console.log(chalk.dim('Exchanging code for token...'))
 
         const accessToken = await exchangeCodeForToken(code, codeVerifier)
-        await saveApiToken(accessToken)
+        const result = await saveApiToken(accessToken)
 
         console.log(chalk.green('✓'), 'Successfully logged in!')
-        console.log(chalk.dim('Token saved to ~/.config/todoist-cli/config.json'))
+        logTokenStorageResult(result, 'Token stored securely in the system credential manager')
     } catch (error) {
         cleanup()
         throw error
@@ -86,9 +86,19 @@ async function showStatus(): Promise<void> {
 }
 
 async function logout(): Promise<void> {
-    await clearApiToken()
+    const result = await clearApiToken()
     console.log(chalk.green('✓'), 'Logged out')
-    console.log(chalk.dim('Token removed from ~/.config/todoist-cli/config.json'))
+    logTokenStorageResult(result, 'Stored token removed from the system credential manager')
+}
+
+function logTokenStorageResult(result: TokenStorageResult, secureStoreMessage: string): void {
+    if (result.storage === 'secure-store') {
+        console.log(chalk.dim(secureStoreMessage))
+    }
+
+    if (result.warning) {
+        console.error(chalk.yellow('Warning:'), result.warning)
+    }
 }
 
 export function registerAuthCommand(program: Command): void {
@@ -97,7 +107,7 @@ export function registerAuthCommand(program: Command): void {
     auth.command('login').description('Authenticate with Todoist via OAuth').action(loginWithOAuth)
 
     auth.command('token [token]')
-        .description('Save API token to config file (manual authentication)')
+        .description('Save API token for CLI authentication')
         .action(loginWithToken)
 
     auth.command('status').description('Show current authentication status').action(showStatus)

@@ -77,14 +77,17 @@ function createProgram() {
 
 describe('auth command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
+    let errorSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
     afterEach(() => {
         consoleSpy.mockRestore()
+        errorSpy.mockRestore()
     })
 
     describe('token subcommand', () => {
@@ -92,14 +95,14 @@ describe('auth command', () => {
             const program = createProgram()
             const token = 'some_token_123456789'
 
-            mockSaveApiToken.mockResolvedValue(undefined)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
 
             await program.parseAsync(['node', 'td', 'auth', 'token', token])
 
             expect(mockSaveApiToken).toHaveBeenCalledWith(token)
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'API token saved successfully!')
             expect(consoleSpy).toHaveBeenCalledWith(
-                'Token saved to ~/.config/todoist-cli/config.json',
+                'Token stored securely in the system credential manager',
             )
         })
 
@@ -121,7 +124,7 @@ describe('auth command', () => {
             const tokenWithWhitespace = '  some_token_123456789  '
             const expectedToken = 'some_token_123456789'
 
-            mockSaveApiToken.mockResolvedValue(undefined)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
 
             await program.parseAsync(['node', 'td', 'auth', 'token', tokenWithWhitespace])
 
@@ -138,7 +141,7 @@ describe('auth command', () => {
                 _writeToOutput: vi.fn(),
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
-            mockSaveApiToken.mockResolvedValue(undefined)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
             const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
@@ -160,14 +163,51 @@ describe('auth command', () => {
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
             const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(mockSaveApiToken).not.toHaveBeenCalled()
             expect(errorSpy).toHaveBeenCalledWith('Error:', 'No token provided')
             writeSpy.mockRestore()
-            errorSpy.mockRestore()
+        })
+
+        it('shows a warning when token storage falls back to config', async () => {
+            const program = createProgram()
+            const token = 'some_token_123456789'
+
+            mockSaveApiToken.mockResolvedValue({
+                storage: 'config-file',
+                warning:
+                    'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'token', token])
+
+            expect(errorSpy).toHaveBeenCalledWith(
+                'Warning:',
+                'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
+            )
+        })
+
+        it('shows a warning when secure storage succeeds but plaintext cleanup fails', async () => {
+            const program = createProgram()
+            const token = 'some_token_123456789'
+
+            mockSaveApiToken.mockResolvedValue({
+                storage: 'secure-store',
+                warning:
+                    'Token was stored securely, but could not remove legacy plaintext token from /tmp/test-config.json (EACCES)',
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'token', token])
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'Token stored securely in the system credential manager',
+            )
+            expect(errorSpy).toHaveBeenCalledWith(
+                'Warning:',
+                'Token was stored securely, but could not remove legacy plaintext token from /tmp/test-config.json (EACCES)',
+            )
         })
     })
 
@@ -182,7 +222,7 @@ describe('auth command', () => {
                 cleanup: vi.fn(),
             })
             mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue(undefined)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
             await program.parseAsync(['node', 'td', 'auth', 'login'])
@@ -192,6 +232,9 @@ describe('auth command', () => {
             expect(mockExchangeCodeForToken).toHaveBeenCalledWith(authCode, 'test_code_verifier')
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken)
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'Token stored securely in the system credential manager',
+            )
         })
 
         it('handles OAuth callback server error', async () => {
@@ -279,14 +322,14 @@ describe('auth command', () => {
     describe('logout subcommand', () => {
         it('clears the API token', async () => {
             const program = createProgram()
-            mockClearApiToken.mockResolvedValue(undefined)
+            mockClearApiToken.mockResolvedValue({ storage: 'secure-store' })
 
             await program.parseAsync(['node', 'td', 'auth', 'logout'])
 
             expect(mockClearApiToken).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Logged out')
             expect(consoleSpy).toHaveBeenCalledWith(
-                'Token removed from ~/.config/todoist-cli/config.json',
+                'Stored token removed from the system credential manager',
             )
         })
     })
