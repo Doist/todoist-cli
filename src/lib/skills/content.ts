@@ -22,6 +22,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
 - \`td reminder add\` - Task reminders
+- \`td auth status\` - Authentication status
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
@@ -246,6 +247,15 @@ td reminder add "task name" --before 30m      # or --task "task name" --before 3
 td reminder add "task name" --at "2024-01-15 10:00"
 td reminder update id:123 --before 1h
 td reminder delete id:123 --yes
+\`\`\`
+
+### Auth
+\`\`\`bash
+td auth status                                # Check authentication
+td auth status --json                         # JSON: { id, email, fullName }
+td auth login                                 # OAuth login
+td auth token <token>                         # Save API token
+td auth logout                                # Remove saved token
 \`\`\`
 
 ### Stats
