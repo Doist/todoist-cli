@@ -13,12 +13,19 @@ vi.mock('../lib/api/workspaces.js', () => ({
     fetchWorkspaces: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('../lib/markdown.js', () => ({
+    preloadMarkdown: vi.fn().mockResolvedValue(undefined),
+    renderMarkdown: vi.fn((text: string) => text),
+}))
+
 import { registerTodayCommand } from '../commands/today.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
+import { preloadMarkdown } from '../lib/markdown.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockPreloadMarkdown = vi.mocked(preloadMarkdown)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 
 function createProgram() {
@@ -217,6 +224,30 @@ describe('today command', () => {
         const output = consoleSpy.mock.calls[0][0]
         const lines = output.split('\n')
         expect(lines).toHaveLength(2)
+    })
+
+    it('skips markdown preload in --raw mode', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Raw task',
+                    projectId: 'proj-1',
+                    due: { date: getToday() },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'today', '--raw'])
+
+        expect(mockPreloadMarkdown).not.toHaveBeenCalled()
     })
 
     it('includes project names in output', async () => {

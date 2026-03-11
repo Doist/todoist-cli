@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi } from '../lib/api/core.js'
+import { getApi, type Project } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import {
@@ -38,6 +38,11 @@ export async function showToday(options: TodayOptions): Promise<void> {
     const baseQuery = 'today | overdue'
     const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
 
+    const needsProjects = !!(
+        options.workspace ||
+        options.personal ||
+        (!options.json && !options.ndjson)
+    )
     const [{ results: tasks, nextCursor }, projects] = await Promise.all([
         paginate(
             (cursor, limit) =>
@@ -48,7 +53,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
                 }),
             { limit: targetLimit, startCursor: options.cursor },
         ),
-        fetchProjects(api),
+        needsProjects ? fetchProjects(api) : Promise.resolve(new Map<string, Project>()),
     ])
 
     const today = getLocalDate(0)

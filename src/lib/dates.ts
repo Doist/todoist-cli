@@ -1,4 +1,6 @@
-import { isBefore, isEqual, parseISO } from 'date-fns'
+import { isBefore } from 'date-fns/isBefore'
+import { isEqual } from 'date-fns/isEqual'
+import { parseISO } from 'date-fns/parseISO'
 
 export function getLocalDate(daysOffset = 0): string {
     const date = new Date()
