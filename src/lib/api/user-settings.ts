@@ -1,14 +1,22 @@
-import { createCommand } from '@doist/todoist-api-typescript'
+import {
+    createCommand,
+    type DateFormat,
+    type DayOfWeek,
+    type TimeFormat,
+    DATE_FORMAT_TO_API,
+    DAY_OF_WEEK_TO_API,
+    TIME_FORMAT_TO_API,
+} from '@doist/todoist-api-typescript'
 import { getApi, pickDefined } from './core.js'
 
 export interface UserSettings {
     timezone: string
-    timeFormat: number // 0=24h, 1=12h
-    dateFormat: number // 0=DD-MM-YYYY, 1=MM-DD-YYYY
-    startDay: number // 1-7 (1=Mon, 7=Sun)
+    timeFormat: TimeFormat
+    dateFormat: DateFormat
+    startDay: DayOfWeek
     theme: number // 0-10
     autoReminder: number // minutes before due
-    nextWeek: number // 1-7
+    nextWeek: DayOfWeek
     startPage: string
     reminderPush: boolean
     reminderDesktop: boolean
@@ -29,12 +37,12 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
     return {
         timezone: user?.tzInfo?.timezone ?? 'UTC',
-        timeFormat: user?.timeFormat ?? 0,
-        dateFormat: user?.dateFormat ?? 0,
-        startDay: user?.startDay ?? 1,
+        timeFormat: user?.timeFormat ?? '24h',
+        dateFormat: user?.dateFormat ?? 'DD/MM/YYYY',
+        startDay: user?.startDay ?? 'Monday',
         theme: Number(user?.themeId ?? 0),
         autoReminder: user?.autoReminder ?? 0,
-        nextWeek: user?.nextWeek ?? 1,
+        nextWeek: user?.nextWeek ?? 'Monday',
         startPage: user?.startPage ?? 'today',
         reminderPush: settings?.reminderPush ?? true,
         reminderDesktop: settings?.reminderDesktop ?? true,
@@ -46,12 +54,12 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
 export interface UpdateUserSettingsArgs {
     timezone?: string
-    timeFormat?: number
-    dateFormat?: number
-    startDay?: number
+    timeFormat?: TimeFormat
+    dateFormat?: DateFormat
+    startDay?: DayOfWeek
     theme?: number
     autoReminder?: number
-    nextWeek?: number
+    nextWeek?: DayOfWeek
     startPage?: string
     reminderPush?: boolean
     reminderDesktop?: boolean
@@ -65,12 +73,14 @@ export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<
 
     const userArgs = pickDefined({
         timezone: args.timezone,
-        time_format: args.timeFormat,
-        date_format: args.dateFormat,
-        start_day: args.startDay,
+        time_format:
+            args.timeFormat !== undefined ? TIME_FORMAT_TO_API[args.timeFormat] : undefined,
+        date_format:
+            args.dateFormat !== undefined ? DATE_FORMAT_TO_API[args.dateFormat] : undefined,
+        start_day: args.startDay !== undefined ? DAY_OF_WEEK_TO_API[args.startDay] : undefined,
         theme_id: args.theme !== undefined ? String(args.theme) : undefined,
         auto_reminder: args.autoReminder,
-        next_week: args.nextWeek,
+        next_week: args.nextWeek !== undefined ? DAY_OF_WEEK_TO_API[args.nextWeek] : undefined,
         start_page: args.startPage,
     })
 

@@ -1,4 +1,5 @@
 import type {
+    ColorKey,
     MoveProjectToWorkspaceArgs,
     ProjectViewStyle,
     ProjectVisibility,
@@ -295,7 +296,7 @@ async function listCollaborators(ref: string): Promise<void> {
 
 interface CreateOptions {
     name: string
-    color?: string
+    color?: ColorKey
     favorite?: boolean
     parent?: string
     viewStyle?: string
@@ -333,7 +334,7 @@ async function createProject(options: CreateOptions): Promise<void> {
 
 interface UpdateOptions {
     name?: string
-    color?: string
+    color?: ColorKey
     favorite?: boolean
     viewStyle?: string
 }
@@ -344,7 +345,7 @@ async function updateProject(ref: string, options: UpdateOptions): Promise<void>
 
     const args: {
         name?: string
-        color?: string
+        color?: ColorKey
         isFavorite?: boolean
         viewStyle?: ProjectViewStyle
     } = {}

@@ -1,3 +1,4 @@
+import type { DateFormat, DayOfWeek, TimeFormat } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
 import { getApi } from '../lib/api/core.js'
@@ -11,16 +12,6 @@ import { withCaseInsensitiveChoices, withUnvalidatedChoices } from '../lib/compl
 import type { ViewOptions } from '../lib/options.js'
 import { formatError } from '../lib/output.js'
 import { withSpinner } from '../lib/spinner.js'
-
-const DAY_NAMES: Record<number, string> = {
-    1: 'Monday',
-    2: 'Tuesday',
-    3: 'Wednesday',
-    4: 'Thursday',
-    5: 'Friday',
-    6: 'Saturday',
-    7: 'Sunday',
-}
 
 const THEMES: { id: number; name: string; label: string; isPro: boolean }[] = [
     { id: 0, name: 'todoist', label: 'Todoist', isPro: false },
@@ -59,16 +50,16 @@ function getThemeName(themeId: number): string {
     return theme?.name ?? 'unknown'
 }
 
-function formatDay(day: number): string {
-    return DAY_NAMES[day] ?? String(day)
+function formatDay(day: DayOfWeek): string {
+    return day
 }
 
-function formatTimeFormat(format: number): string {
-    return format === 0 ? '24h' : '12h'
+function formatTimeFormat(format: TimeFormat): string {
+    return format
 }
 
-function formatDateFormat(format: number): string {
-    return format === 0 ? 'DD-MM-YYYY' : 'MM-DD-YYYY'
+function formatDateFormat(format: DateFormat): string {
+    return format
 }
 
 function formatAutoReminder(minutes: number): string {
@@ -150,12 +141,12 @@ function formatSettingsForJson(
 ): Record<string, unknown> {
     return {
         timezone: settings.timezone,
-        timeFormat: settings.timeFormat === 0 ? '24h' : '12h',
-        dateFormat: settings.dateFormat === 0 ? 'intl' : 'us',
-        startDay: getDayName(settings.startDay),
+        timeFormat: settings.timeFormat,
+        dateFormat: settings.dateFormat === 'DD/MM/YYYY' ? 'intl' : 'us',
+        startDay: settings.startDay.toLowerCase(),
         theme: getThemeName(settings.theme),
         autoReminder: settings.autoReminder,
-        nextWeek: getDayName(settings.nextWeek),
+        nextWeek: settings.nextWeek.toLowerCase(),
         startPage: settings.startPage,
         startPageName,
         reminderPush: settings.reminderPush,
@@ -191,40 +182,40 @@ function parseBoolean(value: string): boolean {
     throw new Error(`Invalid boolean value: ${value}`)
 }
 
-/** CLI value → Todoist API time format (0 = 24-hour, 1 = 12-hour) */
-const TIME_FORMAT_MAP: Record<string, number> = {
-    '12': 1,
-    '12h': 1,
-    '24': 0,
-    '24h': 0,
+/** CLI value → TimeFormat string */
+const TIME_FORMAT_MAP: Record<string, TimeFormat> = {
+    '12': '12h',
+    '12h': '12h',
+    '24': '24h',
+    '24h': '24h',
 }
 
-/** CLI value → Todoist API date format (0 = DD-MM-YYYY, 1 = MM-DD-YYYY) */
-const DATE_FORMAT_MAP: Record<string, number> = {
-    us: 1,
-    'mm-dd-yyyy': 1,
-    mdy: 1,
-    intl: 0,
-    'dd-mm-yyyy': 0,
-    dmy: 0,
+/** CLI value → DateFormat string */
+const DATE_FORMAT_MAP: Record<string, DateFormat> = {
+    us: 'MM/DD/YYYY',
+    'mm-dd-yyyy': 'MM/DD/YYYY',
+    mdy: 'MM/DD/YYYY',
+    intl: 'DD/MM/YYYY',
+    'dd-mm-yyyy': 'DD/MM/YYYY',
+    dmy: 'DD/MM/YYYY',
 }
 
-/** CLI value → Todoist API day number (1 = Monday, 7 = Sunday) */
-const DAY_MAP: Record<string, number> = {
-    monday: 1,
-    mon: 1,
-    tuesday: 2,
-    tue: 2,
-    wednesday: 3,
-    wed: 3,
-    thursday: 4,
-    thu: 4,
-    friday: 5,
-    fri: 5,
-    saturday: 6,
-    sat: 6,
-    sunday: 7,
-    sun: 7,
+/** CLI value → DayOfWeek string */
+const DAY_MAP: Record<string, DayOfWeek> = {
+    monday: 'Monday',
+    mon: 'Monday',
+    tuesday: 'Tuesday',
+    tue: 'Tuesday',
+    wednesday: 'Wednesday',
+    wed: 'Wednesday',
+    thursday: 'Thursday',
+    thu: 'Thursday',
+    friday: 'Friday',
+    fri: 'Friday',
+    saturday: 'Saturday',
+    sat: 'Saturday',
+    sunday: 'Sunday',
+    sun: 'Sunday',
 }
 
 function boolOption(flags: string, description: string): Option {
@@ -245,26 +236,22 @@ export const DATE_FORMAT_CHOICES = Object.keys(DATE_FORMAT_MAP)
 export const DAY_CHOICES = Object.keys(DAY_MAP)
 export const THEME_CHOICES = THEMES.map((t) => t.name)
 
-export function parseTimeFormat(value: string): number {
+export function parseTimeFormat(value: string): TimeFormat {
     const result = TIME_FORMAT_MAP[value]
     if (result !== undefined) return result
     throw new Error(`Invalid time format: "${value}"`)
 }
 
-export function parseDateFormat(value: string): number {
+export function parseDateFormat(value: string): DateFormat {
     const result = DATE_FORMAT_MAP[value.toLowerCase()]
     if (result !== undefined) return result
     throw new Error(`Invalid date format: "${value}"`)
 }
 
-export function parseDay(value: string): number {
+export function parseDay(value: string): DayOfWeek {
     const result = DAY_MAP[value.toLowerCase()]
     if (result !== undefined) return result
     throw new Error(`Invalid day: "${value}"`)
-}
-
-function getDayName(day: number): string {
-    return DAY_NAMES[day]?.toLowerCase() ?? 'unknown'
 }
 
 interface UpdateOptions {

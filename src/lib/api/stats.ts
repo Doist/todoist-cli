@@ -101,10 +101,8 @@ export async function updateGoals(args: UpdateGoalsArgs): Promise<void> {
     const goalsArgs = pickDefined({
         dailyGoal: args.dailyGoal,
         weeklyGoal: args.weeklyGoal,
-        vacationMode:
-            args.vacationMode !== undefined ? ((args.vacationMode ? 1 : 0) as 0 | 1) : undefined,
-        karmaDisabled:
-            args.karmaDisabled !== undefined ? ((args.karmaDisabled ? 1 : 0) as 0 | 1) : undefined,
+        vacationMode: args.vacationMode,
+        karmaDisabled: args.karmaDisabled,
         ignoreDays: args.ignoreDays,
     })
 

@@ -81,10 +81,12 @@ export interface UpdateReminderArgs {
 
 export async function updateReminder(id: string, args: UpdateReminderArgs): Promise<void> {
     const api = await getApi()
+    const type = args.minuteOffset !== undefined ? ('relative' as const) : ('absolute' as const)
     await api.sync({
         commands: [
             createCommand('reminder_update', {
                 id,
+                type,
                 ...pickDefined({
                     minuteOffset: args.minuteOffset,
                     due: args.due,

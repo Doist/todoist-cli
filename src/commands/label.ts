@@ -1,4 +1,4 @@
-import type { Label } from '@doist/todoist-api-typescript'
+import type { ColorKey, Label } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
@@ -96,7 +96,7 @@ async function listLabels(options: PaginatedViewOptions): Promise<void> {
 
 interface CreateOptions {
     name: string
-    color?: string
+    color?: ColorKey
     favorite?: boolean
 }
 
@@ -129,7 +129,7 @@ async function deleteLabel(nameOrId: string, options: { yes?: boolean }): Promis
 
 interface UpdateLabelOptions {
     name?: string
-    color?: string
+    color?: ColorKey
     favorite?: boolean
 }
 
@@ -138,7 +138,7 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
 
     const args: {
         name?: string
-        color?: string
+        color?: ColorKey
         isFavorite?: boolean
     } = {}
     if (options.name) args.name = options.name
