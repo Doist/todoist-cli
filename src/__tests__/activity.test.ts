@@ -90,7 +90,7 @@ describe('activity command', () => {
 
         expect(mockApi.getActivityLogs).toHaveBeenCalledWith(
             expect.objectContaining({
-                objectType: 'task',
+                objectEventTypes: 'task:',
             }),
         )
     })
@@ -102,7 +102,7 @@ describe('activity command', () => {
 
         expect(mockApi.getActivityLogs).toHaveBeenCalledWith(
             expect.objectContaining({
-                eventType: 'completed',
+                objectEventTypes: ':completed',
             }),
         )
     })
@@ -122,8 +122,8 @@ describe('activity command', () => {
 
         expect(mockApi.getActivityLogs).toHaveBeenCalledWith(
             expect.objectContaining({
-                since: new Date('2025-01-01'),
-                until: new Date('2025-01-10'),
+                dateFrom: new Date('2025-01-01'),
+                dateTo: new Date('2025-01-10'),
             }),
         )
     })
