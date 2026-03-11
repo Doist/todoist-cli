@@ -12,6 +12,18 @@ A command-line interface for Todoist.
 > npm install -g @doist/todoist-cli
 > ```
 
+### Uninstallation
+
+```bash
+npm uninstall -g @doist/todoist-cli
+```
+
+To also remove installed agent skills:
+
+```bash
+td skill uninstall claude-code   # repeat for each installed agent
+```
+
 ### Local Setup (for now)
 
 ```bash
