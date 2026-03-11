@@ -1,6 +1,6 @@
+import type { DateFormat, DayOfWeek, TimeFormat } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
-import type { DateFormat, DayOfWeek, TimeFormat } from '@doist/todoist-api-typescript'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import {

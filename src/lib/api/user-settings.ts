@@ -73,8 +73,10 @@ export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<
 
     const userArgs = pickDefined({
         timezone: args.timezone,
-        time_format: args.timeFormat !== undefined ? TIME_FORMAT_TO_API[args.timeFormat] : undefined,
-        date_format: args.dateFormat !== undefined ? DATE_FORMAT_TO_API[args.dateFormat] : undefined,
+        time_format:
+            args.timeFormat !== undefined ? TIME_FORMAT_TO_API[args.timeFormat] : undefined,
+        date_format:
+            args.dateFormat !== undefined ? DATE_FORMAT_TO_API[args.dateFormat] : undefined,
         start_day: args.startDay !== undefined ? DAY_OF_WEEK_TO_API[args.startDay] : undefined,
         theme_id: args.theme !== undefined ? String(args.theme) : undefined,
         auto_reminder: args.autoReminder,

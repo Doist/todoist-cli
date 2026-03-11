@@ -31,7 +31,11 @@ import {
 } from '../commands/settings.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
-import { fetchUserSettings, type UserSettings, updateUserSettings } from '../lib/api/user-settings.js'
+import {
+    fetchUserSettings,
+    type UserSettings,
+    updateUserSettings,
+} from '../lib/api/user-settings.js'
 import { makeFilter } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
