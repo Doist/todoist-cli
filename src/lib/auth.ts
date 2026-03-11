@@ -10,6 +10,15 @@ import {
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 
+export class NoTokenError extends Error {
+    constructor() {
+        super(
+            `No API token found. Set ${TOKEN_ENV_VAR} or run \`td auth login\` or \`td auth token <token>\`.`,
+        )
+        this.name = 'NoTokenError'
+    }
+}
+
 export type TokenStorageLocation = 'secure-store' | 'config-file'
 
 export interface TokenStorageResult {
@@ -70,9 +79,7 @@ export async function getApiToken(): Promise<string> {
             }
         }
 
-        throw new Error(
-            `No API token found. Set ${TOKEN_ENV_VAR} or run \`td auth login\` or \`td auth token <token>\`.`,
-        )
+        throw new NoTokenError()
     }
 
     try {

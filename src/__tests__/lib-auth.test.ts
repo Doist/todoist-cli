@@ -312,7 +312,8 @@ describe('lib/auth', () => {
 
         const { getApiToken } = await import('../lib/auth.js')
 
-        await expect(getApiToken()).rejects.toThrow('No API token found')
+        const { NoTokenError } = await import('../lib/auth.js')
+        await expect(getApiToken()).rejects.toBeInstanceOf(NoTokenError)
         expect(keyringState.deleteCalls).toBe(1)
         expect(keyringState.getCalls).toBe(0)
         expect(keyringState.token).toBeNull()
