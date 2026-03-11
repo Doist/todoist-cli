@@ -38,10 +38,8 @@ export async function showToday(options: TodayOptions): Promise<void> {
     const baseQuery = 'today | overdue'
     const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
 
-    const needsProjects = !!(
-        options.workspace ||
-        options.personal ||
-        (!options.json && !options.ndjson)
+    const needsProjects = Boolean(
+        options.workspace || options.personal || (!options.json && !options.ndjson),
     )
     const [{ results: tasks, nextCursor }, projects] = await Promise.all([
         paginate(
