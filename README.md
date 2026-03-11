@@ -30,7 +30,13 @@ This makes the `td` command available globally.
 td auth login
 ```
 
-This opens your browser to authenticate with Todoist. Once approved, the token is saved automatically.
+This opens your browser to authenticate with Todoist. Once approved, the token is stored in your OS credential manager:
+
+- macOS: Keychain
+- Windows: Credential Manager
+- Linux: Secret Service/libsecret
+
+If secure storage is unavailable, the CLI warns and falls back to `~/.config/todoist-cli/config.json`. Existing plaintext tokens are migrated automatically the next time the CLI reads them successfully from the config file.
 
 ### Alternative methods
 
@@ -45,6 +51,8 @@ td auth token "your-token"
 ```bash
 export TODOIST_API_TOKEN="your-token"
 ```
+
+`TODOIST_API_TOKEN` always takes priority over the stored token.
 
 ### Auth commands
 

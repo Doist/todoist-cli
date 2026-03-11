@@ -12,6 +12,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td inbox\` - Inbox tasks
 - \`td upcoming\` - Tasks due in next N days
 - \`td completed\` - Recently completed tasks
+- \`td auth login\` - Authenticate and store the token securely
 - \`td task add "content"\` - Add a task
 - \`td task list\` - List tasks with filters
 - \`td task complete <ref>\` - Complete a task
@@ -51,6 +52,18 @@ Most list commands also support:
 - \`--progress-jsonl\` - Machine-readable progress events (JSONL to stderr)
 - \`-v, --verbose\` - Verbose output to stderr (repeat: -v info, -vv detail, -vvv debug, -vvvv trace)
 - \`--accessible\` - Add text labels to color-coded output (due:/deadline:/~ prefixes, ★ for favorites). Also: \`TD_ACCESSIBLE=1\`
+
+## Authentication
+
+\`\`\`bash
+td auth login                          # OAuth login; stores token in OS credential manager
+td auth token "your-token"            # Save a manual API token
+td auth status                         # Check whether auth works
+td auth logout                         # Remove the saved token
+export TODOIST_API_TOKEN="your-token"  # Highest priority; overrides stored token
+\`\`\`
+
+If OS credential storage is unavailable, \`td\` warns and falls back to \`~/.config/todoist-cli/config.json\`. Legacy plaintext config tokens are migrated automatically when secure storage becomes available.
 
 ## References
 
