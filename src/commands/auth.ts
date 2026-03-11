@@ -3,7 +3,12 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import open from 'open'
 import { getApi } from '../lib/api/core.js'
-import { clearApiToken, saveApiToken, type TokenStorageResult } from '../lib/auth.js'
+import {
+    NO_TOKEN_ERROR,
+    clearApiToken,
+    saveApiToken,
+    type TokenStorageResult,
+} from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
@@ -89,13 +94,24 @@ async function showStatus(options: { json?: boolean }): Promise<void> {
             console.log(`  Email: ${user.email}`)
             console.log(`  Name:  ${user.fullName}`)
         }
-    } catch {
+    } catch (error) {
+        const isAuthError = error instanceof Error && error.message === NO_TOKEN_ERROR
         if (options.json) {
-            console.log(JSON.stringify({ error: 'Not authenticated' }, null, 2))
-            process.exitCode = 1
+            if (isAuthError) {
+                console.log(JSON.stringify({ error: 'Not authenticated' }, null, 2))
+                process.exitCode = 1
+            } else {
+                throw error
+            }
         } else {
-            console.log(chalk.yellow('Not authenticated'))
-            console.log(chalk.dim('Run `td auth login` or `td auth token <token>` to authenticate'))
+            if (isAuthError) {
+                console.log(chalk.yellow('Not authenticated'))
+                console.log(
+                    chalk.dim('Run `td auth login` or `td auth token <token>` to authenticate'),
+                )
+            } else {
+                throw error
+            }
         }
     }
 }
