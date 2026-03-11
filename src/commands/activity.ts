@@ -1,8 +1,4 @@
-import type {
-    ActivityEvent,
-    ActivityEventType,
-    ActivityObjectType,
-} from '@doist/todoist-api-typescript'
+import type { ActivityEvent, ActivityObjectEventType } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
@@ -260,11 +256,14 @@ export function registerActivityCommand(program: Command): void {
 
             const { results: events, nextCursor } = await paginate(
                 async (cursor, limit) => {
+                    const objectEventTypes: ActivityObjectEventType | undefined =
+                        options.type || options.event
+                            ? (`${options.type ?? ''}:${options.event ?? ''}` as ActivityObjectEventType)
+                            : undefined
                     const resp = await api.getActivityLogs({
-                        since: options.since ? new Date(options.since) : undefined,
-                        until: options.until ? new Date(options.until) : undefined,
-                        objectType: options.type as ActivityObjectType | undefined,
-                        eventType: options.event as ActivityEventType | undefined,
+                        dateFrom: options.since ? new Date(options.since) : undefined,
+                        dateTo: options.until ? new Date(options.until) : undefined,
+                        objectEventTypes,
                         parentProjectId: projectId,
                         initiatorId,
                         cursor: cursor ?? undefined,
