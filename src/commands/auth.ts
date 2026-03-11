@@ -3,12 +3,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import open from 'open'
 import { getApi } from '../lib/api/core.js'
-import {
-    NO_TOKEN_ERROR,
-    clearApiToken,
-    saveApiToken,
-    type TokenStorageResult,
-} from '../lib/auth.js'
+import { NoTokenError, clearApiToken, saveApiToken, type TokenStorageResult } from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../lib/pkce.js'
@@ -95,7 +90,7 @@ async function showStatus(options: { json?: boolean }): Promise<void> {
             console.log(`  Name:  ${user.fullName}`)
         }
     } catch (error) {
-        const isAuthError = error instanceof Error && error.message === NO_TOKEN_ERROR
+        const isAuthError = error instanceof NoTokenError
         if (options.json) {
             if (isAuthError) {
                 console.log(JSON.stringify({ error: 'Not authenticated' }, null, 2))

@@ -58,7 +58,7 @@ import { createInterface, type Interface } from 'node:readline'
 import open from 'open'
 import { registerAuthCommand } from '../commands/auth.js'
 import { getApi } from '../lib/api/core.js'
-import { NO_TOKEN_ERROR, clearApiToken, saveApiToken } from '../lib/auth.js'
+import { NoTokenError, clearApiToken, saveApiToken } from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
 import { exchangeCodeForToken } from '../lib/oauth.js'
 import { createMockApi } from './helpers/mock-api.js'
@@ -333,7 +333,7 @@ describe('auth command', () => {
 
         it('outputs JSON error when --json flag is used and not authenticated', async () => {
             const program = createProgram()
-            mockGetApi.mockRejectedValue(new Error(NO_TOKEN_ERROR))
+            mockGetApi.mockRejectedValue(new NoTokenError())
 
             await program.parseAsync(['node', 'td', 'auth', 'status', '--json'])
 
@@ -363,7 +363,7 @@ describe('auth command', () => {
 
         it('shows not authenticated when no token', async () => {
             const program = createProgram()
-            mockGetApi.mockRejectedValue(new Error(NO_TOKEN_ERROR))
+            mockGetApi.mockRejectedValue(new NoTokenError())
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
