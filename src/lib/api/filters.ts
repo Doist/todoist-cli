@@ -1,4 +1,4 @@
-import { createCommand, type Filter as SdkFilter } from '@doist/todoist-api-typescript'
+import { createCommand, type ColorKey, type Filter as SdkFilter } from '@doist/todoist-api-typescript'
 import { getApi, pickDefined } from './core.js'
 
 export type Filter = SdkFilter
@@ -6,7 +6,7 @@ export type Filter = SdkFilter
 export interface AddFilterArgs {
     name: string
     query: string
-    color?: string
+    color?: ColorKey
     isFavorite?: boolean
 }
 
@@ -55,7 +55,7 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
 export interface UpdateFilterArgs {
     name?: string
     query?: string
-    color?: string
+    color?: ColorKey
     isFavorite?: boolean
 }
 

@@ -6,6 +6,7 @@ import {
     deleteFilter,
     type Filter,
     fetchFilters,
+    type UpdateFilterArgs,
     updateFilter,
 } from '../lib/api/filters.js'
 import { openInBrowser } from '../lib/browser.js'
@@ -71,7 +72,7 @@ async function listFilters(options: PaginatedViewOptions): Promise<void> {
 interface CreateOptions {
     name: string
     query: string
-    color?: string
+    color?: UpdateFilterArgs['color']
     favorite?: boolean
 }
 
@@ -138,19 +139,14 @@ async function deleteFilterCmd(nameOrId: string, options: { yes?: boolean }): Pr
 interface UpdateOptions {
     name?: string
     query?: string
-    color?: string
+    color?: UpdateFilterArgs['color']
     favorite?: boolean
 }
 
 async function updateFilterCmd(nameOrId: string, options: UpdateOptions): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
 
-    const args: {
-        name?: string
-        query?: string
-        color?: string
-        isFavorite?: boolean
-    } = {}
+    const args: UpdateFilterArgs = {}
     if (options.name) args.name = options.name
     if (options.query) args.query = options.query
     if (options.color) args.color = options.color
