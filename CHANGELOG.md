@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0](https://github.com/Doist/todoist-cli/compare/v1.21.0...v1.22.0) (2026-03-11)
+
+
+### Features
+
+* **activity:** add markdown output mode for activity logs ([#85](https://github.com/Doist/todoist-cli/issues/85)) ([fb55786](https://github.com/Doist/todoist-cli/commit/fb55786b6b5eabe8d93d60fe2baeba5a5332b69a))
+* add --json output to auth status command ([#121](https://github.com/Doist/todoist-cli/issues/121)) ([7a0e437](https://github.com/Doist/todoist-cli/commit/7a0e437671e650d58be177a8a96d0a41432bbc8a))
+* store auth tokens in OS credential storage ([#120](https://github.com/Doist/todoist-cli/issues/120)) ([efafcfe](https://github.com/Doist/todoist-cli/commit/efafcfef6857fd9c042172fe46acdc71f9c9bfb3))
+
+
+### Bug Fixes
+
+* address PR [#112](https://github.com/Doist/todoist-cli/issues/112) review feedback ([#115](https://github.com/Doist/todoist-cli/issues/115)) ([6e5a0ff](https://github.com/Doist/todoist-cli/commit/6e5a0ffb746797ced326f17af626ad6b7eebf8a7))
+
+
+### Performance Improvements
+
+* reduce CLI startup cost by deferring markdown loads and unnecessary project fetches ([#118](https://github.com/Doist/todoist-cli/issues/118)) ([fa9a660](https://github.com/Doist/todoist-cli/commit/fa9a660028a790b6641157868e112075491e9c43))
+
 ## [1.21.0](https://github.com/Doist/todoist-cli/compare/v1.20.0...v1.21.0) (2026-03-05)
 
 
