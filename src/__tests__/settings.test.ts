@@ -31,7 +31,7 @@ import {
 } from '../commands/settings.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
-import { fetchUserSettings, updateUserSettings } from '../lib/api/user-settings.js'
+import { fetchUserSettings, type UserSettings, updateUserSettings } from '../lib/api/user-settings.js'
 import { makeFilter } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
@@ -47,14 +47,14 @@ function createProgram() {
     return program
 }
 
-const defaultSettings = {
+const defaultSettings: UserSettings = {
     timezone: 'Europe/London',
-    timeFormat: 0, // 24h
-    dateFormat: 0, // DD-MM-YYYY
-    startDay: 1, // Monday
+    timeFormat: '24h',
+    dateFormat: 'DD/MM/YYYY',
+    startDay: 'Monday',
     theme: 6, // Blueberry
     autoReminder: 30,
-    nextWeek: 1,
+    nextWeek: 'Monday',
     startPage: 'today',
     reminderPush: true,
     reminderDesktop: true,
@@ -110,7 +110,7 @@ describe('settings view', () => {
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
-            timeFormat: 1,
+            timeFormat: '12h',
         })
 
         await program.parseAsync(['node', 'td', 'settings', 'view'])
@@ -125,12 +125,12 @@ describe('settings view', () => {
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
-            dateFormat: 1,
+            dateFormat: 'MM/DD/YYYY',
         })
 
         await program.parseAsync(['node', 'td', 'settings', 'view'])
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('MM-DD-YYYY'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('MM/DD/YYYY'))
         consoleSpy.mockRestore()
     })
 })
@@ -307,7 +307,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--time-format', '24'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: 0 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: '24h' })
         consoleSpy.mockRestore()
     })
 
@@ -319,7 +319,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--time-format', '12'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: 1 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: '12h' })
         consoleSpy.mockRestore()
     })
 
@@ -331,7 +331,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--date-format', 'us'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 1 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 'MM/DD/YYYY' })
         consoleSpy.mockRestore()
     })
 
@@ -343,7 +343,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--date-format', 'intl'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 0 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 'DD/MM/YYYY' })
         consoleSpy.mockRestore()
     })
 
@@ -355,7 +355,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--start-day', 'Sunday'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 7 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 'Sunday' })
         consoleSpy.mockRestore()
     })
 
@@ -367,7 +367,7 @@ describe('settings update', () => {
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--start-day', 'Mon'])
 
-        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 1 })
+        expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 'Monday' })
         consoleSpy.mockRestore()
     })
 
@@ -440,7 +440,7 @@ describe('settings update', () => {
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({
             timezone: 'UTC',
-            timeFormat: 0,
+            timeFormat: '24h',
             reminderDesktop: true,
         })
         consoleSpy.mockRestore()
