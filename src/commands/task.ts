@@ -155,6 +155,7 @@ interface AddOptions {
     description?: string
     assignee?: string
     duration?: string
+    uncompletable?: boolean
 }
 
 async function addTask(options: AddOptions): Promise<void> {
@@ -249,6 +250,10 @@ async function addTask(options: AddOptions): Promise<void> {
         applyDuration(args as DurationArgs, options.duration)
     }
 
+    if (options.uncompletable) {
+        args.isUncompletable = true
+    }
+
     const task = await api.addTask(args)
     console.log(`Created: ${task.content}`)
     if (task.due) console.log(`Due: ${task.due.string || task.due.date}`)
@@ -266,6 +271,8 @@ interface UpdateOptions {
     assignee?: string
     unassign?: boolean
     duration?: string
+    uncompletable?: boolean
+    completable?: boolean
 }
 
 async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
@@ -294,6 +301,14 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
 
     if (options.duration) {
         applyDuration(args as DurationArgs, options.duration)
+    }
+
+    if (options.uncompletable && options.completable) {
+        throw new Error('Cannot use --uncompletable and --completable together')
+    } else if (options.uncompletable) {
+        args.isUncompletable = true
+    } else if (options.completable) {
+        args.isUncompletable = false
     }
 
     const updated = await api.updateTask(task.id, args)
@@ -460,6 +475,7 @@ export function registerTaskCommand(program: Command): void {
         .option('--description <text>', 'Task description')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
+        .option('--uncompletable', 'Mark task as non-completable (reference/header task)')
         .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
             if (contentArg && options.content) {
                 throw new Error('Cannot specify content both as argument and --content flag')
@@ -490,6 +506,8 @@ export function registerTaskCommand(program: Command): void {
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--unassign', 'Remove assignee')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
+        .option('--uncompletable', 'Mark task as non-completable')
+        .option('--completable', 'Revert task to completable (undoes --uncompletable)')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()

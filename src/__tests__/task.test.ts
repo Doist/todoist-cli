@@ -1617,6 +1617,106 @@ describe('task update --deadline', () => {
     })
 })
 
+describe('task add/update --uncompletable', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with isUncompletable=true when --uncompletable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Reference Item',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Reference Item',
+            '--uncompletable',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ isUncompletable: true }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set isUncompletable when no flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Normal Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Normal Task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.not.objectContaining({ isUncompletable: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with isUncompletable=true when --uncompletable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--uncompletable'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { isUncompletable: true })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with isUncompletable=false when --completable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--completable'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { isUncompletable: false })
+        consoleSpy.mockRestore()
+    })
+
+    it('throws when both --uncompletable and --completable are passed together', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'id:task-1',
+                '--uncompletable',
+                '--completable',
+            ]),
+        ).rejects.toThrow('Cannot use --uncompletable and --completable together')
+    })
+})
+
 describe('task list --filter', () => {
     let mockApi: MockApi
 
