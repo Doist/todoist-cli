@@ -156,6 +156,7 @@ interface AddOptions {
     assignee?: string
     duration?: string
     uncompletable?: boolean
+    order?: number
 }
 
 async function addTask(options: AddOptions): Promise<void> {
@@ -254,6 +255,10 @@ async function addTask(options: AddOptions): Promise<void> {
         args.isUncompletable = true
     }
 
+    if (options.order !== undefined) {
+        args.order = options.order
+    }
+
     const task = await api.addTask(args)
     console.log(`Created: ${task.content}`)
     if (task.due) console.log(`Due: ${task.due.string || task.due.date}`)
@@ -273,6 +278,7 @@ interface UpdateOptions {
     duration?: string
     uncompletable?: boolean
     completable?: boolean
+    order?: number
 }
 
 async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
@@ -309,6 +315,10 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
         args.isUncompletable = true
     } else if (options.completable) {
         args.isUncompletable = false
+    }
+
+    if (options.order !== undefined) {
+        args.order = options.order
     }
 
     const updated = await api.updateTask(task.id, args)
@@ -476,6 +486,17 @@ export function registerTaskCommand(program: Command): void {
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
         .option('--uncompletable', 'Mark task as non-completable (reference/header task)')
+        .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
+            const n = Number(val)
+            if (!Number.isInteger(n) || n < 0) {
+                throw new Error(
+                    formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
+                        'Order must be a non-negative integer (e.g., 0 for top of list)',
+                    ]),
+                )
+            }
+            return n
+        })
         .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
             if (contentArg && options.content) {
                 throw new Error('Cannot specify content both as argument and --content flag')
@@ -508,6 +529,17 @@ export function registerTaskCommand(program: Command): void {
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
         .option('--uncompletable', 'Mark task as non-completable')
         .option('--completable', 'Revert task to completable (undoes --uncompletable)')
+        .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
+            const n = Number(val)
+            if (!Number.isInteger(n) || n < 0) {
+                throw new Error(
+                    formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
+                        'Order must be a non-negative integer (e.g., 0 for top of list)',
+                    ]),
+                )
+            }
+            return n
+        })
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
