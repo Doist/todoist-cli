@@ -1717,6 +1717,136 @@ describe('task add/update --uncompletable', () => {
     })
 })
 
+describe('task add/update --order', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with order=0 when --order 0 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '0'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(expect.objectContaining({ order: 0 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with order=5 when --order 5 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '5'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(expect.objectContaining({ order: 5 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set order when no --order flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.not.objectContaining({ order: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('rejects --order -1 with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '-1']),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('rejects --order first with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                'first',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('updates task with order=0 when --order 0 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--order', '0'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { order: 0 })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with order=3 when --order 3 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--order', '3'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { order: 3 })
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set order when no --order flag is passed to update', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--content', 'Task'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.not.objectContaining({ order: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('task list --filter', () => {
     let mockApi: MockApi
 

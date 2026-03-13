@@ -141,6 +141,7 @@ td task add "Task" --duration 1h --section "Planning" --project "Work"
 td task add "Task" --labels "urgent,review" --parent "Parent task"
 td task add "Task" --description "Details here" --assignee me
 td task add "Reference header" --uncompletable  # Non-actionable reference/header task
+td task add "Reference header" --order 0       # Pin task to top of project
 
 # Update
 td task update "task name" --due "next week"
@@ -151,6 +152,7 @@ td task update "task name" --assignee "john@example.com"
 td task update "task name" --unassign
 td task update "task name" --uncompletable   # Mark as non-completable reference item
 td task update "task name" --completable     # Revert to completable (undo --uncompletable)
+td task update "Reference header" --order 0   # Move task to top of project
 
 # Move
 td task move "task name" --project "Personal"
