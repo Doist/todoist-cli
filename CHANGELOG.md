@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0](https://github.com/Doist/todoist-cli/compare/v1.22.1...v1.23.0) (2026-03-13)
+
+
+### Features
+
+* **task:** add --order flag to task add and update ([#143](https://github.com/Doist/todoist-cli/issues/143)) ([51e6428](https://github.com/Doist/todoist-cli/commit/51e6428ff24dd57d16d34a57d661d21bf56df58c))
+* **task:** add --uncompletable/--completable flags to task add and update ([#142](https://github.com/Doist/todoist-cli/issues/142)) ([545c931](https://github.com/Doist/todoist-cli/commit/545c9315bd24d262e8713801fb32873ff1bafbfd))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-api-typescript to v6.10.0 ([#127](https://github.com/Doist/todoist-cli/issues/127)) ([b537201](https://github.com/Doist/todoist-cli/commit/b53720185535172490018e6019ddab04d093f4e1))
+* **deps:** update dependency @doist/todoist-api-typescript to v7.0.0 ([#134](https://github.com/Doist/todoist-cli/issues/134)) ([9ac38c1](https://github.com/Doist/todoist-cli/commit/9ac38c1e762be7c883b3ec574abf67488856f259))
+* **deps:** update dependency commander to v14.0.3 ([#131](https://github.com/Doist/todoist-cli/issues/131)) ([75b23f8](https://github.com/Doist/todoist-cli/commit/75b23f8b6a798828be2377136112f7f70de4dba8))
+* **deps:** update dependency yocto-spinner to v1.1.0 ([#136](https://github.com/Doist/todoist-cli/issues/136)) ([b77f479](https://github.com/Doist/todoist-cli/commit/b77f4793d4612c90fbc86baf83be28a28e08d268))
+
 ## [1.22.1](https://github.com/Doist/todoist-cli/compare/v1.22.0...v1.22.1) (2026-03-11)
 
 
