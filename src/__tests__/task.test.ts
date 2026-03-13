@@ -1697,6 +1697,24 @@ describe('task add/update --uncompletable', () => {
         expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { isUncompletable: false })
         consoleSpy.mockRestore()
     })
+
+    it('throws when both --uncompletable and --completable are passed together', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'id:task-1',
+                '--uncompletable',
+                '--completable',
+            ]),
+        ).rejects.toThrow('Cannot use --uncompletable and --completable together')
+    })
 })
 
 describe('task list --filter', () => {

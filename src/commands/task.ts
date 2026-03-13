@@ -303,7 +303,9 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
         applyDuration(args as DurationArgs, options.duration)
     }
 
-    if (options.uncompletable) {
+    if (options.uncompletable && options.completable) {
+        throw new Error('Cannot use --uncompletable and --completable together')
+    } else if (options.uncompletable) {
         args.isUncompletable = true
     } else if (options.completable) {
         args.isUncompletable = false
