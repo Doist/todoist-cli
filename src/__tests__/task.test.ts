@@ -1804,6 +1804,40 @@ describe('task add/update --order', () => {
         ).rejects.toThrow('Invalid order value')
     })
 
+    it('rejects --order 1.5 with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                '1.5',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('rejects --order 3abc with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                '3abc',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
     it('updates task with order=0 when --order 0 is passed', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

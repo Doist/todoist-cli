@@ -487,8 +487,8 @@ export function registerTaskCommand(program: Command): void {
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
         .option('--uncompletable', 'Mark task as non-completable (reference/header task)')
         .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
-            const n = parseInt(val, 10)
-            if (isNaN(n) || n < 0) {
+            const n = Number(val)
+            if (!Number.isInteger(n) || n < 0) {
                 throw new Error(
                     formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
                         'Order must be a non-negative integer (e.g., 0 for top of list)',
@@ -530,8 +530,8 @@ export function registerTaskCommand(program: Command): void {
         .option('--uncompletable', 'Mark task as non-completable')
         .option('--completable', 'Revert task to completable (undoes --uncompletable)')
         .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
-            const n = parseInt(val, 10)
-            if (isNaN(n) || n < 0) {
+            const n = Number(val)
+            if (!Number.isInteger(n) || n < 0) {
                 throw new Error(
                     formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
                         'Order must be a non-negative integer (e.g., 0 for top of list)',
