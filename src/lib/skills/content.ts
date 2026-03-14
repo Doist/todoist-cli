@@ -206,8 +206,8 @@ Note: Shared labels (from collaborative projects) appear in \`list\` and can be 
 td comment list --task "task name"
 td comment list --project "Project Name" -P   # Project comments
 td comment add --task "task name" --content "Comment text"
-td comment add --task "task name" --stdin < note.md    # Read content from file
-cat note.md | td comment add --task "task name" --stdin
+td comment add "task name" --stdin < note.md           # Read content from file
+cat note.md | td comment add "task name" --stdin
 td comment add --task "task name" --content "See attached" --file ./report.pdf
 td comment view id:123                        # View full comment
 td comment update id:123 --content "Updated text"

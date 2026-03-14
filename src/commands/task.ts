@@ -233,7 +233,7 @@ async function addTask(options: AddOptions): Promise<void> {
         }
     }
 
-    if (options.stdin && options.description) {
+    if (options.stdin && options.description !== undefined) {
         throw new Error('Cannot use both --description and --stdin')
     }
     if (options.stdin) {
@@ -305,7 +305,7 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
     if (options.priority) args.priority = parsePriority(options.priority)
     if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
 
-    if (options.stdin && options.description) {
+    if (options.stdin && options.description !== undefined) {
         throw new Error('Cannot use both --description and --stdin')
     }
     if (options.stdin) {

@@ -113,13 +113,16 @@ interface AddOptions {
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
-    if (options.content && options.stdin) {
+    if (options.content !== undefined && options.stdin) {
         throw new Error('Cannot use both --content and --stdin')
     }
 
     let content: string
     if (options.stdin) {
         content = await readStdin()
+        if (!content.trim()) {
+            throw new Error('Content is required: use --content or --stdin')
+        }
     } else if (options.content) {
         content = options.content
     } else {

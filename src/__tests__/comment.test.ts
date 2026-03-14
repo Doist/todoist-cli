@@ -658,7 +658,7 @@ describe('comment add with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -683,6 +683,7 @@ describe('comment add with --stdin', () => {
             content: 'Multiline\ncontent here',
         })
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 
     it('errors when both --content and --stdin are provided', async () => {
@@ -709,7 +710,7 @@ describe('comment add with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
         mockApi.addComment.mockResolvedValue({ id: 'comment-new', content: 'line1\nline2\nline3' })
@@ -733,6 +734,7 @@ describe('comment add with --stdin', () => {
             content: 'line1\nline2\nline3',
         })
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 })
 

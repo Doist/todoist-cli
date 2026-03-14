@@ -2074,7 +2074,7 @@ describe('task add with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2092,6 +2092,7 @@ describe('task add with --stdin', () => {
             expect.objectContaining({ description: 'Description from stdin' }),
         )
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 
     it('errors when both --description and --stdin are provided', async () => {
@@ -2116,7 +2117,7 @@ describe('task add with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2136,6 +2137,7 @@ describe('task add with --stdin', () => {
             expect.objectContaining({ description: 'line1\nline2\nline3' }),
         )
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 })
 
@@ -2153,7 +2155,7 @@ describe('task update with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
@@ -2178,6 +2180,7 @@ describe('task update with --stdin', () => {
             expect.objectContaining({ description: 'Updated description' }),
         )
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 
     it('errors when both --description and --stdin are provided', async () => {
@@ -2207,7 +2210,7 @@ describe('task update with --stdin', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
@@ -2234,5 +2237,6 @@ describe('task update with --stdin', () => {
             expect.objectContaining({ description: 'line1\nline2\nline3' }),
         )
         consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 })
