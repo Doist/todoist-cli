@@ -7,6 +7,7 @@ import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
+    formatJson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -98,6 +99,7 @@ interface CreateOptions {
     name: string
     color?: ColorKey
     favorite?: boolean
+    json?: boolean
 }
 
 async function createLabel(options: CreateOptions): Promise<void> {
@@ -108,6 +110,11 @@ async function createLabel(options: CreateOptions): Promise<void> {
         color: options.color,
         isFavorite: options.favorite,
     })
+
+    if (options.json) {
+        console.log(formatJson(label, 'label'))
+        return
+    }
 
     console.log(`Created: @${label.name}`)
     console.log(chalk.dim(`ID: ${label.id}`))
@@ -131,6 +138,7 @@ interface UpdateLabelOptions {
     name?: string
     color?: ColorKey
     favorite?: boolean
+    json?: boolean
 }
 
 async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promise<void> {
@@ -152,6 +160,12 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
 
     const api = await getApi()
     const updated = await api.updateLabel(label.id, args)
+
+    if (options.json) {
+        console.log(formatJson(updated, 'label'))
+        return
+    }
+
     console.log(`Updated: @${label.name}${options.name ? ` → @${updated.name}` : ''}`)
 }
 
@@ -357,6 +371,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--name <name>', 'Label name (required)')
         .option('--color <color>', 'Label color')
         .option('--favorite', 'Mark as favorite')
+        .option('--json', 'Output the created label as JSON')
         .action((options) => {
             if (!options.name) {
                 createCmd.help()
@@ -384,6 +399,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--color <color>', 'New color')
         .option('--favorite', 'Mark as favorite')
         .option('--no-favorite', 'Remove from favorites')
+        .option('--json', 'Output the updated label as JSON')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()

@@ -159,6 +159,7 @@ interface AddOptions {
     duration?: string
     uncompletable?: boolean
     order?: number
+    json?: boolean
 }
 
 async function addTask(options: AddOptions): Promise<void> {
@@ -267,6 +268,12 @@ async function addTask(options: AddOptions): Promise<void> {
     }
 
     const task = await api.addTask(args)
+
+    if (options.json) {
+        console.log(formatJson(task, 'task'))
+        return
+    }
+
     console.log(`Created: ${task.content}`)
     if (task.due) console.log(`Due: ${task.due.string || task.due.date}`)
     if (task.deadline) console.log(`Deadline: ${task.deadline.date}`)
@@ -287,6 +294,7 @@ interface UpdateOptions {
     uncompletable?: boolean
     completable?: boolean
     order?: number
+    json?: boolean
 }
 
 async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
@@ -338,6 +346,12 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
     }
 
     const updated = await api.updateTask(task.id, args)
+
+    if (options.json) {
+        console.log(formatJson(updated, 'task'))
+        return
+    }
+
     console.log(`Updated: ${updated.content}`)
 }
 
@@ -514,6 +528,7 @@ export function registerTaskCommand(program: Command): void {
             }
             return n
         })
+        .option('--json', 'Output the created task as JSON')
         .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
             if (contentArg && options.content) {
                 throw new Error('Cannot specify content both as argument and --content flag')
@@ -558,6 +573,7 @@ export function registerTaskCommand(program: Command): void {
             }
             return n
         })
+        .option('--json', 'Output the updated task as JSON')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()

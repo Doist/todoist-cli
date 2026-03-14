@@ -2240,3 +2240,97 @@ describe('task update with --stdin', () => {
         stdinSpy.mockRestore()
     })
 })
+
+describe('task add --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created task as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'inbox',
+            labels: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Buy milk', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-new')
+        expect(parsed.content).toBe('Buy milk')
+        consoleSpy.mockRestore()
+    })
+
+    it('does not print plain-text confirmation with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'inbox',
+            labels: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Buy milk', '--json'])
+
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task update --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs updated task as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Old content',
+            projectId: 'proj-1',
+        })
+        mockApi.updateTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'New content',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--content',
+            'New content',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-1')
+        expect(parsed.content).toBe('New content')
+        consoleSpy.mockRestore()
+    })
+})

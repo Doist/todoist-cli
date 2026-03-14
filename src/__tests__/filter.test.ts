@@ -99,6 +99,48 @@ describe('filter list', () => {
     })
 })
 
+describe('filter create --json', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('outputs created filter as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'My Filter',
+            query: 'today',
+            color: 'charcoal',
+            isFavorite: false,
+            isDeleted: false,
+            isFrozen: false,
+            itemOrder: 0,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'My Filter',
+            '--query',
+            'today',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('filter-new')
+        expect(parsed.name).toBe('My Filter')
+        expect(parsed.query).toBe('today')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('filter create', () => {
     beforeEach(() => {
         vi.clearAllMocks()

@@ -14,6 +14,7 @@ import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
+    formatJson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -74,6 +75,7 @@ interface CreateOptions {
     query: string
     color?: UpdateFilterArgs['color']
     favorite?: boolean
+    json?: boolean
 }
 
 async function createFilter(options: CreateOptions): Promise<void> {
@@ -83,6 +85,11 @@ async function createFilter(options: CreateOptions): Promise<void> {
         color: options.color,
         isFavorite: options.favorite,
     })
+
+    if (options.json) {
+        console.log(formatJson(filter, 'filter'))
+        return
+    }
 
     console.log(`Created: ${filter.name}`)
     console.log(chalk.dim(`ID: id:${filter.id}`))
@@ -285,6 +292,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--query <query>', 'Filter query (required, e.g., "today | overdue")')
         .option('--color <color>', 'Filter color')
         .option('--favorite', 'Mark as favorite')
+        .option('--json', 'Output the created filter as JSON')
         .action((options) => {
             if (!options.name || !options.query) {
                 createCmd.help()

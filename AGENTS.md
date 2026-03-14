@@ -98,3 +98,28 @@ The file `src/lib/skills/content.ts` exports `SKILL_CONTENT` — a comprehensive
 - Keeping examples accurate and consistent with actual CLI behavior
 
 After updating `SKILL_CONTENT`, run `td skill update claude-code` (and any other installed agents) to propagate the changes to installed skill files.
+
+## JSON Output for Mutating Commands
+
+All add/create/update commands support `--json` to output the created or updated entity as machine-readable JSON instead of the default human-readable confirmation message. This applies to:
+
+- `task add`, `task update`
+- `project create`, `project update`
+- `comment add`, `comment update`
+- `label create`, `label update`
+- `filter create`
+- `section create`, `section update`
+- `reminder add`
+
+**When adding new add/create/update commands**, always include a `--json` flag that outputs the resulting entity using `formatJson(result, entityType)` from `src/lib/output.ts`. The pattern is:
+
+```typescript
+const result = await api.addXxx(args)
+if (options.json) {
+    console.log(formatJson(result, 'entityType'))
+    return
+}
+// normal human-readable output
+```
+
+Delete, complete, uncomplete, archive, and unarchive commands do not support `--json` as they return no meaningful entity data.

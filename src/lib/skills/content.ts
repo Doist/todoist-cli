@@ -38,6 +38,15 @@ All list commands support:
 - \`--full\` - Include all fields in JSON
 - \`--raw\` - Disable markdown rendering
 
+The following mutating commands also support \`--json\` to return the created or updated entity as machine-readable JSON instead of plain-text confirmation:
+- \`task add\`, \`task update\`
+- \`project create\`, \`project update\`
+- \`label create\`, \`label update\`
+- \`comment add\`, \`comment update\`
+- \`section create\`, \`section update\`
+- \`filter create\`
+- \`reminder add\`
+
 ## Shared List Options
 
 Most list commands also support:
@@ -144,6 +153,7 @@ td task add "My task" --stdin < description.md   # Read description from file
 cat notes.md | td task add "My task" --stdin
 td task add "Reference header" --uncompletable  # Non-actionable reference/header task
 td task add "Reference header" --order 0       # Pin task to top of project
+td task add "New task" --json                  # Return created task as JSON
 
 # Update
 td task update "task name" --due "next week"
@@ -156,6 +166,7 @@ td task update "task name" --stdin < description.md   # Read description from fi
 td task update "task name" --uncompletable   # Mark as non-completable reference item
 td task update "task name" --completable     # Revert to completable (undo --uncompletable)
 td task update "Reference header" --order 0   # Move task to top of project
+td task update "task name" --content "New" --json  # Return updated task as JSON
 
 # Move
 td task move "task name" --project "Personal"
@@ -176,7 +187,9 @@ td project list --personal                    # Personal projects only
 td project view "Project Name"
 td project collaborators "Project Name"
 td project create --name "New Project" --color "blue"
+td project create --name "New Project" --json    # Return created project as JSON
 td project update "Project Name" --favorite
+td project update "Project Name" --name "New Name" --json  # Return updated project as JSON
 td project archive "Project Name"
 td project unarchive "Project Name"
 td project delete "Project Name" --yes
@@ -194,7 +207,9 @@ td label list                                 # Lists personal + shared labels
 td label view "urgent"                        # View label details and tasks
 td label view "team-review"                   # Works for shared labels too
 td label create --name "urgent" --color "red"
+td label create --name "urgent" --json          # Return created label as JSON
 td label update "urgent" --color "orange"
+td label update "urgent" --color "orange" --json  # Return updated label as JSON
 td label delete "urgent" --yes
 td label browse "urgent"                      # Open in browser
 \`\`\`
@@ -206,11 +221,13 @@ Note: Shared labels (from collaborative projects) appear in \`list\` and can be 
 td comment list "task name"
 td comment list "Project Name" -P             # Project comments
 td comment add "task name" --content "Comment text"
+td comment add "task name" --content "Note" --json     # Return created comment as JSON
 td comment add "task name" --stdin < note.md           # Read content from file
 cat note.md | td comment add "task name" --stdin
 td comment add "task name" --content "See attached" --file ./report.pdf
 td comment view id:123                        # View full comment
 td comment update id:123 --content "Updated text"
+td comment update id:123 --content "Updated text" --json  # Return updated comment as JSON
 td comment delete id:123 --yes
 td comment browse id:123                      # Open in browser
 \`\`\`
@@ -220,7 +237,9 @@ td comment browse id:123                      # Open in browser
 td section list "Work"                        # List sections in project (or --project "Work")
 td section list --project "Work"              # Same, using named flag
 td section create --project "Work" --name "In Progress"
+td section create --project "Work" --name "In Progress" --json  # Return created section as JSON
 td section update id:123 --name "Done"
+td section update id:123 --name "Done" --json  # Return updated section as JSON
 td section delete id:123 --yes
 td section browse id:123                      # Open in browser
 \`\`\`
@@ -229,6 +248,7 @@ td section browse id:123                      # Open in browser
 \`\`\`bash
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
+td filter create --name "Urgent work" --query "p1 & #Work" --json  # Return created filter as JSON
 td filter view "Urgent work"                  # Show tasks matching filter (alias: show)
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
@@ -268,6 +288,7 @@ td notification reject id:123                 # Reject share invitation
 \`\`\`bash
 td reminder list "task name"                  # or --task "task name"
 td reminder add "task name" --before 30m      # or --task "task name" --before 30m
+td reminder add "task name" --before 30m --json  # Return created reminder as JSON
 td reminder add "task name" --at "2024-01-15 10:00"
 td reminder update id:123 --before 1h
 td reminder delete id:123 --yes
