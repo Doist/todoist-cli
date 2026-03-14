@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0](https://github.com/Doist/todoist-cli/compare/v1.23.0...v1.24.0) (2026-03-14)
+
+
+### Features
+
+* add --json support to mutating commands ([#147](https://github.com/Doist/todoist-cli/issues/147)) ([7a8d116](https://github.com/Doist/todoist-cli/commit/7a8d11624f09deb8e8974d530c4a92ab6d18f907))
+* add --stdin flag to comment add, task add, and task update ([#145](https://github.com/Doist/todoist-cli/issues/145)) ([149d560](https://github.com/Doist/todoist-cli/commit/149d560542e0691edfcb4742f454d1992a2a5bc8))
+
 ## [1.23.0](https://github.com/Doist/todoist-cli/compare/v1.22.1...v1.23.0) (2026-03-13)
 
 
