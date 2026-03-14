@@ -205,17 +205,17 @@ async function updateComment(
 ): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
-    const comment = await api.getComment(id)
-    const oldPreview =
-        comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
-
-    const updated = await api.updateComment(id, { content: options.content })
 
     if (options.json) {
+        const updated = await api.updateComment(id, { content: options.content })
         console.log(formatJson(updated, 'comment'))
         return
     }
 
+    const comment = await api.getComment(id)
+    const oldPreview =
+        comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
+    await api.updateComment(id, { content: options.content })
     console.log(`Updated comment: ${oldPreview}`)
 }
 
