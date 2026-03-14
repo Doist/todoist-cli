@@ -300,6 +300,7 @@ interface CreateOptions {
     favorite?: boolean
     parent?: string
     viewStyle?: string
+    json?: boolean
 }
 
 async function createProject(options: CreateOptions): Promise<void> {
@@ -328,6 +329,11 @@ async function createProject(options: CreateOptions): Promise<void> {
         viewStyle: options.viewStyle as ProjectViewStyle,
     })
 
+    if (options.json) {
+        console.log(formatJson(project, 'project'))
+        return
+    }
+
     console.log(`Created: ${project.name}`)
     console.log(chalk.dim(`ID: ${project.id}`))
 }
@@ -337,6 +343,7 @@ interface UpdateOptions {
     color?: ColorKey
     favorite?: boolean
     viewStyle?: string
+    json?: boolean
 }
 
 async function updateProject(ref: string, options: UpdateOptions): Promise<void> {
@@ -360,6 +367,12 @@ async function updateProject(ref: string, options: UpdateOptions): Promise<void>
     }
 
     const updated = await api.updateProject(project.id, args)
+
+    if (options.json) {
+        console.log(formatJson(updated, 'project'))
+        return
+    }
+
     console.log(`Updated: ${updated.name}`)
 }
 
@@ -564,6 +577,7 @@ export function registerProjectCommand(program: Command): void {
                 VIEW_STYLE_CHOICES,
             ),
         )
+        .option('--json', 'Output the created project as JSON')
         .action((options) => {
             if (!options.name) {
                 createCmd.help()
@@ -585,6 +599,7 @@ export function registerProjectCommand(program: Command): void {
                 VIEW_STYLE_CHOICES,
             ),
         )
+        .option('--json', 'Output the updated project as JSON')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()

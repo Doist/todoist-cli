@@ -97,6 +97,81 @@ describe('label list', () => {
     })
 })
 
+describe('label create --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created label as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addLabel.mockResolvedValue({
+            id: 'label-new',
+            name: 'work',
+            color: 'charcoal',
+            isFavorite: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'create', '--name', 'work', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('label-new')
+        expect(parsed.name).toBe('work')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('label update --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs updated label as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'work', color: 'charcoal', isFavorite: false }],
+            nextCursor: null,
+        })
+        mockApi.updateLabel.mockResolvedValue({
+            id: 'label-1',
+            name: 'renamed',
+            color: 'charcoal',
+            isFavorite: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'update',
+            'work',
+            '--name',
+            'renamed',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('label-1')
+        expect(parsed.name).toBe('renamed')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('label create', () => {
     let mockApi: MockApi
 

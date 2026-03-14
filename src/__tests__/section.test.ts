@@ -112,6 +112,89 @@ describe('section list', () => {
     })
 })
 
+describe('section create --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created section as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
+        mockApi.addSection.mockResolvedValue({
+            id: 'sec-new',
+            name: 'New Section',
+            projectId: 'proj-1',
+            sectionOrder: 1,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'create',
+            '--name',
+            'New Section',
+            '--project',
+            'id:proj-1',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('sec-new')
+        expect(parsed.name).toBe('New Section')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('section update --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs updated section as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Old Name', projectId: 'proj-1' })
+        mockApi.updateSection.mockResolvedValue({
+            id: 'sec-1',
+            name: 'New Name',
+            projectId: 'proj-1',
+            sectionOrder: 1,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'update',
+            'id:sec-1',
+            '--name',
+            'New Name',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('sec-1')
+        expect(parsed.name).toBe('New Name')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('section create', () => {
     let mockApi: MockApi
 

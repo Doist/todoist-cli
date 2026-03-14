@@ -7,6 +7,7 @@ import { renderMarkdown } from '../lib/markdown.js'
 import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import {
     formatFileSize,
+    formatJson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -110,6 +111,7 @@ interface AddOptions {
     stdin?: boolean
     file?: string
     project?: boolean
+    json?: boolean
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
@@ -168,6 +170,11 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         ...(attachment && { attachment }),
     })
 
+    if (options.json) {
+        console.log(formatJson(comment, 'comment'))
+        return
+    }
+
     console.log(`Added comment to "${targetName}"`)
     if (attachment) {
         console.log(chalk.dim(`Attached: ${attachment.fileName}`))
@@ -192,14 +199,23 @@ async function deleteComment(commentId: string, options: { yes?: boolean }): Pro
     console.log(`Deleted comment: ${preview}`)
 }
 
-async function updateComment(commentId: string, options: { content: string }): Promise<void> {
+async function updateComment(
+    commentId: string,
+    options: { content: string; json?: boolean },
+): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
     const oldPreview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
 
-    await api.updateComment(id, { content: options.content })
+    const updated = await api.updateComment(id, { content: options.content })
+
+    if (options.json) {
+        console.log(formatJson(updated, 'comment'))
+        return
+    }
+
     console.log(`Updated comment: ${oldPreview}`)
 }
 
@@ -283,6 +299,7 @@ export function registerCommentCommand(program: Command): void {
         .option('--content <text>', 'Comment content')
         .option('--stdin', 'Read comment content from stdin')
         .option('--file <path>', 'Attach a file to the comment')
+        .option('--json', 'Output the created comment as JSON')
         .action((ref, options) => {
             if (!ref || (!options.content && !options.stdin)) {
                 addCmd.help()
@@ -307,6 +324,7 @@ export function registerCommentCommand(program: Command): void {
         .command('update [id]')
         .description('Update a comment')
         .option('--content <text>', 'New comment content (required)')
+        .option('--json', 'Output the updated comment as JSON')
         .action((id, options) => {
             if (!id || !options.content) {
                 updateCmd.help()

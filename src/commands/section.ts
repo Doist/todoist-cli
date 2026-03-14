@@ -5,6 +5,7 @@ import { openInBrowser } from '../lib/browser.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatError,
+    formatJson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -70,6 +71,7 @@ async function listSections(projectRef: string, options: PaginatedViewOptions): 
 interface CreateOptions {
     name: string
     project: string
+    json?: boolean
 }
 
 async function createSection(options: CreateOptions): Promise<void> {
@@ -80,6 +82,11 @@ async function createSection(options: CreateOptions): Promise<void> {
         name: options.name,
         projectId,
     })
+
+    if (options.json) {
+        console.log(formatJson(section, 'section'))
+        return
+    }
 
     console.log(`Created: ${section.name}`)
     console.log(chalk.dim(`ID: ${section.id}`))
@@ -110,12 +117,21 @@ async function deleteSection(sectionId: string, options: { yes?: boolean }): Pro
     console.log(`Deleted section: ${section.name}`)
 }
 
-async function updateSection(sectionId: string, options: { name: string }): Promise<void> {
+async function updateSection(
+    sectionId: string,
+    options: { name: string; json?: boolean },
+): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(sectionId, 'section')
     const section = await api.getSection(id)
 
     const updated = await api.updateSection(id, { name: options.name })
+
+    if (options.json) {
+        console.log(formatJson(updated, 'section'))
+        return
+    }
+
     console.log(`Updated: ${section.name} → ${updated.name}`)
 }
 
@@ -159,6 +175,7 @@ export function registerSectionCommand(program: Command): void {
         .description('Create a section')
         .option('--name <name>', 'Section name (required)')
         .option('--project <name>', 'Project name or id:xxx (required)')
+        .option('--json', 'Output the created section as JSON')
         .action((options) => {
             if (!options.name || !options.project) {
                 createCmd.help()
@@ -183,6 +200,7 @@ export function registerSectionCommand(program: Command): void {
         .command('update [id]')
         .description('Update a section')
         .option('--name <name>', 'New section name (required)')
+        .option('--json', 'Output the updated section as JSON')
         .action((id, options) => {
             if (!id || !options.name) {
                 updateCmd.help()

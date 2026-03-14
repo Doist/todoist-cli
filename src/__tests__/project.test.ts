@@ -896,6 +896,93 @@ describe('project update', () => {
     })
 })
 
+describe('project create --json', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs created project as JSON', async () => {
+        const program = createProgram()
+
+        mockApi.addProject.mockResolvedValue({
+            id: 'proj-new',
+            name: 'New Project',
+            color: 'charcoal',
+            isFavorite: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'create',
+            '--name',
+            'New Project',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('proj-new')
+        expect(parsed.name).toBe('New Project')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+    })
+})
+
+describe('project update --json', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs updated project as JSON', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Old Name' })
+        mockApi.updateProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'New Name',
+            color: 'charcoal',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--name',
+            'New Name',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('proj-1')
+        expect(parsed.name).toBe('New Name')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
+    })
+})
+
 describe('project archive', () => {
     let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>

@@ -738,6 +738,118 @@ describe('comment add with --stdin', () => {
     })
 })
 
+describe('comment add --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created comment as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.addComment.mockResolvedValue({
+            id: 'comment-new',
+            content: 'Test note',
+            postedAt: '2026-01-08T10:00:00Z',
+            taskId: 'task-1',
+            projectId: null,
+            fileAttachment: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--content',
+            'Test note',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('comment-new')
+        expect(parsed.content).toBe('Test note')
+        consoleSpy.mockRestore()
+    })
+
+    it('does not print plain-text confirmation with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.addComment.mockResolvedValue({
+            id: 'comment-new',
+            content: 'Test note',
+            postedAt: '2026-01-08T10:00:00Z',
+            taskId: 'task-1',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--content',
+            'Test note',
+            '--json',
+        ])
+
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Added comment to'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('comment update --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs updated comment as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'Old content',
+        })
+        mockApi.updateComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'New content',
+            postedAt: '2026-01-08T10:00:00Z',
+            taskId: 'task-1',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'update',
+            'id:comment-123',
+            '--content',
+            'New content',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('comment-123')
+        expect(parsed.content).toBe('New content')
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('project comment add', () => {
     let mockApi: MockApi
 

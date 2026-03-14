@@ -145,6 +145,73 @@ describe('reminder list', () => {
     })
 })
 
+describe('reminder add --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created reminder as JSON with --before', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            due: { date: '2024-01-15T10:00:00' },
+        })
+        mockAddReminder.mockResolvedValue('rem-new')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'add',
+            'id:task-1',
+            '--before',
+            '30m',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('rem-new')
+        expect(parsed.itemId).toBe('task-1')
+        expect(parsed.type).toBe('relative')
+        expect(parsed.minuteOffset).toBe(30)
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Added reminder:'))
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs created reminder as JSON with --at', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockAddReminder.mockResolvedValue('rem-new')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'add',
+            'id:task-1',
+            '--at',
+            '2024-01-15 10:00',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('rem-new')
+        expect(parsed.type).toBe('absolute')
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('reminder add', () => {
     let mockApi: MockApi
 

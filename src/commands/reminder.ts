@@ -12,7 +12,12 @@ import {
 } from '../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../lib/duration.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
-import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
+import {
+    formatError,
+    formatJson,
+    formatPaginatedJson,
+    formatPaginatedNdjson,
+} from '../lib/output.js'
 import { lenientIdRef, resolveTaskRef } from '../lib/refs.js'
 
 function formatReminderTime(reminder: Reminder): string {
@@ -93,6 +98,7 @@ function parseDateTime(value: string): ReminderDue {
 interface AddOptions {
     before?: string
     at?: string
+    json?: boolean
 }
 
 async function addReminder(taskRef: string, options: AddOptions): Promise<void> {
@@ -159,6 +165,19 @@ async function addReminder(taskRef: string, options: AddOptions): Promise<void> 
         minuteOffset,
         due,
     })
+
+    if (options.json) {
+        const reminder: Reminder = {
+            id: reminderId,
+            itemId: task.id,
+            type: minuteOffset !== undefined ? 'relative' : 'absolute',
+            minuteOffset,
+            due,
+            isDeleted: false,
+        }
+        console.log(formatJson(reminder, 'reminder'))
+        return
+    }
 
     if (minuteOffset !== undefined) {
         console.log(`Added reminder: ${formatDuration(minuteOffset)} before due`)
@@ -276,6 +295,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
+        .option('--json', 'Output the created reminder as JSON')
         .action((taskArg: string | undefined, options: AddOptions & { task?: string }) => {
             if (taskArg && options.task) {
                 throw new Error('Cannot specify task both as argument and --task flag')
