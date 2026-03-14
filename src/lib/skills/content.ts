@@ -38,7 +38,14 @@ All list commands support:
 - \`--full\` - Include all fields in JSON
 - \`--raw\` - Disable markdown rendering
 
-Add/create/update commands also support \`--json\` to return the created or updated entity as machine-readable JSON instead of plain-text confirmation.
+The following mutating commands also support \`--json\` to return the created or updated entity as machine-readable JSON instead of plain-text confirmation:
+- \`task add\`, \`task update\`
+- \`project create\`, \`project update\`
+- \`label create\`, \`label update\`
+- \`comment add\`, \`comment update\`
+- \`section create\`, \`section update\`
+- \`filter create\`
+- \`reminder add\`
 
 ## Shared List Options
 

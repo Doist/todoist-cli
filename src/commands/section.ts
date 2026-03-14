@@ -123,15 +123,15 @@ async function updateSection(
 ): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(sectionId, 'section')
-    const section = await api.getSection(id)
-
-    const updated = await api.updateSection(id, { name: options.name })
 
     if (options.json) {
+        const updated = await api.updateSection(id, { name: options.name })
         console.log(formatJson(updated, 'section'))
         return
     }
 
+    const section = await api.getSection(id)
+    const updated = await api.updateSection(id, { name: options.name })
     console.log(`Updated: ${section.name} → ${updated.name}`)
 }
 
