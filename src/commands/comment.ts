@@ -13,6 +13,7 @@ import {
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
+import { readStdin } from '../lib/stdin.js'
 import { commentUrl, projectCommentUrl } from '../lib/urls.js'
 
 type ListOptions = PaginatedViewOptions & { lines?: string; project?: boolean }
@@ -105,12 +106,29 @@ async function listComments(ref: string, options: ListOptions): Promise<void> {
 }
 
 interface AddOptions {
-    content: string
+    content?: string
+    stdin?: boolean
     file?: string
     project?: boolean
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
+    if (options.content !== undefined && options.stdin) {
+        throw new Error('Cannot use both --content and --stdin')
+    }
+
+    let content: string
+    if (options.stdin) {
+        content = await readStdin()
+        if (!content.trim()) {
+            throw new Error('Content is required: use --content or --stdin')
+        }
+    } else if (options.content) {
+        content = options.content
+    } else {
+        throw new Error('Content is required: use --content or --stdin')
+    }
+
     const api = await getApi()
 
     let targetArgs: { taskId: string } | { projectId: string }
@@ -146,7 +164,7 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
 
     const comment = await api.addComment({
         ...targetArgs,
-        content: options.content,
+        content,
         ...(attachment && { attachment }),
     })
 
@@ -262,10 +280,11 @@ export function registerCommentCommand(program: Command): void {
         .command('add [ref]')
         .description('Add a comment to a task (or project with --project)')
         .option('-P, --project', 'Target a project instead of a task')
-        .option('--content <text>', 'Comment content (required)')
+        .option('--content <text>', 'Comment content')
+        .option('--stdin', 'Read comment content from stdin')
         .option('--file <path>', 'Attach a file to the comment')
         .action((ref, options) => {
-            if (!ref || !options.content) {
+            if (!ref || (!options.content && !options.stdin)) {
                 addCmd.help()
                 return
             }

@@ -1,3 +1,4 @@
+import { PassThrough } from 'node:stream'
 import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -640,6 +641,100 @@ describe('project comment list', () => {
             expect.objectContaining({ projectId: 'proj-1' }),
         )
         consoleSpy.mockRestore()
+    })
+})
+
+describe('comment add with --stdin', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reads content from stdin with --stdin flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.addComment.mockResolvedValue({
+            id: 'comment-new',
+            content: 'Multiline\ncontent here',
+        })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--stdin',
+        ])
+        mockStdin.write('Multiline\ncontent here')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addComment).toHaveBeenCalledWith({
+            taskId: 'task-1',
+            content: 'Multiline\ncontent here',
+        })
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
+    })
+
+    it('errors when both --content and --stdin are provided', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'comment',
+                'add',
+                'id:task-1',
+                '--content',
+                'inline text',
+                '--stdin',
+            ]),
+        ).rejects.toThrow('Cannot use both --content and --stdin')
+    })
+
+    it('works with multiline content from stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
+        mockApi.addComment.mockResolvedValue({ id: 'comment-new', content: 'line1\nline2\nline3' })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--stdin',
+        ])
+        mockStdin.write('line1\n')
+        mockStdin.write('line2\n')
+        mockStdin.write('line3')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addComment).toHaveBeenCalledWith({
+            taskId: 'task-1',
+            content: 'line1\nline2\nline3',
+        })
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
     })
 })
 
