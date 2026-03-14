@@ -13,21 +13,10 @@ import {
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
+import { readStdin } from '../lib/stdin.js'
 import { commentUrl, projectCommentUrl } from '../lib/urls.js'
 
 type ListOptions = PaginatedViewOptions & { lines?: string; project?: boolean }
-
-async function readStdin(): Promise<string> {
-    return new Promise((resolve, reject) => {
-        let data = ''
-        process.stdin.setEncoding('utf8')
-        process.stdin.on('data', (chunk) => {
-            data += chunk
-        })
-        process.stdin.on('end', () => resolve(data))
-        process.stdin.on('error', reject)
-    })
-}
 
 function truncateContent(content: string, maxLines: number): string {
     const lines = content.split('\n')

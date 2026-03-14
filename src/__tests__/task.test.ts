@@ -1,3 +1,4 @@
+import { PassThrough } from 'node:stream'
 import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -2055,6 +2056,183 @@ describe('task browse', () => {
         await program.parseAsync(['node', 'td', 'task', 'browse', 'id:task-123'])
 
         expect(mockOpenInBrowser).toHaveBeenCalledWith('https://app.todoist.com/app/task/task-123')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add with --stdin', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reads description from stdin with --stdin flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'My task',
+            due: null,
+            deadline: null,
+        })
+
+        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
+        mockStdin.write('Description from stdin')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Description from stdin' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both --description and --stdin are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                'My task',
+                '--description',
+                'inline text',
+                '--stdin',
+            ]),
+        ).rejects.toThrow('Cannot use both --description and --stdin')
+    })
+
+    it('works with multiline description from stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'My task',
+            due: null,
+            deadline: null,
+        })
+
+        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
+        mockStdin.write('line1\n')
+        mockStdin.write('line2\n')
+        mockStdin.write('line3')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'line1\nline2\nline3' }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task update with --stdin', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reads description from stdin with --stdin flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'My task',
+            '--stdin',
+        ])
+        mockStdin.write('Updated description')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.objectContaining({ description: 'Updated description' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both --description and --stdin are provided', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'My task',
+                '--description',
+                'inline text',
+                '--stdin',
+            ]),
+        ).rejects.toThrow('Cannot use both --description and --stdin')
+    })
+
+    it('works with multiline description from stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'My task',
+            '--stdin',
+        ])
+        mockStdin.write('line1\n')
+        mockStdin.write('line2\n')
+        mockStdin.write('line3')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.objectContaining({ description: 'line1\nline2\nline3' }),
+        )
         consoleSpy.mockRestore()
     })
 })

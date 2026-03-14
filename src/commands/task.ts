@@ -35,6 +35,7 @@ import {
     resolveSectionId,
     resolveTaskRef,
 } from '../lib/refs.js'
+import { readStdin } from '../lib/stdin.js'
 import {
     listTasksForProject,
     PRIORITY_CHOICES,
@@ -153,6 +154,7 @@ interface AddOptions {
     labels?: string
     parent?: string
     description?: string
+    stdin?: boolean
     assignee?: string
     duration?: string
     uncompletable?: boolean
@@ -231,7 +233,12 @@ async function addTask(options: AddOptions): Promise<void> {
         }
     }
 
-    if (options.description) {
+    if (options.stdin && options.description) {
+        throw new Error('Cannot use both --description and --stdin')
+    }
+    if (options.stdin) {
+        args.description = await readStdin()
+    } else if (options.description) {
         args.description = options.description
     }
 
@@ -273,6 +280,7 @@ interface UpdateOptions {
     priority?: string
     labels?: string
     description?: string
+    stdin?: boolean
     assignee?: string
     unassign?: boolean
     duration?: string
@@ -296,7 +304,15 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
     }
     if (options.priority) args.priority = parsePriority(options.priority)
     if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
-    if (options.description) args.description = options.description
+
+    if (options.stdin && options.description) {
+        throw new Error('Cannot use both --description and --stdin')
+    }
+    if (options.stdin) {
+        args.description = await readStdin()
+    } else if (options.description) {
+        args.description = options.description
+    }
 
     if (options.unassign) {
         args.assigneeId = null
@@ -483,6 +499,7 @@ export function registerTaskCommand(program: Command): void {
         .option('--labels <a,b>', 'Comma-separated labels')
         .option('--parent <ref>', 'Parent task reference')
         .option('--description <text>', 'Task description')
+        .option('--stdin', 'Read task description from stdin')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')
         .option('--uncompletable', 'Mark task as non-completable (reference/header task)')
@@ -524,6 +541,7 @@ export function registerTaskCommand(program: Command): void {
         )
         .option('--labels <a,b>', 'New labels (replaces existing)')
         .option('--description <text>', 'New description')
+        .option('--stdin', 'Read task description from stdin')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
         .option('--unassign', 'Remove assignee')
         .option('--duration <time>', 'Duration (e.g., 30m, 1h, 2h15m)')

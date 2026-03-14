@@ -140,6 +140,8 @@ td task add "Task" --deadline "2024-03-01" --project "Work"
 td task add "Task" --duration 1h --section "Planning" --project "Work"
 td task add "Task" --labels "urgent,review" --parent "Parent task"
 td task add "Task" --description "Details here" --assignee me
+td task add "My task" --stdin < description.md   # Read description from file
+cat notes.md | td task add "My task" --stdin
 td task add "Reference header" --uncompletable  # Non-actionable reference/header task
 td task add "Reference header" --order 0       # Pin task to top of project
 
@@ -150,6 +152,7 @@ td task update "task name" --no-deadline
 td task update "task name" --duration 2h
 td task update "task name" --assignee "john@example.com"
 td task update "task name" --unassign
+td task update "task name" --stdin < description.md   # Read description from file
 td task update "task name" --uncompletable   # Mark as non-completable reference item
 td task update "task name" --completable     # Revert to completable (undo --uncompletable)
 td task update "Reference header" --order 0   # Move task to top of project
