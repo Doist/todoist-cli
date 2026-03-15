@@ -90,6 +90,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage filters',
         async () => (await import('./commands/filter.js')).registerFilterCommand,
     ],
+    filters: [
+        'List saved filters',
+        async () => (await import('./commands/filters.js')).registerFiltersCommand,
+    ],
     notification: [
         'Manage notifications',
         async () => (await import('./commands/notification.js')).registerNotificationCommand,

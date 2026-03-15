@@ -246,6 +246,7 @@ td section browse id:123                      # Open in browser
 
 ### Filters
 \`\`\`bash
+td filters list                                # List all saved filters
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
 td filter create --name "Urgent work" --query "p1 & #Work" --json  # Return created filter as JSON
