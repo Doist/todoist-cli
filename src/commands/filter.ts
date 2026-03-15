@@ -329,7 +329,7 @@ export function registerFilterCommand(program: Command): void {
             return updateFilterCmd(ref, options)
         })
 
-    const viewCmd = filter
+    filter
         .command('view [ref]', { isDefault: true })
         .alias('show')
         .description('Show tasks matching a filter')
@@ -342,7 +342,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                filter.help()
                 return
             }
             return showFilter(ref, options)

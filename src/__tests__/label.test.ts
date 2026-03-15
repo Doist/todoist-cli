@@ -968,3 +968,24 @@ describe('shared labels', () => {
         })
     })
 })
+
+describe('label (no args)', () => {
+    it('shows parent help listing all subcommands', async () => {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        try {
+            await program.parseAsync(['node', 'td', 'label'])
+        } catch (err: unknown) {
+            if ((err as { code?: string }).code !== 'commander.help') throw err
+        }
+
+        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        expect(output).toContain('list')
+        expect(output).toContain('create')
+        expect(output).toContain('delete')
+        expect(output).toContain('update')
+        expect(output).toContain('view')
+        stdoutSpy.mockRestore()
+    })
+})
