@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0](https://github.com/Doist/todoist-cli/compare/v1.24.1...v1.25.0) (2026-03-15)
+
+
+### Features
+
+* add task reschedule command ([#151](https://github.com/Doist/todoist-cli/issues/151)) ([6ac1d69](https://github.com/Doist/todoist-cli/commit/6ac1d6975b06fbe55690d35e7e995852f2d24cf6))
+
 ## [1.24.1](https://github.com/Doist/todoist-cli/compare/v1.24.0...v1.24.1) (2026-03-15)
 
 
