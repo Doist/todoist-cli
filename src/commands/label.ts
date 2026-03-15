@@ -337,7 +337,7 @@ async function browseLabel(nameOrId: string): Promise<void> {
 export function registerLabelCommand(program: Command): void {
     const label = program.command('label').description('Manage labels')
 
-    const viewCmd = label
+    label
         .command('view [ref]', { isDefault: true })
         .description('View label details and tasks')
         .option('--limit <n>', 'Limit number of results (default: 300)')
@@ -348,7 +348,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                label.help()
                 return
             }
             return viewLabel(ref, options)

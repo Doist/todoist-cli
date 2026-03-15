@@ -526,7 +526,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each project')
         .action(listProjects)
 
-    const viewCmd = project
+    project
         .command('view [ref]', { isDefault: true })
         .description('View project details')
         .option('--json', 'Output as JSON')
@@ -535,7 +535,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                project.help()
                 return
             }
             return viewProject(ref, options)
