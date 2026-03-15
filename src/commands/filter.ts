@@ -25,7 +25,7 @@ import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
 import { filterUrl } from '../lib/urls.js'
 
-async function listFilters(options: PaginatedViewOptions): Promise<void> {
+export async function listFilters(options: PaginatedViewOptions): Promise<void> {
     const filters = await fetchFilters()
 
     if (options.json) {
