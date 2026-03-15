@@ -204,7 +204,7 @@ export async function rescheduleTask(
                 id: taskId,
                 due: {
                     date: finalDate,
-                    string: existingDue.string,
+                    string: existingDue.isRecurring ? existingDue.string : finalDate,
                     isRecurring: existingDue.isRecurring,
                     timezone: existingDue.timezone ?? undefined,
                     lang: existingDue.lang ?? undefined,

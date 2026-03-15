@@ -8,7 +8,7 @@ import {
 import { openInBrowser } from '../lib/browser.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { parseDuration } from '../lib/duration.js'
-import { formatError, formatJson, formatTaskView } from '../lib/output.js'
+import { formatDue, formatError, formatJson, formatTaskView } from '../lib/output.js'
 import { taskUrl } from '../lib/urls.js'
 
 type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
@@ -433,7 +433,7 @@ async function rescheduleTask(
         )
     }
 
-    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/
+    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})?)?$/
     if (!dateRegex.test(date)) {
         throw new Error(
             formatError('INVALID_DATE', `Invalid date format: "${date}"`, [
@@ -453,11 +453,9 @@ async function rescheduleTask(
     }
 
     console.log(`Rescheduled: ${updated.content}`)
-    if (updated.due) {
-        console.log(`Due: ${updated.due.datetime ?? updated.due.date}`)
-        if (updated.due.isRecurring) {
-            console.log(`Recurrence: ${updated.due.string}`)
-        }
+    const due = formatDue(updated.due)
+    if (due) {
+        console.log(`Due: ${due}`)
     }
 }
 

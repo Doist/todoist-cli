@@ -2363,7 +2363,7 @@ describe('task reschedule', () => {
 
         expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
         expect(consoleSpy).toHaveBeenCalledWith('Rescheduled: My task')
-        expect(consoleSpy).toHaveBeenCalledWith('Due: 2026-03-20')
+        expect(consoleSpy).toHaveBeenCalledWith('Due: Mar 20')
         consoleSpy.mockRestore()
     })
 
@@ -2388,7 +2388,7 @@ describe('task reschedule', () => {
         await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
 
         expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
-        expect(consoleSpy).toHaveBeenCalledWith('Recurrence: every 3 days')
+        expect(consoleSpy).toHaveBeenCalledWith('Due: Mar 20 (every 3 days)')
         consoleSpy.mockRestore()
     })
 
