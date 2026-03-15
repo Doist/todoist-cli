@@ -1,6 +1,10 @@
 import type { Task } from '@doist/todoist-api-typescript'
 import { Command, Option } from 'commander'
-import { completeTaskForever, getApi } from '../lib/api/core.js'
+import {
+    completeTaskForever,
+    getApi,
+    rescheduleTask as rescheduleTaskSync,
+} from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { parseDuration } from '../lib/duration.js'
@@ -412,6 +416,51 @@ async function moveTask(ref: string, options: MoveOptions): Promise<void> {
     console.log(`Moved: ${task.content}`)
 }
 
+async function rescheduleTask(
+    ref: string,
+    date: string,
+    options: { json?: boolean },
+): Promise<void> {
+    const api = await getApi()
+    const task = await resolveTaskRef(api, ref)
+
+    if (!task.due) {
+        throw new Error(
+            formatError(
+                'NO_DUE_DATE',
+                `Task "${task.content}" has no due date. Use "td task update --due" to set one.`,
+            ),
+        )
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/
+    if (!dateRegex.test(date)) {
+        throw new Error(
+            formatError('INVALID_DATE', `Invalid date format: "${date}"`, [
+                'Use YYYY-MM-DD for date-only, or YYYY-MM-DDTHH:MM:SS for datetime.',
+                'Examples: 2026-03-20, 2026-03-20T14:00:00',
+            ]),
+        )
+    }
+
+    await rescheduleTaskSync(task.id, date, task.due)
+
+    const updated = await api.getTask(task.id)
+
+    if (options.json) {
+        console.log(formatJson(updated, 'task'))
+        return
+    }
+
+    console.log(`Rescheduled: ${updated.content}`)
+    if (updated.due) {
+        console.log(`Due: ${updated.due.datetime ?? updated.due.date}`)
+        if (updated.due.isRecurring) {
+            console.log(`Recurrence: ${updated.due.string}`)
+        }
+    }
+}
+
 async function browseTask(ref: string): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
@@ -596,6 +645,18 @@ export function registerTaskCommand(program: Command): void {
                 return
             }
             return moveTask(ref, options)
+        })
+
+    const rescheduleCmd = task
+        .command('reschedule [ref] [date]')
+        .description('Reschedule a task (preserves recurrence)')
+        .option('--json', 'Output the rescheduled task as JSON')
+        .action((ref, date, options) => {
+            if (!ref || !date) {
+                rescheduleCmd.help()
+                return
+            }
+            return rescheduleTask(ref, date, options)
         })
 
     const browseCmd = task

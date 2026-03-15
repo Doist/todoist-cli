@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     completeTaskForever: vi.fn(),
+    rescheduleTask: vi.fn(),
 }))
 
 vi.mock('../lib/browser.js', () => ({
@@ -12,12 +13,13 @@ vi.mock('../lib/browser.js', () => ({
 }))
 
 import { registerTaskCommand } from '../commands/task.js'
-import { completeTaskForever, getApi } from '../lib/api/core.js'
+import { completeTaskForever, getApi, rescheduleTask } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockCompleteTaskForever = vi.mocked(completeTaskForever)
+const mockRescheduleTask = vi.mocked(rescheduleTask)
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 function createProgram() {
@@ -2331,6 +2333,157 @@ describe('task update --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('task-1')
         expect(parsed.content).toBe('New content')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task reschedule', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reschedules a task with a new date', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'My task', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'My task',
+                due: { date: '2026-03-20', string: 'Mar 20', isRecurring: false },
+            })
+
+        await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
+        expect(consoleSpy).toHaveBeenCalledWith('Rescheduled: My task')
+        expect(consoleSpy).toHaveBeenCalledWith('Due: 2026-03-20')
+        consoleSpy.mockRestore()
+    })
+
+    it('reschedules a recurring task and shows recurrence info', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = {
+            date: '2026-03-15',
+            string: 'every 3 days',
+            isRecurring: true,
+            timezone: 'America/New_York',
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Recurring', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'Recurring',
+                due: { ...due, date: '2026-03-20' },
+            })
+
+        await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
+        expect(consoleSpy).toHaveBeenCalledWith('Recurrence: every 3 days')
+        consoleSpy.mockRestore()
+    })
+
+    it('reschedules with a datetime', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = {
+            date: '2026-03-15',
+            string: 'Mar 15 2pm',
+            isRecurring: false,
+            datetime: '2026-03-15T14:00:00',
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'Task',
+                due: {
+                    ...due,
+                    date: '2026-03-20',
+                    datetime: '2026-03-20T10:00:00',
+                    string: 'Mar 20 10am',
+                },
+            })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20T10:00:00',
+        ])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20T10:00:00', due)
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when task has no due date', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'No due', due: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20']),
+        ).rejects.toThrow('NO_DUE_DATE')
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('errors on invalid date format', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', 'tomorrow']),
+        ).rejects.toThrow('INVALID_DATE')
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        const updatedTask = {
+            id: 'task-1',
+            content: 'Task',
+            due: { date: '2026-03-20', string: 'Mar 20', isRecurring: false },
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+            .mockResolvedValueOnce(updatedTask)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-1')
         consoleSpy.mockRestore()
     })
 })
