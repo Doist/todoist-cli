@@ -6,6 +6,7 @@ import {
     TodoistApi,
     User,
     WorkspaceProject,
+    type DueDate,
 } from '@doist/todoist-api-typescript'
 import { getApiToken } from '../auth.js'
 import { getProgressTracker } from '../progress.js'
@@ -176,6 +177,38 @@ export async function completeTaskForever(taskId: string): Promise<void> {
             createCommand('item_complete', {
                 id: taskId,
                 completedAt: new Date().toISOString(),
+            }),
+        ],
+    })
+}
+
+export function buildRescheduleDate(inputDate: string, existingDue: DueDate): string {
+    const isInputDateOnly = !inputDate.includes('T')
+    if (isInputDateOnly && existingDue.datetime) {
+        const timePart = existingDue.datetime.substring(10)
+        return inputDate + timePart
+    }
+    return inputDate
+}
+
+export async function rescheduleTask(
+    taskId: string,
+    newDate: string,
+    existingDue: DueDate,
+): Promise<void> {
+    const api = await getApi()
+    const finalDate = buildRescheduleDate(newDate, existingDue)
+    await api.sync({
+        commands: [
+            createCommand('item_update', {
+                id: taskId,
+                due: {
+                    date: finalDate,
+                    string: existingDue.isRecurring ? existingDue.string : finalDate,
+                    isRecurring: existingDue.isRecurring,
+                    timezone: existingDue.timezone ?? undefined,
+                    lang: existingDue.lang ?? undefined,
+                },
             }),
         ],
     })

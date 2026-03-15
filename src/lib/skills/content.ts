@@ -168,6 +168,11 @@ td task update "task name" --completable     # Revert to completable (undo --unc
 td task update "Reference header" --order 0   # Move task to top of project
 td task update "task name" --content "New" --json  # Return updated task as JSON
 
+# Reschedule (preserves recurrence patterns, unlike update --due)
+td task reschedule "task name" 2026-03-20              # Date only (YYYY-MM-DD)
+td task reschedule id:123456 2026-03-20T14:00:00       # With time
+td task reschedule "task name" 2026-03-20 --json       # Return as JSON
+
 # Move
 td task move "task name" --project "Personal"
 td task move "task name" --section "In Progress"
