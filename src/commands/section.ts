@@ -106,8 +106,14 @@ async function deleteSection(
     sectionId: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    const api = await getApi()
     const id = lenientIdRef(sectionId, 'section')
+
+    if (options.dryRun) {
+        console.log(`Would delete section: ${id}`)
+        return
+    }
+
+    const api = await getApi()
     const section = await api.getSection(id)
 
     const { results: tasks } = await api.getTasks({ sectionId: id })
@@ -120,9 +126,9 @@ async function deleteSection(
         )
     }
 
-    if (options.dryRun || !options.yes) {
+    if (!options.yes) {
         console.log(`Would delete section: ${section.name}`)
-        if (!options.dryRun) console.log('Use --yes to confirm.')
+        console.log('Use --yes to confirm.')
         return
     }
 

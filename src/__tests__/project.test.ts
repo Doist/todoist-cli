@@ -1541,12 +1541,6 @@ describe('project --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Empty Project' }],
-            nextCursor: null,
-        })
-        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
-
         await program.parseAsync([
             'node',
             'td',
@@ -1558,6 +1552,7 @@ describe('project --dry-run', () => {
         ])
 
         expect(mockApi.deleteProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would delete project: Empty Project')
         consoleSpy.mockRestore()
     })
 })

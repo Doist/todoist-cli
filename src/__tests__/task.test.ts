@@ -2562,11 +2562,6 @@ describe('task --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasksByFilter.mockResolvedValue({
-            results: [{ id: 'task-1', content: 'Test task' }],
-            nextCursor: null,
-        })
-
         await program.parseAsync(['node', 'td', 'task', 'delete', 'Test task', '--dry-run'])
 
         expect(mockApi.deleteTask).not.toHaveBeenCalled()
@@ -2577,11 +2572,6 @@ describe('task --dry-run', () => {
     it('task delete --dry-run --yes still does not execute', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-        mockApi.getTasksByFilter.mockResolvedValue({
-            results: [{ id: 'task-1', content: 'Test task' }],
-            nextCursor: null,
-        })
 
         await program.parseAsync([
             'node',
@@ -2594,6 +2584,7 @@ describe('task --dry-run', () => {
         ])
 
         expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would delete: Test task')
         consoleSpy.mockRestore()
     })
 

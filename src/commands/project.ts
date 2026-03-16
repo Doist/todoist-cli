@@ -226,6 +226,11 @@ async function deleteProject(
     ref: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
+    if (options.dryRun) {
+        console.log(`Would delete project: ${ref}`)
+        return
+    }
+
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
@@ -239,9 +244,9 @@ async function deleteProject(
         )
     }
 
-    if (options.dryRun || !options.yes) {
+    if (!options.yes) {
         console.log(`Would delete project: ${project.name}`)
-        if (!options.dryRun) console.log('Use --yes to confirm.')
+        console.log('Use --yes to confirm.')
         return
     }
 

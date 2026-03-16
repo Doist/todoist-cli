@@ -266,6 +266,11 @@ interface DeleteOptions {
 async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Promise<void> {
     const id = lenientIdRef(reminderId, 'reminder')
 
+    if (options.dryRun) {
+        console.log(`Would delete reminder: ${id}`)
+        return
+    }
+
     const reminders = await fetchReminders()
     const reminder = reminders.find((r) => r.id === id)
 
@@ -277,9 +282,9 @@ async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Pr
 
     const timeDesc = formatReminderTime(reminder)
 
-    if (options.dryRun || !options.yes) {
+    if (!options.yes) {
         console.log(`Would delete reminder: ${timeDesc}`)
-        if (!options.dryRun) console.log('Use --yes to confirm.')
+        console.log('Use --yes to confirm.')
         return
     }
 
