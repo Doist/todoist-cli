@@ -204,7 +204,7 @@ describe('installer paths', () => {
     it('generates skill file with YAML frontmatter', () => {
         const content = skillInstallers['claude-code'].generateContent()
         expect(content).toContain('---')
-        expect(content).toContain('name: todoist')
+        expect(content).toContain('name: todoist-cli')
         expect(content).toContain('description: Manage Todoist tasks')
         expect(content).toContain('# Todoist CLI (td)')
         expect(content).toContain('td today')
@@ -234,7 +234,7 @@ describe('installer file operations', () => {
         await writeFile(targetFile, content, 'utf-8')
 
         const written = await readFile(targetFile, 'utf-8')
-        expect(written).toContain('name: todoist')
+        expect(written).toContain('name: todoist-cli')
     })
 
     it('detects existing file', async () => {
@@ -297,7 +297,7 @@ describe('update file operations', () => {
         await writeFile(targetFile, latestContent, 'utf-8')
 
         const written = await readFile(targetFile, 'utf-8')
-        expect(written).toContain('name: todoist')
+        expect(written).toContain('name: todoist-cli')
         expect(written).not.toBe('old content')
     })
 })
