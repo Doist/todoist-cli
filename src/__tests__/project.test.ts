@@ -1467,3 +1467,97 @@ describe('project (no args)', () => {
         stdoutSpy.mockRestore()
     })
 })
+
+describe('project --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('project create --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'create',
+            '--name',
+            'Test Project',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create project'))
+        consoleSpy.mockRestore()
+    })
+
+    it('project update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Old Name' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'Old Name',
+            '--name',
+            'New Name',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update project'))
+        consoleSpy.mockRestore()
+    })
+
+    it('project archive --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Test' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'archive', 'Test', '--dry-run'])
+
+        expect(mockApi.archiveProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would archive project'))
+        consoleSpy.mockRestore()
+    })
+
+    it('project delete --dry-run --yes still does not execute', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Empty Project' }],
+            nextCursor: null,
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'delete',
+            'Empty Project',
+            '--dry-run',
+            '--yes',
+        ])
+
+        expect(mockApi.deleteProject).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+})

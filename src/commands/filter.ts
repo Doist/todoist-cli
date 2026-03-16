@@ -20,6 +20,7 @@ import {
     formatPaginatedNdjson,
     formatTaskRow,
     isAccessible,
+    printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
@@ -76,9 +77,20 @@ interface CreateOptions {
     color?: UpdateFilterArgs['color']
     favorite?: boolean
     json?: boolean
+    dryRun?: boolean
 }
 
 async function createFilter(options: CreateOptions): Promise<void> {
+    if (options.dryRun) {
+        printDryRun('create filter', {
+            Name: options.name,
+            Query: options.query,
+            Color: options.color,
+            Favorite: options.favorite ? 'yes' : undefined,
+        })
+        return
+    }
+
     const filter = await addFilter({
         name: options.name,
         query: options.query,
@@ -129,13 +141,16 @@ async function resolveFilterRef(nameOrId: string): Promise<Filter> {
     throw new Error(formatError('FILTER_NOT_FOUND', `Filter "${nameOrId}" not found.`))
 }
 
-async function deleteFilterCmd(nameOrId: string, options: { yes?: boolean }): Promise<void> {
+async function deleteFilterCmd(
+    nameOrId: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
 
-    if (!options.yes) {
+    if (options.dryRun || !options.yes) {
         console.log(`Would delete: ${filter.name}`)
         console.log(chalk.dim(`Query: ${filter.query}`))
-        console.log('Use --yes to confirm.')
+        if (!options.dryRun) console.log('Use --yes to confirm.')
         return
     }
 
@@ -148,6 +163,7 @@ interface UpdateOptions {
     query?: string
     color?: UpdateFilterArgs['color']
     favorite?: boolean
+    dryRun?: boolean
 }
 
 async function updateFilterCmd(nameOrId: string, options: UpdateOptions): Promise<void> {
@@ -161,6 +177,17 @@ async function updateFilterCmd(nameOrId: string, options: UpdateOptions): Promis
 
     if (Object.keys(args).length === 0) {
         throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
+    }
+
+    if (options.dryRun) {
+        printDryRun('update filter', {
+            Filter: filter.name,
+            Name: args.name,
+            Query: args.query,
+            Color: args.color,
+            Favorite: args.isFavorite !== undefined ? String(args.isFavorite) : undefined,
+        })
+        return
     }
 
     await updateFilter(filter.id, args)
@@ -293,6 +320,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--color <color>', 'Filter color')
         .option('--favorite', 'Mark as favorite')
         .option('--json', 'Output the created filter as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name || !options.query) {
                 createCmd.help()
@@ -305,6 +333,7 @@ export function registerFilterCommand(program: Command): void {
         .command('delete [ref]')
         .description('Delete a filter')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 deleteCmd.help()
@@ -321,6 +350,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--color <color>', 'New color')
         .option('--favorite', 'Mark as favorite')
         .option('--no-favorite', 'Remove from favorites')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()

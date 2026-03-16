@@ -399,6 +399,16 @@ export function formatNextCursorFooter(nextCursor: string | null): string {
     return chalk.dim(`\n... more items exist. Use --all to fetch everything.`)
 }
 
+export function printDryRun(action: string, details: Record<string, string | undefined>): void {
+    console.log(chalk.yellow(`[dry-run] Would ${action}:`))
+    for (const [key, value] of Object.entries(details)) {
+        if (value !== undefined) {
+            console.log(`  ${key}: ${value}`)
+        }
+    }
+    console.log(chalk.dim('Run without --dry-run to execute.'))
+}
+
 export function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

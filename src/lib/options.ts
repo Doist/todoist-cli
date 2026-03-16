@@ -11,3 +11,7 @@ export type PaginatedViewOptions = ViewOptions & {
     cursor?: string
     all?: boolean
 }
+
+export type DryRunOption = {
+    dryRun?: boolean
+}

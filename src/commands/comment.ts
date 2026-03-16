@@ -11,6 +11,7 @@ import {
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectRef, resolveTaskRef } from '../lib/refs.js'
@@ -112,6 +113,7 @@ interface AddOptions {
     file?: string
     project?: boolean
     json?: boolean
+    dryRun?: boolean
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
@@ -129,6 +131,16 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         content = options.content
     } else {
         throw new Error('Content is required: use --content or --stdin')
+    }
+
+    if (options.dryRun) {
+        printDryRun('add comment', {
+            Target: ref,
+            'Target type': options.project ? 'project' : 'task',
+            Content: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+            File: options.file,
+        })
+        return
     }
 
     const api = await getApi()
@@ -182,16 +194,19 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
     console.log(chalk.dim(`ID: ${comment.id}`))
 }
 
-async function deleteComment(commentId: string, options: { yes?: boolean }): Promise<void> {
+async function deleteComment(
+    commentId: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
     const preview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
 
-    if (!options.yes) {
+    if (options.dryRun || !options.yes) {
         console.log(`Would delete comment: ${preview}`)
-        console.log('Use --yes to confirm.')
+        if (!options.dryRun) console.log('Use --yes to confirm.')
         return
     }
 
@@ -201,10 +216,18 @@ async function deleteComment(commentId: string, options: { yes?: boolean }): Pro
 
 async function updateComment(
     commentId: string,
-    options: { content: string; json?: boolean },
+    options: { content: string; json?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
+
+    if (options.dryRun) {
+        const preview =
+            options.content.length > 80 ? `${options.content.slice(0, 80)}...` : options.content
+        printDryRun('update comment', { ID: id, Content: preview })
+        return
+    }
+
+    const api = await getApi()
 
     if (options.json) {
         const updated = await api.updateComment(id, { content: options.content })
@@ -300,6 +323,7 @@ export function registerCommentCommand(program: Command): void {
         .option('--stdin', 'Read comment content from stdin')
         .option('--file <path>', 'Attach a file to the comment')
         .option('--json', 'Output the created comment as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref || (!options.content && !options.stdin)) {
                 addCmd.help()
@@ -312,6 +336,7 @@ export function registerCommentCommand(program: Command): void {
         .command('delete [id]')
         .description('Delete a comment')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
                 deleteCmd.help()
@@ -325,6 +350,7 @@ export function registerCommentCommand(program: Command): void {
         .description('Update a comment')
         .option('--content <text>', 'New comment content (required)')
         .option('--json', 'Output the updated comment as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id || !options.content) {
                 updateCmd.help()

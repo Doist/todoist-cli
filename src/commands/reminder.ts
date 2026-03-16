@@ -17,6 +17,7 @@ import {
     formatJson,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    printDryRun,
 } from '../lib/output.js'
 import { lenientIdRef, resolveTaskRef } from '../lib/refs.js'
 
@@ -99,6 +100,7 @@ interface AddOptions {
     before?: string
     at?: string
     json?: boolean
+    dryRun?: boolean
 }
 
 async function addReminder(taskRef: string, options: AddOptions): Promise<void> {
@@ -160,6 +162,15 @@ async function addReminder(taskRef: string, options: AddOptions): Promise<void> 
         due = parseDateTime(options.at)
     }
 
+    if (options.dryRun) {
+        printDryRun('add reminder', {
+            Task: task.content,
+            Before: options.before,
+            At: options.at,
+        })
+        return
+    }
+
     const reminderId = await apiAddReminder({
         itemId: task.id,
         minuteOffset,
@@ -190,6 +201,7 @@ async function addReminder(taskRef: string, options: AddOptions): Promise<void> 
 interface UpdateOptions {
     before?: string
     at?: string
+    dryRun?: boolean
 }
 
 async function updateReminderCmd(reminderId: string, options: UpdateOptions): Promise<void> {
@@ -206,6 +218,15 @@ async function updateReminderCmd(reminderId: string, options: UpdateOptions): Pr
     }
 
     const id = lenientIdRef(reminderId, 'reminder')
+
+    if (options.dryRun) {
+        printDryRun('update reminder', {
+            ID: id,
+            Before: options.before,
+            At: options.at,
+        })
+        return
+    }
 
     let minuteOffset: number | undefined
     let due: ReminderDue | undefined
@@ -239,6 +260,7 @@ async function updateReminderCmd(reminderId: string, options: UpdateOptions): Pr
 
 interface DeleteOptions {
     yes?: boolean
+    dryRun?: boolean
 }
 
 async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Promise<void> {
@@ -255,9 +277,9 @@ async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Pr
 
     const timeDesc = formatReminderTime(reminder)
 
-    if (!options.yes) {
+    if (options.dryRun || !options.yes) {
         console.log(`Would delete reminder: ${timeDesc}`)
-        console.log('Use --yes to confirm.')
+        if (!options.dryRun) console.log('Use --yes to confirm.')
         return
     }
 
@@ -296,6 +318,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
         .option('--json', 'Output the created reminder as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((taskArg: string | undefined, options: AddOptions & { task?: string }) => {
             if (taskArg && options.task) {
                 throw new Error('Cannot specify task both as argument and --task flag')
@@ -313,6 +336,7 @@ export function registerReminderCommand(program: Command): void {
         .description('Update a reminder')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
                 updateCmd.help()
@@ -325,6 +349,7 @@ export function registerReminderCommand(program: Command): void {
         .command('delete [id]')
         .description('Delete a reminder')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
                 deleteCmd.help()

@@ -13,6 +13,7 @@ import {
     formatPaginatedNdjson,
     formatTaskRow,
     isAccessible,
+    printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../lib/refs.js'
@@ -100,9 +101,19 @@ interface CreateOptions {
     color?: ColorKey
     favorite?: boolean
     json?: boolean
+    dryRun?: boolean
 }
 
 async function createLabel(options: CreateOptions): Promise<void> {
+    if (options.dryRun) {
+        printDryRun('create label', {
+            Name: `@${options.name}`,
+            Color: options.color,
+            Favorite: options.favorite ? 'yes' : undefined,
+        })
+        return
+    }
+
     const api = await getApi()
 
     const label = await api.addLabel({
@@ -120,12 +131,15 @@ async function createLabel(options: CreateOptions): Promise<void> {
     console.log(chalk.dim(`ID: ${label.id}`))
 }
 
-async function deleteLabel(nameOrId: string, options: { yes?: boolean }): Promise<void> {
+async function deleteLabel(
+    nameOrId: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const label = await resolveLabelRef(nameOrId)
 
-    if (!options.yes) {
+    if (options.dryRun || !options.yes) {
         console.log(`Would delete: @${label.name}`)
-        console.log('Use --yes to confirm.')
+        if (!options.dryRun) console.log('Use --yes to confirm.')
         return
     }
 
@@ -139,6 +153,7 @@ interface UpdateLabelOptions {
     color?: ColorKey
     favorite?: boolean
     json?: boolean
+    dryRun?: boolean
 }
 
 async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promise<void> {
@@ -156,6 +171,16 @@ async function updateLabel(nameOrId: string, options: UpdateLabelOptions): Promi
 
     if (Object.keys(args).length === 0) {
         throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
+    }
+
+    if (options.dryRun) {
+        printDryRun('update label', {
+            Label: `@${label.name}`,
+            Name: args.name ? `@${args.name}` : undefined,
+            Color: args.color,
+            Favorite: args.isFavorite !== undefined ? String(args.isFavorite) : undefined,
+        })
+        return
     }
 
     const api = await getApi()
@@ -372,6 +397,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--color <color>', 'Label color')
         .option('--favorite', 'Mark as favorite')
         .option('--json', 'Output the created label as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name) {
                 createCmd.help()
@@ -384,6 +410,7 @@ export function registerLabelCommand(program: Command): void {
         .command('delete [name]')
         .description('Delete a label')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((name, options) => {
             if (!name) {
                 deleteCmd.help()
@@ -400,6 +427,7 @@ export function registerLabelCommand(program: Command): void {
         .option('--favorite', 'Mark as favorite')
         .option('--no-favorite', 'Remove from favorites')
         .option('--json', 'Output the updated label as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
