@@ -1,4 +1,4 @@
-export const SKILL_NAME = 'todoist'
+export const SKILL_NAME = 'todoist-cli'
 export const SKILL_DESCRIPTION =
     'Manage Todoist tasks, projects, labels, comments, and more via the td CLI'
 
