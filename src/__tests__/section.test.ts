@@ -367,3 +367,65 @@ describe('section update', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('section --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('section create --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'create',
+            '--name',
+            'Backlog',
+            '--project',
+            'Work',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create section'))
+        consoleSpy.mockRestore()
+    })
+
+    it('section delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'section', 'delete', 'id:sec-1', '--dry-run'])
+
+        expect(mockApi.deleteSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete section'))
+        consoleSpy.mockRestore()
+    })
+
+    it('section update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'update',
+            'id:sec-1',
+            '--name',
+            'New Name',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update section'))
+        consoleSpy.mockRestore()
+    })
+})

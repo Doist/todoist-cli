@@ -590,3 +590,66 @@ describe('reminder delete', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('reminder --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reminder add --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'add',
+            'id:task-1',
+            '--at',
+            '2026-03-20T10:00',
+            '--dry-run',
+        ])
+
+        expect(mockAddReminder).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add reminder'))
+        consoleSpy.mockRestore()
+    })
+
+    it('reminder delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'reminder', 'delete', 'id:reminder-1', '--dry-run'])
+
+        expect(mockDeleteReminder).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete reminder'))
+        consoleSpy.mockRestore()
+    })
+
+    it('reminder update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'update',
+            'id:reminder-1',
+            '--before',
+            '1h',
+            '--dry-run',
+        ])
+
+        expect(mockUpdateReminder).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update reminder'))
+        consoleSpy.mockRestore()
+    })
+})

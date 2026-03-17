@@ -792,3 +792,65 @@ describe('filter (no args)', () => {
         stdoutSpy.mockRestore()
     })
 })
+
+describe('filter --dry-run', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('filter create --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Work',
+            '--query',
+            '#Work',
+            '--dry-run',
+        ])
+
+        expect(mockAddFilter).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create filter'))
+        consoleSpy.mockRestore()
+    })
+
+    it('filter delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work', '--dry-run'])
+
+        expect(mockDeleteFilter).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete filter'))
+        consoleSpy.mockRestore()
+    })
+
+    it('filter update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),
+        ])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Work',
+            '--name',
+            'Work Tasks',
+            '--dry-run',
+        ])
+
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update filter'))
+        consoleSpy.mockRestore()
+    })
+})

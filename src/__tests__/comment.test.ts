@@ -925,3 +925,69 @@ describe('project comment add', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('comment --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('comment add --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'Test task',
+            '--content',
+            'My comment',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addComment).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add comment'))
+        consoleSpy.mockRestore()
+    })
+
+    it('comment delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'comment', 'delete', 'id:comment-1', '--dry-run'])
+
+        expect(mockApi.deleteComment).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete comment'))
+        consoleSpy.mockRestore()
+    })
+
+    it('comment update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'update',
+            'id:comment-1',
+            '--content',
+            'Updated text',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateComment).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update comment'))
+        consoleSpy.mockRestore()
+    })
+})

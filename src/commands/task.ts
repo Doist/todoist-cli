@@ -300,6 +300,7 @@ async function addTask(options: AddOptions): Promise<void> {
     if (options.dryRun) {
         printDryRun('add task', {
             Content: args.content,
+            Description: args.description,
             Due: args.dueString,
             Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
@@ -307,7 +308,10 @@ async function addTask(options: AddOptions): Promise<void> {
             Section: options.section,
             Labels: options.labels,
             Parent: options.parent,
+            Assignee: options.assignee,
             Duration: options.duration,
+            Uncompletable: options.uncompletable ? 'yes' : undefined,
+            Order: options.order !== undefined ? String(options.order) : undefined,
         })
         return
     }
@@ -395,10 +399,17 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
         printDryRun('update task', {
             Task: task.content,
             Content: args.content,
+            Description: args.description ?? undefined,
             Due: args.dueString ?? undefined,
+            Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
             Labels: options.labels,
+            Assignee: options.assignee,
+            Unassign: options.unassign ? 'yes' : undefined,
             Duration: options.duration,
+            Uncompletable: options.uncompletable ? 'yes' : undefined,
+            Completable: options.completable ? 'yes' : undefined,
+            Order: options.order !== undefined ? String(options.order) : undefined,
         })
         return
     }
@@ -442,7 +453,9 @@ async function moveTask(ref: string, options: MoveOptions): Promise<void> {
             Task: task.content,
             Project: typeof options.project === 'string' ? options.project : undefined,
             Section: typeof options.section === 'string' ? options.section : undefined,
+            'No section': options.section === false ? 'yes' : undefined,
             Parent: typeof options.parent === 'string' ? options.parent : undefined,
+            'No parent': options.parent === false ? 'yes' : undefined,
         })
         return
     }
