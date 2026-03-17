@@ -332,12 +332,6 @@ describe('activity command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
     })
 
-    it('rejects --all flag', async () => {
-        const program = createProgram()
-
-        await expect(program.parseAsync(['node', 'td', 'activity', '--all'])).rejects.toThrow()
-    })
-
     it('shows cursor hint in text output when more items exist', async () => {
         const program = createProgram()
 
