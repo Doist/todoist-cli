@@ -145,12 +145,12 @@ async function deleteFilterCmd(
     nameOrId: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
+    const filter = await resolveFilterRef(nameOrId)
+
     if (options.dryRun) {
-        printDryRun('delete filter', { ID: nameOrId })
+        printDryRun('delete filter', { Filter: filter.name, Query: filter.query })
         return
     }
-
-    const filter = await resolveFilterRef(nameOrId)
 
     if (!options.yes) {
         console.log(`Would delete: ${filter.name}`)

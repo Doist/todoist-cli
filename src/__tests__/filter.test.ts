@@ -823,6 +823,10 @@ describe('filter --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),
+        ])
+
         await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work', '--dry-run'])
 
         expect(mockDeleteFilter).not.toHaveBeenCalled()

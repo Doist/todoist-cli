@@ -1541,6 +1541,12 @@ describe('project --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Empty Project' }],
+            nextCursor: null,
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
         await program.parseAsync([
             'node',
             'td',

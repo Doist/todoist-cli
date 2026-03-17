@@ -226,11 +226,6 @@ async function deleteProject(
     ref: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    if (options.dryRun) {
-        printDryRun('delete project', { Project: ref })
-        return
-    }
-
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
@@ -242,6 +237,11 @@ async function deleteProject(
                 `Cannot delete project: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
             ),
         )
+    }
+
+    if (options.dryRun) {
+        printDryRun('delete project', { Project: project.name })
+        return
     }
 
     if (!options.yes) {

@@ -626,6 +626,16 @@ describe('reminder --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockFetchReminders.mockResolvedValue([
+            {
+                id: 'reminder-1',
+                itemId: 'task-1',
+                type: 'relative',
+                minuteOffset: 30,
+                isDeleted: false,
+            },
+        ])
+
         await program.parseAsync(['node', 'td', 'reminder', 'delete', 'id:reminder-1', '--dry-run'])
 
         expect(mockDeleteReminder).not.toHaveBeenCalled()

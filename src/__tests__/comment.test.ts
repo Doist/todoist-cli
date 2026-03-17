@@ -964,6 +964,8 @@ describe('comment --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockApi.getComment.mockResolvedValue({ id: 'comment-1', content: 'Test comment' })
+
         await program.parseAsync(['node', 'td', 'comment', 'delete', 'id:comment-1', '--dry-run'])
 
         expect(mockApi.deleteComment).not.toHaveBeenCalled()

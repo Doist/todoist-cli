@@ -1014,6 +1014,20 @@ describe('label --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockApi.getLabels.mockResolvedValue({
+            results: [
+                {
+                    id: 'label-1',
+                    name: 'urgent',
+                    color: 'red',
+                    order: 1,
+                    isFavorite: false,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
         await program.parseAsync(['node', 'td', 'label', 'delete', 'urgent', '--dry-run'])
 
         expect(mockApi.deleteLabel).not.toHaveBeenCalled()

@@ -108,11 +108,6 @@ async function deleteSection(
 ): Promise<void> {
     const id = lenientIdRef(sectionId, 'section')
 
-    if (options.dryRun) {
-        printDryRun('delete section', { ID: id })
-        return
-    }
-
     const api = await getApi()
     const section = await api.getSection(id)
 
@@ -124,6 +119,11 @@ async function deleteSection(
                 `Cannot delete section: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
             ),
         )
+    }
+
+    if (options.dryRun) {
+        printDryRun('delete section', { Section: section.name })
+        return
     }
 
     if (!options.yes) {

@@ -402,6 +402,14 @@ describe('section --dry-run', () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-1',
+            name: 'Backlog',
+            projectId: 'proj-1',
+            order: 1,
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
         await program.parseAsync(['node', 'td', 'section', 'delete', 'id:sec-1', '--dry-run'])
 
         expect(mockApi.deleteSection).not.toHaveBeenCalled()

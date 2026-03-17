@@ -135,12 +135,12 @@ async function deleteLabel(
     nameOrId: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
+    const label = await resolveLabelRef(nameOrId)
+
     if (options.dryRun) {
-        printDryRun('delete label', { ID: nameOrId })
+        printDryRun('delete label', { Label: `@${label.name}` })
         return
     }
-
-    const label = await resolveLabelRef(nameOrId)
 
     if (!options.yes) {
         console.log(`Would delete: @${label.name}`)

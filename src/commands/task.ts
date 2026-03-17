@@ -155,13 +155,13 @@ async function deleteTask(
     ref: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    if (options.dryRun) {
-        printDryRun('delete task', { Task: ref })
-        return
-    }
-
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('delete task', { Task: task.content })
+        return
+    }
 
     if (!options.yes) {
         console.log(`Would delete: ${task.content}`)

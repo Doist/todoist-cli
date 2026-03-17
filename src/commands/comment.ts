@@ -200,15 +200,15 @@ async function deleteComment(
 ): Promise<void> {
     const id = lenientIdRef(commentId, 'comment')
 
-    if (options.dryRun) {
-        printDryRun('delete comment', { ID: id })
-        return
-    }
-
     const api = await getApi()
     const comment = await api.getComment(id)
     const preview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
+
+    if (options.dryRun) {
+        printDryRun('delete comment', { Comment: preview })
+        return
+    }
 
     if (!options.yes) {
         console.log(`Would delete comment: ${preview}`)
