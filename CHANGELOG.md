@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0](https://github.com/Doist/todoist-cli/compare/v1.25.1...v1.26.0) (2026-03-17)
+
+
+### Features
+
+* **activity:** remove --all flag to prevent unbounded fetches ([#165](https://github.com/Doist/todoist-cli/issues/165)) ([2342e1c](https://github.com/Doist/todoist-cli/commit/2342e1ce6940061cf1c521b54b10247f3ad02622))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-api-typescript to v7.1.1 ([#167](https://github.com/Doist/todoist-cli/issues/167)) ([e3831c0](https://github.com/Doist/todoist-cli/commit/e3831c0e166d0b27019e0d8b91db88d360dc0b6c))
+
 ## [1.25.1](https://github.com/Doist/todoist-cli/compare/v1.25.0...v1.25.1) (2026-03-17)
 
 
