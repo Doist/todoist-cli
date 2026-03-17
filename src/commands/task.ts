@@ -156,7 +156,7 @@ async function deleteTask(
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
     if (options.dryRun) {
-        console.log(`Would delete: ${ref}`)
+        printDryRun('delete task', { Task: ref })
         return
     }
 

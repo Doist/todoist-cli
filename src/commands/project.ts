@@ -227,7 +227,7 @@ async function deleteProject(
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
     if (options.dryRun) {
-        console.log(`Would delete project: ${ref}`)
+        printDryRun('delete project', { Project: ref })
         return
     }
 

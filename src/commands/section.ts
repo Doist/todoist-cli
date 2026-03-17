@@ -109,7 +109,7 @@ async function deleteSection(
     const id = lenientIdRef(sectionId, 'section')
 
     if (options.dryRun) {
-        console.log(`Would delete section: ${id}`)
+        printDryRun('delete section', { ID: id })
         return
     }
 

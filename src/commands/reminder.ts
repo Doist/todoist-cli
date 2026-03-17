@@ -267,7 +267,7 @@ async function deleteReminderCmd(reminderId: string, options: DeleteOptions): Pr
     const id = lenientIdRef(reminderId, 'reminder')
 
     if (options.dryRun) {
-        console.log(`Would delete reminder: ${id}`)
+        printDryRun('delete reminder', { ID: id })
         return
     }
 

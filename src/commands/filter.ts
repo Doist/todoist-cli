@@ -146,7 +146,7 @@ async function deleteFilterCmd(
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
     if (options.dryRun) {
-        console.log(`Would delete filter: ${nameOrId}`)
+        printDryRun('delete filter', { ID: nameOrId })
         return
     }
 

@@ -2565,7 +2565,7 @@ describe('task --dry-run', () => {
         await program.parseAsync(['node', 'td', 'task', 'delete', 'Test task', '--dry-run'])
 
         expect(mockApi.deleteTask).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith('Would delete: Test task')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
         consoleSpy.mockRestore()
     })
 
@@ -2584,7 +2584,7 @@ describe('task --dry-run', () => {
         ])
 
         expect(mockApi.deleteTask).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith('Would delete: Test task')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
         consoleSpy.mockRestore()
     })
 

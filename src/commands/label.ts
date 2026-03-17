@@ -136,7 +136,7 @@ async function deleteLabel(
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
     if (options.dryRun) {
-        console.log(`Would delete label: ${nameOrId}`)
+        printDryRun('delete label', { ID: nameOrId })
         return
     }
 

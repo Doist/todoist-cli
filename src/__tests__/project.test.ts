@@ -1552,7 +1552,7 @@ describe('project --dry-run', () => {
         ])
 
         expect(mockApi.deleteProject).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith('Would delete project: Empty Project')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete project'))
         consoleSpy.mockRestore()
     })
 })

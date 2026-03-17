@@ -201,7 +201,7 @@ async function deleteComment(
     const id = lenientIdRef(commentId, 'comment')
 
     if (options.dryRun) {
-        console.log(`Would delete comment: ${id}`)
+        printDryRun('delete comment', { ID: id })
         return
     }
 
