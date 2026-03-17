@@ -47,7 +47,7 @@
     "dist"
   ],
   "dependencies": {
-    "@doist/todoist-api-typescript": "7.1.0",
+    "@doist/todoist-api-typescript": "7.1.1",
     "@napi-rs/keyring": "1.2.0",
     "@pnpm/tabtab": "0.5.4",
     "chalk": "5.6.2",
