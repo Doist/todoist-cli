@@ -331,4 +331,46 @@ describe('activity command', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
     })
+
+    it('shows cursor hint instead of --all when more items exist', async () => {
+        const mockEvent = {
+            id: 'event-1',
+            objectType: 'task',
+            objectId: 'task-1',
+            eventType: 'added',
+            eventDate: '2025-01-10T14:30:00Z',
+            parentProjectId: 'proj-1',
+            parentItemId: null,
+            initiatorId: null,
+            extraData: { content: 'Test task' },
+        }
+        const mockProjects = { results: [{ id: 'proj-1', name: 'Work' }], nextCursor: null }
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [mockEvent],
+            nextCursor: 'cursor-abc',
+        })
+        mockApi.getProjects.mockResolvedValue(mockProjects)
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'activity'])
+
+        const textOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+        expect(textOutput).toContain('--cursor')
+        expect(textOutput).not.toContain('--all')
+
+        consoleSpy.mockClear()
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [mockEvent],
+            nextCursor: 'cursor-abc',
+        })
+        mockApi.getProjects.mockResolvedValue(mockProjects)
+
+        const program2 = createProgram()
+        await program2.parseAsync(['node', 'td', 'activity', '--markdown'])
+
+        const mdOutput = consoleSpy.mock.calls[0][0]
+        expect(mdOutput).toContain('--cursor')
+        expect(mdOutput).not.toContain('--all')
+    })
 })
