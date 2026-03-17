@@ -187,7 +187,7 @@ td task move "task name" --no-section         # Remove from section
 
 # Dry run (preview any mutating command without executing)
 td task add "New task" --due "tomorrow" --dry-run  # Preview task creation
-td task delete "task name" --dry-run               # Preview deletion (no --yes needed)
+td task delete "task name" --dry-run               # Preview deletion
 
 # Delete and browse
 td task delete "task name" --yes
@@ -214,7 +214,7 @@ td project move "Project Name" --to-workspace "Acme" --visibility team
 td project move "Project Name" --to-personal
 # move requires --yes to confirm (without it, shows a dry-run preview)
 td project create --name "New Project" --dry-run  # Preview project creation
-td project delete "Project Name" --dry-run        # Preview deletion (no --yes needed)
+td project delete "Project Name" --dry-run        # Preview deletion
 \`\`\`
 
 ### Labels
