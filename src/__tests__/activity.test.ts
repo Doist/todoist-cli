@@ -331,4 +331,72 @@ describe('activity command', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
     })
+
+    it('rejects --all flag', async () => {
+        const program = createProgram()
+
+        await expect(program.parseAsync(['node', 'td', 'activity', '--all'])).rejects.toThrow()
+    })
+
+    it('shows cursor hint in text output when more items exist', async () => {
+        const program = createProgram()
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [
+                {
+                    id: 'event-1',
+                    objectType: 'task',
+                    objectId: 'task-1',
+                    eventType: 'added',
+                    eventDate: '2025-01-10T14:30:00Z',
+                    parentProjectId: 'proj-1',
+                    parentItemId: null,
+                    initiatorId: null,
+                    extraData: { content: 'Test task' },
+                },
+            ],
+            nextCursor: 'cursor-abc',
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'activity'])
+
+        const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+        expect(allOutput).toContain('--cursor')
+        expect(allOutput).not.toContain('--all')
+    })
+
+    it('shows cursor hint in markdown output when more items exist', async () => {
+        const program = createProgram()
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [
+                {
+                    id: 'event-1',
+                    objectType: 'task',
+                    objectId: 'task-1',
+                    eventType: 'completed',
+                    eventDate: '2025-01-10T14:30:00Z',
+                    parentProjectId: 'proj-1',
+                    parentItemId: null,
+                    initiatorId: null,
+                    extraData: { content: 'Buy groceries' },
+                },
+            ],
+            nextCursor: 'cursor-abc',
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Shopping' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'activity', '--markdown'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        expect(output).toContain('--cursor')
+        expect(output).not.toContain('--all')
+    })
 })

@@ -56,7 +56,7 @@ All mutating commands support \`--dry-run\` to preview what would happen without
 
 Most list commands also support:
 - \`--limit <n>\` - Limit number of results
-- \`--all\` - Fetch all results (no limit)
+- \`--all\` - Fetch all results (no limit, not available on \`activity\`)
 - \`--cursor <cursor>\` - Continue from pagination cursor
 - \`--show-urls\` - Show web app URLs for each item
 

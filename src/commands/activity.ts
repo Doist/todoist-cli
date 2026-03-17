@@ -4,11 +4,7 @@ import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
-import {
-    formatNextCursorFooter,
-    formatPaginatedJson,
-    formatPaginatedNdjson,
-} from '../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { paginate } from '../lib/pagination.js'
 import { extractId, isIdRef, resolveProjectId } from '../lib/refs.js'
 
@@ -21,7 +17,6 @@ interface ActivityOptions {
     by?: string
     limit?: string
     cursor?: string
-    all?: boolean
     markdown?: boolean
     json?: boolean
     ndjson?: boolean
@@ -189,7 +184,10 @@ function formatActivityMarkdown(
     }
 
     if (nextCursor) {
-        lines.push('', '> Note: More items exist. Use --all to include everything.')
+        lines.push(
+            '',
+            '> Note: More items exist. Use --cursor to paginate, or narrow results with --since/--until.',
+        )
     }
 
     return lines.join('\n')
@@ -217,7 +215,6 @@ export function registerActivityCommand(program: Command): void {
         .option('--by <user>', 'Filter by initiator (use "me" for yourself)')
         .option('--limit <n>', `Limit results (default: ${ACTIVITY_LIMIT})`)
         .option('--cursor <cursor>', 'Continue from cursor')
-        .option('--all', 'Fetch all results (no limit)')
         .option('--markdown', 'Output as raw Markdown')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
@@ -248,11 +245,7 @@ export function registerActivityCommand(program: Command): void {
                 }
             }
 
-            const targetLimit = options.all
-                ? Number.MAX_SAFE_INTEGER
-                : options.limit
-                  ? parseInt(options.limit, 10)
-                  : ACTIVITY_LIMIT
+            const targetLimit = options.limit ? parseInt(options.limit, 10) : ACTIVITY_LIMIT
 
             const { results: events, nextCursor } = await paginate(
                 async (cursor, limit) => {
@@ -292,13 +285,22 @@ export function registerActivityCommand(program: Command): void {
                 if (options.markdown) {
                     const lines = ['# Activity Log']
                     if (nextCursor) {
-                        lines.push('', '> Note: More items exist. Use --all to include everything.')
+                        lines.push(
+                            '',
+                            '> Note: More items exist. Use --cursor to paginate, or narrow results with --since/--until.',
+                        )
                     }
                     console.log(lines.join('\n'))
                     return
                 }
                 console.log('No activity found.')
-                console.log(formatNextCursorFooter(nextCursor))
+                if (nextCursor) {
+                    console.log(
+                        chalk.dim(
+                            '\n... more items exist. Use --cursor to paginate, or narrow results with --since/--until.',
+                        ),
+                    )
+                }
                 return
             }
 
@@ -358,6 +360,12 @@ export function registerActivityCommand(program: Command): void {
                 console.log('')
             }
 
-            console.log(formatNextCursorFooter(nextCursor))
+            if (nextCursor) {
+                console.log(
+                    chalk.dim(
+                        '\n... more items exist. Use --cursor to paginate, or narrow results with --since/--until.',
+                    ),
+                )
+            }
         })
 }
