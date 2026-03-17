@@ -2487,3 +2487,161 @@ describe('task reschedule', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('task --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('task add --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            'Buy milk',
+            '--due',
+            'tomorrow',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Old content', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'Old content',
+            '--content',
+            'New content',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task complete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', checked: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'Test task', '--dry-run'])
+
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would complete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'delete', 'Test task', '--dry-run'])
+
+        expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task delete --dry-run --yes still does not execute', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'delete',
+            'Test task',
+            '--dry-run',
+            '--yes',
+        ])
+
+        expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task move --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Test task',
+            '--project',
+            'Work',
+            '--dry-run',
+        ])
+
+        expect(mockApi.moveTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would move task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task reschedule --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20',
+            '--dry-run',
+        ])
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would reschedule task'))
+        consoleSpy.mockRestore()
+    })
+})

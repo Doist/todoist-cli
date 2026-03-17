@@ -22,6 +22,7 @@ import {
     formatPaginatedNdjson,
     formatTaskRow,
     isAccessible,
+    printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../lib/refs.js'
@@ -221,7 +222,10 @@ export async function viewProject(ref: string, options: ViewOptions = {}): Promi
     }
 }
 
-async function deleteProject(ref: string, options: { yes?: boolean }): Promise<void> {
+async function deleteProject(
+    ref: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
@@ -233,6 +237,11 @@ async function deleteProject(ref: string, options: { yes?: boolean }): Promise<v
                 `Cannot delete project: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
             ),
         )
+    }
+
+    if (options.dryRun) {
+        printDryRun('delete project', { Project: project.name })
+        return
     }
 
     if (!options.yes) {
@@ -301,9 +310,21 @@ interface CreateOptions {
     parent?: string
     viewStyle?: string
     json?: boolean
+    dryRun?: boolean
 }
 
 async function createProject(options: CreateOptions): Promise<void> {
+    if (options.dryRun) {
+        printDryRun('create project', {
+            Name: options.name,
+            Color: options.color,
+            Favorite: options.favorite ? 'yes' : undefined,
+            Parent: options.parent,
+            'View style': options.viewStyle,
+        })
+        return
+    }
+
     const api = await getApi()
 
     let parentId: string | undefined
@@ -344,6 +365,7 @@ interface UpdateOptions {
     favorite?: boolean
     viewStyle?: string
     json?: boolean
+    dryRun?: boolean
 }
 
 async function updateProject(ref: string, options: UpdateOptions): Promise<void> {
@@ -366,6 +388,17 @@ async function updateProject(ref: string, options: UpdateOptions): Promise<void>
         throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
     }
 
+    if (options.dryRun) {
+        printDryRun('update project', {
+            Project: project.name,
+            Name: args.name,
+            Color: args.color,
+            Favorite: args.isFavorite !== undefined ? String(args.isFavorite) : undefined,
+            'View style': args.viewStyle,
+        })
+        return
+    }
+
     const updated = await api.updateProject(project.id, args)
 
     if (options.json) {
@@ -376,16 +409,28 @@ async function updateProject(ref: string, options: UpdateOptions): Promise<void>
     console.log(`Updated: ${updated.name}`)
 }
 
-async function archiveProject(ref: string): Promise<void> {
+async function archiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('archive project', { Project: project.name })
+        return
+    }
+
     await api.archiveProject(project.id)
     console.log(`Archived: ${project.name}`)
 }
 
-async function unarchiveProject(ref: string): Promise<void> {
+async function unarchiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('unarchive project', { Project: project.name })
+        return
+    }
+
     await api.unarchiveProject(project.id)
     console.log(`Unarchived: ${project.name}`)
 }
@@ -404,6 +449,7 @@ type MoveOptions = {
     folder?: string
     visibility?: string
     yes?: boolean
+    dryRun?: boolean
 }
 
 async function moveProject(ref: string, options: MoveOptions): Promise<void> {
@@ -469,16 +515,16 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
             args.access = { visibility: options.visibility as ProjectVisibility }
         }
 
-        if (!options.yes) {
-            let dryRun = `Would move "${project.name}" to workspace "${workspace.name}"`
+        if (options.dryRun || !options.yes) {
+            let preview = `Would move "${project.name}" to workspace "${workspace.name}"`
             if (folderName) {
-                dryRun += ` (folder: ${folderName})`
+                preview += ` (folder: ${folderName})`
             }
             if (options.visibility) {
-                dryRun += ` (visibility: ${options.visibility})`
+                preview += ` (visibility: ${options.visibility})`
             }
-            console.log(dryRun)
-            console.log('Use --yes to confirm.')
+            console.log(preview)
+            if (!options.dryRun) console.log('Use --yes to confirm.')
             return
         }
 
@@ -499,9 +545,9 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
             )
         }
 
-        if (!options.yes) {
+        if (options.dryRun || !options.yes) {
             console.log(`Would move "${project.name}" to personal`)
-            console.log('Use --yes to confirm.')
+            if (!options.dryRun) console.log('Use --yes to confirm.')
             return
         }
 
@@ -556,6 +602,7 @@ export function registerProjectCommand(program: Command): void {
         .command('delete [ref]')
         .description('Delete a project (must have no uncompleted tasks)')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 deleteCmd.help()
@@ -578,6 +625,7 @@ export function registerProjectCommand(program: Command): void {
             ),
         )
         .option('--json', 'Output the created project as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name) {
                 createCmd.help()
@@ -600,6 +648,7 @@ export function registerProjectCommand(program: Command): void {
             ),
         )
         .option('--json', 'Output the updated project as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
@@ -611,23 +660,25 @@ export function registerProjectCommand(program: Command): void {
     const archiveCmd = project
         .command('archive [ref]')
         .description('Archive a project')
-        .action((ref) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
             if (!ref) {
                 archiveCmd.help()
                 return
             }
-            return archiveProject(ref)
+            return archiveProject(ref, options)
         })
 
     const unarchiveCmd = project
         .command('unarchive [ref]')
         .description('Unarchive a project')
-        .action((ref) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
             if (!ref) {
                 unarchiveCmd.help()
                 return
             }
-            return unarchiveProject(ref)
+            return unarchiveProject(ref, options)
         })
 
     const browseCmd = project
@@ -649,6 +700,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--folder <ref>', 'Target folder in workspace (name or id:xxx)')
         .option('--visibility <level>', 'Access visibility (restricted, team, public)')
         .option('--yes', 'Confirm move')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 moveCmd.help()

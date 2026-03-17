@@ -2,10 +2,11 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi } from '../lib/api/core.js'
 import { resolveAssigneeId } from '../lib/collaborators.js'
-import { formatDue } from '../lib/output.js'
+import { formatDue, printDryRun } from '../lib/output.js'
 
 interface AddOptions {
     assignee?: string
+    dryRun?: boolean
 }
 
 export function registerAddCommand(program: Command): void {
@@ -15,9 +16,18 @@ export function registerAddCommand(program: Command): void {
             'Quick add with natural language (human shorthand; agents should use "task add")',
         )
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action(async (text: string | undefined, options: AddOptions) => {
             if (!text) {
                 addCmd.help()
+                return
+            }
+
+            if (options.dryRun) {
+                printDryRun('quick add task', {
+                    Text: text,
+                    Assignee: options.assignee,
+                })
                 return
             }
 

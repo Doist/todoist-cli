@@ -8,7 +8,7 @@ import {
 import { openInBrowser } from '../lib/browser.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { parseDuration } from '../lib/duration.js'
-import { formatDue, formatError, formatJson, formatTaskView } from '../lib/output.js'
+import { formatDue, formatError, formatJson, formatTaskView, printDryRun } from '../lib/output.js'
 import { taskUrl } from '../lib/urls.js'
 
 type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
@@ -99,7 +99,10 @@ export async function viewTask(ref: string, options: ViewOptions): Promise<void>
     )
 }
 
-async function completeTask(ref: string, options: { forever?: boolean }): Promise<void> {
+async function completeTask(
+    ref: string,
+    options: { forever?: boolean; dryRun?: boolean },
+): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
 
@@ -110,6 +113,14 @@ async function completeTask(ref: string, options: { forever?: boolean }): Promis
 
     if (task.isUncompletable) {
         console.log('Task is uncompletable (reference item).')
+        return
+    }
+
+    if (options.dryRun) {
+        printDryRun('complete task', {
+            Task: task.content,
+            Forever: options.forever ? 'yes' : undefined,
+        })
         return
     }
 
@@ -127,16 +138,30 @@ async function completeTask(ref: string, options: { forever?: boolean }): Promis
     console.log(`Completed: ${task.content}`)
 }
 
-async function uncompleteTask(ref: string): Promise<void> {
-    const api = await getApi()
+async function uncompleteTask(ref: string, options: { dryRun?: boolean }): Promise<void> {
     const id = lenientIdRef(ref, 'task')
+
+    if (options.dryRun) {
+        printDryRun('reopen task', { ID: id })
+        return
+    }
+
+    const api = await getApi()
     await api.reopenTask(id)
     console.log(`Reopened task ${id}`)
 }
 
-async function deleteTask(ref: string, options: { yes?: boolean }): Promise<void> {
+async function deleteTask(
+    ref: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('delete task', { Task: task.content })
+        return
+    }
 
     if (!options.yes) {
         console.log(`Would delete: ${task.content}`)
@@ -164,6 +189,7 @@ interface AddOptions {
     uncompletable?: boolean
     order?: number
     json?: boolean
+    dryRun?: boolean
 }
 
 async function addTask(options: AddOptions): Promise<void> {
@@ -271,6 +297,25 @@ async function addTask(options: AddOptions): Promise<void> {
         args.order = options.order
     }
 
+    if (options.dryRun) {
+        printDryRun('add task', {
+            Content: args.content,
+            Description: args.description,
+            Due: args.dueString,
+            Deadline: args.deadlineDate ?? undefined,
+            Priority: options.priority,
+            Project: options.project,
+            Section: options.section,
+            Labels: options.labels,
+            Parent: options.parent,
+            Assignee: options.assignee,
+            Duration: options.duration,
+            Uncompletable: options.uncompletable ? 'yes' : undefined,
+            Order: options.order !== undefined ? String(options.order) : undefined,
+        })
+        return
+    }
+
     const task = await api.addTask(args)
 
     if (options.json) {
@@ -299,6 +344,7 @@ interface UpdateOptions {
     completable?: boolean
     order?: number
     json?: boolean
+    dryRun?: boolean
 }
 
 async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
@@ -349,6 +395,25 @@ async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
         args.order = options.order
     }
 
+    if (options.dryRun) {
+        printDryRun('update task', {
+            Task: task.content,
+            Content: args.content,
+            Description: args.description ?? undefined,
+            Due: args.dueString ?? undefined,
+            Deadline: args.deadlineDate ?? undefined,
+            Priority: options.priority,
+            Labels: options.labels,
+            Assignee: options.assignee,
+            Unassign: options.unassign ? 'yes' : undefined,
+            Duration: options.duration,
+            Uncompletable: options.uncompletable ? 'yes' : undefined,
+            Completable: options.completable ? 'yes' : undefined,
+            Order: options.order !== undefined ? String(options.order) : undefined,
+        })
+        return
+    }
+
     const updated = await api.updateTask(task.id, args)
 
     if (options.json) {
@@ -363,6 +428,7 @@ interface MoveOptions {
     project?: string
     section?: string | false
     parent?: string | false
+    dryRun?: boolean
 }
 
 async function moveTask(ref: string, options: MoveOptions): Promise<void> {
@@ -381,6 +447,18 @@ async function moveTask(ref: string, options: MoveOptions): Promise<void> {
 
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('move task', {
+            Task: task.content,
+            Project: typeof options.project === 'string' ? options.project : undefined,
+            Section: typeof options.section === 'string' ? options.section : undefined,
+            'No section': options.section === false ? 'yes' : undefined,
+            Parent: typeof options.parent === 'string' ? options.parent : undefined,
+            'No parent': options.parent === false ? 'yes' : undefined,
+        })
+        return
+    }
 
     if (wantsNoParent || wantsNoSection) {
         const targetProjectId = options.project
@@ -419,7 +497,7 @@ async function moveTask(ref: string, options: MoveOptions): Promise<void> {
 async function rescheduleTask(
     ref: string,
     date: string,
-    options: { json?: boolean },
+    options: { json?: boolean; dryRun?: boolean },
 ): Promise<void> {
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
@@ -441,6 +519,14 @@ async function rescheduleTask(
                 'Examples: 2026-03-20, 2026-03-20T14:00:00',
             ]),
         )
+    }
+
+    if (options.dryRun) {
+        printDryRun('reschedule task', {
+            Task: task.content,
+            Date: date,
+        })
+        return
     }
 
     await rescheduleTaskSync(task.id, date, task.due)
@@ -512,6 +598,7 @@ export function registerTaskCommand(program: Command): void {
         .command('complete [ref]')
         .description('Complete a task')
         .option('--forever', 'Complete recurring task permanently (stops recurrence)')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 completeCmd.help()
@@ -523,18 +610,20 @@ export function registerTaskCommand(program: Command): void {
     const uncompleteCmd = task
         .command('uncomplete [ref]')
         .description('Reopen a completed task (requires id:xxx)')
-        .action((ref) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
             if (!ref) {
                 uncompleteCmd.help()
                 return
             }
-            return uncompleteTask(ref)
+            return uncompleteTask(ref, options)
         })
 
     const deleteCmd = task
         .command('delete [ref]')
         .description('Delete a task')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 deleteCmd.help()
@@ -576,6 +665,7 @@ export function registerTaskCommand(program: Command): void {
             return n
         })
         .option('--json', 'Output the created task as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
             if (contentArg && options.content) {
                 throw new Error('Cannot specify content both as argument and --content flag')
@@ -621,6 +711,7 @@ export function registerTaskCommand(program: Command): void {
             return n
         })
         .option('--json', 'Output the updated task as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
@@ -637,6 +728,7 @@ export function registerTaskCommand(program: Command): void {
         .option('--parent <ref>', 'Parent task (name or id:xxx)')
         .option('--no-parent', 'Remove parent (move to project root)')
         .option('--no-section', 'Remove section (move to project root)')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
                 moveCmd.help()
@@ -649,6 +741,7 @@ export function registerTaskCommand(program: Command): void {
         .command('reschedule [ref] [date]')
         .description('Reschedule a task (preserves recurrence)')
         .option('--json', 'Output the rescheduled task as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, date, options) => {
             if (!ref || !date) {
                 rescheduleCmd.help()

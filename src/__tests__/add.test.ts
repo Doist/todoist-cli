@@ -109,6 +109,17 @@ describe('add command', () => {
         consoleSpy.mockRestore()
     })
 
+    it('--dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'add', 'Buy milk', '--dry-run'])
+
+        expect(mockApi.quickAddTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would quick add task'))
+        consoleSpy.mockRestore()
+    })
+
     it('assigns task with --assignee flag', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

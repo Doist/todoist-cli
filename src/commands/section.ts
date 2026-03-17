@@ -9,6 +9,7 @@ import {
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { lenientIdRef, resolveProjectId } from '../lib/refs.js'
@@ -72,9 +73,18 @@ interface CreateOptions {
     name: string
     project: string
     json?: boolean
+    dryRun?: boolean
 }
 
 async function createSection(options: CreateOptions): Promise<void> {
+    if (options.dryRun) {
+        printDryRun('create section', {
+            Name: options.name,
+            Project: options.project,
+        })
+        return
+    }
+
     const api = await getApi()
     const projectId = await resolveProjectId(api, options.project)
 
@@ -92,9 +102,13 @@ async function createSection(options: CreateOptions): Promise<void> {
     console.log(chalk.dim(`ID: ${section.id}`))
 }
 
-async function deleteSection(sectionId: string, options: { yes?: boolean }): Promise<void> {
-    const api = await getApi()
+async function deleteSection(
+    sectionId: string,
+    options: { yes?: boolean; dryRun?: boolean },
+): Promise<void> {
     const id = lenientIdRef(sectionId, 'section')
+
+    const api = await getApi()
     const section = await api.getSection(id)
 
     const { results: tasks } = await api.getTasks({ sectionId: id })
@@ -105,6 +119,11 @@ async function deleteSection(sectionId: string, options: { yes?: boolean }): Pro
                 `Cannot delete section: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
             ),
         )
+    }
+
+    if (options.dryRun) {
+        printDryRun('delete section', { Section: section.name })
+        return
     }
 
     if (!options.yes) {
@@ -119,10 +138,16 @@ async function deleteSection(sectionId: string, options: { yes?: boolean }): Pro
 
 async function updateSection(
     sectionId: string,
-    options: { name: string; json?: boolean },
+    options: { name: string; json?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    const api = await getApi()
     const id = lenientIdRef(sectionId, 'section')
+
+    if (options.dryRun) {
+        printDryRun('update section', { ID: id, Name: options.name })
+        return
+    }
+
+    const api = await getApi()
 
     if (options.json) {
         const updated = await api.updateSection(id, { name: options.name })
@@ -176,6 +201,7 @@ export function registerSectionCommand(program: Command): void {
         .option('--name <name>', 'Section name (required)')
         .option('--project <name>', 'Project name or id:xxx (required)')
         .option('--json', 'Output the created section as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name || !options.project) {
                 createCmd.help()
@@ -188,6 +214,7 @@ export function registerSectionCommand(program: Command): void {
         .command('delete [id]')
         .description('Delete a section')
         .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
                 deleteCmd.help()
@@ -201,6 +228,7 @@ export function registerSectionCommand(program: Command): void {
         .description('Update a section')
         .option('--name <name>', 'New section name (required)')
         .option('--json', 'Output the updated section as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id || !options.name) {
                 updateCmd.help()

@@ -989,3 +989,83 @@ describe('label (no args)', () => {
         stdoutSpy.mockRestore()
     })
 })
+
+describe('label --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('label create --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'label', 'create', '--name', 'urgent', '--dry-run'])
+
+        expect(mockApi.addLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create label'))
+        consoleSpy.mockRestore()
+    })
+
+    it('label delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [
+                {
+                    id: 'label-1',
+                    name: 'urgent',
+                    color: 'red',
+                    order: 1,
+                    isFavorite: false,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'delete', 'urgent', '--dry-run'])
+
+        expect(mockApi.deleteLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete label'))
+        consoleSpy.mockRestore()
+    })
+
+    it('label update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLabels.mockResolvedValue({
+            results: [
+                {
+                    id: 'label-1',
+                    name: 'urgent',
+                    color: 'red',
+                    order: 1,
+                    isFavorite: false,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'update',
+            'urgent',
+            '--name',
+            'critical',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update label'))
+        consoleSpy.mockRestore()
+    })
+})
