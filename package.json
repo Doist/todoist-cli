@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@types/marked-terminal": "6.1.1",
-    "@types/node": "25.4.0",
+    "@types/node": "25.5.0",
     "lefthook": "2.1.4",
     "oxfmt": "0.40.0",
     "oxlint": "1.55.0",
