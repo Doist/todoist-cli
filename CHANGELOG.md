@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0](https://github.com/Doist/todoist-cli/compare/v1.26.0...v1.27.0) (2026-03-19)
+
+
+### Features
+
+* **attachment:** add `td attachment view` command ([#168](https://github.com/Doist/todoist-cli/issues/168)) ([15ef686](https://github.com/Doist/todoist-cli/commit/15ef686ca7ed4e348e1025cb11607747031a3090))
+
 ## [1.26.0](https://github.com/Doist/todoist-cli/compare/v1.25.1...v1.26.0) (2026-03-17)
 
 
