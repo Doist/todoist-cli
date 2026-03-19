@@ -43,6 +43,11 @@ function parseMimeType(contentType: string): string {
     return (base ?? contentType).trim().toLowerCase()
 }
 
+function parseCharset(contentType: string): string | undefined {
+    const match = contentType.match(/charset\s*=\s*"?([^";,\s]+)"?/i)
+    return match?.[1]?.toLowerCase()
+}
+
 function getMimeTypeFromUrl(url: string): string | undefined {
     try {
         const pathname = new URL(url).pathname
@@ -61,7 +66,7 @@ function getFileNameFromUrl(url: string): string | undefined {
         const lastSlash = pathname.lastIndexOf('/')
         if (lastSlash === -1) return undefined
         const name = pathname.slice(lastSlash + 1)
-        return name || undefined
+        return name ? decodeURIComponent(name) : undefined
     } catch {
         return undefined
     }
@@ -106,29 +111,31 @@ async function viewAttachment(url: string, options: ViewOptions): Promise<void> 
 
     const category = getContentCategory(mimeType)
 
-    // Read content based on category
+    // Always read as arrayBuffer for accurate size and charset-aware decoding
+    const buffer = Buffer.from(await response.arrayBuffer())
+    const fileSize = buffer.byteLength
+
+    if (fileSize > MAX_FILE_SIZE) {
+        throw new Error(
+            `Attachment "${fileName}" is too large (${formatFileSize(fileSize)}, limit is ${formatFileSize(MAX_FILE_SIZE)})`,
+        )
+    }
+
     let content: string
-    let encoding: 'utf-8' | 'base64'
-    let fileSize: number
+    let encoding: string
 
     if (category === 'text') {
-        const text = await response.text()
-        fileSize = Buffer.byteLength(text, 'utf-8')
-        if (fileSize > MAX_FILE_SIZE) {
-            throw new Error(
-                `Attachment "${fileName}" is too large (${formatFileSize(fileSize)}, limit is ${formatFileSize(MAX_FILE_SIZE)})`,
-            )
+        const charset = (rawContentType ? parseCharset(rawContentType) : undefined) ?? 'utf-8'
+        try {
+            const decoder = new TextDecoder(charset, { fatal: true })
+            content = decoder.decode(buffer)
+            encoding = charset
+        } catch {
+            // Unsupported or invalid charset — fall back to base64
+            content = buffer.toString('base64')
+            encoding = 'base64'
         }
-        content = text
-        encoding = 'utf-8'
     } else {
-        const buffer = Buffer.from(await response.arrayBuffer())
-        fileSize = buffer.byteLength
-        if (fileSize > MAX_FILE_SIZE) {
-            throw new Error(
-                `Attachment "${fileName}" is too large (${formatFileSize(fileSize)}, limit is ${formatFileSize(MAX_FILE_SIZE)})`,
-            )
-        }
         content = buffer.toString('base64')
         encoding = 'base64'
     }
@@ -155,8 +162,10 @@ async function viewAttachment(url: string, options: ViewOptions): Promise<void> 
     process.stderr.write(`Attachment: ${fileName} (${mimeType}, ${formatFileSize(fileSize)})\n`)
     if (encoding === 'base64') {
         process.stderr.write('Encoding: base64\n')
+        console.log(content)
+    } else {
+        process.stdout.write(content)
     }
-    console.log(content)
 }
 
 export function registerAttachmentCommand(program: Command): void {

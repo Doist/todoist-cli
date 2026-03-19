@@ -67,7 +67,7 @@ describe('attachment view', () => {
     })
 
     it('calls api.viewAttachment with the URL', async () => {
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
         mockApi.viewAttachment.mockResolvedValue(
             createMockResponse({ contentType: 'text/plain', body: 'hello' }),
@@ -83,13 +83,13 @@ describe('attachment view', () => {
         ])
 
         expect(mockApi.viewAttachment).toHaveBeenCalledWith('https://files.todoist.com/file.txt')
-        consoleSpy.mockRestore()
+        stdoutSpy.mockRestore()
         stderrSpy.mockRestore()
     })
 
     describe('text files', () => {
-        it('outputs text content to stdout', async () => {
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        it('outputs text content to stdout without trailing newline', async () => {
+            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
             const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'Hello, world!' }),
@@ -104,15 +104,15 @@ describe('attachment view', () => {
                 'https://files.todoist.com/notes.txt',
             ])
 
-            expect(consoleSpy).toHaveBeenCalledWith('Hello, world!')
+            expect(stdoutSpy).toHaveBeenCalledWith('Hello, world!')
             expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('notes.txt'))
             expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('text/plain'))
-            consoleSpy.mockRestore()
+            stdoutSpy.mockRestore()
             stderrSpy.mockRestore()
         })
 
         it('handles JSON files as text', async () => {
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
             const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
             const jsonContent = '{"key": "value"}'
             mockApi.viewAttachment.mockResolvedValue(
@@ -128,8 +128,8 @@ describe('attachment view', () => {
                 'https://files.todoist.com/data.json',
             ])
 
-            expect(consoleSpy).toHaveBeenCalledWith(jsonContent)
-            consoleSpy.mockRestore()
+            expect(stdoutSpy).toHaveBeenCalledWith(jsonContent)
+            stdoutSpy.mockRestore()
             stderrSpy.mockRestore()
         })
     })
@@ -363,9 +363,89 @@ describe('attachment view', () => {
         })
     })
 
+    describe('charset handling', () => {
+        it('uses declared charset for text decoding', async () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockApi.viewAttachment.mockResolvedValue(
+                createMockResponse({
+                    contentType: 'text/plain; charset=utf-8',
+                    body: 'hello',
+                }),
+            )
+
+            const program = createProgram()
+            await program.parseAsync([
+                'node',
+                'td',
+                'attachment',
+                'view',
+                'https://files.todoist.com/file.txt',
+                '--json',
+            ])
+
+            const output = JSON.parse(consoleSpy.mock.calls[0][0])
+            expect(output.encoding).toBe('utf-8')
+            expect(output.content).toBe('hello')
+            consoleSpy.mockRestore()
+            stderrSpy.mockRestore()
+        })
+
+        it('reports declared charset in encoding field', async () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockApi.viewAttachment.mockResolvedValue(
+                createMockResponse({
+                    contentType: 'text/plain; charset=iso-8859-1',
+                    body: 'hello',
+                }),
+            )
+
+            const program = createProgram()
+            await program.parseAsync([
+                'node',
+                'td',
+                'attachment',
+                'view',
+                'https://files.todoist.com/file.txt',
+                '--json',
+            ])
+
+            const output = JSON.parse(consoleSpy.mock.calls[0][0])
+            expect(output.encoding).toBe('iso-8859-1')
+            consoleSpy.mockRestore()
+            stderrSpy.mockRestore()
+        })
+    })
+
+    describe('filename handling', () => {
+        it('decodes URL-encoded filenames', async () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockApi.viewAttachment.mockResolvedValue(
+                createMockResponse({ contentType: 'text/plain', body: 'content' }),
+            )
+
+            const program = createProgram()
+            await program.parseAsync([
+                'node',
+                'td',
+                'attachment',
+                'view',
+                'https://files.todoist.com/my%20file%20(1).txt',
+                '--json',
+            ])
+
+            const output = JSON.parse(consoleSpy.mock.calls[0][0])
+            expect(output.fileName).toBe('my file (1).txt')
+            consoleSpy.mockRestore()
+            stderrSpy.mockRestore()
+        })
+    })
+
     describe('default subcommand', () => {
         it('td attachment <url> works as td attachment view <url>', async () => {
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
             const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'content' }),
@@ -382,7 +462,7 @@ describe('attachment view', () => {
             expect(mockApi.viewAttachment).toHaveBeenCalledWith(
                 'https://files.todoist.com/file.txt',
             )
-            consoleSpy.mockRestore()
+            stdoutSpy.mockRestore()
             stderrSpy.mockRestore()
         })
     })
