@@ -55,6 +55,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         addComment: vi.fn(),
         deleteComment: vi.fn(),
         updateComment: vi.fn(),
+        // Attachments
+        viewAttachment: vi.fn(),
         // Uploads
         uploadFile: vi.fn().mockResolvedValue({
             resourceType: 'file',
