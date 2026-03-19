@@ -27,6 +27,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
 - \`td completion install\` - Install shell completions
+- \`td attachment view <url>\` - View/download a file attachment
 - \`td view <url>\` - View supported Todoist entities/pages by URL
 - \`td update\` - Self-update the CLI to the latest version
 
@@ -249,6 +250,17 @@ td comment delete id:123 --yes
 td comment add "task name" --content "Note" --dry-run  # Preview comment creation
 td comment browse id:123                      # Open in browser
 \`\`\`
+
+### Attachments
+\`\`\`bash
+td attachment view "https://files.todoist.com/..."       # Fetch and display attachment content
+td attachment view "https://files.todoist.com/..." --json # JSON output with metadata + content
+\`\`\`
+
+Text files are output directly to stdout. Images and binary files are output as base64.
+With \`--json\`, returns: \`fileName\`, \`fileSize\`, \`contentType\`, \`contentCategory\`, \`encoding\` (\`utf-8\` or \`base64\`), \`content\`.
+The file URL comes from a comment's \`fileAttachment.fileUrl\` field (visible in \`td comment list --json\` output).
+10MB file size limit.
 
 ### Sections
 \`\`\`bash

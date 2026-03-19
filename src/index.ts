@@ -58,6 +58,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage comments',
         async () => (await import('./commands/comment.js')).registerCommentCommand,
     ],
+    attachment: [
+        'Manage file attachments',
+        async () => (await import('./commands/attachment.js')).registerAttachmentCommand,
+    ],
     section: [
         'Manage project sections',
         async () => (await import('./commands/section.js')).registerSectionCommand,

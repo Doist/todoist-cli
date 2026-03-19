@@ -43,6 +43,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         moveProjectToWorkspace: { text: 'Moving project to workspace...', color: 'yellow' },
         moveProjectToPersonal: { text: 'Moving project to personal...', color: 'yellow' },
         sync: { text: 'Syncing...', color: 'blue' },
+        viewAttachment: { text: 'Fetching attachment...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
