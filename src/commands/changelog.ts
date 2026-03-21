@@ -3,9 +3,16 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import chalk from 'chalk'
 import { Command } from 'commander'
+import packageJson from '../../package.json' with { type: 'json' }
 
 const CHANGELOG_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'CHANGELOG.md')
-const CHANGELOG_URL = 'https://github.com/Doist/todoist-cli/blob/main/CHANGELOG.md'
+const CHANGELOG_URL = `https://github.com/Doist/todoist-cli/blob/v${packageJson.version}/CHANGELOG.md`
+
+function formatInline(text: string): string {
+    return text
+        .replace(/\*\*([^*]+)\*\*/g, (_, content) => chalk.bold(content))
+        .replace(/`([^`]+)`/g, (_, code) => chalk.cyan(code))
+}
 
 function formatForTerminal(text: string): string {
     return text
@@ -21,9 +28,9 @@ function formatForTerminal(text: string): string {
             }
             // Bullet items: * description → dimmed bullet + text
             if (line.startsWith('* ')) {
-                return `  ${chalk.dim('•')} ${line.slice(2)}`
+                return `  ${chalk.dim('•')} ${formatInline(line.slice(2))}`
             }
-            return line
+            return formatInline(line)
         })
         .join('\n')
 }
@@ -41,7 +48,7 @@ function cleanChangelog(text: string): string {
             // Remove **deps:** dependency update lines (not useful to end users)
             .replace(/^\* \*\*deps:\*\*.*$/gm, '')
             // Remove **scope:** prefixes but keep the text: **task:** foo → foo
-            .replace(/\*\*\w+:\*\* /g, '')
+            .replace(/\*\*[\w-]+:\*\* /g, '')
             // Clean up blank lines left by removed dep lines
             .replace(/\n{3,}/g, '\n\n')
             // Remove section headers left empty after filtering (e.g. ### Bug Fixes with no items)
@@ -97,6 +104,6 @@ export function registerChangelogCommand(program: Command): void {
     program
         .command('changelog')
         .description('Show recent changelog entries')
-        .option('-n, --count <number>', 'Number of versions to show (default: 5)', '5')
+        .option('-n, --count <number>', 'Number of versions to show', '5')
         .action(changelogAction)
 }
