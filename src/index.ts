@@ -29,6 +29,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Quick add task with natural language (e.g., "Buy milk tomorrow p1 #Shopping")',
         async () => (await import('./commands/add.js')).registerAddCommand,
     ],
+    changelog: [
+        'Show recent changelog entries',
+        async () => (await import('./commands/changelog.js')).registerChangelogCommand,
+    ],
     today: [
         'Show tasks due today and overdue',
         async () => (await import('./commands/today.js')).registerTodayCommand,
@@ -156,9 +160,10 @@ if (process.argv[2] === 'completion-server') {
             // Preload markdown renderer in parallel with the command module
             // when output will be pretty-printed (not JSON/NDJSON/raw)
             const args = process.argv.slice(2)
-            const needsMarkdown = !args.some(
-                (a) => a === '--json' || a === '--ndjson' || a === '--raw',
-            )
+            const noMarkdownCommands = new Set(['changelog', 'update', 'completion'])
+            const needsMarkdown =
+                !noMarkdownCommands.has(commandName) &&
+                !args.some((a) => a === '--json' || a === '--ndjson' || a === '--raw')
             const markdownReady = needsMarkdown ? preloadMarkdown() : undefined
 
             const register = await loader()

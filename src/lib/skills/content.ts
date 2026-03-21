@@ -30,6 +30,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td attachment view <url>\` - View/download a file attachment
 - \`td view <url>\` - View supported Todoist entities/pages by URL
 - \`td update\` - Self-update the CLI to the latest version
+- \`td changelog\` - Show recent changelog entries
 
 ## Output Formats
 
@@ -380,6 +381,13 @@ td view <url> --limit 25 --ndjson              # Passthrough list options where 
 \`\`\`bash
 td update                                    # Update CLI to latest version
 td update --check                            # Check for updates without installing
+\`\`\`
+
+### Changelog
+\`\`\`bash
+td changelog                                 # Show last 5 versions
+td changelog -n 3                            # Show last 3 versions
+td changelog --count 10                      # Show last 10 versions
 \`\`\`
 
 ## Examples

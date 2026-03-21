@@ -44,7 +44,8 @@
     "node": ">=20"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "@doist/todoist-api-typescript": "7.2.0",
