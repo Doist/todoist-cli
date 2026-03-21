@@ -165,6 +165,11 @@ describe('update command', () => {
                 expect.anything(),
                 expect.stringContaining('Updated to v99.99.99'),
             )
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.stringContaining('td changelog'),
+                expect.anything(),
+            )
         })
 
         it('uses pnpm add when pnpm is detected', async () => {

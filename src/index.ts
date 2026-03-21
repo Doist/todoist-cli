@@ -29,6 +29,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Quick add task with natural language (e.g., "Buy milk tomorrow p1 #Shopping")',
         async () => (await import('./commands/add.js')).registerAddCommand,
     ],
+    changelog: [
+        'Show recent changelog entries',
+        async () => (await import('./commands/changelog.js')).registerChangelogCommand,
+    ],
     today: [
         'Show tasks due today and overdue',
         async () => (await import('./commands/today.js')).registerTodayCommand,
