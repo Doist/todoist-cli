@@ -65,7 +65,7 @@
     "lefthook": "2.1.4",
     "oxfmt": "0.41.0",
     "oxlint": "1.56.0",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vitest": "4.1.0"
   }
 }
