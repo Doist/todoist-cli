@@ -63,8 +63,8 @@
     "@types/marked-terminal": "6.1.1",
     "@types/node": "25.5.0",
     "lefthook": "2.1.4",
-    "oxfmt": "0.40.0",
-    "oxlint": "1.55.0",
+    "oxfmt": "0.41.0",
+    "oxlint": "1.56.0",
     "typescript": "5.9.3",
     "vitest": "4.1.0"
   }
