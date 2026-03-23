@@ -95,9 +95,7 @@ jobs:
                       echo "package_url=${package_url}"
                       echo "release_url=${release_url}"
                       echo "message<<EOF"
-                      echo "🎉 **${package_name} ${release_tag} Published** (${published_at})"
-                      echo
-                      echo "📝 Changes"
+                      echo "**Todoist CLI ${release_tag} published 🚀**"
                       echo
                       printf '%s\n' "${changelog}"
                       echo
