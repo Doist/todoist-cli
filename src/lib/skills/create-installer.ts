@@ -10,7 +10,7 @@ interface InstallerConfig {
     dirName: string
 }
 
-function generateSkillFile(): string {
+export function generateSkillFile(): string {
     const frontmatter = `---
 name: ${SKILL_NAME}
 description: ${JSON.stringify(SKILL_DESCRIPTION)}
