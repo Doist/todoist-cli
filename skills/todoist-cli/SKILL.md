@@ -1,6 +1,6 @@
 ---
 name: todoist-cli
-description: 'Manage Todoist tasks, projects, labels, comments, and more via the td CLI'
+description: "Manage Todoist tasks, projects, labels, comments, and more via the td CLI"
 ---
 
 # Todoist CLI (td)
@@ -36,14 +36,12 @@ Use this skill when the user wants to interact with their Todoist tasks.
 ## Output Formats
 
 All list commands support:
-
 - `--json` - JSON output (essential fields)
 - `--ndjson` - Newline-delimited JSON (streaming)
 - `--full` - Include all fields in JSON
 - `--raw` - Disable markdown rendering
 
 The following mutating commands also support `--json` to return the created or updated entity as machine-readable JSON instead of plain-text confirmation:
-
 - `task add`, `task update`
 - `project create`, `project update`
 - `label create`, `label update`
@@ -53,7 +51,6 @@ The following mutating commands also support `--json` to return the created or u
 - `reminder add`
 
 All mutating commands support `--dry-run` to preview what would happen without executing:
-
 - Shows a preview of the action and parameters
 - The mutating action is skipped; read-only API calls may still be made to resolve references
 - On destructive commands (delete, project move) that use `--yes`, `--dry-run` takes precedence: even with `--yes`, the action will not execute
@@ -61,7 +58,6 @@ All mutating commands support `--dry-run` to preview what would happen without e
 ## Shared List Options
 
 Most list commands also support:
-
 - `--limit <n>` - Limit number of results
 - `--all` - Fetch all results (no limit, not available on `activity`)
 - `--cursor <cursor>` - Continue from pagination cursor
@@ -89,7 +85,6 @@ If OS credential storage is unavailable, `td` warns and falls back to `~/.config
 ## References
 
 Tasks, projects, labels, and filters can be referenced by:
-
 - Name (fuzzy matched within context)
 - `id:xxx` - Explicit ID
 - Todoist URL - Paste directly from the web app (e.g., `https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB` or `https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT`)
@@ -104,7 +99,6 @@ Tasks, projects, labels, and filters can be referenced by:
 ## Commands
 
 ### Today
-
 ```bash
 td today                             # Due today + overdue
 td today --json                      # JSON output
@@ -114,7 +108,6 @@ td today --any-assignee              # Include tasks assigned to others
 ```
 
 ### Inbox
-
 ```bash
 td inbox                             # Inbox tasks
 td inbox --priority p1               # Filter by priority
@@ -122,7 +115,6 @@ td inbox --due today                 # Filter by due date
 ```
 
 ### Upcoming
-
 ```bash
 td upcoming                          # Next 7 days
 td upcoming 14                       # Next 14 days
@@ -132,7 +124,6 @@ td upcoming --any-assignee           # Include tasks assigned to others
 ```
 
 ### Completed
-
 ```bash
 td completed                         # Completed today
 td completed --since 2024-01-01 --until 2024-01-31
@@ -140,7 +131,6 @@ td completed --project "Work"        # Filter by project
 ```
 
 ### Task Management
-
 ```bash
 # List with filters
 td task list --project "Work"
@@ -208,7 +198,6 @@ td task browse "task name"                    # Open in browser
 ```
 
 ### Projects
-
 ```bash
 td project list
 td project list --personal                    # Personal projects only
@@ -232,7 +221,6 @@ td project delete "Project Name" --dry-run        # Preview deletion
 ```
 
 ### Labels
-
 ```bash
 td label list                                 # Lists personal + shared labels
 td label view "urgent"                        # View label details and tasks
@@ -249,7 +237,6 @@ td label browse "urgent"                      # Open in browser
 Note: Shared labels (from collaborative projects) appear in `list` and can be viewed, but cannot be deleted/updated via the standard label commands since they have no ID.
 
 ### Comments
-
 ```bash
 td comment list "task name"
 td comment list "Project Name" -P             # Project comments
@@ -267,7 +254,6 @@ td comment browse id:123                      # Open in browser
 ```
 
 ### Attachments
-
 ```bash
 td attachment view "https://files.todoist.com/..."       # Fetch and display attachment content
 td attachment view "https://files.todoist.com/..." --json # JSON output with metadata + content
@@ -279,7 +265,6 @@ The file URL comes from a comment's `fileAttachment.fileUrl` field (visible in `
 10MB file size limit.
 
 ### Sections
-
 ```bash
 td section list "Work"                        # List sections in project (or --project "Work")
 td section list --project "Work"              # Same, using named flag
@@ -293,7 +278,6 @@ td section browse id:123                      # Open in browser
 ```
 
 ### Filters
-
 ```bash
 td filter list
 td filter create --name "Urgent work" --query "p1 & #Work"
@@ -306,7 +290,6 @@ td filter browse "Urgent work"                # Open in browser
 ```
 
 ### Workspaces
-
 ```bash
 td workspace list
 td workspace view "Workspace Name"
@@ -315,7 +298,6 @@ td workspace users "Workspace Name" --role ADMIN,MEMBER  # or --workspace "..."
 ```
 
 ### Activity
-
 ```bash
 td activity                                   # Recent activity
 td activity --since 2024-01-01 --until 2024-01-31
@@ -326,7 +308,6 @@ td activity --markdown                        # LLM-friendly Markdown output
 ```
 
 ### Notifications
-
 ```bash
 td notification list
 td notification list --unread
@@ -338,7 +319,6 @@ td notification reject id:123                 # Reject share invitation
 ```
 
 ### Reminders
-
 ```bash
 td reminder list "task name"                  # or --task "task name"
 td reminder add "task name" --before 30m      # or --task "task name" --before 30m
@@ -350,7 +330,6 @@ td reminder delete id:123 --yes
 ```
 
 ### Auth
-
 ```bash
 td auth status                                # Check authentication
 td auth status --json                         # JSON: { id, email, fullName }
@@ -360,7 +339,6 @@ td auth logout                                # Remove saved token
 ```
 
 ### Stats
-
 ```bash
 td stats                                      # View karma and productivity
 td stats --json
@@ -370,7 +348,6 @@ td stats vacation --off                       # Disable vacation mode
 ```
 
 ### Settings
-
 ```bash
 td settings view
 td settings view --json
@@ -380,7 +357,6 @@ td settings themes                            # List available themes
 ```
 
 ### Shell Completions
-
 ```bash
 td completion install                         # Install tab completions (prompts for shell)
 td completion install bash                    # Install for specific shell
@@ -390,7 +366,6 @@ td completion uninstall                       # Remove completions
 ```
 
 ### View (URL Router)
-
 ```bash
 td view <todoist-url>                          # Auto-route to appropriate view by URL type
 td view https://app.todoist.com/app/task/buy-milk-abc123
@@ -404,14 +379,12 @@ td view <url> --limit 25 --ndjson              # Passthrough list options where 
 ```
 
 ### Update
-
 ```bash
 td update                                    # Update CLI to latest version
 td update --check                            # Check for updates without installing
 ```
 
 ### Changelog
-
 ```bash
 td changelog                                 # Show last 5 versions
 td changelog -n 3                            # Show last 3 versions
@@ -421,7 +394,6 @@ td changelog --count 10                      # Show last 10 versions
 ## Examples
 
 ### Daily workflow
-
 ```bash
 td today --json | jq '.results | length'      # Count today's tasks
 td inbox --limit 5                             # Quick inbox check
@@ -430,7 +402,6 @@ td completed                                   # What I finished today
 ```
 
 ### Filter by multiple criteria
-
 ```bash
 td task list --project "Work" --label "urgent" --priority p1
 td task list --filter "today & #Work"
@@ -438,7 +409,6 @@ td task list --workspace "Work" --due today
 ```
 
 ### Complete tasks efficiently
-
 ```bash
 td task complete "Review PR"
 td task complete id:123456789
