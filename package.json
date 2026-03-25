@@ -16,7 +16,7 @@
     "lint:write": "oxlint src --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "postinstall": "test -f dist/postinstall.js && node dist/postinstall.js || true",
+    "postinstall": "node scripts/postinstall.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -45,6 +45,7 @@
   },
   "files": [
     "dist",
+    "scripts",
     "CHANGELOG.md"
   ],
   "dependencies": {
