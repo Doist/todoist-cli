@@ -22,6 +22,16 @@ export const skillInstallers: Record<string, SkillInstaller> = {
         description: 'Gemini CLI skill for Todoist CLI',
         dirName: '.gemini',
     }),
+    pi: createInstaller({
+        name: 'pi',
+        description: 'Pi skill for Todoist CLI',
+        dirName: '.pi',
+    }),
+    universal: createInstaller({
+        name: 'universal',
+        description: 'Universal agent skill for Todoist CLI',
+        dirName: '.agents',
+    }),
 }
 
 export function getInstaller(agent: string): SkillInstaller | undefined {
