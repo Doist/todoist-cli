@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.0](https://github.com/Doist/todoist-cli/compare/v1.28.0...v1.29.0) (2026-03-25)
+
+
+### Features
+
+* add new agent skills ([#176](https://github.com/Doist/todoist-cli/issues/176)) ([69be82c](https://github.com/Doist/todoist-cli/commit/69be82cb4b9be517ef22f810d2a636c1f9a44a1c))
+
 ## [1.28.0](https://github.com/Doist/todoist-cli/compare/v1.27.0...v1.28.0) (2026-03-21)
 
 
