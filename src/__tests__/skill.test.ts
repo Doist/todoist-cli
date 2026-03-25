@@ -291,6 +291,23 @@ describe('install detection', () => {
             'fake-agent does not appear to be installed',
         )
     })
+
+    it('skips agent directory check for universal (.agents)', async () => {
+        const testDir = await mkdtemp(join(tmpdir(), 'skill-universal-test-'))
+        const originalCwd = process.cwd()
+        process.chdir(testDir)
+        try {
+            const installer = createInstaller({
+                name: 'universal',
+                description: 'Universal agent',
+                dirName: '.agents',
+            })
+            await expect(installer.install(true, false)).resolves.not.toThrow()
+        } finally {
+            process.chdir(originalCwd)
+            await rm(testDir, { recursive: true, force: true })
+        }
+    })
 })
 
 describe('update file operations', () => {
