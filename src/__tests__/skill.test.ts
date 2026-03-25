@@ -44,6 +44,8 @@ describe('skill command', () => {
             expect(consoleSpy).toHaveBeenCalledWith('  codex')
             expect(consoleSpy).toHaveBeenCalledWith('  cursor')
             expect(consoleSpy).toHaveBeenCalledWith('  gemini')
+            expect(consoleSpy).toHaveBeenCalledWith('  pi')
+            expect(consoleSpy).toHaveBeenCalledWith('  universal')
         })
     })
 
@@ -151,6 +153,18 @@ describe('skills registry', () => {
         expect(installer?.name).toBe('gemini')
     })
 
+    it('returns pi installer', () => {
+        const installer = getInstaller('pi')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('pi')
+    })
+
+    it('returns universal installer', () => {
+        const installer = getInstaller('universal')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('universal')
+    })
+
     it('returns undefined for unknown agent', () => {
         const installer = getInstaller('unknown')
         expect(installer).toBeUndefined()
@@ -162,6 +176,8 @@ describe('skills registry', () => {
         expect(agents).toContain('codex')
         expect(agents).toContain('cursor')
         expect(agents).toContain('gemini')
+        expect(agents).toContain('pi')
+        expect(agents).toContain('universal')
     })
 })
 
@@ -171,6 +187,8 @@ describe('installer paths', () => {
         { agent: 'codex', dir: '.codex', desc: 'Codex skill for Todoist CLI' },
         { agent: 'cursor', dir: '.cursor', desc: 'Cursor skill for Todoist CLI' },
         { agent: 'gemini', dir: '.gemini', desc: 'Gemini CLI skill for Todoist CLI' },
+        { agent: 'pi', dir: '.pi', desc: 'Pi skill for Todoist CLI' },
+        { agent: 'universal', dir: '.agents', desc: 'Universal agent skill for Todoist CLI' },
     ] as const
 
     for (const { agent, dir, desc } of cases) {

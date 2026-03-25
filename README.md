@@ -25,7 +25,7 @@ td skill install pi
 td skill install universal
 ```
 
-Skills are installed globally to `~/.<agent>/skills/todoist-cli/SKILL.md`. When updating the CLI, installed skills are updated automatically. The `universal` agent installs to `~/.agents/skills/todoist-cli/SKILL.md` and is compatible with Amp, GitHub Copilot, OpenCode, and other agents that read from `~/.agents/`.
+Skills are installed to `~/<agent-dir>/skills/todoist-cli/SKILL.md` (e.g. `~/.claude/` for claude-code, `~/.agents/` for universal, etc.). When updating the CLI, installed skills are updated automatically. The `universal` agent is compatible with Amp, OpenCode, and other agents that read from `~/.agents/`.
 
 ```bash
 td skill list
@@ -34,14 +34,16 @@ td skill uninstall <agent>
 
 ## Uninstallation
 
-```bash
-npm uninstall -g @doist/todoist-cli
-```
-
-To also remove installed agent skills:
+First, remove any installed agent skills:
 
 ```bash
 td skill uninstall <agent>
+```
+
+Then uninstall the CLI:
+
+```bash
+npm uninstall -g @doist/todoist-cli
 ```
 
 ## Local Setup
