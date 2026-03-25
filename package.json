@@ -18,7 +18,7 @@
     "format:check": "oxfmt --check",
     "postinstall": "node scripts/postinstall.js",
     "check:skill-sync": "node scripts/check-skill-sync.js",
-    "sync:skill": "node -e \"import('./dist/lib/skills/create-installer.js').then(m => process.stdout.write(m.generateSkillFile()))\" > skills/todoist-cli/SKILL.md",
+    "sync:skill": "node scripts/sync-skill.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

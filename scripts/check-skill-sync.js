@@ -9,12 +9,13 @@
 
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 try {
-    const { generateSkillFile } = await import(join(root, 'dist/lib/skills/create-installer.js'))
+    const modulePath = pathToFileURL(join(root, 'dist/lib/skills/create-installer.js')).href
+    const { generateSkillFile } = await import(modulePath)
     const expected = generateSkillFile()
     const actual = await readFile(join(root, 'skills/todoist-cli/SKILL.md'), 'utf-8')
 
