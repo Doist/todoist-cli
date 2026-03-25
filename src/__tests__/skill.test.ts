@@ -223,7 +223,9 @@ describe('installer paths', () => {
         const content = skillInstallers['claude-code'].generateContent()
         expect(content).toContain('---')
         expect(content).toContain('name: todoist-cli')
-        expect(content).toContain('description: Manage Todoist tasks')
+        expect(content).toContain(
+            'description: "Manage Todoist tasks, projects, labels, comments, and more via the td CLI"',
+        )
         expect(content).toContain('# Todoist CLI (td)')
         expect(content).toContain('td today')
         expect(content).toContain('td task add')
