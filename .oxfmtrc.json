@@ -15,5 +15,5 @@
         "newlinesBetween": false,
         "partitionByNewline": true
     },
-    "ignorePatterns": ["**/package.json"]
+    "ignorePatterns": ["**/package.json", "skills/**"]
 }
