@@ -46,13 +46,15 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
         },
 
         async install(local: boolean, force: boolean): Promise<void> {
-            const agentDir = join(homedir(), config.dirName)
-            try {
-                await access(agentDir)
-            } catch {
-                throw new Error(
-                    `${config.name} does not appear to be installed (${agentDir} not found)`,
-                )
+            if (!local && config.dirName !== '.agents') {
+                const agentDir = join(homedir(), config.dirName)
+                try {
+                    await access(agentDir)
+                } catch {
+                    throw new Error(
+                        `${config.name} does not appear to be installed (${agentDir} not found)`,
+                    )
+                }
             }
             const filepath = getInstallPath(local)
             const exists = await this.isInstalled(local)

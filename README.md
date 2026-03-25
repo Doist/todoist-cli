@@ -12,19 +12,41 @@ A command-line interface for Todoist.
 > npm install -g @doist/todoist-cli
 > ```
 
-### Uninstallation
+### Agent Skills
+
+Install skills for your coding agent:
+
+```bash
+td skill install claude-code
+td skill install codex
+td skill install cursor
+td skill install gemini
+td skill install pi
+td skill install universal
+```
+
+Skills are installed to `~/<agent-dir>/skills/todoist-cli/SKILL.md` (e.g. `~/.claude/` for claude-code, `~/.agents/` for universal, etc.). When updating the CLI, installed skills are updated automatically. The `universal` agent is compatible with Amp, OpenCode, and other agents that read from `~/.agents/`.
+
+```bash
+td skill list
+td skill uninstall <agent>
+```
+
+## Uninstallation
+
+First, remove any installed agent skills:
+
+```bash
+td skill uninstall <agent>
+```
+
+Then uninstall the CLI:
 
 ```bash
 npm uninstall -g @doist/todoist-cli
 ```
 
-To also remove installed agent skills:
-
-```bash
-td skill uninstall claude-code   # repeat for each installed agent
-```
-
-### Local Setup (for now)
+## Local Setup
 
 ```bash
 git clone https://github.com/Doist/todoist-cli.git

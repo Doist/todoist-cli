@@ -16,7 +16,7 @@
     "lint:write": "oxlint src --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "postinstall": "node dist/postinstall.js || true",
+    "postinstall": "test -f dist/postinstall.js && node dist/postinstall.js || true",
     "test": "vitest run",
     "test:watch": "vitest"
   },
