@@ -73,13 +73,12 @@ Most list commands also support:
 
 \`\`\`bash
 td auth login                          # OAuth login; stores token in OS credential manager
-td auth token "your-token"            # Save a manual API token
+td auth token                          # Save a manual API token (prompts securely)
 td auth status                         # Check whether auth works
 td auth logout                         # Remove the saved token
-export TODOIST_API_TOKEN="your-token"  # Highest priority; overrides stored token
 \`\`\`
 
-If OS credential storage is unavailable, \`td\` warns and falls back to \`~/.config/todoist-cli/config.json\`. Legacy plaintext config tokens are migrated automatically when secure storage becomes available.
+Tokens are stored in the OS credential manager. If OS credential storage is unavailable, \`td\` warns and falls back to \`~/.config/todoist-cli/config.json\`. Legacy plaintext config tokens are migrated automatically when secure storage becomes available. The \`TODOIST_API_TOKEN\` environment variable can also be used and takes priority over stored tokens.
 
 ## References
 
