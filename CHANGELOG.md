@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.3](https://github.com/Doist/todoist-cli/compare/v1.29.2...v1.29.3) (2026-03-26)
+
+
+### Bug Fixes
+
+* address skills.sh Snyk security audit findings ([#183](https://github.com/Doist/todoist-cli/issues/183)) ([353a3df](https://github.com/Doist/todoist-cli/commit/353a3df4378eddb7db6eb010d47c70b902cf2f67))
+* upgrade Todoist SDK for proxy env var support ([#185](https://github.com/Doist/todoist-cli/issues/185)) ([d128fb9](https://github.com/Doist/todoist-cli/commit/d128fb9baaef8791bcd325ba00730ec5f958cc50))
+
 ## [1.29.2](https://github.com/Doist/todoist-cli/compare/v1.29.1...v1.29.2) (2026-03-25)
 
 
