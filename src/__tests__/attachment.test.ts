@@ -1,4 +1,4 @@
-import type { ViewAttachmentResponse } from '@doist/todoist-api-typescript'
+import type { FileResponse } from '@doist/todoist-api-typescript'
 import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -33,7 +33,7 @@ function createMockResponse({
     contentType?: string
     contentLength?: string
     body?: ArrayBuffer | string
-}): ViewAttachmentResponse {
+}): FileResponse {
     const headers: Record<string, string> = { 'content-type': contentType }
     if (contentLength) {
         headers['content-length'] = contentLength
