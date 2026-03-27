@@ -1,5 +1,6 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
+import { createCommentV1 } from '../lib/api/comments.js'
 import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
 import { openInBrowser } from '../lib/browser.js'
@@ -108,6 +109,7 @@ interface AddOptions {
     content: string
     file?: string
     project?: boolean
+    notifyUids?: string
 }
 
 async function addComment(ref: string, options: AddOptions): Promise<void> {
@@ -124,6 +126,13 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         targetArgs = { taskId: task.id }
         targetName = task.content
     }
+
+    const notifyUids = options.notifyUids
+        ? options.notifyUids
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : []
 
     let attachment:
         | {
@@ -144,11 +153,19 @@ async function addComment(ref: string, options: AddOptions): Promise<void> {
         }
     }
 
-    const comment = await api.addComment({
-        ...targetArgs,
-        content: options.content,
-        ...(attachment && { attachment }),
-    })
+    const comment =
+        notifyUids.length > 0
+            ? await createCommentV1({
+                  ...targetArgs,
+                  content: options.content,
+                  ...(attachment && { attachment }),
+                  uidsToNotify: notifyUids,
+              })
+            : await api.addComment({
+                  ...targetArgs,
+                  content: options.content,
+                  ...(attachment && { attachment }),
+              })
 
     console.log(`Added comment to "${targetName}"`)
     if (attachment) {
@@ -264,6 +281,10 @@ export function registerCommentCommand(program: Command): void {
         .option('-P, --project', 'Target a project instead of a task')
         .option('--content <text>', 'Comment content (required)')
         .option('--file <path>', 'Attach a file to the comment')
+        .option(
+            '--notify-uids <uids>',
+            'Comma-separated Todoist user IDs to notify (API v1: uids_to_notify)',
+        )
         .action((ref, options) => {
             if (!ref || !options.content) {
                 addCmd.help()
