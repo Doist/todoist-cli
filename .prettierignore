@@ -1,5 +1,5 @@
 dist
 node_modules
 
-# Release-please manages this file's formatting
+# semantic-release manages this file's formatting
 CHANGELOG.md
