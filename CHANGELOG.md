@@ -1,3 +1,9 @@
+## [1.31.1](https://github.com/Doist/todoist-cli/compare/v1.31.0...v1.31.1) (2026-03-29)
+
+### Bug Fixes
+
+* changelog parsing skips latest version entry ([#197](https://github.com/Doist/todoist-cli/issues/197)) ([643bc6f](https://github.com/Doist/todoist-cli/commit/643bc6f4d8251b9b5ce4964d2edeac3d9757a4b2))
+
 ## [1.31.0](https://github.com/Doist/todoist-cli/compare/v1.30.0...v1.31.0) (2026-03-29)
 
 ### Features
