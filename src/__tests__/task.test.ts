@@ -12,7 +12,7 @@ vi.mock('../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-import { registerTaskCommand } from '../commands/task.js'
+import { registerTaskCommand } from '../commands/task/index.js'
 import { completeTaskForever, getApi, rescheduleTask } from '../lib/api/core.js'
 import { openInBrowser } from '../lib/browser.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'

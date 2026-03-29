@@ -10,7 +10,7 @@ vi.mock('../lib/api/notifications.js', () => ({
     rejectInvitation: vi.fn(),
 }))
 
-import { registerNotificationCommand } from '../commands/notification.js'
+import { registerNotificationCommand } from '../commands/notification/index.js'
 import {
     acceptInvitation,
     fetchNotifications,

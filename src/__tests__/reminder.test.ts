@@ -13,7 +13,7 @@ vi.mock('../lib/api/reminders.js', () => ({
     deleteReminder: vi.fn(),
 }))
 
-import { registerReminderCommand } from '../commands/reminder.js'
+import { registerReminderCommand } from '../commands/reminder/index.js'
 import { getApi } from '../lib/api/core.js'
 import {
     addReminder,

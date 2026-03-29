@@ -24,9 +24,29 @@ Color convention:
 - `green` — create/join operations
 - `yellow` — update/delete/archive mutations
 
-## 3. Command Implementation (`src/commands/<entity>.ts`)
+## 3. Command Implementation (`src/commands/<entity>/`)
 
-Add the async function and register the subcommand.
+Commands with multiple subcommands use a folder-based structure:
+
+```
+src/commands/<entity>/
+  index.ts          # registerXxxCommand — creates parent cmd, wires subcommands
+  list.ts           # async function listXxx(...) — one file per subcommand
+  view.ts           # async function viewXxx(...)
+  create.ts         # async function createXxx(...)
+  helpers.ts        # shared constants/utilities used by multiple subcommands (optional)
+```
+
+- **index.ts**: Imports all subcommand handlers, creates the Commander tree, exports `registerXxxCommand`
+- **Subcommand files**: Export one async action handler + any option interfaces. Use `../../lib/` for lib imports. No Commander imports (only index.ts uses Commander).
+- **helpers.ts**: Only needed when multiple subcommands share a utility/constant.
+
+Single-subcommand commands (e.g., `add.ts`, `today.ts`) remain as flat files.
+
+### Adding a subcommand to an existing command
+
+1. Create a new file `src/commands/<entity>/<action>.ts` with the handler function
+2. Import and wire it in `src/commands/<entity>/index.ts`
 
 ### Flag conventions
 

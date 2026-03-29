@@ -5,7 +5,7 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { registerLabelCommand } from '../commands/label.js'
+import { registerLabelCommand } from '../commands/label/index.js'
 import { getApi } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 

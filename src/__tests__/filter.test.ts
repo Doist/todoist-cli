@@ -12,7 +12,7 @@ vi.mock('../lib/api/filters.js', () => ({
     deleteFilter: vi.fn(),
 }))
 
-import { registerFilterCommand } from '../commands/filter.js'
+import { registerFilterCommand } from '../commands/filter/index.js'
 import { getApi } from '../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../lib/api/filters.js'
 import { makeFilter } from './helpers/fixtures.js'

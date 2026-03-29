@@ -6,7 +6,7 @@ vi.mock('../lib/api/stats.js', () => ({
     updateGoals: vi.fn(),
 }))
 
-import { registerStatsCommand } from '../commands/stats.js'
+import { registerStatsCommand } from '../commands/stats/index.js'
 import { fetchProductivityStats, updateGoals } from '../lib/api/stats.js'
 
 const mockFetchProductivityStats = vi.mocked(fetchProductivityStats)

@@ -49,18 +49,21 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Show completed tasks',
         async () => (await import('./commands/completed.js')).registerCompletedCommand,
     ],
-    task: ['Manage tasks', async () => (await import('./commands/task.js')).registerTaskCommand],
+    task: [
+        'Manage tasks',
+        async () => (await import('./commands/task/index.js')).registerTaskCommand,
+    ],
     project: [
         'Manage projects',
-        async () => (await import('./commands/project.js')).registerProjectCommand,
+        async () => (await import('./commands/project/index.js')).registerProjectCommand,
     ],
     label: [
         'Manage labels',
-        async () => (await import('./commands/label.js')).registerLabelCommand,
+        async () => (await import('./commands/label/index.js')).registerLabelCommand,
     ],
     comment: [
         'Manage comments',
-        async () => (await import('./commands/comment.js')).registerCommentCommand,
+        async () => (await import('./commands/comment/index.js')).registerCommentCommand,
     ],
     attachment: [
         'Manage file attachments',
@@ -68,11 +71,11 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     section: [
         'Manage project sections',
-        async () => (await import('./commands/section.js')).registerSectionCommand,
+        async () => (await import('./commands/section/index.js')).registerSectionCommand,
     ],
     workspace: [
         'Manage workspaces',
-        async () => (await import('./commands/workspace.js')).registerWorkspaceCommand,
+        async () => (await import('./commands/workspace/index.js')).registerWorkspaceCommand,
     ],
     activity: [
         'View activity logs',
@@ -80,35 +83,35 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     reminder: [
         'Manage task reminders',
-        async () => (await import('./commands/reminder.js')).registerReminderCommand,
+        async () => (await import('./commands/reminder/index.js')).registerReminderCommand,
     ],
     settings: [
         'Manage user settings',
-        async () => (await import('./commands/settings.js')).registerSettingsCommand,
+        async () => (await import('./commands/settings/index.js')).registerSettingsCommand,
     ],
     auth: [
         'Manage authentication',
-        async () => (await import('./commands/auth.js')).registerAuthCommand,
+        async () => (await import('./commands/auth/index.js')).registerAuthCommand,
     ],
     stats: [
         'View productivity stats and karma',
-        async () => (await import('./commands/stats.js')).registerStatsCommand,
+        async () => (await import('./commands/stats/index.js')).registerStatsCommand,
     ],
     filter: [
         'Manage filters',
-        async () => (await import('./commands/filter.js')).registerFilterCommand,
+        async () => (await import('./commands/filter/index.js')).registerFilterCommand,
     ],
     notification: [
         'Manage notifications',
-        async () => (await import('./commands/notification.js')).registerNotificationCommand,
+        async () => (await import('./commands/notification/index.js')).registerNotificationCommand,
     ],
     skill: [
         'Manage coding agent skills/integrations',
-        async () => (await import('./commands/skill.js')).registerSkillCommand,
+        async () => (await import('./commands/skill/index.js')).registerSkillCommand,
     ],
     completion: [
         'Manage shell completions',
-        async () => (await import('./commands/completion.js')).registerCompletionCommand,
+        async () => (await import('./commands/completion/index.js')).registerCompletionCommand,
     ],
     view: [
         'View a Todoist entity or page by URL',

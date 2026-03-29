@@ -29,19 +29,20 @@ Use this to verify changes work before committing.
 ```
 src/
   index.ts              # entry point, registers all commands
-  commands/             # one file per command group
+  commands/             # command groups (folders for multi-subcommand, flat files for single)
     add.ts              # td add (quick add)
-    auth.ts             # td auth (login, token, status, logout)
-    completion.ts       # td completion (install/uninstall shell completions)
+    auth/               # td auth (login, token, status, logout)
+    completion/         # td completion (install/uninstall shell completions)
     today.ts            # td today
     inbox.ts            # td inbox
-    task.ts             # td task <action>
-    project.ts          # td project <action>
-    label.ts            # td label <action>
-    filter.ts           # td filter <action>
+    task/               # td task <action> — 11 subcommands
+    project/            # td project <action> — 19 subcommands
+    label/              # td label <action>
+    filter/             # td filter <action>
     view.ts             # td view <url> (URL router)
-    comment.ts          # td comment <action>
-    section.ts          # td section <action>
+    comment/            # td comment <action>
+    section/            # td section <action>
+    ...                 # + notification/, workspace/, reminder/, settings/, stats/, skill/
   lib/
     api.ts              # API client wrapper, type exports
     auth.ts             # token loading/saving (env var or config file)
@@ -67,7 +68,7 @@ src/
 - **Named flag aliases**: Where commands accept positional args for context (project, task, workspace), named flags are also accepted (`--project`, `--task`, `--workspace`). Error if both positional and flag are provided
 - **API responses**: Client returns `{ results: T[], nextCursor? }` - always destructure
 - **Priority mapping**: API uses 4=p1 (highest), 1=p4 (lowest)
-- **Command registration**: Each command exports `registerXxxCommand(program: Command)` function
+- **Command registration**: Each command exports `registerXxxCommand(program: Command)` function from its `index.ts` (folder-based commands) or top-level `.ts` file (flat commands). Folder-based commands split each subcommand into its own file with the index.ts wiring them to Commander.
 
 ## Testing
 

@@ -20,7 +20,7 @@ vi.mock('../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-import { registerProjectCommand } from '../commands/project.js'
+import { registerProjectCommand } from '../commands/project/index.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { openInBrowser } from '../lib/browser.js'

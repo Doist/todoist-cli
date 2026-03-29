@@ -1,0 +1,120 @@
+import type { MoveProjectToWorkspaceArgs, ProjectVisibility } from '@doist/todoist-api-typescript'
+import { ProjectVisibilitySchema } from '@doist/todoist-api-typescript'
+import { getApi, isPersonalProject, isWorkspaceProject } from '../../lib/api/core.js'
+import { formatError } from '../../lib/output.js'
+import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
+
+const validVisibilities = ProjectVisibilitySchema.options
+
+export type MoveOptions = {
+    toWorkspace?: string
+    toPersonal?: boolean
+    folder?: string
+    visibility?: string
+    yes?: boolean
+    dryRun?: boolean
+}
+
+export async function moveProject(ref: string, options: MoveOptions): Promise<void> {
+    if (options.toWorkspace && options.toPersonal) {
+        throw new Error(
+            formatError('INVALID_OPTIONS', 'Cannot specify both --to-workspace and --to-personal.'),
+        )
+    }
+    if (!options.toWorkspace && !options.toPersonal) {
+        throw new Error(
+            formatError('MISSING_DESTINATION', 'Specify --to-workspace <ref> or --to-personal.'),
+        )
+    }
+    if (options.folder && !options.toWorkspace) {
+        throw new Error(
+            formatError('INVALID_OPTIONS', '--folder is only valid with --to-workspace.'),
+        )
+    }
+    if (options.visibility && !options.toWorkspace) {
+        throw new Error(
+            formatError('INVALID_OPTIONS', '--visibility is only valid with --to-workspace.'),
+        )
+    }
+    if (
+        options.visibility &&
+        !validVisibilities.includes(options.visibility as ProjectVisibility)
+    ) {
+        throw new Error(
+            formatError('INVALID_VISIBILITY', `Invalid visibility "${options.visibility}".`, [
+                `Valid values: ${validVisibilities.join(', ')}`,
+            ]),
+        )
+    }
+
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+
+    if (options.toWorkspace) {
+        const workspace = await resolveWorkspaceRef(options.toWorkspace)
+
+        if (isWorkspaceProject(project) && project.workspaceId === workspace.id) {
+            throw new Error(
+                formatError(
+                    'SAME_WORKSPACE',
+                    `Project "${project.name}" is already in workspace "${workspace.name}".`,
+                ),
+            )
+        }
+
+        const args: MoveProjectToWorkspaceArgs = {
+            projectId: project.id,
+            workspaceId: workspace.id,
+        }
+
+        let folderName: string | undefined
+        if (options.folder) {
+            const folder = await resolveFolderRef(options.folder, workspace.id)
+            args.folderId = folder.id
+            folderName = folder.name
+        }
+
+        if (options.visibility) {
+            args.access = { visibility: options.visibility as ProjectVisibility }
+        }
+
+        if (options.dryRun || !options.yes) {
+            let preview = `Would move "${project.name}" to workspace "${workspace.name}"`
+            if (folderName) {
+                preview += ` (folder: ${folderName})`
+            }
+            if (options.visibility) {
+                preview += ` (visibility: ${options.visibility})`
+            }
+            console.log(preview)
+            if (!options.dryRun) console.log('Use --yes to confirm.')
+            return
+        }
+
+        await api.moveProjectToWorkspace(args)
+
+        let output = `Moved "${project.name}" to workspace "${workspace.name}"`
+        if (folderName) {
+            output += ` (folder: ${folderName})`
+        }
+        console.log(output)
+    } else {
+        if (isPersonalProject(project)) {
+            throw new Error(
+                formatError(
+                    'ALREADY_PERSONAL',
+                    `Project "${project.name}" is already a personal project.`,
+                ),
+            )
+        }
+
+        if (options.dryRun || !options.yes) {
+            console.log(`Would move "${project.name}" to personal`)
+            if (!options.dryRun) console.log('Use --yes to confirm.')
+            return
+        }
+
+        await api.moveProjectToPersonal({ projectId: project.id })
+        console.log(`Moved "${project.name}" to personal`)
+    }
+}
