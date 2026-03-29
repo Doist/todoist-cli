@@ -92,7 +92,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     stats: [
         'View productivity stats and karma',
-        async () => (await import('./commands/stats.js')).registerStatsCommand,
+        async () => (await import('./commands/stats/index.js')).registerStatsCommand,
     ],
     filter: [
         'Manage filters',
