@@ -1,3 +1,9 @@
+## [1.30.0](https://github.com/Doist/todoist-cli/compare/v1.29.5...v1.30.0) (2026-03-29)
+
+### Features
+
+* add section archive/unarchive and project extras commands ([#192](https://github.com/Doist/todoist-cli/issues/192)) ([f0cb78a](https://github.com/Doist/todoist-cli/commit/f0cb78a20dc959a2e029f40c146de32f763422f9))
+
 ## [1.29.5](https://github.com/Doist/todoist-cli/compare/v1.29.4...v1.29.5) (2026-03-29)
 
 ### Bug Fixes
