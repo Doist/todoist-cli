@@ -1,3 +1,9 @@
+## [1.29.4](https://github.com/Doist/todoist-cli/compare/v1.29.3...v1.29.4) (2026-03-29)
+
+### Bug Fixes
+
+* use Node 22 for release workflow ([#190](https://github.com/Doist/todoist-cli/issues/190)) ([00e4c00](https://github.com/Doist/todoist-cli/commit/00e4c0097c4e48758fd9a45019e453acd3b4b47d))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
