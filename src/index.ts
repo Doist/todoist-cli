@@ -100,7 +100,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     notification: [
         'Manage notifications',
-        async () => (await import('./commands/notification.js')).registerNotificationCommand,
+        async () => (await import('./commands/notification/index.js')).registerNotificationCommand,
     ],
     skill: [
         'Manage coding agent skills/integrations',
