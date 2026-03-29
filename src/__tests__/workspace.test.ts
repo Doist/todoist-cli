@@ -629,3 +629,124 @@ describe('workspace users', () => {
         ).rejects.toThrow('Cannot specify workspace both as argument and --workspace flag')
     })
 })
+
+describe('workspace insights', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces as never)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows insights for workspace projects', async () => {
+        const program = createProgram()
+
+        mockApi.getWorkspaceInsights.mockResolvedValue({
+            folderId: null,
+            projectInsights: [
+                {
+                    projectId: 'proj-1',
+                    health: { status: 'ON_TRACK', isStale: false, updateInProgress: false },
+                    progress: {
+                        projectId: 'proj-1',
+                        completedCount: 22,
+                        activeCount: 8,
+                        progressPercent: 73,
+                    },
+                },
+            ],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Backend API', workspaceId: 'ws-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'workspace', 'insights', 'Doist'])
+
+        expect(mockApi.getWorkspaceInsights).toHaveBeenCalledWith('ws-1', {})
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Backend API'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ON_TRACK'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('73%'))
+    })
+
+    it('handles null health and progress', async () => {
+        const program = createProgram()
+
+        mockApi.getWorkspaceInsights.mockResolvedValue({
+            folderId: null,
+            projectInsights: [{ projectId: 'proj-1', health: null, progress: null }],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Empty Project', workspaceId: 'ws-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'workspace', 'insights', 'Doist'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('N/A'))
+    })
+
+    it('passes project-ids filter', async () => {
+        const program = createProgram()
+
+        mockApi.getWorkspaceInsights.mockResolvedValue({
+            folderId: null,
+            projectInsights: [],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'insights',
+            'Doist',
+            '--project-ids',
+            'proj-1,proj-2',
+        ])
+
+        expect(mockApi.getWorkspaceInsights).toHaveBeenCalledWith('ws-1', {
+            projectIds: ['proj-1', 'proj-2'],
+        })
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        const insightsData = {
+            folderId: null,
+            projectInsights: [
+                {
+                    projectId: 'proj-1',
+                    health: { status: 'EXCELLENT', isStale: false, updateInProgress: false },
+                    progress: {
+                        projectId: 'proj-1',
+                        completedCount: 18,
+                        activeCount: 2,
+                        progressPercent: 90,
+                    },
+                },
+            ],
+        }
+        mockApi.getWorkspaceInsights.mockResolvedValue(insightsData)
+
+        await program.parseAsync(['node', 'td', 'workspace', 'insights', 'Doist', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({
+            folderId: null,
+            projectInsights: [{ projectId: 'proj-1' }],
+        })
+    })
+})

@@ -5,6 +5,7 @@ import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withUnvalidatedChoices } from '../lib/completion.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
+import { formatHealthStatus, formatProgressBar } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
 
@@ -298,6 +299,66 @@ async function listWorkspaceUsers(
     }
 }
 
+async function showWorkspaceInsights(
+    ref: string,
+    options: { json?: boolean; projectIds?: string },
+): Promise<void> {
+    const workspace = await resolveWorkspaceRef(ref)
+    const api = await getApi()
+
+    const args: { projectIds?: string[] } = {}
+    if (options.projectIds) {
+        args.projectIds = options.projectIds.split(',').map((id) => id.trim())
+    }
+
+    const insights = await api.getWorkspaceInsights(workspace.id, args)
+
+    if (options.json) {
+        console.log(JSON.stringify(insights, null, 2))
+        return
+    }
+
+    // Build a project name map
+    const { results: allProjects } = await paginate(
+        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+        { limit: Number.MAX_SAFE_INTEGER },
+    )
+    const projectMap = new Map(allProjects.map((p) => [p.id, p.name]))
+
+    console.log(chalk.bold(`Workspace: ${workspace.name}`))
+    console.log('')
+
+    if (insights.projectInsights.length === 0) {
+        console.log(chalk.dim('No project insights available.'))
+        return
+    }
+
+    console.log(`Project Insights (${insights.projectInsights.length}):`)
+    console.log('')
+
+    for (const pi of insights.projectInsights) {
+        const name = projectMap.get(pi.projectId) ?? `id:${pi.projectId}`
+        console.log(`  ${chalk.bold(name)}`)
+
+        if (pi.health) {
+            console.log(`    Health:   ${formatHealthStatus(pi.health.status)}`)
+        } else {
+            console.log(`    Health:   ${chalk.dim('N/A')}`)
+        }
+
+        if (pi.progress) {
+            const total = pi.progress.completedCount + pi.progress.activeCount
+            console.log(
+                `    Progress: ${formatProgressBar(pi.progress.progressPercent)} (${pi.progress.completedCount}/${total})`,
+            )
+        } else {
+            console.log(`    Progress: ${chalk.dim('N/A')}`)
+        }
+
+        console.log('')
+    }
+}
+
 export function registerWorkspaceCommand(program: Command): void {
     const workspace = program.command('workspace').description('Manage workspaces')
 
@@ -384,6 +445,25 @@ export function registerWorkspaceCommand(program: Command): void {
                     return
                 }
                 return listWorkspaceUsers(ref, options)
+            },
+        )
+
+    const insightsCmd = workspace
+        .command('insights [ref]')
+        .description('Show health and progress insights for workspace projects')
+        .option('--json', 'Output as JSON')
+        .option('--project-ids <ids>', 'Comma-separated project IDs to filter')
+        .action(
+            (
+                refArg: string | undefined,
+                options: { json?: boolean; projectIds?: string; workspace?: string },
+            ) => {
+                const ref = refArg
+                if (!ref) {
+                    insightsCmd.help()
+                    return
+                }
+                return showWorkspaceInsights(ref, options)
             },
         )
 }

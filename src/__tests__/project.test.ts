@@ -1805,3 +1805,396 @@ describe('project join', () => {
         expect(JSON.parse(output)).toMatchObject({ id: 'proj-123', name: 'Shared Project' })
     })
 })
+
+describe('project progress', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows progress for a project', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectProgress.mockResolvedValue({
+            projectId: 'proj-1',
+            completedCount: 22,
+            activeCount: 8,
+            progressPercent: 73,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'progress', 'Work'])
+
+        expect(mockApi.getProjectProgress).toHaveBeenCalledWith('proj-1')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('73%'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('22'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('8'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectProgress.mockResolvedValue({
+            projectId: 'proj-1',
+            completedCount: 5,
+            activeCount: 10,
+            progressPercent: 33,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'progress', 'Work', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({
+            projectId: 'proj-1',
+            completedCount: 5,
+            progressPercent: 33,
+        })
+    })
+})
+
+describe('project health', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows health status and description', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealth.mockResolvedValue({
+            status: 'ON_TRACK',
+            description: 'Project is progressing well',
+            taskRecommendations: [],
+            isStale: false,
+            updateInProgress: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health', 'Work'])
+
+        expect(mockApi.getProjectHealth).toHaveBeenCalledWith('proj-1')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ON_TRACK'))
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Project is progressing well'),
+        )
+    })
+
+    it('shows stale indicator', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealth.mockResolvedValue({
+            status: 'UNKNOWN',
+            isStale: true,
+            updateInProgress: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health', 'Work'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('stale'))
+    })
+
+    it('shows task recommendations', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealth.mockResolvedValue({
+            status: 'AT_RISK',
+            description: null,
+            taskRecommendations: [{ taskId: 'task-1', recommendation: 'Set a due date' }],
+            isStale: false,
+            updateInProgress: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health', 'Work'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Set a due date'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('task-1'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealth.mockResolvedValue({
+            status: 'ON_TRACK',
+            isStale: false,
+            updateInProgress: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health', 'Work', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({ status: 'ON_TRACK' })
+    })
+})
+
+describe('project health-context', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows project metrics', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealthContext.mockResolvedValue({
+            projectId: 'proj-1',
+            projectName: 'Work',
+            projectDescription: null,
+            projectMetrics: {
+                totalTasks: 42,
+                completedTasks: 30,
+                overdueTasks: 3,
+                tasksCreatedThisWeek: 5,
+                tasksCompletedThisWeek: 4,
+                averageCompletionTime: 2.3,
+            },
+            tasks: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health-context', 'Work'])
+
+        expect(mockApi.getProjectHealthContext).toHaveBeenCalledWith('proj-1')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('42'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('30'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('3'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectHealthContext.mockResolvedValue({
+            projectId: 'proj-1',
+            projectName: 'Work',
+            projectDescription: null,
+            projectMetrics: {
+                totalTasks: 10,
+                completedTasks: 5,
+                overdueTasks: 0,
+                tasksCreatedThisWeek: 0,
+                tasksCompletedThisWeek: 0,
+                averageCompletionTime: null,
+            },
+            tasks: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'health-context', 'Work', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({ projectId: 'proj-1' })
+    })
+})
+
+describe('project activity-stats', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows daily activity', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectActivityStats.mockResolvedValue({
+            dayItems: [
+                { date: '2026-03-29', totalCount: 12 },
+                { date: '2026-03-28', totalCount: 8 },
+            ],
+            weekItems: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'activity-stats', 'Work'])
+
+        expect(mockApi.getProjectActivityStats).toHaveBeenCalledWith('proj-1', {})
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('2026-03-29'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('12'))
+    })
+
+    it('passes weeks and include-weekly options', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectActivityStats.mockResolvedValue({
+            dayItems: [],
+            weekItems: [{ fromDate: '2026-03-24', toDate: '2026-03-30', totalCount: 40 }],
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'activity-stats',
+            'Work',
+            '--weeks',
+            '4',
+            '--include-weekly',
+        ])
+
+        expect(mockApi.getProjectActivityStats).toHaveBeenCalledWith('proj-1', {
+            weeks: 4,
+            includeWeeklyCounts: true,
+        })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('2026-03-24'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('40'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getProjectActivityStats.mockResolvedValue({
+            dayItems: [{ date: '2026-03-29', totalCount: 5 }],
+            weekItems: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'activity-stats', 'Work', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({
+            dayItems: [{ date: '2026-03-29', totalCount: 5 }],
+        })
+    })
+})
+
+describe('project analyze-health', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('triggers analysis and shows confirmation', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.analyzeProjectHealth.mockResolvedValue({
+            status: 'AT_RISK',
+            isStale: false,
+            updateInProgress: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'analyze-health', 'Work'])
+
+        expect(mockApi.analyzeProjectHealth).toHaveBeenCalledWith('proj-1')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('in progress'))
+    })
+
+    it('shows dry-run preview without calling API', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'analyze-health', 'Work', '--dry-run'])
+
+        expect(mockApi.analyzeProjectHealth).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('dry-run'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.analyzeProjectHealth.mockResolvedValue({
+            status: 'AT_RISK',
+            description: 'Several tasks overdue',
+            isStale: false,
+            updateInProgress: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'analyze-health', 'Work', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({ status: 'AT_RISK' })
+    })
+})

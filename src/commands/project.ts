@@ -1,5 +1,6 @@
 import type {
     ColorKey,
+    GetProjectActivityStatsArgs,
     MoveProjectToWorkspaceArgs,
     ProjectViewStyle,
     ProjectVisibility,
@@ -15,11 +16,13 @@ import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import type { PaginatedViewOptions, ViewOptions } from '../lib/options.js'
 import {
     formatError,
+    formatHealthStatus,
     formatJson,
     formatNdjson,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    formatProgressBar,
     formatTaskRow,
     isAccessible,
     printDryRun,
@@ -767,6 +770,173 @@ async function joinProjectCmd(
     console.log(chalk.dim(`ID: ${project.id}`))
 }
 
+async function showProjectProgress(ref: string, options: { json?: boolean }): Promise<void> {
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+    const progress = await api.getProjectProgress(project.id)
+
+    if (options.json) {
+        console.log(JSON.stringify(progress, null, 2))
+        return
+    }
+
+    const total = progress.completedCount + progress.activeCount
+    console.log(chalk.bold(project.name))
+    console.log('')
+    console.log(
+        `Progress: ${formatProgressBar(progress.progressPercent)} (${progress.completedCount}/${total})`,
+    )
+    console.log(`  Completed: ${progress.completedCount}`)
+    console.log(`  Active:    ${progress.activeCount}`)
+}
+
+async function showProjectHealth(ref: string, options: { json?: boolean }): Promise<void> {
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+    const health = await api.getProjectHealth(project.id)
+
+    if (options.json) {
+        console.log(JSON.stringify(health, null, 2))
+        return
+    }
+
+    console.log(chalk.bold(project.name))
+    console.log('')
+
+    let statusLine = `Health: ${formatHealthStatus(health.status)}`
+    if (health.isStale) {
+        statusLine += chalk.dim("  (stale - run 'td project analyze-health' to refresh)")
+    }
+    if (health.updateInProgress) {
+        statusLine += chalk.dim('  (analysis in progress...)')
+    }
+    console.log(statusLine)
+
+    if (health.updatedAt) {
+        console.log(`  Updated: ${health.updatedAt}`)
+    }
+
+    if (health.description) {
+        console.log('')
+        console.log('  Summary:')
+        console.log(`  ${health.description}`)
+    }
+
+    if (health.taskRecommendations && health.taskRecommendations.length > 0) {
+        console.log('')
+        console.log('  Recommendations:')
+        for (const rec of health.taskRecommendations) {
+            console.log(`  - ${chalk.dim(`id:${rec.taskId}`)}: ${rec.recommendation}`)
+        }
+    }
+}
+
+async function showProjectHealthContext(ref: string, options: { json?: boolean }): Promise<void> {
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+    const context = await api.getProjectHealthContext(project.id)
+
+    if (options.json) {
+        console.log(JSON.stringify(context, null, 2))
+        return
+    }
+
+    console.log(chalk.bold(context.projectName))
+    console.log('')
+    console.log('Metrics:')
+    const m = context.projectMetrics
+    console.log(`  Total tasks:          ${m.totalTasks}`)
+    console.log(`  Completed:            ${m.completedTasks}`)
+    console.log(`  Overdue:              ${m.overdueTasks}`)
+    console.log(`  Created this week:    ${m.tasksCreatedThisWeek}`)
+    console.log(`  Completed this week:  ${m.tasksCompletedThisWeek}`)
+    if (m.averageCompletionTime !== null) {
+        console.log(`  Avg completion time:  ${m.averageCompletionTime.toFixed(1)} days`)
+    }
+
+    if (context.tasks.length > 0) {
+        console.log('')
+        console.log(chalk.dim(`--- Tasks (${context.tasks.length}) ---`))
+        for (const task of context.tasks) {
+            const parts = [chalk.dim(`id:${task.id}`)]
+            parts.push(`p${5 - parseInt(task.priority, 10)}`)
+            if (task.due) parts.push(chalk.green(`due:${task.due}`))
+            if (task.deadline) parts.push(chalk.red(`deadline:${task.deadline}`))
+            if (task.isCompleted) parts.push(chalk.dim('[done]'))
+            if (task.labels.length > 0) parts.push(chalk.cyan(task.labels.join(', ')))
+            console.log(`  ${task.content}`)
+            console.log(`  ${parts.join('  ')}`)
+            console.log('')
+        }
+    }
+}
+
+async function showProjectActivityStats(
+    ref: string,
+    options: { json?: boolean; weeks?: string; includeWeekly?: boolean },
+): Promise<void> {
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+
+    const args: GetProjectActivityStatsArgs = {}
+    if (options.weeks) args.weeks = parseInt(options.weeks, 10)
+    if (options.includeWeekly) args.includeWeeklyCounts = true
+
+    const stats = await api.getProjectActivityStats(project.id, args)
+
+    if (options.json) {
+        console.log(JSON.stringify(stats, null, 2))
+        return
+    }
+
+    console.log(chalk.bold(`${project.name} - Activity Stats`))
+
+    if (stats.dayItems.length > 0) {
+        console.log('')
+        console.log('Daily:')
+        for (const day of stats.dayItems) {
+            const count = String(day.totalCount).padStart(4)
+            console.log(`  ${day.date}  ${count} items`)
+        }
+    }
+
+    if (stats.weekItems && stats.weekItems.length > 0) {
+        console.log('')
+        console.log('Weekly:')
+        for (const week of stats.weekItems) {
+            const count = String(week.totalCount).padStart(4)
+            console.log(`  ${week.fromDate} to ${week.toDate}  ${count} items`)
+        }
+    }
+}
+
+async function analyzeHealth(
+    ref: string,
+    options: { json?: boolean; dryRun?: boolean },
+): Promise<void> {
+    const api = await getApi()
+    const project = await resolveProjectRef(api, ref)
+
+    if (options.dryRun) {
+        printDryRun('trigger health analysis', { Project: project.name })
+        return
+    }
+
+    const health = await api.analyzeProjectHealth(project.id)
+
+    if (options.json) {
+        console.log(JSON.stringify(health, null, 2))
+        return
+    }
+
+    console.log(`Triggered health analysis for "${project.name}"`)
+    console.log(
+        chalk.dim(
+            `Analysis is in progress. Run 'td project health "${project.name}"' to check results.`,
+        ),
+    )
+}
+
 export function registerProjectCommand(program: Command): void {
     const project = program.command('project').description('Manage projects')
 
@@ -946,5 +1116,68 @@ export function registerProjectCommand(program: Command): void {
                 return
             }
             return joinProjectCmd(ref, options)
+        })
+
+    const progressCmd = project
+        .command('progress [ref]')
+        .description('Show project completion progress')
+        .option('--json', 'Output as JSON')
+        .action((ref, options) => {
+            if (!ref) {
+                progressCmd.help()
+                return
+            }
+            return showProjectProgress(ref, options)
+        })
+
+    const healthCmd = project
+        .command('health [ref]')
+        .description('Show project health status and recommendations')
+        .option('--json', 'Output as JSON')
+        .action((ref, options) => {
+            if (!ref) {
+                healthCmd.help()
+                return
+            }
+            return showProjectHealth(ref, options)
+        })
+
+    const healthContextCmd = project
+        .command('health-context [ref]')
+        .description('Show detailed project metrics and task breakdown for health analysis')
+        .option('--json', 'Output as JSON')
+        .action((ref, options) => {
+            if (!ref) {
+                healthContextCmd.help()
+                return
+            }
+            return showProjectHealthContext(ref, options)
+        })
+
+    const activityStatsCmd = project
+        .command('activity-stats [ref]')
+        .description('Show project activity statistics')
+        .option('--json', 'Output as JSON')
+        .option('--weeks <n>', 'Number of weeks of data (1-12)')
+        .option('--include-weekly', 'Include weekly rollup counts')
+        .action((ref, options) => {
+            if (!ref) {
+                activityStatsCmd.help()
+                return
+            }
+            return showProjectActivityStats(ref, options)
+        })
+
+    const analyzeHealthCmd = project
+        .command('analyze-health [ref]')
+        .description('Trigger a new health analysis for a project')
+        .option('--json', 'Output as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
+            if (!ref) {
+                analyzeHealthCmd.help()
+                return
+            }
+            return analyzeHealth(ref, options)
         })
 }

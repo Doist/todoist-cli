@@ -50,6 +50,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         unarchiveSection: { text: 'Unarchiving section...', color: 'yellow' },
         sync: { text: 'Syncing...', color: 'blue' },
         viewAttachment: { text: 'Fetching attachment...', color: 'blue' },
+        getProjectActivityStats: { text: 'Loading activity stats...', color: 'blue' },
+        getProjectHealth: { text: 'Loading project health...', color: 'blue' },
+        getProjectHealthContext: { text: 'Loading health context...', color: 'blue' },
+        getProjectProgress: { text: 'Loading project progress...', color: 'blue' },
+        getWorkspaceInsights: { text: 'Loading workspace insights...', color: 'blue' },
+        analyzeProjectHealth: { text: 'Analyzing project health...', color: 'green' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
