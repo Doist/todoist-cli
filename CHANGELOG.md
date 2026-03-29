@@ -1,3 +1,9 @@
+## [1.29.5](https://github.com/Doist/todoist-cli/compare/v1.29.4...v1.29.5) (2026-03-29)
+
+### Bug Fixes
+
+* add prepublishOnly script for release safety ([#191](https://github.com/Doist/todoist-cli/issues/191)) ([7c8533c](https://github.com/Doist/todoist-cli/commit/7c8533c1b49e4b2dd2a8fe2e8bbfad3517dea3ed))
+
 ## [1.29.4](https://github.com/Doist/todoist-cli/compare/v1.29.3...v1.29.4) (2026-03-29)
 
 ### Bug Fixes
