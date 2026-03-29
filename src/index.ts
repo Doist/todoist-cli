@@ -56,7 +56,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     label: [
         'Manage labels',
-        async () => (await import('./commands/label.js')).registerLabelCommand,
+        async () => (await import('./commands/label/index.js')).registerLabelCommand,
     ],
     comment: [
         'Manage comments',
@@ -96,7 +96,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     filter: [
         'Manage filters',
-        async () => (await import('./commands/filter.js')).registerFilterCommand,
+        async () => (await import('./commands/filter/index.js')).registerFilterCommand,
     ],
     notification: [
         'Manage notifications',

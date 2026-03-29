@@ -103,12 +103,12 @@ Examples:
                     )
                 case 'label':
                     return runRoutedCommand(
-                        async () => (await import('./label.js')).registerLabelCommand,
+                        async () => (await import('./label/index.js')).registerLabelCommand,
                         ['label', 'view', ref, ...invocation.passthroughArgs],
                     )
                 case 'filter':
                     return runRoutedCommand(
-                        async () => (await import('./filter.js')).registerFilterCommand,
+                        async () => (await import('./filter/index.js')).registerFilterCommand,
                         ['filter', 'show', ref, ...invocation.passthroughArgs],
                     )
             }
