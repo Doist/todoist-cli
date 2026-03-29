@@ -844,14 +844,16 @@ async function showProjectHealthContext(ref: string, options: { json?: boolean }
     console.log(chalk.bold(context.projectName))
     console.log('')
     console.log('Metrics:')
-    const m = context.projectMetrics
-    console.log(`  Total tasks:          ${m.totalTasks}`)
-    console.log(`  Completed:            ${m.completedTasks}`)
-    console.log(`  Overdue:              ${m.overdueTasks}`)
-    console.log(`  Created this week:    ${m.tasksCreatedThisWeek}`)
-    console.log(`  Completed this week:  ${m.tasksCompletedThisWeek}`)
-    if (m.averageCompletionTime !== null) {
-        console.log(`  Avg completion time:  ${m.averageCompletionTime.toFixed(1)} days`)
+    const projectMetrics = context.projectMetrics
+    console.log(`  Total tasks:          ${projectMetrics.totalTasks}`)
+    console.log(`  Completed:            ${projectMetrics.completedTasks}`)
+    console.log(`  Overdue:              ${projectMetrics.overdueTasks}`)
+    console.log(`  Created this week:    ${projectMetrics.tasksCreatedThisWeek}`)
+    console.log(`  Completed this week:  ${projectMetrics.tasksCompletedThisWeek}`)
+    if (projectMetrics.averageCompletionTime !== null) {
+        console.log(
+            `  Avg completion time:  ${projectMetrics.averageCompletionTime.toFixed(1)} days`,
+        )
     }
 
     if (context.tasks.length > 0) {
