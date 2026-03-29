@@ -63,7 +63,43 @@ const myCmd = parent
 
 The variable assignment (`const myCmd = ...`) is needed so the `.action()` callback can call `myCmd.help()` when the argument is missing.
 
-## 4. Tests (`src/__tests__/<entity>.test.ts`)
+## 4. Accessibility (`src/lib/output.ts`)
+
+The CLI supports accessible mode via `isAccessible()` (checks `TD_ACCESSIBLE=1` or `--accessible` flag). When adding output that uses color or visual elements, consider whether information is conveyed **only** by color or decoration.
+
+### When to add accessible alternatives
+
+- **Color-coded status/severity**: If color conveys meaning (e.g., green=good, red=bad), add a text prefix or label in accessible mode so the meaning is available without color. Example: `formatHealthStatus` adds `[+]`, `[!]`, `[!!]` prefixes.
+- **ASCII art / visual bars**: Omit entirely in accessible mode — screen readers read each character individually (e.g., `====----` becomes "equals equals equals equals dash dash dash dash"). Show only the numeric value instead.
+- **Decorative symbols**: Stars, checkmarks, or icons used alongside color should have text equivalents. Example: favorites get `★` only in accessible mode since the yellow color already signals it visually.
+
+### When you don't need to do anything
+
+- **Text that is already descriptive**: Status names like `ON_TRACK`, `COMPLETED` are self-explanatory — color just reinforces them. Still consider adding indicator prefixes for severity.
+- **Plain numbers and dates**: Already accessible.
+- **Dim/styled labels**: `chalk.dim()` for secondary info is fine — screen readers ignore styling.
+
+### Pattern
+
+```typescript
+import { isAccessible } from '../lib/output.js'
+
+// For color-coded values: add text prefix in accessible mode
+const a11y = isAccessible()
+const prefix = a11y ? '[!] ' : ''
+console.log(chalk.yellow(`${prefix}AT_RISK`))
+
+// For visual bars: skip entirely in accessible mode
+if (isAccessible()) {
+    console.log(`${percent}%`)
+} else {
+    console.log(`[${'='.repeat(filled)}${'-'.repeat(empty)}] ${percent}%`)
+}
+```
+
+If adding a new shared formatter to `output.ts`, use `Record<ExactType, ...>` rather than `Record<string, ...>` so the compiler catches missing variants.
+
+## 5. Tests (`src/__tests__/<entity>.test.ts`)
 
 Follow the existing pattern: mock `getApi`, use `program.parseAsync()`.
 
@@ -74,7 +110,7 @@ Always test:
 - `--dry-run` for mutating commands (API method should NOT be called, preview text shown)
 - `--json` output where applicable
 
-## 5. Skill Content (`src/lib/skills/content.ts`)
+## 6. Skill Content (`src/lib/skills/content.ts`)
 
 Update `SKILL_CONTENT` with examples for the new command. Update relevant sections:
 
@@ -83,7 +119,7 @@ Update `SKILL_CONTENT` with examples for the new command. Update relevant sectio
 - Mutating `--json` list if the command returns an entity
 - `--dry-run` list if applicable
 
-## 6. Sync Skill File
+## 7. Sync Skill File
 
 After all code changes are complete:
 
@@ -93,7 +129,7 @@ npm run sync:skill
 
 This builds the project and regenerates `skills/todoist-cli/SKILL.md` from the compiled skill content. The regenerated file must be committed. CI will fail (`npm run check:skill-sync`) if it is out of sync.
 
-## 7. Verify
+## 8. Verify
 
 ```bash
 npm run type-check
