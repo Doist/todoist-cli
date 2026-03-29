@@ -180,7 +180,23 @@ export async function viewProject(
         const fullData = await api.getFullProject(project.id)
 
         if (options.json) {
-            console.log(JSON.stringify(fullData, null, 2))
+            const output = {
+                project: fullData.project
+                    ? JSON.parse(
+                          formatJson(fullData.project, 'project', options.full, options.showUrls),
+                      )
+                    : null,
+                commentsCount: fullData.commentsCount,
+                tasks: JSON.parse(
+                    formatJson(fullData.tasks, 'task', options.full, options.showUrls),
+                ),
+                sections: JSON.parse(
+                    formatJson(fullData.sections, 'section', options.full, options.showUrls),
+                ),
+                collaborators: fullData.collaborators,
+                notes: fullData.notes,
+            }
+            console.log(JSON.stringify(output, null, 2))
             return
         }
 
@@ -194,6 +210,17 @@ export async function viewProject(
             if (fullData.tasks.length > 0) {
                 lines.push(formatNdjson(fullData.tasks, 'task', options.full, options.showUrls))
             }
+            if (fullData.sections.length > 0) {
+                lines.push(
+                    formatNdjson(fullData.sections, 'section', options.full, options.showUrls),
+                )
+            }
+            if (fullData.collaborators.length > 0) {
+                lines.push(formatNdjson(fullData.collaborators))
+            }
+            if (fullData.notes.length > 0) {
+                lines.push(formatNdjson(fullData.notes))
+            }
             console.log(lines.join('\n'))
             return
         }
@@ -205,10 +232,8 @@ export async function viewProject(
         console.log(`ID:       ${displayProject.id}`)
 
         if (isWorkspaceProject(displayProject)) {
-            const [workspaces, folders] = await Promise.all([
-                fetchWorkspaces(),
-                fetchWorkspaceFolders(),
-            ])
+            const workspaces = await fetchWorkspaces()
+            const folders = await fetchWorkspaceFolders()
             const workspace = workspaces.find((w) => w.id === displayProject.workspaceId)
             if (workspace) {
                 console.log(`Workspace: ${workspace.name}`)
@@ -255,6 +280,10 @@ export async function viewProject(
 
         if (fullData.notes.length > 0) {
             console.log(chalk.dim(`--- Notes (${fullData.notes.length}) ---`))
+            for (const note of fullData.notes) {
+                console.log(`${chalk.dim(note.id)}  ${note.content}`)
+            }
+            console.log('')
         }
 
         return

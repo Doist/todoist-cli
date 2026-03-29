@@ -1705,6 +1705,7 @@ describe('project view --detailed', () => {
         expect(allOutput).toContain('Backlog')
         expect(allOutput).toContain('John')
         expect(allOutput).toContain('Comments: 5')
+        expect(allOutput).toContain('A note')
     })
 
     it('outputs full JSON with --detailed --json', async () => {
