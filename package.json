@@ -20,7 +20,8 @@
     "check:skill-sync": "node scripts/check-skill-sync.js",
     "sync:skill": "node scripts/sync-skill.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "todoist",
