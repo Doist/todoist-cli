@@ -80,7 +80,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     reminder: [
         'Manage task reminders',
-        async () => (await import('./commands/reminder.js')).registerReminderCommand,
+        async () => (await import('./commands/reminder/index.js')).registerReminderCommand,
     ],
     settings: [
         'Manage user settings',
