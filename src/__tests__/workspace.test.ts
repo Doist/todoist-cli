@@ -664,7 +664,7 @@ describe('workspace insights', () => {
                 },
             ],
         })
-        mockApi.getProjects.mockResolvedValue({
+        mockApi.getWorkspaceActiveProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Backend API', workspaceId: 'ws-1' }],
             nextCursor: null,
         })
@@ -684,7 +684,7 @@ describe('workspace insights', () => {
             folderId: null,
             projectInsights: [{ projectId: 'proj-1', health: null, progress: null }],
         })
-        mockApi.getProjects.mockResolvedValue({
+        mockApi.getWorkspaceActiveProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Empty Project', workspaceId: 'ws-1' }],
             nextCursor: null,
         })
@@ -701,7 +701,7 @@ describe('workspace insights', () => {
             folderId: null,
             projectInsights: [],
         })
-        mockApi.getProjects.mockResolvedValue({
+        mockApi.getWorkspaceActiveProjects.mockResolvedValue({
             results: [],
             nextCursor: null,
         })

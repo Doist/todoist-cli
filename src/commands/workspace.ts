@@ -7,7 +7,7 @@ import { withUnvalidatedChoices } from '../lib/completion.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import { formatHealthStatus, formatProgressBar } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { resolveWorkspaceRef } from '../lib/refs.js'
+import { lenientIdRef, resolveWorkspaceRef } from '../lib/refs.js'
 
 const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
 
@@ -308,7 +308,9 @@ async function showWorkspaceInsights(
 
     const args: { projectIds?: string[] } = {}
     if (options.projectIds) {
-        args.projectIds = options.projectIds.split(',').map((id) => id.trim())
+        args.projectIds = options.projectIds
+            .split(',')
+            .map((id) => lenientIdRef(id.trim(), 'project'))
     }
 
     const insights = await api.getWorkspaceInsights(workspace.id, args)
@@ -318,12 +320,17 @@ async function showWorkspaceInsights(
         return
     }
 
-    // Build a project name map
-    const { results: allProjects } = await paginate(
-        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+    // Build a project name map from workspace-specific projects
+    const { results: workspaceProjects } = await paginate(
+        (cursor, limit) =>
+            api.getWorkspaceActiveProjects({
+                workspaceId: parseInt(workspace.id, 10),
+                cursor: cursor ?? undefined,
+                limit,
+            }),
         { limit: Number.MAX_SAFE_INTEGER },
     )
-    const projectMap = new Map(allProjects.map((p) => [p.id, p.name]))
+    const projectMap = new Map(workspaceProjects.map((p) => [p.id, p.name]))
 
     console.log(chalk.bold(`Workspace: ${workspace.name}`))
     console.log('')
@@ -451,6 +458,7 @@ export function registerWorkspaceCommand(program: Command): void {
     const insightsCmd = workspace
         .command('insights [ref]')
         .description('Show health and progress insights for workspace projects')
+        .option('--workspace <ref>', 'Workspace name or id:xxx')
         .option('--json', 'Output as JSON')
         .option('--project-ids <ids>', 'Comma-separated project IDs to filter')
         .action(
@@ -458,7 +466,12 @@ export function registerWorkspaceCommand(program: Command): void {
                 refArg: string | undefined,
                 options: { json?: boolean; projectIds?: string; workspace?: string },
             ) => {
-                const ref = refArg
+                if (refArg && options.workspace) {
+                    throw new Error(
+                        'Cannot specify workspace both as argument and --workspace flag',
+                    )
+                }
+                const ref = refArg || options.workspace
                 if (!ref) {
                     insightsCmd.help()
                     return

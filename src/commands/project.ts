@@ -805,7 +805,9 @@ async function showProjectHealth(ref: string, options: { json?: boolean }): Prom
 
     let statusLine = `Health: ${formatHealthStatus(health.status)}`
     if (health.isStale) {
-        statusLine += chalk.dim("  (stale - run 'td project analyze-health' to refresh)")
+        statusLine += chalk.dim(
+            `  (stale - run 'td project analyze-health "${project.name}"' to refresh)`,
+        )
     }
     if (health.updateInProgress) {
         statusLine += chalk.dim('  (analysis in progress...)')
@@ -881,7 +883,18 @@ async function showProjectActivityStats(
     const project = await resolveProjectRef(api, ref)
 
     const args: GetProjectActivityStatsArgs = {}
-    if (options.weeks) args.weeks = parseInt(options.weeks, 10)
+    if (options.weeks) {
+        const weeks = parseInt(options.weeks, 10)
+        if (isNaN(weeks) || weeks < 1 || weeks > 12) {
+            throw new Error(
+                formatError(
+                    'INVALID_WEEKS',
+                    'The --weeks value must be a number between 1 and 12.',
+                ),
+            )
+        }
+        args.weeks = weeks
+    }
     if (options.includeWeekly) args.includeWeeklyCounts = true
 
     const stats = await api.getProjectActivityStats(project.id, args)

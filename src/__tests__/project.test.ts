@@ -2108,6 +2108,39 @@ describe('project activity-stats', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('40'))
     })
 
+    it('rejects invalid --weeks values', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'activity-stats',
+                'Work',
+                '--weeks',
+                'foo',
+            ]),
+        ).rejects.toThrow('INVALID_WEEKS')
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'activity-stats',
+                'Work',
+                '--weeks',
+                '15',
+            ]),
+        ).rejects.toThrow('INVALID_WEEKS')
+    })
+
     it('outputs JSON with --json', async () => {
         const program = createProgram()
 

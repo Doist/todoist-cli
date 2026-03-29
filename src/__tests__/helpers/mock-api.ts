@@ -90,6 +90,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getProjectCollaborators: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         // Workspace
         getWorkspaceUsers: vi.fn().mockResolvedValue({ workspaceUsers: [], hasMore: false }),
+        getWorkspaceActiveProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getWorkspaceArchivedProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         // Insights
         getProjectActivityStats: vi.fn().mockResolvedValue({ dayItems: [], weekItems: null }),
         getProjectHealth: vi.fn().mockResolvedValue({

@@ -327,6 +327,7 @@ td workspace view "Workspace Name"
 td workspace projects "Workspace Name"        # or --workspace "Workspace Name"
 td workspace users "Workspace Name" --role ADMIN,MEMBER  # or --workspace "..."
 td workspace insights "Workspace Name"       # Health and progress for all projects
+td workspace insights --workspace "Workspace Name"  # or --workspace "..."
 td workspace insights "Workspace Name" --project-ids "id1,id2"  # Filter to specific projects
 td workspace insights "Workspace Name" --json  # JSON output
 ```

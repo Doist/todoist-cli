@@ -50,6 +50,8 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         unarchiveSection: { text: 'Unarchiving section...', color: 'yellow' },
         sync: { text: 'Syncing...', color: 'blue' },
         viewAttachment: { text: 'Fetching attachment...', color: 'blue' },
+        getWorkspaceActiveProjects: { text: 'Loading workspace projects...', color: 'blue' },
+        getWorkspaceArchivedProjects: { text: 'Loading archived projects...', color: 'blue' },
         getProjectActivityStats: { text: 'Loading activity stats...', color: 'blue' },
         getProjectHealth: { text: 'Loading project health...', color: 'blue' },
         getProjectHealthContext: { text: 'Loading health context...', color: 'blue' },
