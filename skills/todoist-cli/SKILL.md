@@ -43,7 +43,7 @@ All list commands support:
 
 The following mutating commands also support `--json` to return the created or updated entity as machine-readable JSON instead of plain-text confirmation:
 - `task add`, `task update`
-- `project create`, `project update`
+- `project create`, `project update`, `project join`
 - `label create`, `label update`
 - `comment add`, `comment update`
 - `section create`, `section update`
@@ -221,6 +221,14 @@ td project move "Project Name" --to-personal
 # move requires --yes to confirm (without it, shows a dry-run preview)
 td project create --name "New Project" --dry-run  # Preview project creation
 td project delete "Project Name" --dry-run        # Preview deletion
+td project view "Project Name" --detailed     # Full view with sections, collaborators, notes
+td project archived-count                     # Count archived projects
+td project archived-count --workspace "Work"  # Count in a workspace
+td project archived-count --joined            # Count only joined projects
+td project permissions                        # Show role-to-action permission mappings
+td project permissions --json                 # JSON output
+td project join id:abc123                     # Join a shared project
+td project join id:abc123 --json              # Return joined project as JSON
 ```
 
 ### Labels
@@ -278,6 +286,9 @@ td section update id:123 --name "Done" --json  # Return updated section as JSON
 td section delete id:123 --yes
 td section create --project "Work" --name "In Progress" --dry-run  # Preview section creation
 td section browse id:123                      # Open in browser
+td section archive id:123                     # Archive a section
+td section unarchive id:123                   # Unarchive a section
+td section archive id:123 --dry-run           # Preview archiving
 ```
 
 ### Filters

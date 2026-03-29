@@ -160,6 +160,34 @@ async function updateSection(
     console.log(`Updated: ${section.name} → ${updated.name}`)
 }
 
+async function archiveSection(sectionId: string, options: { dryRun?: boolean }): Promise<void> {
+    const id = lenientIdRef(sectionId, 'section')
+    const api = await getApi()
+    const section = await api.getSection(id)
+
+    if (options.dryRun) {
+        printDryRun('archive section', { Section: section.name })
+        return
+    }
+
+    await api.archiveSection(id)
+    console.log(`Archived: ${section.name}`)
+}
+
+async function unarchiveSection(sectionId: string, options: { dryRun?: boolean }): Promise<void> {
+    const id = lenientIdRef(sectionId, 'section')
+    const api = await getApi()
+    const section = await api.getSection(id)
+
+    if (options.dryRun) {
+        printDryRun('unarchive section', { Section: section.name })
+        return
+    }
+
+    await api.unarchiveSection(id)
+    console.log(`Unarchived: ${section.name}`)
+}
+
 async function browseSection(sectionId: string): Promise<void> {
     const id = lenientIdRef(sectionId, 'section')
     await openInBrowser(sectionUrl(id))
@@ -235,6 +263,30 @@ export function registerSectionCommand(program: Command): void {
                 return
             }
             return updateSection(id, options)
+        })
+
+    const archiveCmd = section
+        .command('archive [id]')
+        .description('Archive a section')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((id, options) => {
+            if (!id) {
+                archiveCmd.help()
+                return
+            }
+            return archiveSection(id, options)
+        })
+
+    const unarchiveCmd = section
+        .command('unarchive [id]')
+        .description('Unarchive a section')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((id, options) => {
+            if (!id) {
+                unarchiveCmd.help()
+                return
+            }
+            return unarchiveSection(id, options)
         })
 
     const browseCmd = section
