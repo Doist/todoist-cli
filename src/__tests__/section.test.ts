@@ -436,4 +436,122 @@ describe('section --dry-run', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update section'))
         consoleSpy.mockRestore()
     })
+
+    it('section archive --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-1',
+            name: 'Backlog',
+            projectId: 'proj-1',
+            order: 1,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'archive', 'id:sec-1', '--dry-run'])
+
+        expect(mockApi.archiveSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would archive section'))
+        consoleSpy.mockRestore()
+    })
+
+    it('section unarchive --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-1',
+            name: 'Backlog',
+            projectId: 'proj-1',
+            order: 1,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'unarchive', 'id:sec-1', '--dry-run'])
+
+        expect(mockApi.unarchiveSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would unarchive section'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('section archive', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('rejects plain text references', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'section', 'archive', 'Planning']),
+        ).rejects.toThrow('INVALID_REF')
+    })
+
+    it('archives section with id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            projectId: 'proj-1',
+            order: 1,
+        })
+        mockApi.archiveSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            isArchived: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'archive', 'id:sec-123'])
+
+        expect(mockApi.archiveSection).toHaveBeenCalledWith('sec-123')
+        expect(consoleSpy).toHaveBeenCalledWith('Archived: My Section')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('section unarchive', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('rejects plain text references', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'section', 'unarchive', 'Planning']),
+        ).rejects.toThrow('INVALID_REF')
+    })
+
+    it('unarchives section with id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            projectId: 'proj-1',
+            order: 1,
+        })
+        mockApi.unarchiveSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            isArchived: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'unarchive', 'id:sec-123'])
+
+        expect(mockApi.unarchiveSection).toHaveBeenCalledWith('sec-123')
+        expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Section')
+        consoleSpy.mockRestore()
+    })
 })

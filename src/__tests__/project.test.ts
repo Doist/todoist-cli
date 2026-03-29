@@ -1562,3 +1562,245 @@ describe('project --dry-run', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('project archived-count', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        vi.mocked(getApi).mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows count in human-readable format', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjectsCount.mockResolvedValue({ count: 5 })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived-count'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('Archived projects: 5')
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjectsCount.mockResolvedValue({ count: 42 })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived-count', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toEqual({ count: 42 })
+    })
+
+    it('passes workspace filter', async () => {
+        const program = createProgram()
+
+        vi.mocked(fetchWorkspaces).mockResolvedValue([{ id: '100', name: 'Work' } as Workspace])
+        mockApi.getArchivedProjectsCount.mockResolvedValue({ count: 3 })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived-count', '--workspace', 'Work'])
+
+        expect(mockApi.getArchivedProjectsCount).toHaveBeenCalledWith(
+            expect.objectContaining({ workspaceId: 100 }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Archived projects: 3 (workspace: Work)')
+    })
+})
+
+describe('project permissions', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        vi.mocked(getApi).mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('shows permissions in human-readable format', async () => {
+        const program = createProgram()
+
+        mockApi.getProjectPermissions.mockResolvedValue({
+            projectCollaboratorActions: [
+                { name: 'ADMIN', actions: [{ name: 'edit' }, { name: 'delete' }] },
+            ],
+            workspaceCollaboratorActions: [{ name: 'MEMBER', actions: [{ name: 'view' }] }],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'permissions'])
+
+        const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+        expect(allOutput).toContain('ADMIN')
+        expect(allOutput).toContain('edit')
+        expect(allOutput).toContain('delete')
+        expect(allOutput).toContain('MEMBER')
+        expect(allOutput).toContain('view')
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        const permissions = {
+            projectCollaboratorActions: [{ name: 'ADMIN', actions: [{ name: 'edit' }] }],
+            workspaceCollaboratorActions: [],
+        }
+        mockApi.getProjectPermissions.mockResolvedValue(permissions)
+
+        await program.parseAsync(['node', 'td', 'project', 'permissions', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toEqual(permissions)
+    })
+})
+
+describe('project view --detailed', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        vi.mocked(getApi).mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('uses getFullProject and shows sections and collaborators', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project', color: 'blue', isFavorite: false }],
+            nextCursor: null,
+        })
+        mockApi.getFullProject.mockResolvedValue({
+            project: { id: 'proj-1', name: 'My Project', color: 'blue', isFavorite: false },
+            commentsCount: 5,
+            tasks: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            sections: [{ id: 'sec-1', name: 'Backlog', projectId: 'proj-1', order: 1 }],
+            collaborators: [{ id: 'user-1', name: 'John Doe', email: 'john@example.com' }],
+            notes: [{ id: 'note-1', content: 'A note' }],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'My Project', '--detailed'])
+
+        expect(mockApi.getFullProject).toHaveBeenCalledWith('proj-1')
+        expect(mockApi.getTasks).not.toHaveBeenCalled()
+
+        const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+        expect(allOutput).toContain('Backlog')
+        expect(allOutput).toContain('John')
+        expect(allOutput).toContain('Comments: 5')
+    })
+
+    it('outputs full JSON with --detailed --json', async () => {
+        const program = createProgram()
+
+        const fullData = {
+            project: { id: 'proj-1', name: 'My Project', color: 'blue', isFavorite: false },
+            commentsCount: 3,
+            tasks: [],
+            sections: [],
+            collaborators: [],
+            notes: [],
+        }
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'My Project', color: 'blue', isFavorite: false }],
+            nextCursor: null,
+        })
+        mockApi.getFullProject.mockResolvedValue(fullData)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'My Project',
+            '--detailed',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toEqual(fullData)
+    })
+})
+
+describe('project join', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        vi.mocked(getApi).mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('joins project by id: prefix', async () => {
+        const program = createProgram()
+
+        mockApi.joinProject.mockResolvedValue({
+            id: 'proj-123',
+            name: 'Shared Project',
+            color: 'blue',
+            isFavorite: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123'])
+
+        expect(mockApi.joinProject).toHaveBeenCalledWith('proj-123')
+        expect(consoleSpy).toHaveBeenCalledWith('Joined: Shared Project')
+    })
+
+    it('rejects plain text references', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'join', 'My Project']),
+        ).rejects.toThrow('INVALID_REF')
+    })
+
+    it('--dry-run previews without calling API', async () => {
+        const program = createProgram()
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--dry-run'])
+
+        expect(mockApi.joinProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would join project'))
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+
+        mockApi.joinProject.mockResolvedValue({
+            id: 'proj-123',
+            name: 'Shared Project',
+            color: 'blue',
+            isFavorite: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toMatchObject({ id: 'proj-123', name: 'Shared Project' })
+    })
+})

@@ -42,6 +42,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getTasksByFilter: { text: 'Loading tasks...', color: 'blue' },
         moveProjectToWorkspace: { text: 'Moving project to workspace...', color: 'yellow' },
         moveProjectToPersonal: { text: 'Moving project to personal...', color: 'yellow' },
+        getArchivedProjectsCount: { text: 'Counting archived projects...', color: 'blue' },
+        getProjectPermissions: { text: 'Loading permissions...', color: 'blue' },
+        getFullProject: { text: 'Loading project...', color: 'blue' },
+        joinProject: { text: 'Joining project...', color: 'green' },
+        archiveSection: { text: 'Archiving section...', color: 'yellow' },
+        unarchiveSection: { text: 'Unarchiving section...', color: 'yellow' },
         sync: { text: 'Syncing...', color: 'blue' },
         viewAttachment: { text: 'Fetching attachment...', color: 'blue' },
     }

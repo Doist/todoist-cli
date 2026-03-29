@@ -25,7 +25,12 @@ import {
     printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../lib/refs.js'
+import {
+    lenientIdRef,
+    resolveFolderRef,
+    resolveProjectRef,
+    resolveWorkspaceRef,
+} from '../lib/refs.js'
 import { projectUrl } from '../lib/urls.js'
 
 const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board', 'calendar']
@@ -164,9 +169,96 @@ async function listProjects(options: ListOptions): Promise<void> {
     }
 }
 
-export async function viewProject(ref: string, options: ViewOptions = {}): Promise<void> {
+export async function viewProject(
+    ref: string,
+    options: ViewOptions & { detailed?: boolean } = {},
+): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    if (options.detailed) {
+        const fullData = await api.getFullProject(project.id)
+
+        if (options.json) {
+            console.log(JSON.stringify(fullData, null, 2))
+            return
+        }
+
+        if (options.ndjson) {
+            const lines: string[] = []
+            if (fullData.project) {
+                lines.push(
+                    formatNdjson([fullData.project], 'project', options.full, options.showUrls),
+                )
+            }
+            if (fullData.tasks.length > 0) {
+                lines.push(formatNdjson(fullData.tasks, 'task', options.full, options.showUrls))
+            }
+            console.log(lines.join('\n'))
+            return
+        }
+
+        const displayProject = fullData.project ?? project
+
+        console.log(chalk.bold(displayProject.name))
+        console.log('')
+        console.log(`ID:       ${displayProject.id}`)
+
+        if (isWorkspaceProject(displayProject)) {
+            const [workspaces, folders] = await Promise.all([
+                fetchWorkspaces(),
+                fetchWorkspaceFolders(),
+            ])
+            const workspace = workspaces.find((w) => w.id === displayProject.workspaceId)
+            if (workspace) {
+                console.log(`Workspace: ${workspace.name}`)
+            }
+            if (displayProject.folderId) {
+                const folder = folders.find((f) => f.id === displayProject.folderId)
+                if (folder) {
+                    console.log(`Folder:   ${folder.name}`)
+                }
+            }
+        } else if (displayProject.isShared) {
+            console.log(`Shared:   Yes`)
+        }
+
+        console.log(`Color:    ${displayProject.color}`)
+        console.log(`Favorite: ${displayProject.isFavorite ? 'Yes' : 'No'}`)
+        console.log(`Comments: ${fullData.commentsCount}`)
+        console.log(`URL:      ${projectUrl(displayProject.id)}`)
+
+        if (fullData.tasks.length > 0) {
+            console.log('')
+            console.log(chalk.dim(`--- Tasks (${fullData.tasks.length}) ---`))
+            for (const task of fullData.tasks) {
+                console.log(formatTaskRow({ task, showUrl: options.showUrls }))
+                console.log('')
+            }
+        }
+
+        if (fullData.sections.length > 0) {
+            console.log(chalk.dim(`--- Sections (${fullData.sections.length}) ---`))
+            for (const section of fullData.sections) {
+                console.log(`${chalk.dim(section.id)}  ${section.name}`)
+            }
+            console.log('')
+        }
+
+        if (fullData.collaborators.length > 0) {
+            console.log(chalk.dim(`--- Collaborators (${fullData.collaborators.length}) ---`))
+            for (const user of fullData.collaborators) {
+                console.log(`${chalk.dim(user.id)}  ${formatUserShortName(user.name)}`)
+            }
+            console.log('')
+        }
+
+        if (fullData.notes.length > 0) {
+            console.log(chalk.dim(`--- Notes (${fullData.notes.length}) ---`))
+        }
+
+        return
+    }
 
     if (options.json) {
         console.log(formatJson(project, 'project', options.full, options.showUrls))
@@ -556,6 +648,96 @@ async function moveProject(ref: string, options: MoveOptions): Promise<void> {
     }
 }
 
+async function archivedCount(options: {
+    workspace?: string
+    joined?: boolean
+    json?: boolean
+}): Promise<void> {
+    const api = await getApi()
+
+    const args: { workspaceId?: number; joined?: boolean } = {}
+    let workspaceName: string | undefined
+    if (options.workspace) {
+        const workspace = await resolveWorkspaceRef(options.workspace)
+        args.workspaceId = parseInt(workspace.id, 10)
+        workspaceName = workspace.name
+    }
+    if (options.joined) {
+        args.joined = true
+    }
+
+    const result = await api.getArchivedProjectsCount(args)
+
+    if (options.json) {
+        console.log(JSON.stringify(result, null, 2))
+        return
+    }
+
+    let output = `Archived projects: ${result.count}`
+    if (workspaceName) {
+        output += ` (workspace: ${workspaceName})`
+    }
+    console.log(output)
+}
+
+async function showPermissions(options: { json?: boolean }): Promise<void> {
+    const api = await getApi()
+    const result = await api.getProjectPermissions()
+
+    if (options.json) {
+        console.log(JSON.stringify(result, null, 2))
+        return
+    }
+
+    if (result.projectCollaboratorActions.length > 0) {
+        console.log(chalk.bold('Project Collaborator Roles'))
+        console.log('')
+        for (const role of result.projectCollaboratorActions) {
+            console.log(`  ${chalk.bold(role.name)}`)
+            for (const action of role.actions) {
+                console.log(`    ${action.name}`)
+            }
+        }
+    }
+
+    if (result.workspaceCollaboratorActions.length > 0) {
+        if (result.projectCollaboratorActions.length > 0) {
+            console.log('')
+        }
+        console.log(chalk.bold('Workspace Collaborator Roles'))
+        console.log('')
+        for (const role of result.workspaceCollaboratorActions) {
+            console.log(`  ${chalk.bold(role.name)}`)
+            for (const action of role.actions) {
+                console.log(`    ${action.name}`)
+            }
+        }
+    }
+}
+
+async function joinProjectCmd(
+    ref: string,
+    options: { json?: boolean; dryRun?: boolean },
+): Promise<void> {
+    const id = lenientIdRef(ref, 'project')
+
+    if (options.dryRun) {
+        printDryRun('join project', { ID: id })
+        return
+    }
+
+    const api = await getApi()
+    const project = await api.joinProject(id)
+
+    if (options.json) {
+        console.log(formatJson(project, 'project'))
+        return
+    }
+
+    console.log(`Joined: ${project.name}`)
+    console.log(chalk.dim(`ID: ${project.id}`))
+}
+
 export function registerProjectCommand(program: Command): void {
     const project = program.command('project').description('Manage projects')
 
@@ -578,6 +760,7 @@ export function registerProjectCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
+        .option('--detailed', 'Include sections, collaborators, notes, and comment count')
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
@@ -707,5 +890,32 @@ export function registerProjectCommand(program: Command): void {
                 return
             }
             return moveProject(ref, options)
+        })
+
+    project
+        .command('archived-count')
+        .description('Count archived projects')
+        .option('--workspace <ref>', 'Filter to a workspace (name or id:xxx)')
+        .option('--joined', 'Count only joined projects')
+        .option('--json', 'Output as JSON')
+        .action(archivedCount)
+
+    project
+        .command('permissions')
+        .description('Show project permission mappings by role')
+        .option('--json', 'Output as JSON')
+        .action(showPermissions)
+
+    const joinCmd = project
+        .command('join [ref]')
+        .description('Join a shared project')
+        .option('--json', 'Output the joined project as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
+            if (!ref) {
+                joinCmd.help()
+                return
+            }
+            return joinProjectCmd(ref, options)
         })
 }
