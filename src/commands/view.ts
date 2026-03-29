@@ -93,12 +93,12 @@ Examples:
             switch (route.entityType) {
                 case 'task':
                     return runRoutedCommand(
-                        async () => (await import('./task.js')).registerTaskCommand,
+                        async () => (await import('./task/index.js')).registerTaskCommand,
                         ['task', 'view', ref, ...invocation.passthroughArgs],
                     )
                 case 'project':
                     return runRoutedCommand(
-                        async () => (await import('./project.js')).registerProjectCommand,
+                        async () => (await import('./project/index.js')).registerProjectCommand,
                         ['project', 'view', ref, ...invocation.passthroughArgs],
                     )
                 case 'label':

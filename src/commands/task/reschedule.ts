@@ -1,0 +1,54 @@
+import { getApi, rescheduleTask as rescheduleTaskSync } from '../../lib/api/core.js'
+import { formatDue, formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { resolveTaskRef } from '../../lib/refs.js'
+
+export async function rescheduleTask(
+    ref: string,
+    date: string,
+    options: { json?: boolean; dryRun?: boolean },
+): Promise<void> {
+    const api = await getApi()
+    const task = await resolveTaskRef(api, ref)
+
+    if (!task.due) {
+        throw new Error(
+            formatError(
+                'NO_DUE_DATE',
+                `Task "${task.content}" has no due date. Use "td task update --due" to set one.`,
+            ),
+        )
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})?)?$/
+    if (!dateRegex.test(date)) {
+        throw new Error(
+            formatError('INVALID_DATE', `Invalid date format: "${date}"`, [
+                'Use YYYY-MM-DD for date-only, or YYYY-MM-DDTHH:MM:SS for datetime.',
+                'Examples: 2026-03-20, 2026-03-20T14:00:00',
+            ]),
+        )
+    }
+
+    if (options.dryRun) {
+        printDryRun('reschedule task', {
+            Task: task.content,
+            Date: date,
+        })
+        return
+    }
+
+    await rescheduleTaskSync(task.id, date, task.due)
+
+    const updated = await api.getTask(task.id)
+
+    if (options.json) {
+        console.log(formatJson(updated, 'task'))
+        return
+    }
+
+    console.log(`Rescheduled: ${updated.content}`)
+    const due = formatDue(updated.due)
+    if (due) {
+        console.log(`Due: ${due}`)
+    }
+}

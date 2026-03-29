@@ -49,10 +49,13 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Show completed tasks',
         async () => (await import('./commands/completed.js')).registerCompletedCommand,
     ],
-    task: ['Manage tasks', async () => (await import('./commands/task.js')).registerTaskCommand],
+    task: [
+        'Manage tasks',
+        async () => (await import('./commands/task/index.js')).registerTaskCommand,
+    ],
     project: [
         'Manage projects',
-        async () => (await import('./commands/project.js')).registerProjectCommand,
+        async () => (await import('./commands/project/index.js')).registerProjectCommand,
     ],
     label: [
         'Manage labels',
