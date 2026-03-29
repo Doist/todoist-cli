@@ -58,6 +58,11 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getProjectProgress: { text: 'Loading project progress...', color: 'blue' },
         getWorkspaceInsights: { text: 'Loading workspace insights...', color: 'blue' },
         analyzeProjectHealth: { text: 'Analyzing project health...', color: 'green' },
+        exportTemplateAsFile: { text: 'Exporting template...', color: 'blue' },
+        exportTemplateAsUrl: { text: 'Exporting template URL...', color: 'blue' },
+        createProjectFromTemplate: { text: 'Creating project from template...', color: 'green' },
+        importTemplateIntoProject: { text: 'Importing template...', color: 'green' },
+        importTemplateFromId: { text: 'Importing template...', color: 'green' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
