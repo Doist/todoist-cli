@@ -19,7 +19,10 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td project list\` - List projects
 - \`td label list\` - List labels
 - \`td filter list/view\` - Manage and use saved filters
+- \`td project progress <ref>\` - Project completion progress
+- \`td project health <ref>\` - Project health status
 - \`td workspace list\` - List workspaces
+- \`td workspace insights <ref>\` - Workspace-wide project insights
 - \`td activity\` - Activity logs
 - \`td notification list\` - Notifications
 - \`td reminder add\` - Task reminders
@@ -48,6 +51,7 @@ The following mutating commands also support \`--json\` to return the created or
 - \`section create\`, \`section update\`
 - \`filter create\`
 - \`reminder add\`
+- \`project analyze-health\`
 
 All mutating commands support \`--dry-run\` to preview what would happen without executing:
 - Shows a preview of the action and parameters
@@ -228,6 +232,19 @@ td project permissions                        # Show role-to-action permission m
 td project permissions --json                 # JSON output
 td project join id:abc123                     # Join a shared project
 td project join id:abc123 --json              # Return joined project as JSON
+
+# Insights
+td project progress "Work"                   # Completion progress (active/completed/%)
+td project progress "Work" --json            # JSON output
+td project health "Work"                     # Health status and recommendations
+td project health "Work" --json              # JSON output
+td project health-context "Work"             # Detailed metrics and task breakdown
+td project health-context "Work" --json      # JSON output
+td project activity-stats "Work"             # Daily activity counts
+td project activity-stats "Work" --weeks 4 --include-weekly  # With weekly rollups
+td project activity-stats "Work" --json      # JSON output
+td project analyze-health "Work"             # Trigger new health analysis
+td project analyze-health "Work" --dry-run   # Preview without triggering
 \`\`\`
 
 ### Labels
@@ -308,6 +325,10 @@ td workspace list
 td workspace view "Workspace Name"
 td workspace projects "Workspace Name"        # or --workspace "Workspace Name"
 td workspace users "Workspace Name" --role ADMIN,MEMBER  # or --workspace "..."
+td workspace insights "Workspace Name"       # Health and progress for all projects
+td workspace insights --workspace "Workspace Name"  # or --workspace "..."
+td workspace insights "Workspace Name" --project-ids "id1,id2"  # Filter to specific projects
+td workspace insights "Workspace Name" --json  # JSON output
 \`\`\`
 
 ### Activity

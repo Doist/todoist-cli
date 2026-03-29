@@ -90,6 +90,44 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getProjectCollaborators: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         // Workspace
         getWorkspaceUsers: vi.fn().mockResolvedValue({ workspaceUsers: [], hasMore: false }),
+        getWorkspaceActiveProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getWorkspaceArchivedProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        // Insights
+        getProjectActivityStats: vi.fn().mockResolvedValue({ dayItems: [], weekItems: null }),
+        getProjectHealth: vi.fn().mockResolvedValue({
+            status: 'UNKNOWN',
+            isStale: false,
+            updateInProgress: false,
+        }),
+        getProjectHealthContext: vi.fn().mockResolvedValue({
+            projectId: '',
+            projectName: '',
+            projectDescription: null,
+            projectMetrics: {
+                totalTasks: 0,
+                completedTasks: 0,
+                overdueTasks: 0,
+                tasksCreatedThisWeek: 0,
+                tasksCompletedThisWeek: 0,
+                averageCompletionTime: null,
+            },
+            tasks: [],
+        }),
+        getProjectProgress: vi.fn().mockResolvedValue({
+            projectId: '',
+            completedCount: 0,
+            activeCount: 0,
+            progressPercent: 0,
+        }),
+        getWorkspaceInsights: vi.fn().mockResolvedValue({
+            folderId: null,
+            projectInsights: [],
+        }),
+        analyzeProjectHealth: vi.fn().mockResolvedValue({
+            status: 'UNKNOWN',
+            isStale: false,
+            updateInProgress: true,
+        }),
         ...overrides,
     } as unknown as MockApi
 }

@@ -1,4 +1,4 @@
-import type { Task } from '@doist/todoist-api-typescript'
+import type { HealthStatus, Task } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
@@ -407,6 +407,41 @@ export function printDryRun(action: string, details: Record<string, string | und
         }
     }
     console.log(chalk.dim('Run without --dry-run to execute.'))
+}
+
+const HEALTH_STATUS_COLORS: Record<HealthStatus, (s: string) => string> = {
+    EXCELLENT: chalk.green,
+    ON_TRACK: chalk.green,
+    AT_RISK: chalk.yellow,
+    CRITICAL: chalk.red,
+    ERROR: chalk.red,
+    UNKNOWN: chalk.dim,
+}
+
+const HEALTH_STATUS_A11Y_PREFIX: Record<HealthStatus, string> = {
+    EXCELLENT: '[+]',
+    ON_TRACK: '[+]',
+    AT_RISK: '[!]',
+    CRITICAL: '[!!]',
+    ERROR: '[!!]',
+    UNKNOWN: '[?]',
+}
+
+export function formatHealthStatus(status: HealthStatus): string {
+    const colorFn = HEALTH_STATUS_COLORS[status]
+    const a11y = isAccessible()
+    const prefix = a11y ? `${HEALTH_STATUS_A11Y_PREFIX[status]} ` : ''
+    return colorFn(`${prefix}${status}`)
+}
+
+export function formatProgressBar(percent: number, width = 28): string {
+    if (isAccessible()) {
+        return `${percent}%`
+    }
+    const filled = Math.round((percent / 100) * width)
+    const empty = width - filled
+    const bar = chalk.green('='.repeat(filled)) + chalk.dim('-'.repeat(empty))
+    return `[${bar}] ${percent}%`
 }
 
 export function formatFileSize(bytes: number): string {
