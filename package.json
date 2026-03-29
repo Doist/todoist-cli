@@ -18,7 +18,7 @@
     "format:check": "oxfmt --check",
     "postinstall": "node scripts/postinstall.js",
     "check:skill-sync": "node scripts/check-skill-sync.js",
-    "sync:skill": "node scripts/sync-skill.js",
+    "sync:skill": "npm run build && node scripts/sync-skill.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test"
