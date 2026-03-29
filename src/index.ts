@@ -84,7 +84,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     settings: [
         'Manage user settings',
-        async () => (await import('./commands/settings.js')).registerSettingsCommand,
+        async () => (await import('./commands/settings/index.js')).registerSettingsCommand,
     ],
     auth: [
         'Manage authentication',

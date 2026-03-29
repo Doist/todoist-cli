@@ -28,7 +28,7 @@ import {
     registerSettingsCommand,
     THEME_CHOICES,
     TIME_FORMAT_CHOICES,
-} from '../commands/settings.js'
+} from '../commands/settings/index.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
 import {
