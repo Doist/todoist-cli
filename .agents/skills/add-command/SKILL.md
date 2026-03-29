@@ -30,18 +30,19 @@ Add the async function and register the subcommand.
 
 ### Flag conventions
 
-| Command type                   | Flags                               |
-| ------------------------------ | ----------------------------------- |
-| Read-only                      | `--json` (and `--ndjson` for lists) |
-| Mutating (returns entity)      | `--json`, `--dry-run`               |
-| Mutating (no return)           | `--dry-run`                         |
-| Destructive + irreversible     | `--yes`, `--dry-run`                |
-| Reversible (archive/unarchive) | `--dry-run` (no `--yes`)            |
+| Command type                   | Flags                                    |
+| ------------------------------ | ---------------------------------------- |
+| Read-only                      | `--json` (and `--ndjson` for lists)      |
+| Mutating (returns entity)      | `--json` (use `formatJson`), `--dry-run` |
+| Mutating (no return)           | `--dry-run`                              |
+| Destructive + irreversible     | `--yes`, `--dry-run`                     |
+| Reversible (archive/unarchive) | `--dry-run` (no `--yes`)                 |
 
 ### ID resolution
 
-- `resolveXxxRef(api, ref)` — when the user knows the entity by name (projects, tasks, labels)
-- `lenientIdRef(ref, 'entity')` — when name resolution isn't possible (sections, comments, reminders) or the user can't access the entity yet (e.g., joining an unjoined project)
+- `resolveXxxRef(api, ref)` — when the user knows the entity by name (projects, tasks, labels). Add new wrappers in `refs.ts` — `resolveRef` is private.
+- `lenientIdRef(ref, 'entity')` — when there is no list endpoint for lookup, or the user can't access the entity yet (e.g., comments, reminders, joining an unjoined project)
+- **Context-scoped resolvers** (`resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`) — when resolving a name within a parent context (e.g., a section name within a specific project). Each has custom logic in `refs.ts`.
 
 ### Subcommand registration pattern
 

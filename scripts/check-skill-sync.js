@@ -25,7 +25,7 @@ try {
         )
         console.error('')
         console.error('To fix, run:')
-        console.error('  npm run build && npm run sync:skill')
+        console.error('  npm run sync:skill')
         process.exit(1)
     }
 
