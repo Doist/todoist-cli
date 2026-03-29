@@ -1,3 +1,9 @@
+## [1.31.0](https://github.com/Doist/todoist-cli/compare/v1.30.0...v1.31.0) (2026-03-29)
+
+### Features
+
+* add project and workspace insights commands ([#194](https://github.com/Doist/todoist-cli/issues/194)) ([590aff3](https://github.com/Doist/todoist-cli/commit/590aff3dfd4ed760d4b12f391b17a3b67b6fffbe))
+
 ## [1.30.0](https://github.com/Doist/todoist-cli/compare/v1.29.5...v1.30.0) (2026-03-29)
 
 ### Features
