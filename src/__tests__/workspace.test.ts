@@ -13,7 +13,7 @@ vi.mock('../lib/api/workspaces.js', () => ({
     fetchWorkspaceFolders: vi.fn(),
 }))
 
-import { registerWorkspaceCommand } from '../commands/workspace.js'
+import { registerWorkspaceCommand } from '../commands/workspace/index.js'
 import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../lib/api/workspaces.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'

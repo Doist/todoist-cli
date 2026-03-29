@@ -72,7 +72,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     workspace: [
         'Manage workspaces',
-        async () => (await import('./commands/workspace.js')).registerWorkspaceCommand,
+        async () => (await import('./commands/workspace/index.js')).registerWorkspaceCommand,
     ],
     activity: [
         'View activity logs',
