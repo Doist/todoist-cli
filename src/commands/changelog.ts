@@ -58,7 +58,7 @@ function cleanChangelog(text: string): string {
 
 function parseChangelog(content: string, count: number): { text: string; hasMore: boolean } {
     const sections = content.split(/\n(?=## \[)/)
-    const versionSections = sections.slice(1)
+    const versionSections = sections.filter((s) => s.startsWith('## ['))
     const selected = versionSections.slice(0, count)
 
     if (selected.length === 0) {

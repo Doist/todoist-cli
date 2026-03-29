@@ -81,6 +81,27 @@ describe('changelog command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('View full changelog'))
     })
 
+    it('includes latest version when changelog has no preamble', async () => {
+        const noPreambleChangelog = `## [2.0.0](https://example.com) (2026-03-20)
+
+### Features
+* new major version
+
+## [1.5.0](https://example.com) (2026-03-15)
+
+### Features
+* feature five
+`
+        mockReadFile.mockResolvedValue(noPreambleChangelog)
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'changelog'])
+
+        const output = consoleSpy.mock.calls[0][0] as string
+        expect(output).toContain('2.0.0')
+        expect(output).toContain('1.5.0')
+    })
+
     it('respects --count option', async () => {
         mockReadFile.mockResolvedValue(SAMPLE_CHANGELOG)
 
