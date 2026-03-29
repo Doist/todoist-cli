@@ -207,6 +207,16 @@ const COMMENT_ESSENTIAL_FIELDS = [
     'hasAttachment',
 ] as const
 const REMINDER_ESSENTIAL_FIELDS = ['id', 'itemId', 'type', 'due', 'minuteOffset'] as const
+const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
+    'id',
+    'itemId',
+    'type',
+    'name',
+    'locLat',
+    'locLong',
+    'locTrigger',
+    'radius',
+] as const
 const FILTER_ESSENTIAL_FIELDS = ['id', 'name', 'query', 'color', 'isFavorite'] as const
 const NOTIFICATION_ESSENTIAL_FIELDS = [
     'id',
@@ -259,6 +269,9 @@ function addWebUrl<T extends { id: string }>(item: T, type: EntityType): T & { w
         case 'reminder':
             url = ''
             break
+        case 'location-reminder':
+            url = ''
+            break
         case 'notification':
             url = ''
             break
@@ -273,6 +286,7 @@ export type EntityType =
     | 'section'
     | 'comment'
     | 'reminder'
+    | 'location-reminder'
     | 'filter'
     | 'notification'
 
@@ -290,6 +304,8 @@ function getEssentialFields(type: EntityType): readonly string[] {
             return COMMENT_ESSENTIAL_FIELDS
         case 'reminder':
             return REMINDER_ESSENTIAL_FIELDS
+        case 'location-reminder':
+            return LOCATION_REMINDER_ESSENTIAL_FIELDS
         case 'filter':
             return FILTER_ESSENTIAL_FIELDS
         case 'notification':

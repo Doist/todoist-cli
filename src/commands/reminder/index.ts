@@ -8,23 +8,30 @@ import { updateReminderCmd } from './update.js'
 export function registerReminderCommand(program: Command): void {
     const reminder = program.command('reminder').description('Manage task reminders')
 
-    const listCmd = reminder
+    reminder
         .command('list [task]')
-        .description('List reminders for a task')
+        .description('List reminders (optionally filtered by task)')
         .option('--task <ref>', 'Task reference (name or id:xxx)')
+        .option('--limit <n>', 'Limit number of results')
+        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .action(
-            (taskArg: string | undefined, options: PaginatedViewOptions & { task?: string }) => {
+            (
+                taskArg: string | undefined,
+                options: PaginatedViewOptions & {
+                    task?: string
+                    limit?: string
+                    cursor?: string
+                    all?: boolean
+                },
+            ) => {
                 if (taskArg && options.task) {
                     throw new Error('Cannot specify task both as argument and --task flag')
                 }
                 const task = taskArg || options.task
-                if (!task) {
-                    listCmd.help()
-                    return
-                }
                 return listReminders(task, options)
             },
         )
