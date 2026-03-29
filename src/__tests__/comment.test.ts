@@ -17,7 +17,7 @@ vi.mock('../lib/api/uploads.js', () => ({
     }),
 }))
 
-import { registerCommentCommand } from '../commands/comment.js'
+import { registerCommentCommand } from '../commands/comment/index.js'
 import { getApi } from '../lib/api/core.js'
 import { uploadFile } from '../lib/api/uploads.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'

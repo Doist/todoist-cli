@@ -60,7 +60,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     comment: [
         'Manage comments',
-        async () => (await import('./commands/comment.js')).registerCommentCommand,
+        async () => (await import('./commands/comment/index.js')).registerCommentCommand,
     ],
     attachment: [
         'Manage file attachments',
