@@ -5,7 +5,7 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { registerSectionCommand } from '../commands/section.js'
+import { registerSectionCommand } from '../commands/section/index.js'
 import { getApi } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 

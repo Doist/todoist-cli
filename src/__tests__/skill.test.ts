@@ -10,7 +10,7 @@ vi.mock('../lib/skills/update-installed.js', () => ({
     updateAllInstalledSkills: vi.fn(),
 }))
 
-import { registerSkillCommand } from '../commands/skill.js'
+import { registerSkillCommand } from '../commands/skill/index.js'
 import { createInstaller } from '../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../lib/skills/update-installed.js'

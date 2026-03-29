@@ -68,7 +68,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     section: [
         'Manage project sections',
-        async () => (await import('./commands/section.js')).registerSectionCommand,
+        async () => (await import('./commands/section/index.js')).registerSectionCommand,
     ],
     workspace: [
         'Manage workspaces',
@@ -88,7 +88,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     auth: [
         'Manage authentication',
-        async () => (await import('./commands/auth.js')).registerAuthCommand,
+        async () => (await import('./commands/auth/index.js')).registerAuthCommand,
     ],
     stats: [
         'View productivity stats and karma',
@@ -104,11 +104,11 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     skill: [
         'Manage coding agent skills/integrations',
-        async () => (await import('./commands/skill.js')).registerSkillCommand,
+        async () => (await import('./commands/skill/index.js')).registerSkillCommand,
     ],
     completion: [
         'Manage shell completions',
-        async () => (await import('./commands/completion.js')).registerCompletionCommand,
+        async () => (await import('./commands/completion/index.js')).registerCompletionCommand,
     ],
     view: [
         'View a Todoist entity or page by URL',

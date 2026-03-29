@@ -56,7 +56,7 @@ vi.mock('node:readline', () => ({
 
 import { createInterface, type Interface } from 'node:readline'
 import open from 'open'
-import { registerAuthCommand } from '../commands/auth.js'
+import { registerAuthCommand } from '../commands/auth/index.js'
 import { getApi } from '../lib/api/core.js'
 import { NoTokenError, clearApiToken, saveApiToken } from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
