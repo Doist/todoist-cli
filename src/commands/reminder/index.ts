@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
 import { deleteReminderCmd } from './delete.js'
+import type { ReminderTypeFilter } from './helpers.js'
 import { listReminders } from './list.js'
 import { updateReminderCmd } from './update.js'
 
@@ -10,13 +11,13 @@ export function registerReminderCommand(program: Command): void {
 
     reminder
         .command('list [task]')
-        .description('List reminders (optionally filtered by task)')
+        .description('List reminders (optionally filtered by task, or reminder type)')
         .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--type <type>', 'Filter by type (time or location)', (v: string) => {
             if (v !== 'time' && v !== 'location') {
                 throw new Error("--type must be 'time' or 'location'")
             }
-            return v as 'time' | 'location'
+            return v as ReminderTypeFilter
         })
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
@@ -29,7 +30,7 @@ export function registerReminderCommand(program: Command): void {
                 taskArg: string | undefined,
                 options: PaginatedViewOptions & {
                     task?: string
-                    type?: 'time' | 'location'
+                    type?: ReminderTypeFilter
                     limit?: string
                     cursor?: string
                     all?: boolean

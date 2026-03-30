@@ -1,10 +1,12 @@
-import type { LocationReminder } from '@doist/todoist-api-typescript'
+import type { LocationReminder, Reminder } from '@doist/todoist-api-typescript'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { formatError } from '../../lib/output.js'
 
+export type ReminderTypeFilter = 'time' | 'location'
+
 interface ReminderLike {
-    type: string
+    type: Reminder['type']
     minuteOffset?: number
     due?: { date: string }
 }

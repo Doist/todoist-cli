@@ -5,11 +5,15 @@ import type { PaginatedViewOptions } from '../../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveTaskRef } from '../../lib/refs.js'
-import { formatLocationReminderRow, formatReminderTime } from './helpers.js'
+import {
+    type ReminderTypeFilter,
+    formatLocationReminderRow,
+    formatReminderTime,
+} from './helpers.js'
 
 interface ListOptions extends PaginatedViewOptions {
     task?: string
-    type?: 'time' | 'location'
+    type?: ReminderTypeFilter
     limit?: string
     cursor?: string
     all?: boolean
