@@ -28,7 +28,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - `td notification list` - Notifications
 - `td reminder list` - List reminders (all or per task)
 - `td reminder add` - Task reminders
-- `td template create/export-file/import-file` - Project templates
+- `td template create/export-file/export-url/import-file/import-id` - Project templates
 - `td auth status` - Authentication status
 - `td stats` - Productivity stats
 - `td settings view` - User settings
@@ -54,6 +54,7 @@ The following mutating commands also support `--json` to return the created or u
 - `section create`, `section update`
 - `filter create`
 - `reminder add`
+- `template create`, `template import-file`, `template import-id`
 - `project analyze-health`
 
 All mutating commands support `--dry-run` to preview what would happen without executing:
