@@ -1,3 +1,9 @@
+## [1.32.0](https://github.com/Doist/todoist-cli/compare/v1.31.1...v1.32.0) (2026-03-30)
+
+### Features
+
+* add template commands for export, import, and project creation ([#198](https://github.com/Doist/todoist-cli/issues/198)) ([bb7ea06](https://github.com/Doist/todoist-cli/commit/bb7ea06b7564aa4e04810674708377e834e84895))
+
 ## [1.31.1](https://github.com/Doist/todoist-cli/compare/v1.31.0...v1.31.1) (2026-03-29)
 
 ### Bug Fixes
