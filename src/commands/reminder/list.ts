@@ -9,6 +9,7 @@ import { formatLocationReminderRow, formatReminderTime } from './helpers.js'
 
 interface ListOptions extends PaginatedViewOptions {
     task?: string
+    type?: 'time' | 'location'
     limit?: string
     cursor?: string
     all?: boolean
@@ -33,23 +34,29 @@ export async function listReminders(
           : 200
 
     const args = taskId ? { taskId } : {}
+    const fetchTime = !options.type || options.type === 'time'
+    const fetchLocation = !options.type || options.type === 'location'
 
-    // Fetch time-based and location-based reminders in parallel
+    const emptyResult = { results: [] as never[], nextCursor: null }
     const [timeResult, locationResult] = await Promise.all([
-        paginate(
-            async (cursor, limit) => {
-                const resp = await api.getReminders({ ...args, cursor, limit })
-                return { results: resp.results, nextCursor: resp.nextCursor }
-            },
-            { limit: targetLimit, startCursor: options.cursor },
-        ),
-        paginate(
-            async (cursor, limit) => {
-                const resp = await api.getLocationReminders({ ...args, cursor, limit })
-                return { results: resp.results, nextCursor: resp.nextCursor }
-            },
-            { limit: targetLimit, startCursor: options.cursor },
-        ),
+        fetchTime
+            ? paginate(
+                  async (cursor, limit) => {
+                      const resp = await api.getReminders({ ...args, cursor, limit })
+                      return { results: resp.results, nextCursor: resp.nextCursor }
+                  },
+                  { limit: targetLimit, startCursor: options.cursor },
+              )
+            : emptyResult,
+        fetchLocation
+            ? paginate(
+                  async (cursor, limit) => {
+                      const resp = await api.getLocationReminders({ ...args, cursor, limit })
+                      return { results: resp.results, nextCursor: resp.nextCursor }
+                  },
+                  { limit: targetLimit, startCursor: options.cursor },
+              )
+            : emptyResult,
     ])
 
     const reminders = timeResult.results

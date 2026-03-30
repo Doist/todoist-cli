@@ -12,6 +12,12 @@ export function registerReminderCommand(program: Command): void {
         .command('list [task]')
         .description('List reminders (optionally filtered by task)')
         .option('--task <ref>', 'Task reference (name or id:xxx)')
+        .option('--type <type>', 'Filter by type (time or location)', (v: string) => {
+            if (v !== 'time' && v !== 'location') {
+                throw new Error("--type must be 'time' or 'location'")
+            }
+            return v as 'time' | 'location'
+        })
         .option('--limit <n>', 'Limit number of results')
         .option('--cursor <cursor>', 'Continue from cursor')
         .option('--all', 'Fetch all results (no limit)')
@@ -23,6 +29,7 @@ export function registerReminderCommand(program: Command): void {
                 taskArg: string | undefined,
                 options: PaginatedViewOptions & {
                     task?: string
+                    type?: 'time' | 'location'
                     limit?: string
                     cursor?: string
                     all?: boolean

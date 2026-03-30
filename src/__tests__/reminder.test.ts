@@ -217,6 +217,62 @@ describe('reminder list', () => {
             ]),
         ).rejects.toThrow('Cannot specify task both as argument and --task flag')
     })
+
+    it('filters to time-based reminders with --type time', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 15,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', '--type', 'time'])
+
+        expect(mockApi.getReminders).toHaveBeenCalled()
+        expect(mockApi.getLocationReminders).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('15m before due'))
+        consoleSpy.mockRestore()
+    })
+
+    it('filters to location reminders with --type location', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLocationReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'loc-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'location',
+                    name: 'Home',
+                    locLat: '40.7128',
+                    locLong: '-74.0060',
+                    locTrigger: 'on_leave',
+                    radius: 200,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', '--type', 'location'])
+
+        expect(mockApi.getLocationReminders).toHaveBeenCalled()
+        expect(mockApi.getReminders).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Home'))
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('reminder add --json', () => {
