@@ -359,6 +359,8 @@ td notification reject id:123                 # Reject share invitation
 \`\`\`bash
 td reminder list                              # List all reminders (time-based + location-based)
 td reminder list "task name"                  # or --task "task name" (filter by task)
+td reminder list --type time                  # Only time-based reminders
+td reminder list --type location              # Only location-based reminders
 td reminder list --limit 10                   # Limit results
 td reminder list --cursor <cursor>            # Paginate
 td reminder list --all                        # Fetch all results
