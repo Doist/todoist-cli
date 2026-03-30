@@ -30,14 +30,23 @@ jobs:
         steps:
             - name: Generate bot token
               id: generate_token
-              uses: actions/create-github-app-token@v1
+              uses: actions/create-github-app-token@v3
               with:
                   app-id: ${{ secrets.DOIST_RELEASE_BOT_ID }}
                   private-key: ${{ secrets.DOIST_RELEASE_BOT_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-issues: write
+                  permission-pull-requests: write
 
             - name: Get bot user ID
               id: bot_user
-              run: echo "id=$(gh api "/users/${{ steps.generate_token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+              run: |
+                  user_id=$(gh api "/users/${{ steps.generate_token.outputs.app-slug }}[bot]" --jq .id)
+                  if [ -z "$user_id" ]; then
+                      echo "Failed to get bot user ID" >&2
+                      exit 1
+                  fi
+                  echo "id=$user_id" >> "$GITHUB_OUTPUT"
               env:
                   GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
