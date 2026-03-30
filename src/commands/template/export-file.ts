@@ -12,16 +12,11 @@ export interface ExportFileOptions {
 }
 
 export async function exportTemplateFile(
-    projectArg: string | undefined,
+    projectRef: string,
     options: ExportFileOptions,
 ): Promise<void> {
-    const ref = projectArg || options.project
-    if (!ref) {
-        throw new Error('Project reference is required')
-    }
-
     const api = await getApi()
-    const project = await resolveProjectRef(api, ref)
+    const project = await resolveProjectRef(api, projectRef)
 
     const content = await api.exportTemplateAsFile({
         projectId: project.id,

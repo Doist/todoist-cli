@@ -26,7 +26,7 @@ export function registerTemplateCommand(program: Command): void {
                 exportFileCmd.help()
                 return
             }
-            return exportTemplateFile(projectArg, options)
+            return exportTemplateFile(ref, options)
         })
 
     const exportUrlCmd = template
@@ -44,7 +44,7 @@ export function registerTemplateCommand(program: Command): void {
                 exportUrlCmd.help()
                 return
             }
-            return exportTemplateUrl(projectArg, options)
+            return exportTemplateUrl(ref, options)
         })
 
     template
@@ -77,7 +77,7 @@ export function registerTemplateCommand(program: Command): void {
                 importFileCmd.help()
                 return
             }
-            return importTemplateFile(projectArg, options)
+            return importTemplateFile(ref, options)
         })
 
     const importIdCmd = template
@@ -97,6 +97,6 @@ export function registerTemplateCommand(program: Command): void {
                 importIdCmd.help()
                 return
             }
-            return importTemplateById(projectArg, options)
+            return importTemplateById(ref, options)
         })
 }

@@ -9,16 +9,11 @@ export interface ExportUrlOptions {
 }
 
 export async function exportTemplateUrl(
-    projectArg: string | undefined,
+    projectRef: string,
     options: ExportUrlOptions,
 ): Promise<void> {
-    const ref = projectArg || options.project
-    if (!ref) {
-        throw new Error('Project reference is required')
-    }
-
     const api = await getApi()
-    const project = await resolveProjectRef(api, ref)
+    const project = await resolveProjectRef(api, projectRef)
 
     const result = await api.exportTemplateAsUrl({
         projectId: project.id,

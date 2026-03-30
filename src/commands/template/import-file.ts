@@ -14,13 +14,9 @@ export interface ImportFileOptions {
 }
 
 export async function importTemplateFile(
-    projectArg: string | undefined,
+    projectRef: string,
     options: ImportFileOptions,
 ): Promise<void> {
-    const ref = projectArg || options.project
-    if (!ref) {
-        throw new Error('Project reference is required')
-    }
     if (!options.file) {
         throw new Error(formatError('MISSING_FILE', 'Template file path is required (--file)'))
     }
@@ -36,7 +32,7 @@ export async function importTemplateFile(
 
     if (options.dryRun) {
         printDryRun('import template into project', {
-            Project: ref,
+            Project: projectRef,
             File: filePath,
             'File name': options.fileName,
         })
@@ -44,9 +40,17 @@ export async function importTemplateFile(
     }
 
     const api = await getApi()
-    const project = await resolveProjectRef(api, ref)
+    const project = await resolveProjectRef(api, projectRef)
 
-    const file = fs.readFileSync(filePath)
+    let file: Buffer
+    try {
+        file = fs.readFileSync(filePath) as Buffer
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        throw new Error(
+            formatError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message]),
+        )
+    }
     const fileName = options.fileName || path.basename(filePath)
 
     const result = await api.importTemplateIntoProject({

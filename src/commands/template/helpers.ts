@@ -1,15 +1,7 @@
+import type { ImportTemplateResponse } from '@doist/todoist-api-typescript'
 import chalk from 'chalk'
 
-interface ImportResult {
-    status: string
-    templateType: string
-    projects: unknown[]
-    sections: unknown[]
-    tasks: unknown[]
-    comments: unknown[]
-}
-
-export function formatImportResult(result: ImportResult): void {
+export function formatImportResult(result: ImportTemplateResponse): void {
     const counts = [
         result.tasks.length > 0 ? `${result.tasks.length} tasks` : null,
         result.sections.length > 0 ? `${result.sections.length} sections` : null,

@@ -50,7 +50,15 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         workspaceId = workspace.id
     }
 
-    const file = fs.readFileSync(filePath)
+    let file: Buffer
+    try {
+        file = fs.readFileSync(filePath) as Buffer
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        throw new Error(
+            formatError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message]),
+        )
+    }
     const fileName = options.fileName || path.basename(filePath)
 
     const result = await api.createProjectFromTemplate({

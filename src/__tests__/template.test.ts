@@ -90,7 +90,7 @@ describe('template', () => {
         it('passes --relative-dates flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync([
                 'node',
@@ -105,6 +105,7 @@ describe('template', () => {
                 projectId: fixtures.projects.work.id,
                 useRelativeDates: true,
             })
+            stdoutSpy.mockRestore()
         })
 
         it('outputs JSON with --json', async () => {
@@ -121,11 +122,12 @@ describe('template', () => {
         it('accepts --project flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', '--project', 'Work'])
 
             expect(mockResolveProjectRef).toHaveBeenCalledWith(mockApi, 'Work')
+            stdoutSpy.mockRestore()
         })
     })
 

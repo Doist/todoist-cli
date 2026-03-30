@@ -12,13 +12,9 @@ export interface ImportIdOptions {
 }
 
 export async function importTemplateById(
-    projectArg: string | undefined,
+    projectRef: string,
     options: ImportIdOptions,
 ): Promise<void> {
-    const ref = projectArg || options.project
-    if (!ref) {
-        throw new Error('Project reference is required')
-    }
     if (!options.templateId) {
         throw new Error(
             formatError('MISSING_TEMPLATE_ID', 'Template ID is required (--template-id)'),
@@ -27,7 +23,7 @@ export async function importTemplateById(
 
     if (options.dryRun) {
         printDryRun('import template by ID into project', {
-            Project: ref,
+            Project: projectRef,
             'Template ID': options.templateId,
             Locale: options.locale,
         })
@@ -35,7 +31,7 @@ export async function importTemplateById(
     }
 
     const api = await getApi()
-    const project = await resolveProjectRef(api, ref)
+    const project = await resolveProjectRef(api, projectRef)
 
     const result = await api.importTemplateFromId({
         projectId: project.id,
