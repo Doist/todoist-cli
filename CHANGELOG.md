@@ -1,3 +1,9 @@
+## [1.33.0](https://github.com/Doist/todoist-cli/compare/v1.32.0...v1.33.0) (2026-03-30)
+
+### Features
+
+* enhance reminder list with REST API and location reminders ([#199](https://github.com/Doist/todoist-cli/issues/199)) ([73ecbfa](https://github.com/Doist/todoist-cli/commit/73ecbfa44efd482af93b034337d055e391b15c62))
+
 ## [1.32.0](https://github.com/Doist/todoist-cli/compare/v1.31.1...v1.32.0) (2026-03-30)
 
 ### Features
