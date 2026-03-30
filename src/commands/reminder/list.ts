@@ -32,7 +32,7 @@ export async function listReminders(
           ? parseInt(options.limit, 10)
           : 200
 
-    const args = (taskId ? { taskId } : {})
+    const args = taskId ? { taskId } : {}
 
     // Fetch time-based and location-based reminders in parallel
     const [timeResult, locationResult] = await Promise.all([
