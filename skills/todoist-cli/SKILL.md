@@ -358,7 +358,14 @@ td notification reject id:123                 # Reject share invitation
 
 ### Reminders
 ```bash
-td reminder list "task name"                  # or --task "task name"
+td reminder list                              # List all reminders (time-based + location-based)
+td reminder list "task name"                  # or --task "task name" (filter by task)
+td reminder list --type time                  # Only time-based reminders
+td reminder list --type location              # Only location-based reminders
+td reminder list --limit 10                   # Limit results
+td reminder list --type time --cursor <cursor> # Paginate (--type required with --cursor)
+td reminder list --all                        # Fetch all results
+td reminder list --json                       # JSON output
 td reminder add "task name" --before 30m      # or --task "task name" --before 30m
 td reminder add "task name" --before 30m --json  # Return created reminder as JSON
 td reminder add "task name" --at "2024-01-15 10:00"

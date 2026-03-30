@@ -1,9 +1,18 @@
-import type { Reminder, ReminderDue } from '../../lib/api/reminders.js'
+import type { LocationReminder, Reminder } from '@doist/todoist-api-typescript'
+import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { formatError } from '../../lib/output.js'
 
-export function formatReminderTime(reminder: Reminder): string {
-    if (reminder.minuteOffset != null) {
+export type ReminderTypeFilter = 'time' | 'location'
+
+interface ReminderLike {
+    type: Reminder['type']
+    minuteOffset?: number
+    due?: { date: string }
+}
+
+export function formatReminderTime(reminder: ReminderLike): string {
+    if (reminder.type === 'relative' && reminder.minuteOffset != null) {
         return `${formatDuration(reminder.minuteOffset)} before due`
     }
     if (reminder.due?.date) {
@@ -14,6 +23,11 @@ export function formatReminderTime(reminder: Reminder): string {
         return `at ${date}`
     }
     return 'unknown time'
+}
+
+export function formatLocationReminderRow(reminder: LocationReminder): string {
+    const trigger = reminder.locTrigger === 'on_enter' ? 'on enter' : 'on leave'
+    return `${reminder.name} (${trigger}) at ${reminder.locLat},${reminder.locLong} r=${reminder.radius}m`
 }
 
 export function parseDateTime(value: string): ReminderDue {

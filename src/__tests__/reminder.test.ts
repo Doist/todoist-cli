@@ -6,7 +6,6 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 vi.mock('../lib/api/reminders.js', () => ({
-    getTaskReminders: vi.fn(),
     fetchReminders: vi.fn(),
     addReminder: vi.fn(),
     updateReminder: vi.fn(),
@@ -19,14 +18,12 @@ import {
     addReminder,
     deleteReminder,
     fetchReminders,
-    getTaskReminders,
     updateReminder,
 } from '../lib/api/reminders.js'
 
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
-const mockGetTaskReminders = vi.mocked(getTaskReminders)
 const mockFetchReminders = vi.mocked(fetchReminders)
 const mockAddReminder = vi.mocked(addReminder)
 const mockUpdateReminder = vi.mocked(updateReminder)
@@ -53,28 +50,99 @@ describe('reminder list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
-        mockGetTaskReminders.mockResolvedValue([
-            {
-                id: 'rem-1',
-                itemId: 'task-1',
-                type: 'absolute',
-                minuteOffset: 30,
-                isDeleted: false,
-            },
-            {
-                id: 'rem-2',
-                itemId: 'task-1',
-                type: 'absolute',
-                due: { date: '2024-01-15T10:00:00' },
-                isDeleted: false,
-            },
-        ])
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 30,
+                    isDeleted: false,
+                },
+                {
+                    id: 'rem-2',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'absolute',
+                    due: {
+                        date: '2024-01-15T10:00:00',
+                        isRecurring: false,
+                        string: '2024-01-15 10:00',
+                    },
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'reminder', 'list', 'id:task-1'])
 
-        expect(mockGetTaskReminders).toHaveBeenCalledWith('task-1')
+        expect(mockApi.getReminders).toHaveBeenCalledWith(
+            expect.objectContaining({ taskId: 'task-1' }),
+        )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('30m before due'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('at 2024-01-15 10:00'))
+        consoleSpy.mockRestore()
+    })
+
+    it('lists all reminders when no task specified', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 15,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list'])
+
+        expect(mockApi.getReminders).toHaveBeenCalledWith(
+            expect.not.objectContaining({ taskId: expect.anything() }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('15m before due'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('task:task-1'))
+        consoleSpy.mockRestore()
+    })
+
+    it('shows location reminders alongside time reminders', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getLocationReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'loc-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'location',
+                    name: 'Office',
+                    locLat: '37.7749',
+                    locLong: '-122.4194',
+                    locTrigger: 'on_enter',
+                    radius: 100,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Office'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('on enter'))
         consoleSpy.mockRestore()
     })
 
@@ -83,7 +151,8 @@ describe('reminder list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
-        mockGetTaskReminders.mockResolvedValue([])
+        mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'reminder', 'list', 'id:task-1'])
 
@@ -96,15 +165,20 @@ describe('reminder list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
-        mockGetTaskReminders.mockResolvedValue([
-            {
-                id: 'rem-1',
-                itemId: 'task-1',
-                type: 'absolute',
-                minuteOffset: 60,
-                isDeleted: false,
-            },
-        ])
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 60,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'reminder', 'list', 'id:task-1', '--json'])
 
@@ -120,7 +194,8 @@ describe('reminder list', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
-        mockGetTaskReminders.mockResolvedValue([])
+        mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'reminder', 'list', '--task', 'id:task-1'])
 
@@ -142,6 +217,97 @@ describe('reminder list', () => {
                 'id:task-2',
             ]),
         ).rejects.toThrow('Cannot specify task both as argument and --task flag')
+    })
+
+    it('filters to time-based reminders with --type time', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 15,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', '--type', 'time'])
+
+        expect(mockApi.getReminders).toHaveBeenCalled()
+        expect(mockApi.getLocationReminders).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('15m before due'))
+        consoleSpy.mockRestore()
+    })
+
+    it('filters to location reminders with --type location', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getLocationReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'loc-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'location',
+                    name: 'Home',
+                    locLat: '40.7128',
+                    locLong: '-74.0060',
+                    locTrigger: 'on_leave',
+                    radius: 200,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', '--type', 'location'])
+
+        expect(mockApi.getLocationReminders).toHaveBeenCalled()
+        expect(mockApi.getReminders).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Home'))
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when --cursor is used without --type', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'reminder', 'list', '--cursor', 'abc123']),
+        ).rejects.toThrow('--cursor requires --type')
+    })
+
+    it('does not show task context when filtered by task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 10,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list', 'id:task-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('10m before due'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('task:'))
+        consoleSpy.mockRestore()
     })
 })
 
@@ -526,7 +692,7 @@ describe('reminder delete', () => {
             {
                 id: 'rem-1',
                 itemId: 'task-1',
-                type: 'absolute',
+                type: 'relative',
                 minuteOffset: 30,
                 isDeleted: false,
             },
@@ -548,7 +714,7 @@ describe('reminder delete', () => {
             {
                 id: 'rem-123',
                 itemId: 'task-1',
-                type: 'absolute',
+                type: 'relative',
                 minuteOffset: 60,
                 isDeleted: false,
             },

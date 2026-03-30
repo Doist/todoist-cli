@@ -2,29 +2,44 @@ import { Command } from 'commander'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
 import { deleteReminderCmd } from './delete.js'
+import type { ReminderTypeFilter } from './helpers.js'
 import { listReminders } from './list.js'
 import { updateReminderCmd } from './update.js'
 
 export function registerReminderCommand(program: Command): void {
     const reminder = program.command('reminder').description('Manage task reminders')
 
-    const listCmd = reminder
+    reminder
         .command('list [task]')
-        .description('List reminders for a task')
+        .description('List reminders (optionally filtered by task, or reminder type)')
         .option('--task <ref>', 'Task reference (name or id:xxx)')
+        .option('--type <type>', 'Filter by type (time or location)', (v: string) => {
+            if (v !== 'time' && v !== 'location') {
+                throw new Error("--type must be 'time' or 'location'")
+            }
+            return v as ReminderTypeFilter
+        })
+        .option('--limit <n>', 'Limit number of results')
+        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .action(
-            (taskArg: string | undefined, options: PaginatedViewOptions & { task?: string }) => {
+            (
+                taskArg: string | undefined,
+                options: PaginatedViewOptions & {
+                    task?: string
+                    type?: ReminderTypeFilter
+                    limit?: string
+                    cursor?: string
+                    all?: boolean
+                },
+            ) => {
                 if (taskArg && options.task) {
                     throw new Error('Cannot specify task both as argument and --task flag')
                 }
                 const task = taskArg || options.task
-                if (!task) {
-                    listCmd.help()
-                    return
-                }
                 return listReminders(task, options)
             },
         )

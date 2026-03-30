@@ -156,6 +156,9 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
             tasks: [],
             comments: [],
         }),
+        // Reminders (REST)
+        getReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getLocationReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         ...overrides,
     } as unknown as MockApi
 }
