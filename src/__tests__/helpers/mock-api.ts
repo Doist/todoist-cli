@@ -128,6 +128,34 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
             isStale: false,
             updateInProgress: true,
         }),
+        // Templates
+        exportTemplateAsFile: vi.fn().mockResolvedValue(''),
+        exportTemplateAsUrl: vi.fn().mockResolvedValue({ fileName: '', fileUrl: '' }),
+        createProjectFromTemplate: vi.fn().mockResolvedValue({
+            status: 'ok',
+            projectId: '',
+            templateType: 'project',
+            projects: [],
+            sections: [],
+            tasks: [],
+            comments: [],
+        }),
+        importTemplateIntoProject: vi.fn().mockResolvedValue({
+            status: 'ok',
+            templateType: 'project',
+            projects: [],
+            sections: [],
+            tasks: [],
+            comments: [],
+        }),
+        importTemplateFromId: vi.fn().mockResolvedValue({
+            status: 'ok',
+            templateType: 'project',
+            projects: [],
+            sections: [],
+            tasks: [],
+            comments: [],
+        }),
         ...overrides,
     } as unknown as MockApi
 }

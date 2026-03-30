@@ -26,7 +26,9 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - `td workspace insights <ref>` - Workspace-wide project insights
 - `td activity` - Activity logs
 - `td notification list` - Notifications
+- `td reminder list` - List reminders (all or per task)
 - `td reminder add` - Task reminders
+- `td template create/export-file/export-url/import-file/import-id` - Project templates
 - `td auth status` - Authentication status
 - `td stats` - Productivity stats
 - `td settings view` - User settings
@@ -52,6 +54,7 @@ The following mutating commands also support `--json` to return the created or u
 - `section create`, `section update`
 - `filter create`
 - `reminder add`
+- `template create`, `template import-file`, `template import-id`
 - `project analyze-health`
 
 All mutating commands support `--dry-run` to preview what would happen without executing:
@@ -362,6 +365,24 @@ td reminder add "task name" --at "2024-01-15 10:00"
 td reminder update id:123 --before 1h
 td reminder add "task name" --before 30m --dry-run  # Preview reminder creation
 td reminder delete id:123 --yes
+```
+
+### Templates
+```bash
+td template export-file "My Project"          # Export project as CSV template to stdout
+td template export-file "My Project" --output template.csv  # Write to file
+td template export-file "My Project" --relative-dates       # Use relative dates
+td template export-file "My Project" --json   # JSON: { "content": "..." }
+td template export-url "My Project"           # Get template download URL
+td template export-url "My Project" --json    # JSON: { fileName, fileUrl }
+td template create --name "New Project" --file template.csv  # Create project from template
+td template create --name "New Project" --file template.csv --workspace "Work"  # In workspace
+td template create --name "New Project" --file template.csv --json  # Return created data as JSON
+td template create --name "New Project" --file template.csv --dry-run  # Preview
+td template import-file "My Project" --file template.csv     # Import template into project
+td template import-file "My Project" --file template.csv --json  # Return import result as JSON
+td template import-id "My Project" --template-id product-launch  # Import template by ID
+td template import-id "My Project" --template-id product-launch --locale fr  # With locale
 ```
 
 ### Auth

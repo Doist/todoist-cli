@@ -109,6 +109,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage coding agent skills/integrations',
         async () => (await import('./commands/skill/index.js')).registerSkillCommand,
     ],
+    template: [
+        'Manage project templates (export, import, create)',
+        async () => (await import('./commands/template/index.js')).registerTemplateCommand,
+    ],
     completion: [
         'Manage shell completions',
         async () => (await import('./commands/completion/index.js')).registerCompletionCommand,
