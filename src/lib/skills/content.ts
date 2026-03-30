@@ -362,7 +362,7 @@ td reminder list "task name"                  # or --task "task name" (filter by
 td reminder list --type time                  # Only time-based reminders
 td reminder list --type location              # Only location-based reminders
 td reminder list --limit 10                   # Limit results
-td reminder list --cursor <cursor>            # Paginate
+td reminder list --type time --cursor <cursor> # Paginate (--type required with --cursor)
 td reminder list --all                        # Fetch all results
 td reminder list --json                       # JSON output
 td reminder add "task name" --before 30m      # or --task "task name" --before 30m

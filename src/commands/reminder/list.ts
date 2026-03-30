@@ -25,6 +25,10 @@ export async function listReminders(
 ): Promise<void> {
     const api = await getApi()
 
+    if (options.cursor && !options.type) {
+        throw new Error('--cursor requires --type (time or location) to identify the endpoint')
+    }
+
     let taskId: string | undefined
     if (taskRef) {
         const task = await resolveTaskRef(api, taskRef)
@@ -63,33 +67,26 @@ export async function listReminders(
             : emptyResult,
     ])
 
-    const reminders = timeResult.results
-    const locationReminders = locationResult.results
+    // When fetching both types, apply the limit across the merged results
+    let reminders = timeResult.results
+    let locationReminders = locationResult.results
+    if (fetchTime && fetchLocation) {
+        const total = reminders.length + locationReminders.length
+        if (total > targetLimit) {
+            const combined = [
+                ...reminders.map((r) => ({ kind: 'time' as const, item: r })),
+                ...locationReminders.map((r) => ({ kind: 'location' as const, item: r })),
+            ].slice(0, targetLimit)
+            reminders = combined.filter((c) => c.kind === 'time').map((c) => c.item)
+            locationReminders = combined.filter((c) => c.kind === 'location').map((c) => c.item)
+        }
+    }
     const nextCursor = timeResult.nextCursor || locationResult.nextCursor
 
     if (options.json) {
-        const timeJson = formatPaginatedJson(
-            { results: reminders, nextCursor: timeResult.nextCursor },
-            'reminder',
-            options.full,
-        )
-        const locationJson = formatPaginatedJson(
-            { results: locationReminders, nextCursor: locationResult.nextCursor },
-            'location-reminder',
-            options.full,
-        )
-        const timeParsed = JSON.parse(timeJson)
-        const locationParsed = JSON.parse(locationJson)
+        const allResults = [...reminders, ...locationReminders]
         console.log(
-            JSON.stringify(
-                {
-                    reminders: timeParsed.results,
-                    locationReminders: locationParsed.results,
-                    nextCursor,
-                },
-                null,
-                2,
-            ),
+            formatPaginatedJson({ results: allResults, nextCursor }, 'reminder', options.full),
         )
         return
     }
@@ -117,17 +114,21 @@ export async function listReminders(
         return
     }
 
+    const showTask = !taskId
+
     for (const reminder of reminders) {
         const id = chalk.dim(reminder.id)
         const type = chalk.cyan('[time]')
         const time = formatReminderTime(reminder)
-        console.log(`${id}  ${type} ${time}`)
+        const task = showTask ? chalk.dim(` (task:${reminder.itemId})`) : ''
+        console.log(`${id}  ${type} ${time}${task}`)
     }
 
     for (const loc of locationReminders) {
         const id = chalk.dim(loc.id)
         const type = chalk.magenta('[location]')
         const detail = formatLocationReminderRow(loc as LocationReminder)
-        console.log(`${id}  ${type} ${detail}`)
+        const task = showTask ? chalk.dim(` (task:${loc.itemId})`) : ''
+        console.log(`${id}  ${type} ${detail}${task}`)
     }
 }
