@@ -47,7 +47,7 @@ describe('completed command', () => {
     it('shows completed tasks', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 {
                     id: 'task-1',
@@ -56,11 +56,8 @@ describe('completed command', () => {
                     priority: 1,
                 },
             ],
-            nextCursor: null,
-        })
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Work' }],
-            nextCursor: null,
+            projects: { 'proj-1': { name: 'Work' } },
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed'])
@@ -74,10 +71,10 @@ describe('completed command', () => {
 
         await program.parseAsync(['node', 'td', 'completed'])
 
-        expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalledWith(
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
             expect.objectContaining({
-                since: getToday(),
-                until: getTomorrow(),
+                since: new Date(getToday() + 'T00:00:00'),
+                until: new Date(getTomorrow() + 'T00:00:00'),
             }),
         )
     })
@@ -95,10 +92,10 @@ describe('completed command', () => {
             '2024-01-08',
         ])
 
-        expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalledWith(
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
             expect.objectContaining({
-                since: '2024-01-01',
-                until: '2024-01-08',
+                since: new Date('2024-01-01T00:00:00'),
+                until: new Date('2024-01-08T00:00:00'),
             }),
         )
     })
@@ -106,9 +103,10 @@ describe('completed command', () => {
     it('shows "No completed tasks" when empty', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [],
-            nextCursor: null,
+            projects: {},
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed'])
@@ -123,16 +121,71 @@ describe('completed command', () => {
             results: [{ id: 'proj-1', name: 'Work' }],
             nextCursor: null,
         })
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [],
-            nextCursor: null,
+            projects: {},
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed', '--project', 'Work'])
 
-        expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalledWith(
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
             expect.objectContaining({
                 projectId: 'proj-1',
+            }),
+        )
+    })
+
+    it('filters by label', async () => {
+        const program = createProgram()
+
+        mockApi.getAllCompletedTasks.mockResolvedValue({
+            items: [],
+            projects: {},
+            sections: {},
+        })
+
+        await program.parseAsync(['node', 'td', 'completed', '--label', 'urgent'])
+
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                label: 'urgent',
+            }),
+        )
+    })
+
+    it('passes annotateNotes flag', async () => {
+        const program = createProgram()
+
+        await program.parseAsync(['node', 'td', 'completed', '--annotate-notes'])
+
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                annotateNotes: true,
+            }),
+        )
+    })
+
+    it('passes annotateItems flag', async () => {
+        const program = createProgram()
+
+        await program.parseAsync(['node', 'td', 'completed', '--annotate-items'])
+
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                annotateItems: true,
+            }),
+        )
+    })
+
+    it('respects --offset option', async () => {
+        const program = createProgram()
+
+        await program.parseAsync(['node', 'td', 'completed', '--offset', '10'])
+
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                offset: 10,
             }),
         )
     })
@@ -140,9 +193,10 @@ describe('completed command', () => {
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [{ id: 'task-1', content: 'Done task', projectId: 'proj-1' }],
-            nextCursor: null,
+            projects: { 'proj-1': { name: 'Work' } },
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed', '--json'])
@@ -156,12 +210,13 @@ describe('completed command', () => {
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 { id: 'task-1', content: 'Task 1', projectId: 'proj-1' },
                 { id: 'task-2', content: 'Task 2', projectId: 'proj-1' },
             ],
-            nextCursor: null,
+            projects: { 'proj-1': { name: 'Work' } },
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed', '--ndjson'])
@@ -171,44 +226,20 @@ describe('completed command', () => {
         expect(lines).toHaveLength(2)
     })
 
-    it('outputs NDJSON meta cursor when no tasks are returned', async () => {
+    it('uses inline project data for project names', async () => {
         const program = createProgram()
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'completed',
-            '--ndjson',
-            '--limit',
-            '0',
-            '--cursor',
-            'cursor-123',
-        ])
-
-        const output = consoleSpy.mock.calls[0][0]
-        const lines = output.split('\n')
-        expect(lines).toHaveLength(1)
-        const meta = JSON.parse(lines[0])
-        expect(meta._meta).toBe(true)
-        expect(meta.nextCursor).toBe('cursor-123')
-        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
-    })
-
-    it('includes project names in text output', async () => {
-        const program = createProgram()
-
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [{ id: 'task-1', content: 'Task', projectId: 'proj-1', priority: 1 }],
-            nextCursor: null,
-        })
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Work' }],
-            nextCursor: null,
+            projects: { 'proj-1': { name: 'Inline Project' } },
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed'])
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Inline Project'))
+        // Should NOT call getProjects when no assignees
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
     })
 
     it('respects --limit option', async () => {
@@ -216,7 +247,7 @@ describe('completed command', () => {
 
         await program.parseAsync(['node', 'td', 'completed', '--limit', '10'])
 
-        expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalledWith(
+        expect(mockApi.getAllCompletedTasks).toHaveBeenCalledWith(
             expect.objectContaining({
                 limit: 10,
             }),
@@ -226,7 +257,7 @@ describe('completed command', () => {
     it('displays assignee for shared project tasks', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 {
                     id: 'task-1',
@@ -236,7 +267,8 @@ describe('completed command', () => {
                     responsibleUid: 'user-123',
                 },
             ],
-            nextCursor: null,
+            projects: { 'proj-shared': { name: 'Shared Project' } },
+            sections: {},
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
@@ -255,7 +287,7 @@ describe('completed command', () => {
     it('displays assignee for workspace project tasks', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 {
                     id: 'task-1',
@@ -265,7 +297,8 @@ describe('completed command', () => {
                     responsibleUid: 'user-456',
                 },
             ],
-            nextCursor: null,
+            projects: { 'proj-ws': { name: 'Team Project' } },
+            sections: {},
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-ws', name: 'Team Project', workspaceId: 'ws-1' }],
@@ -286,7 +319,7 @@ describe('completed command', () => {
     it('does not fetch collaborators when no tasks have assignees', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 {
                     id: 'task-1',
@@ -296,11 +329,8 @@ describe('completed command', () => {
                     responsibleUid: null,
                 },
             ],
-            nextCursor: null,
-        })
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Work', isShared: true }],
-            nextCursor: null,
+            projects: { 'proj-1': { name: 'Work' } },
+            sections: {},
         })
 
         await program.parseAsync(['node', 'td', 'completed'])
@@ -312,7 +342,7 @@ describe('completed command', () => {
     it('includes responsibleName in JSON output', async () => {
         const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+        mockApi.getAllCompletedTasks.mockResolvedValue({
             items: [
                 {
                     id: 'task-1',
@@ -322,7 +352,8 @@ describe('completed command', () => {
                     responsibleUid: 'user-123',
                 },
             ],
-            nextCursor: null,
+            projects: { 'proj-shared': { name: 'Shared Project' } },
+            sections: {},
         })
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
@@ -365,7 +396,7 @@ describe('completed command', () => {
             expect(mockApi.searchCompletedTasks).toHaveBeenCalledWith(
                 expect.objectContaining({ query: 'meeting' }),
             )
-            expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+            expect(mockApi.getAllCompletedTasks).not.toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('search: "meeting"'))
         })
 
@@ -374,7 +405,7 @@ describe('completed command', () => {
 
             await program.parseAsync(['node', 'td', 'completed', 'list'])
 
-            expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalled()
+            expect(mockApi.getAllCompletedTasks).toHaveBeenCalled()
             expect(mockApi.searchCompletedTasks).not.toHaveBeenCalled()
         })
 
@@ -469,5 +500,24 @@ describe('completed command', () => {
                 ]),
             ).rejects.toThrow('Cannot use --since, --until, or --project with --search')
         })
+    })
+
+    it('shows offset hint when results equal limit', async () => {
+        const program = createProgram()
+
+        mockApi.getAllCompletedTasks.mockResolvedValue({
+            items: Array.from({ length: 5 }, (_, i) => ({
+                id: `task-${i}`,
+                content: `Task ${i}`,
+                projectId: 'proj-1',
+                priority: 1,
+            })),
+            projects: { 'proj-1': { name: 'Work' } },
+            sections: {},
+        })
+
+        await program.parseAsync(['node', 'td', 'completed', '--limit', '5'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('--offset 5'))
     })
 })
