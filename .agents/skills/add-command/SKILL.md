@@ -24,7 +24,14 @@ Color convention:
 - `green` — create/join operations
 - `yellow` — update/delete/archive mutations
 
-## 3. Command Implementation (`src/commands/<entity>/`)
+## 3. Read-Only Permissions (`src/lib/permissions.ts`)
+
+If the new command uses a **read-only** SDK method (e.g., `getXxx`, `listXxx`), add it to the `KNOWN_SAFE_API_METHODS` set. This set uses a default-deny approach: any method **not** listed is treated as mutating and will be blocked when the CLI is authenticated with a read-only OAuth token (`td auth login --read-only`).
+
+- **Read-only methods** (fetch/list/view): add to `KNOWN_SAFE_API_METHODS`
+- **Mutating methods** (add/update/delete/archive/move): do NOT add — they are blocked by default, which is the correct behavior
+
+## 4. Command Implementation (`src/commands/<entity>/`)
 
 Commands with multiple subcommands use a folder-based structure:
 
@@ -83,7 +90,7 @@ const myCmd = parent
 
 The variable assignment (`const myCmd = ...`) is needed so the `.action()` callback can call `myCmd.help()` when the argument is missing.
 
-## 4. Accessibility (`src/lib/output.ts`)
+## 5. Accessibility (`src/lib/output.ts`)
 
 The CLI supports accessible mode via `isAccessible()` (checks `TD_ACCESSIBLE=1` or `--accessible` flag). When adding output that uses color or visual elements, consider whether information is conveyed **only** by color or decoration.
 
@@ -119,7 +126,7 @@ if (isAccessible()) {
 
 If adding a new shared formatter to `output.ts`, use `Record<ExactType, ...>` rather than `Record<string, ...>` so the compiler catches missing variants.
 
-## 5. Tests (`src/__tests__/<entity>.test.ts`)
+## 6. Tests (`src/__tests__/<entity>.test.ts`)
 
 Follow the existing pattern: mock `getApi`, use `program.parseAsync()`.
 
@@ -130,7 +137,7 @@ Always test:
 - `--dry-run` for mutating commands (API method should NOT be called, preview text shown)
 - `--json` output where applicable
 
-## 6. Skill Content (`src/lib/skills/content.ts`)
+## 7. Skill Content (`src/lib/skills/content.ts`)
 
 Update `SKILL_CONTENT` with examples for the new command. Update relevant sections:
 
@@ -139,7 +146,7 @@ Update `SKILL_CONTENT` with examples for the new command. Update relevant sectio
 - Mutating `--json` list if the command returns an entity
 - `--dry-run` list if applicable
 
-## 7. Sync Skill File
+## 8. Sync Skill File
 
 After all code changes are complete:
 
@@ -149,7 +156,7 @@ npm run sync:skill
 
 This builds the project and regenerates `skills/todoist-cli/SKILL.md` from the compiled skill content. The regenerated file must be committed. CI will fail (`npm run check:skill-sync`) if it is out of sync.
 
-## 8. Verify
+## 9. Verify
 
 ```bash
 npm run type-check
