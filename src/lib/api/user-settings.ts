@@ -6,7 +6,7 @@ import {
     DATE_FORMAT_TO_API,
     DAY_OF_WEEK_TO_API,
     TIME_FORMAT_TO_API,
-} from '@doist/todoist-api-typescript'
+} from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
 export interface UserSettings {

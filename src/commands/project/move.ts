@@ -1,5 +1,5 @@
-import type { MoveProjectToWorkspaceArgs, ProjectVisibility } from '@doist/todoist-api-typescript'
-import { ProjectVisibilitySchema } from '@doist/todoist-api-typescript'
+import type { MoveProjectToWorkspaceArgs, ProjectVisibility } from '@doist/todoist-sdk'
+import { ProjectVisibilitySchema } from '@doist/todoist-sdk'
 import { getApi, isPersonalProject, isWorkspaceProject } from '../../lib/api/core.js'
 import { formatError } from '../../lib/output.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'

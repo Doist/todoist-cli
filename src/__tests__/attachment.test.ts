@@ -1,4 +1,4 @@
-import type { FileResponse } from '@doist/todoist-api-typescript'
+import type { FileResponse } from '@doist/todoist-sdk'
 import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

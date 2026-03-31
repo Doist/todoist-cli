@@ -1,4 +1,4 @@
-import type { Label } from '@doist/todoist-api-typescript'
+import type { Label } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { formatError } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'

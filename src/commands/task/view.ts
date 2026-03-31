@@ -1,4 +1,4 @@
-import type { Task } from '@doist/todoist-api-typescript'
+import type { Task } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatJson, formatTaskView } from '../../lib/output.js'

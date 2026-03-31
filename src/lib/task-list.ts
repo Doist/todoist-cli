@@ -1,4 +1,4 @@
-import type { Task, TodoistApi } from '@doist/todoist-api-typescript'
+import type { Task, TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'

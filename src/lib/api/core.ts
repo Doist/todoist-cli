@@ -7,7 +7,7 @@ import {
     User,
     WorkspaceProject,
     type DueDate,
-} from '@doist/todoist-api-typescript'
+} from '@doist/todoist-sdk'
 import { getApiToken } from '../auth.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'

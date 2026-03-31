@@ -1,4 +1,4 @@
-import { createCommand } from '@doist/todoist-api-typescript'
+import { createCommand } from '@doist/todoist-sdk'
 import { getApiToken } from '../auth.js'
 import { getApi, pickDefined } from './core.js'
 

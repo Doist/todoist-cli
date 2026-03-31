@@ -1,8 +1,4 @@
-import {
-    createCommand,
-    type ColorKey,
-    type Filter as SdkFilter,
-} from '@doist/todoist-api-typescript'
+import { createCommand, type ColorKey, type Filter as SdkFilter } from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
 export type Filter = SdkFilter

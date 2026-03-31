@@ -1,4 +1,4 @@
-import { type Folder as SdkFolder, type SyncWorkspace } from '@doist/todoist-api-typescript'
+import { type Folder as SdkFolder, type SyncWorkspace } from '@doist/todoist-sdk'
 import { getApi } from './core.js'
 
 export interface Workspace {
@@ -31,7 +31,7 @@ function toWorkspace(w: SyncWorkspace): Workspace {
     return {
         id: String(w.id),
         name: w.name,
-        role: w.role,
+        role: w.role ?? 'MEMBER',
         plan: w.plan,
         domainName: w.domainName ?? null,
         currentMemberCount: w.currentMemberCount ?? 0,

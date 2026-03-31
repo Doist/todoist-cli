@@ -1,4 +1,4 @@
-import type { ColorKey, ProjectViewStyle } from '@doist/todoist-api-typescript'
+import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { formatError, formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'

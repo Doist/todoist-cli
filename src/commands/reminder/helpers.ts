@@ -1,4 +1,4 @@
-import type { LocationReminder, Reminder } from '@doist/todoist-api-typescript'
+import type { LocationReminder, Reminder } from '@doist/todoist-sdk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { formatError } from '../../lib/output.js'
