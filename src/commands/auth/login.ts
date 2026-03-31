@@ -2,18 +2,23 @@ import chalk from 'chalk'
 import open from 'open'
 import { saveApiToken } from '../../lib/auth.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
-import { buildAuthorizationUrl, exchangeCodeForToken } from '../../lib/oauth.js'
+import {
+    READ_ONLY_SCOPES,
+    READ_WRITE_SCOPES,
+    buildAuthorizationUrl,
+    exchangeCodeForToken,
+} from '../../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../lib/pkce.js'
 import { logTokenStorageResult } from './helpers.js'
 
-export async function loginWithOAuth(): Promise<void> {
+export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Promise<void> {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
     const state = generateState()
 
     console.log('Opening browser for Todoist authorization...')
 
-    const authUrl = buildAuthorizationUrl(codeChallenge, state)
+    const authUrl = buildAuthorizationUrl(codeChallenge, state, { readOnly: options.readOnly })
     const { promise: callbackPromise, cleanup } = startCallbackServer(state)
 
     try {
@@ -24,7 +29,10 @@ export async function loginWithOAuth(): Promise<void> {
         console.log(chalk.dim('Exchanging code for token...'))
 
         const accessToken = await exchangeCodeForToken(code, codeVerifier)
-        const result = await saveApiToken(accessToken)
+        const result = await saveApiToken(accessToken, {
+            authMode: options.readOnly ? 'read-only' : 'read-write',
+            authScope: options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES,
+        })
 
         console.log(chalk.green('✓'), 'Successfully logged in!')
         logTokenStorageResult(result, 'Token stored securely in the system credential manager')

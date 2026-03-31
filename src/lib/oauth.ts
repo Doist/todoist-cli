@@ -3,12 +3,18 @@ import { OAUTH_REDIRECT_URI } from './oauth-server.js'
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
 const OAUTH_TOKEN_URL = 'https://todoist.com/oauth/access_token'
-const OAUTH_SCOPES = 'data:read_write,data:delete,project:delete'
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
+export const READ_ONLY_SCOPES = 'data:read'
 
-export function buildAuthorizationUrl(codeChallenge: string, state: string): string {
+export function buildAuthorizationUrl(
+    codeChallenge: string,
+    state: string,
+    options: { readOnly?: boolean } = {},
+): string {
+    const scope = options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES
     const params = new URLSearchParams({
         client_id: TODOIST_CLIENT_ID,
-        scope: OAUTH_SCOPES,
+        scope,
         state: state,
         redirect_uri: OAUTH_REDIRECT_URI,
         code_challenge: codeChallenge,

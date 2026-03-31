@@ -7,7 +7,10 @@ import { loginWithToken } from './token.js'
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    auth.command('login').description('Authenticate with Todoist via OAuth').action(loginWithOAuth)
+    auth.command('login')
+        .description('Authenticate with Todoist via OAuth')
+        .option('--read-only', 'Authenticate with read-only scope (data:read)')
+        .action(loginWithOAuth)
 
     auth.command('token [token]')
         .description('Save API token for CLI authentication')

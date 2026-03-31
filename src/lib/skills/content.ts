@@ -28,6 +28,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - \`td reminder list\` - List reminders (all or per task)
 - \`td reminder add\` - Task reminders
 - \`td template create/export-file/export-url/import-file/import-id\` - Project templates
+- \`td auth login --read-only\` - Authenticate with read-only OAuth scope
 - \`td auth status\` - Authentication status
 - \`td stats\` - Productivity stats
 - \`td settings view\` - User settings
@@ -393,11 +394,12 @@ td template import-id "My Project" --template-id product-launch --locale fr  # W
 
 ### Auth
 \`\`\`bash
-td auth status                                # Check authentication
-td auth status --json                         # JSON: { id, email, fullName }
-td auth login                                 # OAuth login
-td auth token <token>                         # Save API token
-td auth logout                                # Remove saved token
+td auth login                                 # OAuth login (read-write)
+td auth login --read-only                     # OAuth login with scope data:read
+td auth token "your-token"                    # Save manual token (scope unknown; assumed write-capable)
+td auth status                                # Show auth state + mode
+td auth status --json                         # JSON: { id, email, fullName, authMode, authScope }
+td auth logout                                # Remove token + auth metadata
 \`\`\`
 
 ### Stats

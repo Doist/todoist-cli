@@ -11,7 +11,7 @@ export async function loginWithToken(token?: string): Promise<void> {
             return
         }
     }
-    const result = await saveApiToken(token.trim())
+    const result = await saveApiToken(token.trim(), { authMode: 'unknown' })
     console.log(chalk.green('✓'), 'API token saved successfully!')
     logTokenStorageResult(result, 'Token stored securely in the system credential manager')
 }

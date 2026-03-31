@@ -148,6 +148,91 @@ describe('lib/auth', () => {
         expect(readConfig()).toEqual({ currentWorkspace: 'work' })
     })
 
+    it('persists auth metadata in config when saving to secure store', async () => {
+        const { saveApiToken } = await import('../lib/auth.js')
+
+        await saveApiToken('secure-token-123456', {
+            authMode: 'read-only',
+            authScope: 'data:read',
+        })
+
+        expect(keyringState.token).toBe('secure-token-123456')
+        expect(readConfig()).toEqual({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+        })
+    })
+
+    it('persists auth metadata in config when falling back to config file', async () => {
+        keyringState.setError = new Error('Keychain unavailable')
+
+        const { saveApiToken } = await import('../lib/auth.js')
+
+        await saveApiToken('fallback-token-123456', {
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete',
+        })
+
+        expect(readConfig()).toEqual({
+            api_token: 'fallback-token-123456',
+            auth_mode: 'read-write',
+            auth_scope: 'data:read_write,data:delete,project:delete',
+        })
+    })
+
+    it('clears auth metadata on logout', async () => {
+        keyringState.token = 'secure-token-123456'
+        setConfig({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+            currentWorkspace: 'work',
+        })
+
+        const { clearApiToken } = await import('../lib/auth.js')
+
+        await clearApiToken()
+
+        expect(readConfig()).toEqual({ currentWorkspace: 'work' })
+    })
+
+    it('returns unknown auth mode for env token', async () => {
+        vi.stubEnv('TODOIST_API_TOKEN', 'env-token-123456')
+
+        const { getAuthMetadata } = await import('../lib/auth.js')
+
+        await expect(getAuthMetadata()).resolves.toEqual({
+            authMode: 'unknown',
+            source: 'env',
+        })
+    })
+
+    it('reads auth metadata from config', async () => {
+        keyringState.token = 'secure-token-123456'
+        setConfig({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+        })
+
+        const { getAuthMetadata } = await import('../lib/auth.js')
+
+        await expect(getAuthMetadata()).resolves.toEqual({
+            authMode: 'read-only',
+            authScope: 'data:read',
+            source: 'secure-store',
+        })
+    })
+
+    it('returns unknown auth mode when no metadata stored', async () => {
+        keyringState.token = 'secure-token-123456'
+
+        const { getAuthMetadata } = await import('../lib/auth.js')
+
+        await expect(getAuthMetadata()).resolves.toEqual({
+            authMode: 'unknown',
+            source: 'secure-store',
+        })
+    })
+
     it('migrates a plaintext config token into secure storage and preserves other config', async () => {
         setConfig({
             api_token: 'legacy-token-123456',
@@ -240,6 +325,7 @@ describe('lib/auth', () => {
             storage: 'secure-store',
         })
         expect(keyringState.token).toBe('new-token-123456')
+        // auth_mode and auth_scope are undefined when no options passed, so not written to config
         expect(readConfig()).toEqual({ currentWorkspace: 'workspace-1' })
     })
 

@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { ensureWriteAllowed } from '../permissions.js'
 
 export interface UploadResult {
     fileName: string
@@ -10,6 +11,8 @@ export interface UploadResult {
 }
 
 export async function uploadFile(filePath: string): Promise<UploadResult> {
+    await ensureWriteAllowed()
+
     const fs = await import('node:fs')
     const path = await import('node:path')
 
