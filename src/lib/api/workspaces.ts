@@ -4,7 +4,7 @@ import { getApi } from './core.js'
 export interface Workspace {
     id: string
     name: string
-    role: 'ADMIN' | 'MEMBER' | 'GUEST'
+    role: 'ADMIN' | 'MEMBER' | 'GUEST' | null
     plan: string
     domainName: string | null
     currentMemberCount: number
@@ -31,7 +31,7 @@ function toWorkspace(w: SyncWorkspace): Workspace {
     return {
         id: String(w.id),
         name: w.name,
-        role: w.role ?? 'MEMBER',
+        role: w.role ?? null,
         plan: w.plan,
         domainName: w.domainName ?? null,
         currentMemberCount: w.currentMemberCount ?? 0,

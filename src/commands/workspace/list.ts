@@ -48,7 +48,7 @@ export async function listWorkspaces(options: PaginatedViewOptions): Promise<voi
         const stats = chalk.dim(
             `${w.currentMemberCount} members, ${w.currentActiveProjects} projects`,
         )
-        const role = chalk.yellow(`[${w.role}]`)
-        console.log(`${id}  ${name} ${plan} - ${stats} ${role}`)
+        const role = w.role ? chalk.yellow(`[${w.role}]`) : ''
+        console.log(`${id}  ${name} ${plan} - ${stats}${role ? ` ${role}` : ''}`)
     }
 }

@@ -44,7 +44,7 @@ jobs:
               if: steps.check-updates.outputs.updates-available == 'true'
               run: |
                   echo "Updating @doist/todoist-sdk from ${{ steps.check-updates.outputs.current-version }} to ${{ steps.check-updates.outputs.latest-version }}"
-                  npm install @doist/todoist-sdk@latest
+                  npm install --save-exact @doist/todoist-sdk@latest
 
             - name: Upload updated package files
               if: steps.check-updates.outputs.updates-available == 'true'
