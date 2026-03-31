@@ -334,7 +334,7 @@ describe('resolveTaskRef', () => {
     })
 
     it('rethrows non-404 API errors from raw ID fallback', async () => {
-        const { TodoistRequestError } = await import('@doist/todoist-api-typescript')
+        const { TodoistRequestError } = await import('@doist/todoist-sdk')
         const networkError = new TodoistRequestError('Service Unavailable', 503)
         const api = createMockApi({
             getTask: vi.fn().mockRejectedValue(networkError),

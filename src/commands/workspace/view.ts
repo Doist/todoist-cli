@@ -8,7 +8,9 @@ export async function viewWorkspace(ref: string): Promise<void> {
     console.log('')
     console.log(`ID:       ${workspace.id}`)
     console.log(`Plan:     ${workspace.plan}`)
-    console.log(`Role:     ${workspace.role}`)
+    if (workspace.role) {
+        console.log(`Role:     ${workspace.role}`)
+    }
     if (workspace.domainName) {
         console.log(`Domain:   ${workspace.domainName}`)
     }

@@ -160,7 +160,7 @@ export function initializeLogger(): void {
     log.initialize()
 
     // When verbose, patch globalThis.fetch so SDK-internal HTTP calls are also logged.
-    // This is the only way to get HTTP-level visibility for @doist/todoist-api-typescript
+    // This is the only way to get HTTP-level visibility for @doist/todoist-sdk
     // since it uses fetch() internally and doesn't expose hooks.
     if (log.isEnabled()) {
         patchGlobalFetch()

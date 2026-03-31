@@ -1,4 +1,4 @@
-import { createCommand, type Reminder as SdkReminder } from '@doist/todoist-api-typescript'
+import { createCommand, type Reminder as SdkReminder } from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
 export interface ReminderDue {

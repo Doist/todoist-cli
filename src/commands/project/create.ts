@@ -1,4 +1,4 @@
-import type { ColorKey, ProjectViewStyle } from '@doist/todoist-api-typescript'
+import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
 import { formatError, formatJson, printDryRun } from '../../lib/output.js'

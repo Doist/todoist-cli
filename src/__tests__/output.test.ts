@@ -1,4 +1,4 @@
-import type { Task } from '@doist/todoist-api-typescript'
+import type { Task } from '@doist/todoist-sdk'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
     formatDue,

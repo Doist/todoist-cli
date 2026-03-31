@@ -1,4 +1,4 @@
-import type { HealthStatus, Task } from '@doist/todoist-api-typescript'
+import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'

@@ -1,4 +1,4 @@
-import { TodoistApi, TodoistRequestError } from '@doist/todoist-api-typescript'
+import { TodoistApi, TodoistRequestError } from '@doist/todoist-sdk'
 import type { Project, Task } from './api/core.js'
 import {
     fetchWorkspaceFolders,

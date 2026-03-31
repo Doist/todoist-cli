@@ -1,4 +1,4 @@
-import type { ActivityEvent, ActivityObjectEventType } from '@doist/todoist-api-typescript'
+import type { ActivityEvent, ActivityObjectEventType } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'

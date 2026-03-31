@@ -1,4 +1,4 @@
-import type { DateFormat, DayOfWeek, TimeFormat } from '@doist/todoist-api-typescript'
+import type { DateFormat, DayOfWeek, TimeFormat } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Option } from 'commander'
 import type { UserSettings } from '../../lib/api/user-settings.js'
