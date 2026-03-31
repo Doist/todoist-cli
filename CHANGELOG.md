@@ -1,3 +1,9 @@
+## [1.34.1](https://github.com/Doist/todoist-cli/compare/v1.34.0...v1.34.1) (2026-03-31)
+
+### Bug Fixes
+
+* rename @doist/todoist-api-typescript to @doist/todoist-sdk ([#210](https://github.com/Doist/todoist-cli/issues/210)) ([1b1f532](https://github.com/Doist/todoist-cli/commit/1b1f5324e7273accbcb760e6e204f70595e5343c))
+
 ## [1.34.0](https://github.com/Doist/todoist-cli/compare/v1.33.0...v1.34.0) (2026-03-31)
 
 ### Features
