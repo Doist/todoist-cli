@@ -1,5 +1,5 @@
-import chalk from 'chalk'
 import type { TodoistApi } from '@doist/todoist-sdk'
+import chalk from 'chalk'
 import { getApi, type Project, type Task } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
@@ -53,10 +53,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
     return listByDate(api, options)
 }
 
-async function listSearchResults(
-    api: TodoistApi,
-    options: CompletedListOptions,
-): Promise<void> {
+async function listSearchResults(api: TodoistApi, options: CompletedListOptions): Promise<void> {
     const targetLimit = options.all
         ? Number.MAX_SAFE_INTEGER
         : options.limit
@@ -296,9 +293,7 @@ async function listByDate(api: TodoistApi, options: CompletedListOptions): Promi
     if (tasks.length === limit) {
         const nextOffset = offset + limit
         console.log(
-            chalk.dim(
-                `\n... more items may exist. Use --offset ${nextOffset} to see more.`,
-            ),
+            chalk.dim(`\n... more items may exist. Use --offset ${nextOffset} to see more.`),
         )
     }
 }
