@@ -1,8 +1,8 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { NoTokenError, getAuthMetadata } from '../../lib/auth.js'
+import { type AuthMode, NoTokenError, getAuthMetadata } from '../../lib/auth.js'
 
-function formatAuthMode(authMode: string, authScope?: string): string {
+function formatAuthMode(authMode: AuthMode, authScope?: string): string {
     if (authMode === 'read-only') {
         return `read-only (OAuth scope ${authScope ?? 'data:read'})`
     }

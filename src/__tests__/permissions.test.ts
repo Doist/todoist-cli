@@ -90,6 +90,12 @@ describe('permissions', () => {
         expect(isMutatingApiMethod('brandNewApiMethod')).toBe(true)
     })
 
+    it('exempts Object.prototype methods', () => {
+        expect(isMutatingApiMethod('toString')).toBe(false)
+        expect(isMutatingApiMethod('valueOf')).toBe(false)
+        expect(isMutatingApiMethod('hasOwnProperty')).toBe(false)
+    })
+
     it('detects mutating sync payloads', () => {
         expect(isMutatingSyncPayload([{ commands: [{ type: 'item_add' }] }])).toBe(true)
     })

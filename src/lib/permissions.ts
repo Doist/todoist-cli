@@ -55,6 +55,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
 ])
 
 export function isMutatingApiMethod(methodName: string): boolean {
+    if (methodName in Object.prototype) return false
     return !KNOWN_SAFE_API_METHODS.has(methodName)
 }
 
