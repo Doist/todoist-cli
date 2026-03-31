@@ -1,3 +1,9 @@
+## [1.34.0](https://github.com/Doist/todoist-cli/compare/v1.33.0...v1.34.0) (2026-03-31)
+
+### Features
+
+* add read-only OAuth mode for safe autonomous tool use ([#205](https://github.com/Doist/todoist-cli/issues/205)) ([446756b](https://github.com/Doist/todoist-cli/commit/446756b59f4a4060427afa0e55014bd3de35c857))
+
 ## [1.33.0](https://github.com/Doist/todoist-cli/compare/v1.32.0...v1.33.0) (2026-03-30)
 
 ### Features
