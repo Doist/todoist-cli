@@ -10,6 +10,19 @@ import {
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 
+export type AuthMode = 'read-only' | 'read-write' | 'unknown'
+
+export interface AuthMetadata {
+    authMode: AuthMode
+    authScope?: string
+    source: 'env' | 'secure-store' | 'config-file'
+}
+
+export interface SaveApiTokenOptions {
+    authMode?: AuthMode
+    authScope?: string
+}
+
 export class NoTokenError extends Error {
     constructor() {
         super(
@@ -29,6 +42,8 @@ export interface TokenStorageResult {
 interface Config extends Record<string, unknown> {
     api_token?: string
     pendingSecureStoreClear?: boolean
+    auth_mode?: AuthMode
+    auth_scope?: string
 }
 
 export async function getApiToken(): Promise<string> {
@@ -100,7 +115,10 @@ export async function getApiToken(): Promise<string> {
     )
 }
 
-export async function saveApiToken(token: string): Promise<TokenStorageResult> {
+export async function saveApiToken(
+    token: string,
+    options: SaveApiTokenOptions = {},
+): Promise<TokenStorageResult> {
     // Validate token (non-empty, reasonable length)
     if (!token || token.trim().length < 10) {
         throw new Error('Invalid token: Token must be at least 10 characters')
@@ -112,7 +130,8 @@ export async function saveApiToken(token: string): Promise<TokenStorageResult> {
     try {
         await secureStore.setSecret(trimmedToken)
         const existingConfig = await readConfig()
-        const warning = await cleanupAuthFallbackState(existingConfig, 'Token was stored securely,')
+        const configWithMeta = withAuthMetadata(existingConfig, options)
+        const warning = await cleanupAuthFallbackState(configWithMeta, 'Token was stored securely,')
         return warning ? { storage: 'secure-store', warning } : { storage: 'secure-store' }
     } catch (error) {
         if (!(error instanceof SecureStoreUnavailableError)) {
@@ -123,6 +142,8 @@ export async function saveApiToken(token: string): Promise<TokenStorageResult> {
     const config = await readConfig()
     config.api_token = trimmedToken
     delete config.pendingSecureStoreClear
+    config.auth_mode = options.authMode
+    config.auth_scope = options.authScope
     await writeConfig(config)
     return {
         storage: 'config-file',
@@ -136,7 +157,7 @@ export async function clearApiToken(): Promise<TokenStorageResult> {
 
     try {
         await secureStore.deleteSecret()
-        const warning = await cleanupAuthFallbackState(config, 'Secure-store token was removed,')
+        const warning = await cleanupAllAuthState(config, 'Secure-store token was removed,')
         return warning ? { storage: 'secure-store', warning } : { storage: 'secure-store' }
     } catch (error) {
         if (!(error instanceof SecureStoreUnavailableError)) {
@@ -144,10 +165,31 @@ export async function clearApiToken(): Promise<TokenStorageResult> {
         }
     }
 
-    await writeConfig(withPendingSecureStoreClear(config))
+    await writeConfig(withPendingSecureStoreClear(withoutAuthMetadata(config)))
     return {
         storage: 'config-file',
         warning: buildFallbackWarning('local auth state cleared in'),
+    }
+}
+
+export async function getAuthMetadata(): Promise<AuthMetadata> {
+    if (process.env[TOKEN_ENV_VAR]) {
+        return { authMode: 'unknown', source: 'env' }
+    }
+
+    const config = await readConfig()
+
+    if (config.auth_mode) {
+        return {
+            authMode: config.auth_mode,
+            authScope: config.auth_scope,
+            source: getConfigToken(config) ? 'config-file' : 'secure-store',
+        }
+    }
+
+    return {
+        authMode: 'unknown',
+        source: getConfigToken(config) ? 'config-file' : 'secure-store',
     }
 }
 
@@ -202,6 +244,31 @@ function withoutAuthFallbackState(config: Config): Config {
 
 function withPendingSecureStoreClear(config: Config): Config {
     return { ...withoutAuthFallbackState(config), pendingSecureStoreClear: true }
+}
+
+function withAuthMetadata(config: Config, options: SaveApiTokenOptions): Config {
+    return {
+        ...config,
+        auth_mode: options.authMode,
+        auth_scope: options.authScope,
+    }
+}
+
+function withoutAuthMetadata(config: Config): Config {
+    const { auth_mode: _mode, auth_scope: _scope, ...rest } = config
+    return rest
+}
+
+async function cleanupAllAuthState(
+    config: Config,
+    warningPrefix: string,
+): Promise<string | undefined> {
+    try {
+        await writeConfig(withoutAuthFallbackState(withoutAuthMetadata(config)))
+        return undefined
+    } catch (error) {
+        return buildConfigCleanupWarning(warningPrefix, error)
+    }
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

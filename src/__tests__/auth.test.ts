@@ -8,6 +8,7 @@ vi.mock('../lib/auth.js', async (importOriginal) => {
         ...actual,
         saveApiToken: vi.fn(),
         clearApiToken: vi.fn(),
+        getAuthMetadata: vi.fn(),
     }
 })
 
@@ -33,10 +34,14 @@ vi.mock('../lib/oauth-server.js', () => ({
 }))
 
 // Mock OAuth module
-vi.mock('../lib/oauth.js', () => ({
-    buildAuthorizationUrl: vi.fn(() => 'https://todoist.com/oauth/authorize?test=1'),
-    exchangeCodeForToken: vi.fn(),
-}))
+vi.mock('../lib/oauth.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/oauth.js')>()
+    return {
+        ...actual,
+        buildAuthorizationUrl: vi.fn(() => 'https://todoist.com/oauth/authorize?test=1'),
+        exchangeCodeForToken: vi.fn(),
+    }
+})
 
 // Mock open module
 vi.mock('open', () => ({
@@ -58,17 +63,19 @@ import { createInterface, type Interface } from 'node:readline'
 import open from 'open'
 import { registerAuthCommand } from '../commands/auth/index.js'
 import { getApi } from '../lib/api/core.js'
-import { NoTokenError, clearApiToken, saveApiToken } from '../lib/auth.js'
+import { NoTokenError, clearApiToken, getAuthMetadata, saveApiToken } from '../lib/auth.js'
 import { startCallbackServer } from '../lib/oauth-server.js'
-import { exchangeCodeForToken } from '../lib/oauth.js'
+import { buildAuthorizationUrl, exchangeCodeForToken } from '../lib/oauth.js'
 import { createMockApi } from './helpers/mock-api.js'
 
 const mockCreateInterface = vi.mocked(createInterface)
 
 const mockSaveApiToken = vi.mocked(saveApiToken)
 const mockClearApiToken = vi.mocked(clearApiToken)
+const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 const mockGetApi = vi.mocked(getApi)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
+const mockBuildAuthorizationUrl = vi.mocked(buildAuthorizationUrl)
 const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
 const mockOpen = vi.mocked(open)
 
@@ -104,7 +111,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token', token])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'API token saved successfully!')
             expect(consoleSpy).toHaveBeenCalledWith(
                 'Token stored securely in the system credential manager',
@@ -121,7 +128,7 @@ describe('auth command', () => {
                 program.parseAsync(['node', 'td', 'auth', 'token', token]),
             ).rejects.toThrow('Permission denied')
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
         })
 
         it('trims whitespace from token', async () => {
@@ -133,7 +140,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token', tokenWithWhitespace])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(expectedToken)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(expectedToken, { authMode: 'unknown' })
         })
 
         it('prompts interactively when no token argument given', async () => {
@@ -153,7 +160,9 @@ describe('auth command', () => {
 
             expect(mockRl.question).toHaveBeenCalled()
             expect(mockRl.close).toHaveBeenCalled()
-            expect(mockSaveApiToken).toHaveBeenCalledWith('interactive_token_456')
+            expect(mockSaveApiToken).toHaveBeenCalledWith('interactive_token_456', {
+                authMode: 'unknown',
+            })
             writeSpy.mockRestore()
         })
 
@@ -235,11 +244,40 @@ describe('auth command', () => {
             expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
             expect(mockStartCallbackServer).toHaveBeenCalledWith('test_state')
             expect(mockExchangeCodeForToken).toHaveBeenCalledWith(authCode, 'test_code_verifier')
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken)
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope: 'data:read_write,data:delete,project:delete',
+            })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
             expect(consoleSpy).toHaveBeenCalledWith(
                 'Token stored securely in the system credential manager',
             )
+        })
+
+        it('requests data:read scope when --read-only is set', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_123'
+            const accessToken = 'oauth_access_token_456'
+
+            mockStartCallbackServer.mockReturnValue({
+                promise: Promise.resolve(authCode),
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--read-only'])
+
+            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
+                'test_code_challenge',
+                'test_state',
+                { readOnly: true },
+            )
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-only',
+                authScope: 'data:read',
+            })
         })
 
         it('handles OAuth callback server error', async () => {
@@ -304,6 +342,11 @@ describe('auth command', () => {
             const mockUser = { email: 'test@example.com', fullName: 'Test User' }
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
             mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-write',
+                authScope: 'data:read_write,data:delete,project:delete',
+                source: 'secure-store',
+            })
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
@@ -312,6 +355,23 @@ describe('auth command', () => {
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated')
             expect(consoleSpy).toHaveBeenCalledWith('  Email: test@example.com')
             expect(consoleSpy).toHaveBeenCalledWith('  Name:  Test User')
+            expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-write')
+        })
+
+        it('shows read-only mode in status', async () => {
+            const program = createProgram()
+            const mockUser = { email: 'test@example.com', fullName: 'Test User' }
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-only',
+                authScope: 'data:read',
+                source: 'secure-store',
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'status'])
+
+            expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-only (OAuth scope data:read)')
         })
 
         it('outputs JSON when --json flag is used', async () => {
@@ -319,12 +379,23 @@ describe('auth command', () => {
             const mockUser = { id: '123', email: 'test@example.com', fullName: 'Test User' }
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
             mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-write',
+                authScope: 'data:read_write,data:delete,project:delete',
+                source: 'secure-store',
+            })
 
             await program.parseAsync(['node', 'td', 'auth', 'status', '--json'])
 
             expect(consoleSpy).toHaveBeenCalledWith(
                 JSON.stringify(
-                    { id: '123', email: 'test@example.com', fullName: 'Test User' },
+                    {
+                        id: '123',
+                        email: 'test@example.com',
+                        fullName: 'Test User',
+                        authMode: 'read-write',
+                        authScope: 'data:read_write,data:delete,project:delete',
+                    },
                     null,
                     2,
                 ),
