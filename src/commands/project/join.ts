@@ -9,12 +9,19 @@ export async function joinProjectCmd(
 ): Promise<void> {
     const id = lenientIdRef(ref, 'project')
 
+    const api = await getApi()
+
     if (options.dryRun) {
-        printDryRun('join project', { ID: id })
+        let name: string | undefined
+        try {
+            const project = await api.getProject(id)
+            name = project.name
+        } catch {
+            // May not have access before joining
+        }
+        printDryRun('join project', { Project: name ?? id })
         return
     }
-
-    const api = await getApi()
     const response = await api.joinProject(id)
     const { project } = response
     const workspace = await api.getWorkspace(project.workspaceId)

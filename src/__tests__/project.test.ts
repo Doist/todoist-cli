@@ -1793,13 +1793,29 @@ describe('project join', () => {
         ).rejects.toThrow('INVALID_REF')
     })
 
-    it('--dry-run previews without calling API', async () => {
+    it('--dry-run fetches project name and previews', async () => {
         const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-123',
+            name: 'Shared Project',
+        })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--dry-run'])
 
         expect(mockApi.joinProject).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would join project'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Shared Project'))
+    })
+
+    it('--dry-run falls back to ID when project fetch fails', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockRejectedValue(new Error('Not found'))
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--dry-run'])
+
+        expect(mockApi.joinProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('proj-123'))
     })
 
     it('outputs JSON with --json including workspace', async () => {
