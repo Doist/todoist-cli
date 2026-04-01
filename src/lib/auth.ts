@@ -68,9 +68,7 @@ export async function getApiToken(): Promise<string> {
                 warn(cleanupWarning)
             }
         } catch (error) {
-            if (error instanceof SecureStoreUnavailableError) {
-                warnSecureStoreFallback('using plaintext token from')
-            } else {
+            if (!(error instanceof SecureStoreUnavailableError)) {
                 throw error
             }
         }
@@ -103,9 +101,7 @@ export async function getApiToken(): Promise<string> {
             return storedToken
         }
     } catch (error) {
-        if (error instanceof SecureStoreUnavailableError) {
-            warnSecureStoreFallback('using plaintext token from')
-        } else {
+        if (!(error instanceof SecureStoreUnavailableError)) {
             throw error
         }
     }
@@ -290,8 +286,4 @@ function buildConfigCleanupWarning(prefix: string, error: unknown): string {
 
 function warn(message: string): void {
     console.error(`Warning: ${message}`)
-}
-
-function warnSecureStoreFallback(action: string): void {
-    warn(buildFallbackWarning(action))
 }
