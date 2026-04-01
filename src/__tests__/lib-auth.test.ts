@@ -295,6 +295,7 @@ describe('lib/auth', () => {
         expect(readConfig()).toEqual({ api_token: 'fallback-token-123456' })
 
         await expect(getApiToken()).resolves.toBe('fallback-token-123456')
+        expect(errorSpy).not.toHaveBeenCalled()
 
         setConfig({
             api_token: 'fallback-token-123456',
