@@ -295,9 +295,7 @@ describe('lib/auth', () => {
         expect(readConfig()).toEqual({ api_token: 'fallback-token-123456' })
 
         await expect(getApiToken()).resolves.toBe('fallback-token-123456')
-        expect(errorSpy).toHaveBeenCalledWith(
-            `Warning: system credential manager unavailable; using plaintext token from ${TEST_CONFIG_PATH}`,
-        )
+        expect(errorSpy).not.toHaveBeenCalled()
 
         setConfig({
             api_token: 'fallback-token-123456',
