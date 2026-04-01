@@ -1756,20 +1756,33 @@ describe('project join', () => {
         consoleSpy.mockRestore()
     })
 
-    it('joins project by id: prefix', async () => {
+    it('joins project and shows workspace name', async () => {
         const program = createProgram()
 
         mockApi.joinProject.mockResolvedValue({
-            id: 'proj-123',
-            name: 'Shared Project',
-            color: 'blue',
-            isFavorite: false,
+            project: {
+                id: 'proj-123',
+                name: 'Shared Project',
+                color: 'blue',
+                isFavorite: false,
+                workspaceId: 'ws-1',
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
         })
+        mockApi.getWorkspace.mockResolvedValue({ id: 'ws-1', name: 'Acme Corp' })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123'])
 
         expect(mockApi.joinProject).toHaveBeenCalledWith('proj-123')
+        expect(mockApi.getWorkspace).toHaveBeenCalledWith('ws-1')
         expect(consoleSpy).toHaveBeenCalledWith('Joined: Shared Project')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Workspace: Acme Corp'))
     })
 
     it('rejects plain text references', async () => {
@@ -1789,20 +1802,35 @@ describe('project join', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would join project'))
     })
 
-    it('outputs JSON with --json', async () => {
+    it('outputs JSON with --json including workspace', async () => {
         const program = createProgram()
 
         mockApi.joinProject.mockResolvedValue({
-            id: 'proj-123',
-            name: 'Shared Project',
-            color: 'blue',
-            isFavorite: false,
+            project: {
+                id: 'proj-123',
+                name: 'Shared Project',
+                color: 'blue',
+                isFavorite: false,
+                workspaceId: 'ws-1',
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
         })
+        mockApi.getWorkspace.mockResolvedValue({ id: 'ws-1', name: 'Acme Corp' })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--json'])
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
-        expect(JSON.parse(output)).toMatchObject({ id: 'proj-123', name: 'Shared Project' })
+        const parsed = JSON.parse(output)
+        expect(parsed).toMatchObject({
+            project: { id: 'proj-123', name: 'Shared Project' },
+            workspace: { id: 'ws-1', name: 'Acme Corp' },
+        })
     })
 })
 
