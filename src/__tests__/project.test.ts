@@ -1756,20 +1756,33 @@ describe('project join', () => {
         consoleSpy.mockRestore()
     })
 
-    it('joins project by id: prefix', async () => {
+    it('joins project and shows workspace name', async () => {
         const program = createProgram()
 
         mockApi.joinProject.mockResolvedValue({
-            id: 'proj-123',
-            name: 'Shared Project',
-            color: 'blue',
-            isFavorite: false,
+            project: {
+                id: 'proj-123',
+                name: 'Shared Project',
+                color: 'blue',
+                isFavorite: false,
+                workspaceId: 'ws-1',
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
         })
+        mockApi.getWorkspace.mockResolvedValue({ id: 'ws-1', name: 'Acme Corp' })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123'])
 
         expect(mockApi.joinProject).toHaveBeenCalledWith('proj-123')
+        expect(mockApi.getWorkspace).toHaveBeenCalledWith('ws-1')
         expect(consoleSpy).toHaveBeenCalledWith('Joined: Shared Project')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Workspace: Acme Corp'))
     })
 
     it('rejects plain text references', async () => {
@@ -1780,29 +1793,88 @@ describe('project join', () => {
         ).rejects.toThrow('INVALID_REF')
     })
 
-    it('--dry-run previews without calling API', async () => {
+    it('--dry-run fetches project name and previews', async () => {
         const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-123',
+            name: 'Shared Project',
+        })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--dry-run'])
 
         expect(mockApi.joinProject).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would join project'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Shared Project'))
     })
 
-    it('outputs JSON with --json', async () => {
+    it('--dry-run falls back to ID when project fetch fails', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockRejectedValue(new Error('Not found'))
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--dry-run'])
+
+        expect(mockApi.joinProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('proj-123'))
+    })
+
+    it('outputs JSON with --json including workspace', async () => {
         const program = createProgram()
 
         mockApi.joinProject.mockResolvedValue({
-            id: 'proj-123',
-            name: 'Shared Project',
-            color: 'blue',
-            isFavorite: false,
+            project: {
+                id: 'proj-123',
+                name: 'Shared Project',
+                color: 'blue',
+                isFavorite: false,
+                workspaceId: 'ws-1',
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
         })
+        mockApi.getWorkspace.mockResolvedValue({ id: 'ws-1', name: 'Acme Corp' })
 
         await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-123', '--json'])
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
-        expect(JSON.parse(output)).toMatchObject({ id: 'proj-123', name: 'Shared Project' })
+        const parsed = JSON.parse(output)
+        expect(parsed).toMatchObject({
+            project: { id: 'proj-123', name: 'Shared Project' },
+            workspace: { id: 'ws-1', name: 'Acme Corp' },
+        })
+        expect(parsed.tasks).toBeUndefined()
+    })
+
+    it('handles personal shared project without workspace', async () => {
+        const program = createProgram()
+
+        mockApi.joinProject.mockResolvedValue({
+            project: {
+                id: 'proj-456',
+                name: 'Personal Shared',
+                color: 'blue',
+                isFavorite: false,
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-456'])
+
+        expect(mockApi.getWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Joined: Personal Shared')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ID: proj-456'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Workspace:'))
     })
 })
 

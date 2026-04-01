@@ -190,17 +190,13 @@ export function registerProjectCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .action(showPermissions)
 
-    const joinCmd = project
-        .command('join [ref]')
+    project
+        .command('join <id>')
         .description('Join a shared project')
         .option('--json', 'Output the joined project as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
-        .action((ref, options) => {
-            if (!ref) {
-                joinCmd.help()
-                return
-            }
-            return joinProjectCmd(ref, options)
+        .action((id, options) => {
+            return joinProjectCmd(id, options)
         })
 
     const progressCmd = project

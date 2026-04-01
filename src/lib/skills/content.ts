@@ -234,7 +234,7 @@ td project archived-count --workspace "Work"  # Count in a workspace
 td project archived-count --joined            # Count only joined projects
 td project permissions                        # Show role-to-action permission mappings
 td project permissions --json                 # JSON output
-td project join id:abc123                     # Join a shared project
+td project join id:abc123                     # Join a shared project (shows workspace name)
 td project join id:abc123 --json              # Return joined project as JSON
 
 # Insights

@@ -35,6 +35,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Activity
     'getActivityLogs',
     // Workspace
+    'getWorkspace',
     'getWorkspaceUsers',
     'getWorkspaceActiveProjects',
     'getWorkspaceArchivedProjects',
