@@ -24,13 +24,17 @@ export async function joinProjectCmd(
     }
     const response = await api.joinProject(id)
     const { project } = response
-    const workspace = await api.getWorkspace(project.workspaceId)
+    const workspace = project.workspaceId ? await api.getWorkspace(project.workspaceId) : null
 
     if (options.json) {
-        console.log(JSON.stringify({ ...response, workspace }, null, 2))
+        console.log(JSON.stringify(workspace ? { project, workspace } : { project }, null, 2))
         return
     }
 
     console.log(`Joined: ${project.name}`)
-    console.log(chalk.dim(`Workspace: ${workspace.name}`))
+    if (workspace) {
+        console.log(chalk.dim(`Workspace: ${workspace.name}`))
+    } else {
+        console.log(chalk.dim(`ID: ${project.id}`))
+    }
 }

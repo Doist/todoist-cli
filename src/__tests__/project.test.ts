@@ -1847,6 +1847,34 @@ describe('project join', () => {
             project: { id: 'proj-123', name: 'Shared Project' },
             workspace: { id: 'ws-1', name: 'Acme Corp' },
         })
+        expect(parsed.tasks).toBeUndefined()
+    })
+
+    it('handles personal shared project without workspace', async () => {
+        const program = createProgram()
+
+        mockApi.joinProject.mockResolvedValue({
+            project: {
+                id: 'proj-456',
+                name: 'Personal Shared',
+                color: 'blue',
+                isFavorite: false,
+            },
+            tasks: [],
+            sections: [],
+            comments: [],
+            collaborators: [],
+            collaboratorStates: [],
+            folder: null,
+            subprojects: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'join', 'id:proj-456'])
+
+        expect(mockApi.getWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Joined: Personal Shared')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ID: proj-456'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Workspace:'))
     })
 })
 
