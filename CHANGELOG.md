@@ -1,3 +1,9 @@
+## [1.35.0](https://github.com/Doist/todoist-cli/compare/v1.34.1...v1.35.0) (2026-04-01)
+
+### Features
+
+* show workspace name after joining a project ([#211](https://github.com/Doist/todoist-cli/issues/211)) ([b5c0ea5](https://github.com/Doist/todoist-cli/commit/b5c0ea54fc8aa47ad3ab12992f17b071b8f55b07))
+
 ## [1.34.1](https://github.com/Doist/todoist-cli/compare/v1.34.0...v1.34.1) (2026-03-31)
 
 ### Bug Fixes
