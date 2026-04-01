@@ -1,3 +1,9 @@
+## [1.35.1](https://github.com/Doist/todoist-cli/compare/v1.35.0...v1.35.1) (2026-04-01)
+
+### Bug Fixes
+
+* suppress credential manager warning on every command ([#212](https://github.com/Doist/todoist-cli/issues/212)) ([6038dbe](https://github.com/Doist/todoist-cli/commit/6038dbe2870423012a2abc8a299c3fbbffbfb519))
+
 ## [1.35.0](https://github.com/Doist/todoist-cli/compare/v1.34.1...v1.35.0) (2026-04-01)
 
 ### Features
