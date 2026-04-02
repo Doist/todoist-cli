@@ -1,3 +1,9 @@
+## [1.36.1](https://github.com/Doist/todoist-cli/compare/v1.36.0...v1.36.1) (2026-04-02)
+
+### Bug Fixes
+
+* use numeric-aware comparison for prerelease version tags ([#217](https://github.com/Doist/todoist-cli/issues/217)) ([aec21eb](https://github.com/Doist/todoist-cli/commit/aec21eb1d0120e87d12db8cb7fc284f1f9b5cbc0))
+
 ## [1.36.0](https://github.com/Doist/todoist-cli/compare/v1.35.1...v1.36.0) (2026-04-02)
 
 ### Features
