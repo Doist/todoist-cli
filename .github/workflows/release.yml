@@ -71,7 +71,7 @@ jobs:
             - name: Capture previous tag
               if: github.ref_name == 'main'
               id: previous_tag
-              run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+              run: echo "tag=$(git describe --tags --abbrev=0 --exclude='*-*' 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
 
             - name: Release
               run: npx semantic-release

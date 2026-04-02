@@ -14,9 +14,9 @@ Every significant change is documented in the [CHANGELOG.md](CHANGELOG.md) file.
 
 ## Branch Organization
 
-Submit all changes directly to the [main](https://github.com/Doist/todoist-cli/tree/main) branch (via PR). We do our best to keep `main` in good shape, with all tests passing.
+Submit all changes to the [main](https://github.com/Doist/todoist-cli/tree/main) branch (via PR) by default. For pre-release work, target the `next` branch instead — see [Release Process](#release-process-core-team-only) for details.
 
-For pre-release testing, the `next` branch is used to publish pre-release versions to npm before promoting to stable. See [Release Process](#release-process-core-team-only) for details.
+We do our best to keep `main` in good shape, with all tests passing.
 
 ## Development Workflow
 
