@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - main
+            - next
 
 permissions:
     # Enable `semantic-release` to publish a GitHub release and push commits
@@ -18,7 +19,7 @@ permissions:
 # Release involves crucial steps that shouldn't be cancelled mid-run,
 # so new workflow runs are queued until the previous one finishes.
 concurrency:
-    group: ${{ github.workflow }}
+    group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: false
 
 jobs:
@@ -68,8 +69,9 @@ jobs:
               run: npm ci
 
             - name: Capture previous tag
+              if: github.ref_name == 'main'
               id: previous_tag
-              run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+              run: echo "tag=$(git describe --tags --abbrev=0 --exclude='*-*' 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
 
             - name: Release
               run: npx semantic-release
@@ -81,6 +83,7 @@ jobs:
                   GIT_COMMITTER_EMAIL: ${{ steps.bot_user.outputs.id }}+${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com
 
             - name: Derive release announcement
+              if: github.ref_name == 'main'
               id: announcement
               env:
                   PREVIOUS_TAG: ${{ steps.previous_tag.outputs.tag }}
@@ -125,7 +128,7 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             - name: Announce release in Twist
-              if: ${{ steps.announcement.outputs.should_announce == 'true' }}
+              if: github.ref_name == 'main' && steps.announcement.outputs.should_announce == 'true'
               uses: Doist/twist-post-action@74a0255b75ad93c06b9eb1009960106efe13f5ca
               with:
                   message: ${{ steps.announcement.outputs.message }}
