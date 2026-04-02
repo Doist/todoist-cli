@@ -337,6 +337,17 @@ describe('update command', () => {
             expect(mockSpawn).not.toHaveBeenCalled()
         })
 
+        it('treats next.10 as newer than next.2 (multi-digit prerelease)', async () => {
+            mockFetch('1.37.0-next.10')
+            mockSpawnSuccess()
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Update available'))
+            expect(mockSpawn).toHaveBeenCalled()
+        })
+
         it('warns but still installs when channel tag resolves to older version', async () => {
             // Simulate: user on stable 1.35.1, pre-release is 1.35.1-next.1
             // Pre-release of same core version is older per semver
@@ -346,10 +357,7 @@ describe('update command', () => {
             const program = createProgram()
             await program.parseAsync(['node', 'td', 'update'])
 
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.anything(),
-                expect.stringContaining('older than your current'),
-            )
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Downgrade available'))
             expect(mockSpawn).toHaveBeenCalledWith(
                 'npm',
                 ['install', '-g', '@doist/todoist-cli@next'],

@@ -69,6 +69,7 @@ describe('lib/auth', () => {
         }))
 
         vi.doMock('node:fs/promises', () => ({
+            chmod: vi.fn().mockResolvedValue(undefined),
             mkdir: mkdirMock,
             readFile: readFileMock,
             unlink: unlinkMock,

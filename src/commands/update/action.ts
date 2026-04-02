@@ -42,7 +42,8 @@ function isNewer(current: string, candidate: string): boolean {
     if (a.prerelease && !b.prerelease) return true
 
     // Both pre-release: lexicographic (handles "next.1" vs "next.2" etc.)
-    if (a.prerelease && b.prerelease) return b.prerelease > a.prerelease
+    if (a.prerelease && b.prerelease)
+        return b.prerelease.localeCompare(a.prerelease, undefined, { numeric: true }) > 0
     return false
 }
 
@@ -134,8 +135,7 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         )
     } else {
         console.log(
-            chalk.yellow('Note:'),
-            `v${latestVersion}${label} is older than your current v${currentVersion}`,
+            `Downgrade available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.yellow(`v${latestVersion}`)}`,
         )
     }
 

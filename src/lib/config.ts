@@ -1,4 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -37,8 +37,12 @@ export async function writeConfig(config: Config): Promise<void> {
         return
     }
 
-    await mkdir(dirname(CONFIG_PATH), { recursive: true })
-    await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`)
+    await mkdir(dirname(CONFIG_PATH), { recursive: true, mode: 0o700 })
+    await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, {
+        encoding: 'utf-8',
+        mode: 0o600,
+    })
+    await chmod(CONFIG_PATH, 0o600)
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
