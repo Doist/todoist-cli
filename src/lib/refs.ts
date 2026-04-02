@@ -307,7 +307,10 @@ export async function resolveGoalRef(api: TodoistApi, ref: string): Promise<Goal
     return resolveRef(
         ref,
         (id) => api.getGoal(id),
-        () => api.getGoals(),
+        () =>
+            paginate((cursor, limit) => api.getGoals({ cursor: cursor ?? undefined, limit }), {
+                limit: 500,
+            }),
         (g) => g.name,
         'goal',
     )
