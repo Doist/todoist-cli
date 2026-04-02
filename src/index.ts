@@ -123,7 +123,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     update: [
         'Update the CLI to the latest version',
-        async () => (await import('./commands/update.js')).registerUpdateCommand,
+        async () => (await import('./commands/update/index.js')).registerUpdateCommand,
     ],
 }
 

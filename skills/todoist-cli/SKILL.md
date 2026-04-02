@@ -447,6 +447,8 @@ td view <url> --limit 25 --ndjson              # Passthrough list options where 
 ```bash
 td update                                    # Update CLI to latest version
 td update --check                            # Check for updates without installing
+td update switch --stable                    # Switch to stable release channel
+td update switch --pre-release               # Switch to pre-release (next) channel
 ```
 
 ### Changelog

@@ -1,18 +1,22 @@
 import { spawn } from 'node:child_process'
 import chalk from 'chalk'
-import { Command } from 'commander'
-import packageJson from '../../package.json' with { type: 'json' }
-import { withSpinner } from '../lib/spinner.js'
+import packageJson from '../../../package.json' with { type: 'json' }
+import { readConfig, type UpdateChannel } from '../../lib/config.js'
+import { withSpinner } from '../../lib/spinner.js'
 
 const PACKAGE_NAME = '@doist/todoist-cli'
-const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}/latest`
 
 interface RegistryResponse {
     version: string
 }
 
-async function fetchLatestVersion(): Promise<string> {
-    const response = await fetch(REGISTRY_URL)
+function getInstallTag(channel: UpdateChannel): string {
+    return channel === 'pre-release' ? 'next' : 'latest'
+}
+
+async function fetchVersion(channel: UpdateChannel): Promise<string> {
+    const url = `https://registry.npmjs.org/${PACKAGE_NAME}/${getInstallTag(channel)}`
+    const response = await fetch(url)
     if (!response.ok) {
         throw new Error(`Registry request failed (HTTP ${response.status})`)
     }
@@ -26,10 +30,10 @@ function detectPackageManager(): string {
     return 'npm'
 }
 
-function runInstall(pm: string): Promise<{ exitCode: number; stderr: string }> {
+function runInstall(pm: string, tag: string): Promise<{ exitCode: number; stderr: string }> {
     const command = pm === 'pnpm' ? 'add' : 'install'
     return new Promise((resolve, reject) => {
-        const child = spawn(pm, [command, '-g', `${PACKAGE_NAME}@latest`], {
+        const child = spawn(pm, [command, '-g', `${PACKAGE_NAME}@${tag}`], {
             stdio: 'pipe',
         })
 
@@ -43,14 +47,23 @@ function runInstall(pm: string): Promise<{ exitCode: number; stderr: string }> {
     })
 }
 
+function channelLabel(channel: UpdateChannel): string {
+    return channel === 'pre-release' ? ` ${chalk.magenta('(pre-release)')}` : ''
+}
+
 export async function updateAction(options: { check?: boolean }): Promise<void> {
+    const config = await readConfig()
+    const channel: UpdateChannel = config.update_channel ?? 'stable'
+    const tag = getInstallTag(channel)
+    const label = channelLabel(channel)
+
     const currentVersion = packageJson.version
 
     let latestVersion: string
     try {
         latestVersion = await withSpinner(
-            { text: 'Checking for updates...', color: 'blue' },
-            fetchLatestVersion,
+            { text: `Checking for updates${label}...`, color: 'blue' },
+            () => fetchVersion(channel),
         )
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -60,12 +73,12 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
     }
 
     if (currentVersion === latestVersion) {
-        console.log(chalk.green('✓'), `Already up to date (v${currentVersion})`)
+        console.log(chalk.green('✓'), `Already up to date${label} (v${currentVersion})`)
         return
     }
 
     console.log(
-        `Update available: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
+        `Update available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
     )
 
     if (options.check) {
@@ -77,15 +90,15 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
     let result: { exitCode: number; stderr: string }
     try {
         result = await withSpinner(
-            { text: `Updating to v${latestVersion}...`, color: 'blue' },
-            () => runInstall(pm),
+            { text: `Updating to v${latestVersion}${label}...`, color: 'blue' },
+            () => runInstall(pm, tag),
         )
     } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'EACCES') {
             console.error(chalk.red('Error:'), 'Permission denied. Try running with sudo:')
             console.error(
                 chalk.dim(
-                    `  sudo ${pm} ${pm === 'pnpm' ? 'add' : 'install'} -g ${PACKAGE_NAME}@latest`,
+                    `  sudo ${pm} ${pm === 'pnpm' ? 'add' : 'install'} -g ${PACKAGE_NAME}@${tag}`,
                 ),
             )
         } else {
@@ -105,14 +118,12 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         return
     }
 
-    console.log(chalk.green('✓'), `Updated to v${latestVersion}`)
-    console.log(chalk.dim('  Run'), chalk.cyan('td changelog'), chalk.dim('to see what changed'))
-}
-
-export function registerUpdateCommand(program: Command): void {
-    program
-        .command('update')
-        .description('Update the CLI to the latest version')
-        .option('--check', 'Check for updates without installing')
-        .action(updateAction)
+    console.log(chalk.green('✓'), `Updated to v${latestVersion}${label}`)
+    if (channel === 'stable') {
+        console.log(
+            chalk.dim('  Run'),
+            chalk.cyan('td changelog'),
+            chalk.dim('to see what changed'),
+        )
+    }
 }
