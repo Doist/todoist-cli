@@ -3,13 +3,18 @@ import {
     SecureStoreUnavailableError,
     SECURE_STORE_DESCRIPTION,
 } from './secure-store.js'
-export { CONFIG_PATH, readConfig, writeConfig, type Config, type UpdateChannel } from './config.js'
+export {
+    CONFIG_PATH,
+    readConfig,
+    writeConfig,
+    type AuthMode,
+    type Config,
+    type UpdateChannel,
+} from './config.js'
 
-import { CONFIG_PATH, readConfig, writeConfig, type Config } from './config.js'
+import { CONFIG_PATH, readConfig, writeConfig, type AuthMode, type Config } from './config.js'
 
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
-
-export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 
 export interface AuthMetadata {
     authMode: AuthMode
@@ -169,7 +174,7 @@ export async function getAuthMetadata(): Promise<AuthMetadata> {
 
     if (config.auth_mode) {
         return {
-            authMode: config.auth_mode as AuthMode,
+            authMode: config.auth_mode,
             authScope: config.auth_scope,
             source: getConfigToken(config) ? 'config-file' : 'secure-store',
         }

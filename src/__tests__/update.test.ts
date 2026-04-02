@@ -336,6 +336,26 @@ describe('update command', () => {
             expect(fetch).toHaveBeenCalledWith('https://registry.npmjs.org/@doist/todoist-cli/next')
             expect(mockSpawn).not.toHaveBeenCalled()
         })
+
+        it('warns but still installs when channel tag resolves to older version', async () => {
+            // Simulate: user on stable 1.35.1, pre-release is 1.35.1-next.1
+            // Pre-release of same core version is older per semver
+            mockFetch('1.35.1-next.1')
+            mockSpawnSuccess()
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.stringContaining('older than your current'),
+            )
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'npm',
+                ['install', '-g', '@doist/todoist-cli@next'],
+                { stdio: 'pipe' },
+            )
+        })
     })
 
     describe('switch subcommand', () => {

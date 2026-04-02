@@ -14,6 +14,38 @@ function getInstallTag(channel: UpdateChannel): string {
     return channel === 'pre-release' ? 'next' : 'latest'
 }
 
+interface ParsedVersion {
+    major: number
+    minor: number
+    patch: number
+    prerelease: string | undefined
+}
+
+function parseVersion(version: string): ParsedVersion {
+    const [core, ...rest] = version.split('-')
+    const [major, minor, patch] = core.split('.').map(Number)
+    return { major, minor, patch, prerelease: rest.length > 0 ? rest.join('-') : undefined }
+}
+
+/** Returns true when `candidate` is strictly newer than `current` per semver. */
+function isNewer(current: string, candidate: string): boolean {
+    const a = parseVersion(current)
+    const b = parseVersion(candidate)
+
+    // Compare major.minor.patch
+    for (const key of ['major', 'minor', 'patch'] as const) {
+        if (b[key] !== a[key]) return b[key] > a[key]
+    }
+
+    // Equal core: release > pre-release
+    if (!a.prerelease && b.prerelease) return false
+    if (a.prerelease && !b.prerelease) return true
+
+    // Both pre-release: lexicographic (handles "next.1" vs "next.2" etc.)
+    if (a.prerelease && b.prerelease) return b.prerelease > a.prerelease
+    return false
+}
+
 async function fetchVersion(channel: UpdateChannel): Promise<string> {
     const url = `https://registry.npmjs.org/${PACKAGE_NAME}/${getInstallTag(channel)}`
     const response = await fetch(url)
@@ -72,18 +104,20 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         return
     }
 
+    const updateAvailable = isNewer(currentVersion, latestVersion)
+
     if (options.check) {
         const channelLine =
             channel === 'pre-release'
                 ? `  Channel: ${chalk.magenta('pre-release')}`
                 : `  Channel: ${chalk.green('stable')}`
 
-        if (currentVersion === latestVersion) {
-            console.log(chalk.green('✓'), `Already up to date (v${currentVersion})`)
-        } else {
+        if (updateAvailable) {
             console.log(
                 `Update available: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
             )
+        } else {
+            console.log(chalk.green('✓'), `Already up to date (v${currentVersion})`)
         }
         console.log(channelLine)
         return
@@ -94,9 +128,16 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         return
     }
 
-    console.log(
-        `Update available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
-    )
+    if (updateAvailable) {
+        console.log(
+            `Update available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
+        )
+    } else {
+        console.log(
+            chalk.yellow('Note:'),
+            `v${latestVersion}${label} is older than your current v${currentVersion}`,
+        )
+    }
 
     const pm = detectPackageManager()
 

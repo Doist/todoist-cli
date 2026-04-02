@@ -4,12 +4,13 @@ import { dirname, join } from 'node:path'
 
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 
+export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
 
 export interface Config extends Record<string, unknown> {
     api_token?: string
     pendingSecureStoreClear?: boolean
-    auth_mode?: string
+    auth_mode?: AuthMode
     auth_scope?: string
     update_channel?: UpdateChannel
 }

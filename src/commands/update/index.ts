@@ -6,7 +6,7 @@ import { switchChannel } from './switch.js'
 export function registerUpdateCommand(program: Command): void {
     const update = program
         .command('update')
-        .description('Update the CLI to the latest version')
+        .description('Update the CLI to the latest version for the configured channel')
         .option('--check', 'Check for updates without installing')
         .action(updateAction)
 
