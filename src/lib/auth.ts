@@ -1,16 +1,20 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
 import {
     createSecureStore,
     SecureStoreUnavailableError,
     SECURE_STORE_DESCRIPTION,
 } from './secure-store.js'
+export {
+    CONFIG_PATH,
+    readConfig,
+    writeConfig,
+    type AuthMode,
+    type Config,
+    type UpdateChannel,
+} from './config.js'
 
-export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
+import { CONFIG_PATH, readConfig, writeConfig, type AuthMode, type Config } from './config.js'
+
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
-
-export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 
 export interface AuthMetadata {
     authMode: AuthMode
@@ -37,13 +41,6 @@ export type TokenStorageLocation = 'secure-store' | 'config-file'
 export interface TokenStorageResult {
     storage: TokenStorageLocation
     warning?: string
-}
-
-interface Config extends Record<string, unknown> {
-    api_token?: string
-    pendingSecureStoreClear?: boolean
-    auth_mode?: AuthMode
-    auth_scope?: string
 }
 
 export async function getApiToken(): Promise<string> {
@@ -189,32 +186,6 @@ export async function getAuthMetadata(): Promise<AuthMetadata> {
     }
 }
 
-async function readConfig(): Promise<Config> {
-    try {
-        const content = await readFile(CONFIG_PATH, 'utf-8')
-        const parsed = JSON.parse(content)
-        return isObject(parsed) ? (parsed as Config) : {}
-    } catch {
-        return {}
-    }
-}
-
-async function writeConfig(config: Config): Promise<void> {
-    if (Object.keys(config).length === 0) {
-        try {
-            await unlink(CONFIG_PATH)
-        } catch (error) {
-            if (!isMissingFileError(error)) {
-                throw error
-            }
-        }
-        return
-    }
-
-    await mkdir(dirname(CONFIG_PATH), { recursive: true })
-    await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`)
-}
-
 async function cleanupAuthFallbackState(
     config: Config,
     warningPrefix: string,
@@ -265,14 +236,6 @@ async function cleanupAllAuthState(
     } catch (error) {
         return buildConfigCleanupWarning(warningPrefix, error)
     }
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isMissingFileError(error: unknown): boolean {
-    return error instanceof Error && 'code' in error && error.code === 'ENOENT'
 }
 
 function buildFallbackWarning(action: string): string {

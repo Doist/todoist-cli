@@ -122,8 +122,8 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         async () => (await import('./commands/view.js')).registerViewCommand,
     ],
     update: [
-        'Update the CLI to the latest version',
-        async () => (await import('./commands/update.js')).registerUpdateCommand,
+        'Update the CLI to the latest version for the configured channel',
+        async () => (await import('./commands/update/index.js')).registerUpdateCommand,
     ],
 }
 
