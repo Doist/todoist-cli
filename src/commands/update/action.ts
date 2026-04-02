@@ -135,8 +135,7 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         )
     } else {
         console.log(
-            chalk.yellow('Note:'),
-            `v${latestVersion}${label} is older than your current v${currentVersion}`,
+            `Downgrade available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.yellow(`v${latestVersion}`)}`,
         )
     }
 

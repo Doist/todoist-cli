@@ -1,4 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -42,6 +42,7 @@ export async function writeConfig(config: Config): Promise<void> {
         encoding: 'utf-8',
         mode: 0o600,
     })
+    await chmod(CONFIG_PATH, 0o600)
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
