@@ -26,6 +26,14 @@ export function sectionUrl(sectionId: string): string {
     return entityUrl('section', sectionId)
 }
 
+export function goalsUrl(): string {
+    return `${BASE_URL}/goals`
+}
+
+export function workspaceGoalsUrl(workspaceId: string): string {
+    return `${BASE_URL}/goals/${workspaceId}`
+}
+
 export function commentUrl(taskId: string, commentId: string): string {
     return `${entityUrl('task', taskId)}#comment-${commentId}`
 }

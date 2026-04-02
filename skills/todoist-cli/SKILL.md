@@ -22,6 +22,9 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - `td filter list/view` - Manage and use saved filters
 - `td project progress <ref>` - Project completion progress
 - `td project health <ref>` - Project health status
+- `td goal list` - List goals
+- `td goal view <ref>` - View goal details and linked tasks
+- `td goal create --name <name>` - Create a goal
 - `td workspace list` - List workspaces
 - `td workspace insights <ref>` - Workspace-wide project insights
 - `td activity` - Activity logs
@@ -53,6 +56,7 @@ The following mutating commands also support `--json` to return the created or u
 - `label create`, `label update`
 - `comment add`, `comment update`
 - `section create`, `section update`
+- `goal create`, `goal update`
 - `filter create`
 - `reminder add`
 - `template create`, `template import-file`, `template import-id`
@@ -322,6 +326,25 @@ td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
 td filter create --name "Urgent work" --query "p1 & #Work" --dry-run  # Preview filter creation
 td filter browse "Urgent work"                # Open in browser
+```
+
+### Goals
+```bash
+td goal list                                 # List all accessible goals
+td goal list --workspace "Work"              # Filter to workspace goals
+td goal view "Ship v2"                       # View goal details and linked tasks
+td goal create --name "Ship v2"              # Create personal goal
+td goal create --name "Ship v2" --workspace "Work"  # Create workspace goal
+td goal create --name "Ship v2" --deadline "2026-04-03"
+td goal create --name "Ship v2" --json       # Return created goal as JSON
+td goal create --name "Ship v2" --dry-run    # Preview creation
+td goal update "Ship v2" --name "Ship v3"
+td goal update "Ship v2" --description "New desc" --json
+td goal delete "Ship v2" --yes
+td goal complete "Ship v2"                   # Mark goal as completed
+td goal uncomplete "Ship v2"                 # Reopen a completed goal
+td goal link "Ship v2" --task "Buy milk"     # Link a task to a goal
+td goal unlink "Ship v2" --task "Buy milk"   # Unlink a task from a goal
 ```
 
 ### Workspaces
