@@ -93,11 +93,21 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
     )
 
     if (options.json) {
-        console.log(formatPaginatedJson({ results: tasks, nextCursor }, 'task', options.full))
+        const goalJson = JSON.parse(formatJson(goal, 'goal', options.full))
+        const tasksJson = JSON.parse(
+            formatPaginatedJson({ results: tasks, nextCursor }, 'task', options.full),
+        )
+        console.log(JSON.stringify({ goal: goalJson, tasks: tasksJson }, null, 2))
         return
     }
 
     if (options.ndjson) {
+        console.log(
+            JSON.stringify({
+                _type: 'goal',
+                ...JSON.parse(formatJson(goal, 'goal', options.full)),
+            }),
+        )
         console.log(formatPaginatedNdjson({ results: tasks, nextCursor }, 'task', options.full))
         return
     }
@@ -209,6 +219,17 @@ interface UpdateOptions {
 }
 
 async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
+    if (
+        options.name === undefined &&
+        options.description === undefined &&
+        options.deadline === undefined &&
+        options.responsible === undefined
+    ) {
+        throw new Error(
+            'No update fields specified. Use --name, --description, --deadline, or --responsible.',
+        )
+    }
+
     if (options.dryRun) {
         printDryRun('update goal', {
             Ref: ref,

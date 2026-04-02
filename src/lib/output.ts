@@ -221,6 +221,7 @@ const GOAL_ESSENTIAL_FIELDS = [
     'id',
     'name',
     'ownerType',
+    'ownerId',
     'deadline',
     'isCompleted',
     'progress',
