@@ -57,7 +57,7 @@ Each commit message consists of a **header**, an **optional body**, and an **opt
 [optional footer(s)]
 ```
 
-Commit types such as `feat:` and `fix:` affect versioning and changelog generation. Other types like `build:`, `chore:`, `ci:`, `docs:`, `perf:`, `refactor:`, `revert:`, `style:` and `test:` are valid but will not trigger a release.
+Commit types such as `feat:` and `fix:` affect versioning and changelog generation. Other types like `build:`, `chore:`, `ci:`, `docs:`, `perf:`, `refactor:`, `style:` and `test:` are valid but will not trigger a release.
 
 A commit that has the text `BREAKING CHANGE:` at the beginning of its optional body or footer, or appends a `!` after the type/scope, introduces a breaking API change (correlating with `MAJOR` in semantic versioning).
 
@@ -83,9 +83,9 @@ To test features before publishing a stable release:
 
 2. **Develop on a feature branch** based off `next` and open a PR targeting `next`.
 
-3. **Automatic pre-release:** Each PR merge into `next` triggers CI and publishes a pre-release version (e.g., `2.1.0-next.1`) to the `@next` dist-tag on npm.
+3. **Automatic pre-release:** Each PR merge into `next` triggers CI and publishes a pre-release version (e.g., `2.1.0-next.1`) to the `next` dist-tag on npm.
 
-4. **Promote to stable:** When ready, open a PR to merge `next` into `main`. The PR title must follow Conventional Commits (e.g., `feat: ...`, `fix: ...`) as it determines the version bump for the stable release.
+4. **Promote to stable:** When ready, open a PR to merge `next` into `main`. Use a regular merge commit (not squash), as this preserves the individual commit history and allows semantic-release to correctly generate a comprehensive changelog and determine the version bump automatically.
 
 > **Note:** The `CHANGELOG.md` is only updated for stable releases on `main`. Pre-releases still get GitHub release notes and npm publication.
 

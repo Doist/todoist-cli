@@ -19,7 +19,7 @@ permissions:
 # Release involves crucial steps that shouldn't be cancelled mid-run,
 # so new workflow runs are queued until the previous one finishes.
 concurrency:
-    group: ${{ github.workflow }}
+    group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: false
 
 jobs:
