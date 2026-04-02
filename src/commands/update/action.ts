@@ -42,7 +42,8 @@ function isNewer(current: string, candidate: string): boolean {
     if (a.prerelease && !b.prerelease) return true
 
     // Both pre-release: lexicographic (handles "next.1" vs "next.2" etc.)
-    if (a.prerelease && b.prerelease) return b.prerelease > a.prerelease
+    if (a.prerelease && b.prerelease)
+        return b.prerelease.localeCompare(a.prerelease, undefined, { numeric: true }) > 0
     return false
 }
 
