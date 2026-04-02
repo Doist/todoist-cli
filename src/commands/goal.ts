@@ -28,12 +28,23 @@ async function listGoals(options: PaginatedViewOptions & { workspace?: string })
           ? parseInt(options.limit, 10)
           : LIMITS.goals
 
-    const ownerType = options.workspace ? 'WORKSPACE' : undefined
+    // Resolve workspace ref to validate it exists and get its ID for filtering
+    let workspaceId: string | undefined
+    if (options.workspace) {
+        const ws = await resolveWorkspaceRef(options.workspace)
+        workspaceId = String(ws.id)
+    }
+    const ownerType = workspaceId ? 'WORKSPACE' : undefined
 
-    const { results: goals, nextCursor } = await paginate(
+    let { results: goals, nextCursor } = await paginate(
         (cursor, limit) => api.getGoals({ ownerType, cursor: cursor ?? undefined, limit }),
         { limit: targetLimit },
     )
+
+    // If a specific workspace was requested, filter to just that workspace's goals
+    if (workspaceId) {
+        goals = goals.filter((g) => g.ownerId === workspaceId)
+    }
 
     if (options.json) {
         console.log(formatPaginatedJson({ results: goals, nextCursor }, 'goal', options.full))
