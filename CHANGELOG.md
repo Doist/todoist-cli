@@ -1,3 +1,9 @@
+## [1.36.0](https://github.com/Doist/todoist-cli/compare/v1.35.1...v1.36.0) (2026-04-02)
+
+### Features
+
+* allow switching between stable and pre-release update channels ([#215](https://github.com/Doist/todoist-cli/issues/215)) ([b0bec2e](https://github.com/Doist/todoist-cli/commit/b0bec2e64363898024be6d7e4c10b9d2fc616974))
+
 ## [1.35.1](https://github.com/Doist/todoist-cli/compare/v1.35.0...v1.35.1) (2026-04-01)
 
 ### Bug Fixes
