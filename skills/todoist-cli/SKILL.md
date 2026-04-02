@@ -44,6 +44,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Task lifecycle: `td task list/view/add/update/reschedule/move/complete/uncomplete/delete/browse`
 - Projects: `td project list/view/create/update/archive/unarchive/delete/move/join/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
+- Goals: `td goal list/view/create/update/delete/complete/uncomplete/link/unlink`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td workspace ...`
 - Collaboration: `td comment ...`, `td notification ...`, `td reminder ...`
 - Templates and files: `td template ...`, `td attachment view <file-url>`
@@ -141,6 +142,25 @@ td section browse id:123
 ```
 
 Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs.
+
+### Goals
+```bash
+td goal list                                 # List all accessible goals
+td goal list --workspace "Work"              # Filter to workspace goals
+td goal view "Ship v2"                       # View goal details and linked tasks
+td goal create --name "Ship v2"              # Create personal goal
+td goal create --name "Ship v2" --workspace "Work"  # Create workspace goal
+td goal create --name "Ship v2" --deadline "2026-04-03"
+td goal create --name "Ship v2" --json       # Return created goal as JSON
+td goal create --name "Ship v2" --dry-run    # Preview creation
+td goal update "Ship v2" --name "Ship v3"
+td goal update "Ship v2" --description "New desc" --json
+td goal delete "Ship v2" --yes
+td goal complete "Ship v2"                   # Mark goal as completed
+td goal uncomplete "Ship v2"                 # Reopen a completed goal
+td goal link "Ship v2" --task "Buy milk"     # Link a task to a goal
+td goal unlink "Ship v2" --task "Buy milk"   # Unlink a task from a goal
+```
 
 ### Comments, Attachments, Notifications, And Reminders
 ```bash

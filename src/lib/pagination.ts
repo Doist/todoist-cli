@@ -45,4 +45,5 @@ export const LIMITS = {
     sections: 300,
     labels: 300,
     comments: 10,
+    goals: 200,
 } as const

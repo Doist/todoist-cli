@@ -1,4 +1,4 @@
-import { TodoistApi, TodoistRequestError } from '@doist/todoist-sdk'
+import { TodoistApi, TodoistRequestError, type Goal } from '@doist/todoist-sdk'
 import type { Project, Task } from './api/core.js'
 import {
     fetchWorkspaceFolders,
@@ -285,6 +285,16 @@ export async function resolveProjectRef(api: TodoistApi, ref: string): Promise<P
 export async function resolveProjectId(api: TodoistApi, ref: string): Promise<string> {
     const project = await resolveProjectRef(api, ref)
     return project.id
+}
+
+export async function resolveGoalRef(api: TodoistApi, ref: string): Promise<Goal> {
+    return resolveRef(
+        ref,
+        (id) => api.getGoal(id),
+        () => api.getGoals(),
+        (g) => g.name,
+        'goal',
+    )
 }
 
 export async function resolveSectionId(
