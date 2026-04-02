@@ -162,6 +162,27 @@ describe('update command', () => {
                 expect.stringContaining('Already up to date'),
             )
         })
+
+        it('shows channel info', async () => {
+            mockFetch('99.99.99')
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update', '--check'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Channel:'))
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('stable'))
+        })
+
+        it('shows pre-release channel when configured', async () => {
+            mockReadConfig.mockResolvedValue({ update_channel: 'pre-release' })
+            mockFetch('1.36.0-next.1')
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update', '--check'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Channel:'))
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('pre-release'))
+        })
     })
 
     describe('update available', () => {
@@ -392,6 +413,24 @@ describe('update command', () => {
                 expect.stringContaining('--stable or --pre-release'),
             )
             expect(process.exitCode).toBe(1)
+        })
+    })
+
+    describe('channel subcommand', () => {
+        it('shows stable when no config set', async () => {
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update', 'channel'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('stable'))
+        })
+
+        it('shows pre-release when configured', async () => {
+            mockReadConfig.mockResolvedValue({ update_channel: 'pre-release' })
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update', 'channel'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('pre-release'))
         })
     })
 })

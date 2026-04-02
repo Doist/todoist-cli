@@ -72,6 +72,23 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
         return
     }
 
+    if (options.check) {
+        const channelLine =
+            channel === 'pre-release'
+                ? `  Channel: ${chalk.magenta('pre-release')}`
+                : `  Channel: ${chalk.green('stable')}`
+
+        if (currentVersion === latestVersion) {
+            console.log(chalk.green('✓'), `Already up to date (v${currentVersion})`)
+        } else {
+            console.log(
+                `Update available: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
+            )
+        }
+        console.log(channelLine)
+        return
+    }
+
     if (currentVersion === latestVersion) {
         console.log(chalk.green('✓'), `Already up to date${label} (v${currentVersion})`)
         return
@@ -80,10 +97,6 @@ export async function updateAction(options: { check?: boolean }): Promise<void> 
     console.log(
         `Update available${label}: ${chalk.dim(`v${currentVersion}`)} → ${chalk.green(`v${latestVersion}`)}`,
     )
-
-    if (options.check) {
-        return
-    }
 
     const pm = detectPackageManager()
 

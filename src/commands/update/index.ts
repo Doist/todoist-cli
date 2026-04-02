@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { updateAction } from './action.js'
+import { showChannel } from './channel.js'
 import { switchChannel } from './switch.js'
 
 export function registerUpdateCommand(program: Command): void {
@@ -8,6 +9,8 @@ export function registerUpdateCommand(program: Command): void {
         .description('Update the CLI to the latest version')
         .option('--check', 'Check for updates without installing')
         .action(updateAction)
+
+    update.command('channel').description('Show the current update channel').action(showChannel)
 
     update
         .command('switch')
