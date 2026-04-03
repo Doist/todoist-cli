@@ -57,12 +57,15 @@ export function registerProjectCommand(program: Command): void {
     const collaboratorsCmd = project
         .command('collaborators [ref]')
         .description('List project collaborators')
-        .action((ref) => {
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .action((ref, options) => {
             if (!ref) {
                 collaboratorsCmd.help()
                 return
             }
-            return listCollaborators(ref)
+            return listCollaborators(ref, options)
         })
 
     const deleteCmd = project

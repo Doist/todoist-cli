@@ -211,6 +211,29 @@ describe('workspace view', () => {
             program.parseAsync(['node', 'td', 'workspace', 'view', 'Test']),
         ).rejects.toThrow('Multiple workspaces')
     })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'view', 'Doist', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('ws-1')
+        expect(parsed.name).toBe('Doist')
+        expect(parsed.plan).toBe('BUSINESS')
+        expect(parsed.memberCount).toBeDefined()
+        expect(parsed.projectCount).toBeDefined()
+    })
+
+    it('outputs full JSON with --json --full', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'view', 'Doist', '--json', '--full'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('ws-1')
+        expect(parsed.memberCountByType).toBeDefined()
+    })
 })
 
 describe('workspace projects', () => {

@@ -76,6 +76,8 @@ export function registerCommentCommand(program: Command): void {
     comment
         .command('view [id]', { isDefault: true })
         .description('View a single comment with full details')
+        .option('--json', 'Output as JSON')
+        .option('--full', 'Include all fields in JSON output')
         .option('--raw', 'Disable markdown rendering')
         .action((id, options) => {
             if (!id) {

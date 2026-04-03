@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { formatFileSize } from '../../lib/output.js'
+import { formatFileSize, formatJson } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { commentUrl, projectCommentUrl } from '../../lib/urls.js'
 
@@ -10,6 +10,11 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
     const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
     const comment = await api.getComment(id)
+
+    if (options.json) {
+        console.log(formatJson(comment, 'comment', options.full))
+        return
+    }
 
     const url = comment.taskId
         ? commentUrl(comment.taskId, comment.id)

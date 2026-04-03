@@ -588,6 +588,59 @@ describe('comment view', () => {
         )
         consoleSpy.mockRestore()
     })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'Test content',
+            postedAt: '2026-01-08T10:00:00Z',
+            taskId: 'task-1',
+            projectId: null,
+            fileAttachment: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('comment-123')
+        expect(parsed.content).toBe('Test content')
+        expect(parsed.postedAt).toBe('2026-01-08T10:00:00Z')
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs full JSON with --json --full', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'Test content',
+            postedAt: '2026-01-08T10:00:00Z',
+            taskId: 'task-1',
+            projectId: null,
+            fileAttachment: null,
+            extraField: 'extra',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'view',
+            'id:comment-123',
+            '--json',
+            '--full',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.extraField).toBe('extra')
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('project comment list', () => {
