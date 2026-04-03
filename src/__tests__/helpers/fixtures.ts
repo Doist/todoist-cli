@@ -294,8 +294,8 @@ export const fixtures = {
         },
         learnRust: {
             id: 'e5f6g7h8-e29b-41d4-a716-446655440001',
-            ownerType: 'USER',
-            ownerId: 'user-1',
+            ownerType: 'WORKSPACE',
+            ownerId: 'ws-1',
             name: 'Learn Rust',
             description: null,
             deadline: null,
