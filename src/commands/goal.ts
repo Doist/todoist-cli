@@ -10,12 +10,17 @@ import {
     formatPaginatedNdjson,
     formatProgressBar,
     formatTaskRow,
+    isAccessible,
     printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveGoalRef } from '../lib/refs.js'
 import { resolveWorkspaceRef } from '../lib/refs.js'
 import { resolveTaskRef } from '../lib/refs.js'
+
+function formatOwnerType(ownerType: string): string {
+    return ownerType === 'WORKSPACE' ? 'Workspace' : 'User'
+}
 
 // ── List ──
 
@@ -115,13 +120,15 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
     // Header
     console.log(chalk.bold(goal.name))
     console.log(chalk.dim(`ID:       ${goal.id}`))
-    console.log(chalk.dim(`Owner:    ${goal.ownerType}`))
+    console.log(chalk.dim(`Owner:    ${formatOwnerType(goal.ownerType)}`))
     if (goal.description) console.log(`Desc:     ${goal.description}`)
     if (goal.deadline) console.log(`Deadline: ${chalk.green(goal.deadline)}`)
     console.log(
         `Progress: ${formatProgressBar(goal.progress.percentage)} (${goal.progress.completedItemCount}/${goal.progress.totalItemCount})`,
     )
-    if (goal.isCompleted) console.log(chalk.green('✓ Completed'))
+    if (goal.isCompleted) {
+        console.log(chalk.green(isAccessible() ? 'Goal completed' : '✓ Completed'))
+    }
     console.log('')
 
     if (tasks.length === 0) {
@@ -219,24 +226,21 @@ interface UpdateOptions {
 }
 
 async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
-    if (
-        options.name === undefined &&
-        options.description === undefined &&
-        options.deadline === undefined &&
-        options.responsible === undefined
-    ) {
+    const { name, description, deadline, responsible, json, dryRun } = options
+
+    if (!name && !description && !deadline && !responsible) {
         throw new Error(
             'No update fields specified. Use --name, --description, --deadline, or --responsible.',
         )
     }
 
-    if (options.dryRun) {
+    if (dryRun) {
         printDryRun('update goal', {
             Ref: ref,
-            Name: options.name,
-            Description: options.description,
-            Deadline: options.deadline,
-            Responsible: options.responsible,
+            Name: name,
+            Description: description,
+            Deadline: deadline,
+            Responsible: responsible,
         })
         return
     }
@@ -245,14 +249,14 @@ async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
     const goal = await resolveGoalRef(api, ref)
 
     const args: Record<string, string | null | undefined> = {}
-    if (options.name !== undefined) args.name = options.name
-    if (options.description !== undefined) args.description = options.description
-    if (options.deadline !== undefined) args.deadline = options.deadline
-    if (options.responsible !== undefined) args.responsibleUid = options.responsible
+    if (name !== undefined) args.name = name
+    if (description !== undefined) args.description = description
+    if (deadline !== undefined) args.deadline = deadline
+    if (responsible !== undefined) args.responsibleUid = responsible
 
     const updated = await api.updateGoal(goal.id, args)
 
-    if (options.json) {
+    if (json) {
         console.log(formatJson(updated, 'goal'))
         return
     }
