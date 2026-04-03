@@ -166,8 +166,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         deleteGoal: vi.fn(),
         completeGoal: vi.fn(),
         uncompleteGoal: vi.fn(),
-        linkItemToGoal: vi.fn(),
-        unlinkItemFromGoal: vi.fn(),
+        linkTaskToGoal: vi.fn(),
+        unlinkTaskFromGoal: vi.fn(),
         // Reminders (REST)
         getReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getLocationReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),

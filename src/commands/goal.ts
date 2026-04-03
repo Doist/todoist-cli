@@ -310,7 +310,7 @@ async function linkGoal(ref: string, options: { task: string }): Promise<void> {
     const goal = await resolveGoalRef(api, ref)
     const task = await resolveTaskRef(api, options.task)
 
-    await api.linkItemToGoal(goal.id, task.id)
+    await api.linkTaskToGoal(goal.id, task.id)
     console.log(`Linked task "${task.content}" to goal "${goal.name}"`)
 }
 
@@ -319,7 +319,7 @@ async function unlinkGoal(ref: string, options: { task: string }): Promise<void>
     const goal = await resolveGoalRef(api, ref)
     const task = await resolveTaskRef(api, options.task)
 
-    await api.unlinkItemFromGoal(goal.id, task.id)
+    await api.unlinkTaskFromGoal(goal.id, task.id)
     console.log(`Unlinked task "${task.content}" from goal "${goal.name}"`)
 }
 
