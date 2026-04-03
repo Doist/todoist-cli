@@ -2,26 +2,22 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
-import {
-    formatNextCursorFooter,
-    formatPaginatedJson,
-    formatPaginatedNdjson,
-    formatTaskRow,
-} from '../lib/output.js'
-import { LIMITS, paginate } from '../lib/pagination.js'
+import { formatPaginatedJson, formatPaginatedNdjson, formatTaskRow } from '../lib/output.js'
 import { resolveProjectId } from '../lib/refs.js'
 
 interface CompletedOptions {
     since?: string
     until?: string
     project?: string
+    label?: string
     limit?: string
-    cursor?: string
-    all?: boolean
+    offset?: string
     json?: boolean
     ndjson?: boolean
     full?: boolean
     showUrls?: boolean
+    annotateNotes?: boolean
+    annotateItems?: boolean
 }
 
 function getLocalDate(daysOffset = 0): string {
@@ -37,13 +33,15 @@ export function registerCompletedCommand(program: Command): void {
         .option('--since <date>', 'Start date (YYYY-MM-DD), default: today')
         .option('--until <date>', 'End date (YYYY-MM-DD), default: tomorrow')
         .option('--project <name>', 'Filter by project')
-        .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
-        .option('--all', 'Fetch all results (no limit)')
+        .option('--label <name>', 'Filter by label name')
+        .option('--limit <n>', 'Limit number of results (default: 30, max: 200)')
+        .option('--offset <n>', 'Skip first N results (default: 0)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each task')
+        .option('--annotate-notes', 'Include comment data in response')
+        .option('--annotate-items', 'Include task metadata in response')
         .action(async (options: CompletedOptions) => {
             const api = await getApi()
 
@@ -55,31 +53,28 @@ export function registerCompletedCommand(program: Command): void {
                 projectId = await resolveProjectId(api, options.project)
             }
 
-            const targetLimit = options.all
-                ? Number.MAX_SAFE_INTEGER
-                : options.limit
-                  ? parseInt(options.limit, 10)
-                  : LIMITS.tasks
+            const limit = options.limit ? parseInt(options.limit, 10) : 30
+            const offset = options.offset ? parseInt(options.offset, 10) : 0
 
-            const { results: tasks, nextCursor } = await paginate(
-                async (cursor, limit) => {
-                    const resp = await api.getCompletedTasksByCompletionDate({
-                        since,
-                        until,
-                        projectId,
-                        cursor: cursor ?? undefined,
-                        limit,
-                    })
-                    return { results: resp.items, nextCursor: resp.nextCursor }
-                },
-                { limit: targetLimit, startCursor: options.cursor },
-            )
+            const resp = await api.getAllCompletedTasks({
+                since: new Date(since + 'T00:00:00'),
+                until: new Date(until + 'T00:00:00'),
+                projectId,
+                label: options.label,
+                limit,
+                offset,
+                annotateNotes: options.annotateNotes,
+                annotateItems: options.annotateItems,
+            })
+
+            const tasks = resp.items
+            const inlineProjects = resp.projects as Record<string, Record<string, unknown>>
 
             if (tasks.length === 0) {
                 if (options.json) {
                     console.log(
                         formatPaginatedJson(
-                            { results: [], nextCursor },
+                            { results: [], nextCursor: null },
                             'task',
                             options.full,
                             options.showUrls,
@@ -88,7 +83,7 @@ export function registerCompletedCommand(program: Command): void {
                 } else if (options.ndjson) {
                     console.log(
                         formatPaginatedNdjson(
-                            { results: [], nextCursor },
+                            { results: [], nextCursor: null },
                             'task',
                             options.full,
                             options.showUrls,
@@ -96,23 +91,33 @@ export function registerCompletedCommand(program: Command): void {
                     )
                 } else {
                     console.log('No completed tasks in this period.')
-                    console.log(formatNextCursorFooter(nextCursor))
                 }
                 return
             }
 
-            const { results: allProjects } = await api.getProjects()
-            const projects = new Map<string, Project>(allProjects.map((p) => [p.id, p]))
+            // Use inline project data for project names
+            const getProjectName = (pid: string): string | undefined =>
+                inlineProjects[pid]?.name as string | undefined
 
-            const collaboratorCache = new CollaboratorCache()
-            await collaboratorCache.preload(api, tasks, projects)
+            // For collaborator resolution, we still need full Project objects
+            // (with isShared/workspaceId) when tasks have assignees
+            const hasAssignees = tasks.some((t) => t.responsibleUid)
+            let fullProjects: Map<string, Project> | undefined
+            let collaboratorCache: CollaboratorCache | undefined
 
-            // Helper to get assignee name for a task
+            if (hasAssignees) {
+                const { results: allProjects } = await api.getProjects()
+                fullProjects = new Map(allProjects.map((p) => [p.id, p]))
+                collaboratorCache = new CollaboratorCache()
+                await collaboratorCache.preload(api, tasks, fullProjects)
+            }
+
             const getAssigneeName = (task: Task): string | null => {
+                if (!fullProjects || !collaboratorCache) return null
                 return formatAssignee({
                     userId: task.responsibleUid,
                     projectId: task.projectId,
-                    projects,
+                    projects: fullProjects,
                     cache: collaboratorCache,
                 })
             }
@@ -124,7 +129,7 @@ export function registerCompletedCommand(program: Command): void {
                 }))
                 console.log(
                     formatPaginatedJson(
-                        { results: tasksWithAssignee, nextCursor },
+                        { results: tasksWithAssignee, nextCursor: null },
                         'task',
                         options.full,
                         options.showUrls,
@@ -140,7 +145,7 @@ export function registerCompletedCommand(program: Command): void {
                 }))
                 console.log(
                     formatPaginatedNdjson(
-                        { results: tasksWithAssignee, nextCursor },
+                        { results: tasksWithAssignee, nextCursor: null },
                         'task',
                         options.full,
                         options.showUrls,
@@ -154,7 +159,7 @@ export function registerCompletedCommand(program: Command): void {
             console.log('')
 
             for (const task of tasks) {
-                const projectName = projects.get(task.projectId)?.name
+                const projectName = getProjectName(task.projectId)
                 console.log(
                     formatTaskRow({
                         task,
@@ -165,6 +170,14 @@ export function registerCompletedCommand(program: Command): void {
                 )
                 console.log('')
             }
-            console.log(formatNextCursorFooter(nextCursor))
+
+            if (tasks.length === limit) {
+                const nextOffset = offset + limit
+                console.log(
+                    chalk.dim(
+                        `\n... more items may exist. Use --offset ${nextOffset} to see more.`,
+                    ),
+                )
+            }
         })
 }

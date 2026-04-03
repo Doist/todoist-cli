@@ -139,6 +139,10 @@ td upcoming --any-assignee           # Include tasks assigned to others
 td completed                         # Completed today
 td completed --since 2024-01-01 --until 2024-01-31
 td completed --project "Work"        # Filter by project
+td completed --label "urgent"        # Filter by label name
+td completed --annotate-notes        # Include comment data
+td completed --annotate-items        # Include task metadata
+td completed --offset 30             # Skip first 30 results
 ```
 
 ### Task Management
