@@ -46,7 +46,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`
-- Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td update\`, \`td changelog\`
+- Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 
 ## References
 
@@ -191,6 +191,10 @@ td completion uninstall
 
 td view https://app.todoist.com/app/task/buy-milk-abc123
 td view https://app.todoist.com/app/today
+
+td doctor
+td doctor --offline
+td doctor --json
 
 td update --check
 td update --channel
