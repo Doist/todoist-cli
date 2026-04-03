@@ -17,7 +17,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 
 ## Shared Flags
 
-- Read and list commands commonly support \`--json\`. List-style commands usually also support \`--ndjson\`, \`--full\`, \`--raw\`, \`--limit <n>\`, \`--all\`, \`--cursor <cursor>\`, and \`--show-urls\`.
+- Read and list commands commonly support \`--json\`, but other output and pagination flags vary by family. Many list commands support subsets of \`--ndjson\`, \`--full\`, \`--raw\`, \`--limit <n>\`, \`--all\`, \`--cursor <cursor>\`, or \`--show-urls\`; check \`td <command> --help\` for the exact surface.
 - Create and update commands commonly support \`--json\` to return the created or updated entity.
 - Mutating commands support \`--dry-run\` to preview actions without executing them.
 - Destructive commands typically require \`--yes\`.
