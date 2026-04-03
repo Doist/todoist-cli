@@ -33,13 +33,20 @@ async function listGoals(options: PaginatedViewOptions & { workspace?: string })
           ? parseInt(options.limit, 10)
           : LIMITS.goals
 
+    let workspaceId: string | undefined
+    if (options.workspace) {
+        const ws = await resolveWorkspaceRef(options.workspace)
+        workspaceId = String(ws.id)
+    }
+
     const { results: goals, nextCursor } = await paginate(
         (cursor, limit) =>
             api.getGoals({
-                ownerType: options.workspace ? 'WORKSPACE' : undefined,
+                ownerType: workspaceId ? 'WORKSPACE' : undefined,
+                workspaceId,
                 cursor: cursor ?? undefined,
                 limit,
-            }),
+            } as Parameters<typeof api.getGoals>[0]),
         { limit: targetLimit },
     )
 
