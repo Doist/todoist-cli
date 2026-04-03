@@ -1,3 +1,9 @@
+## [1.37.0](https://github.com/Doist/todoist-cli/compare/v1.36.1...v1.37.0) (2026-04-03)
+
+### Features
+
+* add --json flag to project collaborators, comment view, and workspace view ([#221](https://github.com/Doist/todoist-cli/issues/221)) ([3ffe08e](https://github.com/Doist/todoist-cli/commit/3ffe08e23ab8603a60e0e7ac3e605951a95edc4b))
+
 ## [1.36.1](https://github.com/Doist/todoist-cli/compare/v1.36.0...v1.36.1) (2026-04-02)
 
 ### Bug Fixes
