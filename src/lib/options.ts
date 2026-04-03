@@ -6,11 +6,15 @@ export type ViewOptions = {
     showUrls?: boolean
 }
 
-export type PaginatedViewOptions = ViewOptions & {
+export type Pagination = {
     limit?: string
     cursor?: string
-    all?: boolean
 }
+
+export type PaginatedViewOptions = ViewOptions &
+    Pagination & {
+        all?: boolean
+    }
 
 export type DryRunOption = {
     dryRun?: boolean

@@ -3,6 +3,7 @@ import { Command } from 'commander'
 import { getApi, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -12,17 +13,10 @@ import {
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
-interface UpcomingOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
+interface UpcomingOptions extends PaginatedViewOptions {
     anyAssignee?: boolean
     workspace?: string
     personal?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
 }
 
 export async function showUpcoming(

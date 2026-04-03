@@ -3,6 +3,7 @@ import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -12,18 +13,10 @@ import {
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
 
-interface TodayOptions {
-    limit?: string
-    cursor?: string
-    all?: boolean
+interface TodayOptions extends PaginatedViewOptions {
     anyAssignee?: boolean
     workspace?: string
     personal?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    raw?: boolean
-    showUrls?: boolean
 }
 
 export async function showToday(options: TodayOptions): Promise<void> {
