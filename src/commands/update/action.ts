@@ -1,61 +1,16 @@
 import { spawn } from 'node:child_process'
 import chalk from 'chalk'
 import packageJson from '../../../package.json' with { type: 'json' }
-import { readConfig, type UpdateChannel } from '../../lib/config.js'
+import type { UpdateChannel } from '../../lib/config.js'
 import { withSpinner } from '../../lib/spinner.js'
+import {
+    fetchLatestVersion,
+    getConfiguredUpdateChannel,
+    getInstallTag,
+    isNewer,
+} from '../../lib/update.js'
 
 const PACKAGE_NAME = '@doist/todoist-cli'
-
-interface RegistryResponse {
-    version: string
-}
-
-function getInstallTag(channel: UpdateChannel): string {
-    return channel === 'pre-release' ? 'next' : 'latest'
-}
-
-interface ParsedVersion {
-    major: number
-    minor: number
-    patch: number
-    prerelease: string | undefined
-}
-
-function parseVersion(version: string): ParsedVersion {
-    const [core, ...rest] = version.split('-')
-    const [major, minor, patch] = core.split('.').map(Number)
-    return { major, minor, patch, prerelease: rest.length > 0 ? rest.join('-') : undefined }
-}
-
-/** Returns true when `candidate` is strictly newer than `current` per semver. */
-function isNewer(current: string, candidate: string): boolean {
-    const a = parseVersion(current)
-    const b = parseVersion(candidate)
-
-    // Compare major.minor.patch
-    for (const key of ['major', 'minor', 'patch'] as const) {
-        if (b[key] !== a[key]) return b[key] > a[key]
-    }
-
-    // Equal core: release > pre-release
-    if (!a.prerelease && b.prerelease) return false
-    if (a.prerelease && !b.prerelease) return true
-
-    // Both pre-release: lexicographic (handles "next.1" vs "next.2" etc.)
-    if (a.prerelease && b.prerelease)
-        return b.prerelease.localeCompare(a.prerelease, undefined, { numeric: true }) > 0
-    return false
-}
-
-async function fetchVersion(channel: UpdateChannel): Promise<string> {
-    const url = `https://registry.npmjs.org/${PACKAGE_NAME}/${getInstallTag(channel)}`
-    const response = await fetch(url)
-    if (!response.ok) {
-        throw new Error(`Registry request failed (HTTP ${response.status})`)
-    }
-    const data = (await response.json()) as RegistryResponse
-    return data.version
-}
 
 function detectPackageManager(): string {
     const execPath = process.env.npm_execpath ?? ''
@@ -91,8 +46,7 @@ export async function updateAction(options: { check?: boolean; channel?: boolean
         return
     }
 
-    const config = await readConfig()
-    const channel: UpdateChannel = config.update_channel ?? 'stable'
+    const channel = await getConfiguredUpdateChannel()
 
     if (options.channel) {
         if (channel === 'pre-release') {
@@ -112,7 +66,7 @@ export async function updateAction(options: { check?: boolean; channel?: boolean
     try {
         latestVersion = await withSpinner(
             { text: `Checking for updates${label}...`, color: 'blue' },
-            () => fetchVersion(channel),
+            () => fetchLatestVersion(channel),
         )
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
