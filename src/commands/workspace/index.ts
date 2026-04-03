@@ -22,12 +22,14 @@ export function registerWorkspaceCommand(program: Command): void {
     workspace
         .command('view [ref]', { isDefault: true })
         .description('View workspace details')
-        .action((ref) => {
+        .option('--json', 'Output as JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .action((ref, options) => {
             if (!ref) {
                 workspace.help()
                 return
             }
-            return viewWorkspace(ref)
+            return viewWorkspace(ref, options)
         })
 
     const projectsCmd = workspace

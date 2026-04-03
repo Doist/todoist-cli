@@ -563,6 +563,108 @@ describe('project collaborators', () => {
             program.parseAsync(['node', 'td', 'project', 'collaborators', 'id:proj-1']),
         ).rejects.toThrow('not shared')
     })
+
+    it('outputs JSON for workspace project with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work Project',
+            workspaceId: '123',
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({
+            workspaceUsers: [
+                {
+                    userId: 'user-1',
+                    fullName: 'John Doe',
+                    userEmail: 'john@example.com',
+                    role: 'MEMBER',
+                },
+            ],
+            hasMore: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'collaborators', 'id:proj-1', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toHaveLength(1)
+        expect(parsed.results[0]).toEqual({
+            id: 'user-1',
+            name: 'John Doe',
+            email: 'john@example.com',
+            role: 'MEMBER',
+        })
+        expect(parsed.nextCursor).toBeNull()
+    })
+
+    it('outputs JSON for shared personal project with --json', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Shared Project',
+            isShared: true,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-1', name: 'Jane Smith', email: 'jane@example.com' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'collaborators', 'id:proj-1', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toHaveLength(1)
+        expect(parsed.results[0]).toEqual({
+            id: 'user-1',
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+        })
+        expect(parsed.nextCursor).toBeNull()
+    })
+
+    it('outputs NDJSON for workspace project with --ndjson', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work Project',
+            workspaceId: '123',
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({
+            workspaceUsers: [
+                {
+                    userId: 'user-1',
+                    fullName: 'John Doe',
+                    userEmail: 'john@example.com',
+                    role: 'ADMIN',
+                },
+                {
+                    userId: 'user-2',
+                    fullName: 'Jane Smith',
+                    userEmail: 'jane@example.com',
+                    role: 'MEMBER',
+                },
+            ],
+            hasMore: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'collaborators',
+            'id:proj-1',
+            '--ndjson',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledTimes(2)
+        const line1 = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(line1.id).toBe('user-1')
+        const line2 = JSON.parse(consoleSpy.mock.calls[1][0])
+        expect(line2.id).toBe('user-2')
+    })
 })
 
 describe('project delete', () => {
