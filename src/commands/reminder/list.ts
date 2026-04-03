@@ -14,9 +14,6 @@ import {
 interface ListOptions extends PaginatedViewOptions {
     task?: string
     type?: ReminderTypeFilter
-    limit?: string
-    cursor?: string
-    all?: boolean
 }
 
 export async function listReminders(

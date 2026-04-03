@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -11,17 +12,10 @@ import {
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { resolveProjectId } from '../lib/refs.js'
 
-interface CompletedOptions {
+interface CompletedOptions extends PaginatedViewOptions {
     since?: string
     until?: string
     project?: string
-    limit?: string
-    cursor?: string
-    all?: boolean
-    json?: boolean
-    ndjson?: boolean
-    full?: boolean
-    showUrls?: boolean
 }
 
 function getLocalDate(daysOffset = 0): string {

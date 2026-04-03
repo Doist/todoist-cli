@@ -4,19 +4,18 @@ import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import type { Pagination } from '../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { paginate } from '../lib/pagination.js'
 import { extractId, isIdRef, resolveProjectId } from '../lib/refs.js'
 
-interface ActivityOptions {
+interface ActivityOptions extends Pagination {
     since?: string
     until?: string
     type?: string
     event?: string
     project?: string
     by?: string
-    limit?: string
-    cursor?: string
     markdown?: boolean
     json?: boolean
     ndjson?: boolean
