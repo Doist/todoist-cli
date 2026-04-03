@@ -1,3 +1,9 @@
+## [1.37.1](https://github.com/Doist/todoist-cli/compare/v1.37.0...v1.37.1) (2026-04-03)
+
+### Bug Fixes
+
+* trim Todoist CLI skill content ([#223](https://github.com/Doist/todoist-cli/issues/223)) ([4bb5434](https://github.com/Doist/todoist-cli/commit/4bb5434ec122300677ef163b7b2baf6cda60a4a9))
+
 ## [1.37.0](https://github.com/Doist/todoist-cli/compare/v1.36.1...v1.37.0) (2026-04-03)
 
 ### Features
