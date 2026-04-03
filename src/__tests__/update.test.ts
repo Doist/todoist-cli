@@ -14,6 +14,15 @@ vi.mock('../lib/spinner.js', () => ({
     withSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
 }))
 
+// Mock package.json so tests don't depend on the real version
+vi.mock('../../package.json', () => ({
+    default: {
+        get version() {
+            return process.env.MOCK_PKG_VERSION || '1.0.0'
+        },
+    },
+}))
+
 // Mock config module
 vi.mock('../lib/config.js', async (importOriginal) => {
     const original = await importOriginal<typeof import('../lib/config.js')>()
@@ -121,10 +130,7 @@ describe('update command', () => {
 
     describe('already up to date', () => {
         it('prints up-to-date message when versions match', async () => {
-            const {
-                default: { version },
-            } = await import('../../package.json')
-            mockFetch(version)
+            mockFetch('1.0.0')
 
             const program = createProgram()
             await program.parseAsync(['node', 'td', 'update'])
@@ -149,10 +155,7 @@ describe('update command', () => {
         })
 
         it('shows up-to-date message when already current', async () => {
-            const {
-                default: { version },
-            } = await import('../../package.json')
-            mockFetch(version)
+            mockFetch('1.0.0')
 
             const program = createProgram()
             await program.parseAsync(['node', 'td', 'update', '--check'])
@@ -338,7 +341,8 @@ describe('update command', () => {
         })
 
         it('treats next.10 as newer than next.2 (multi-digit prerelease)', async () => {
-            mockFetch('1.37.0-next.10')
+            vi.stubEnv('MOCK_PKG_VERSION', '1.1.0-next.2')
+            mockFetch('1.1.0-next.10')
             mockSpawnSuccess()
 
             const program = createProgram()
@@ -349,9 +353,8 @@ describe('update command', () => {
         })
 
         it('warns but still installs when channel tag resolves to older version', async () => {
-            // Simulate: user on stable 1.35.1, pre-release is 1.35.1-next.1
             // Pre-release of same core version is older per semver
-            mockFetch('1.35.1-next.1')
+            mockFetch('1.0.0-next.1')
             mockSpawnSuccess()
 
             const program = createProgram()
