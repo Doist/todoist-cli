@@ -80,7 +80,7 @@ td task browse "Plan sprint"
 \`\`\`
 
 Useful task flags:
-- \`--stdin\` reads description or comment content from stdin.
+- \`--stdin\` reads the task description from stdin.
 - \`--parent\`, \`--section\`, \`--project\`, \`--workspace\`, \`--assignee\`, \`--labels\`, \`--due\`, \`--deadline\`, \`--duration\`, and \`--priority\` cover most task workflows.
 - \`td task complete --forever\` stops recurrence; \`td task update --no-deadline\` clears deadlines; \`td task move --no-parent\` and \`--no-section\` detach from hierarchy.
 
@@ -117,12 +117,14 @@ td label view "urgent"
 td label create --name "urgent" --color red
 td label update "urgent" --color orange
 td label delete "urgent" --yes
+td label browse "urgent"
 
 td filter list
 td filter view "Urgent work"
 td filter create --name "Urgent work" --query "p1 & #Work"
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
+td filter browse "Urgent work"
 
 td section list "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
@@ -130,6 +132,7 @@ td section update id:123 --name "Done"
 td section archive id:123
 td section unarchive id:123
 td section delete id:123 --yes
+td section browse id:123
 \`\`\`
 
 Shared labels can appear in \`td label list\` and \`td label view\`, but standard update and delete actions only work for labels with IDs.
