@@ -85,6 +85,12 @@ function channelLabel(channel: UpdateChannel): string {
 }
 
 export async function updateAction(options: { check?: boolean; channel?: boolean }): Promise<void> {
+    if (options.check && options.channel) {
+        console.error(chalk.red('Error:'), 'Specify either --check or --channel, not both.')
+        process.exitCode = 1
+        return
+    }
+
     const config = await readConfig()
     const channel: UpdateChannel = config.update_channel ?? 'stable'
 

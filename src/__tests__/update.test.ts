@@ -472,5 +472,16 @@ describe('update command', () => {
 
             expect(fetchSpy).not.toHaveBeenCalled()
         })
+
+        it('errors when combined with --check', async () => {
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'update', '--check', '--channel'])
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.stringContaining('not both'),
+            )
+            expect(process.exitCode).toBe(1)
+        })
     })
 })
