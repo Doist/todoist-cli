@@ -84,9 +84,25 @@ function channelLabel(channel: UpdateChannel): string {
     return channel === 'pre-release' ? ` ${chalk.magenta('(pre-release)')}` : ''
 }
 
-export async function updateAction(options: { check?: boolean }): Promise<void> {
+export async function updateAction(options: { check?: boolean; channel?: boolean }): Promise<void> {
+    if (options.check && options.channel) {
+        console.error(chalk.red('Error:'), 'Specify either --check or --channel, not both.')
+        process.exitCode = 1
+        return
+    }
+
     const config = await readConfig()
     const channel: UpdateChannel = config.update_channel ?? 'stable'
+
+    if (options.channel) {
+        if (channel === 'pre-release') {
+            console.log(`Update channel: ${chalk.magenta('pre-release')}`)
+        } else {
+            console.log(`Update channel: ${chalk.green('stable')}`)
+        }
+        return
+    }
+
     const tag = getInstallTag(channel)
     const label = channelLabel(channel)
 
