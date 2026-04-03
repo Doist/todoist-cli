@@ -215,6 +215,7 @@ td project list --personal                    # Personal projects only
 td project view "Project Name"
 td project collaborators "Project Name"
 td project collaborators "Project Name" --json   # JSON output
+td project collaborators "Project Name" --json --full  # JSON with all fields
 td project collaborators "Project Name" --ndjson  # NDJSON output
 td project create --name "New Project" --color "blue"
 td project create --name "New Project" --json    # Return created project as JSON
@@ -281,6 +282,7 @@ cat note.md | td comment add "task name" --stdin
 td comment add "task name" --content "See attached" --file ./report.pdf
 td comment view id:123                        # View full comment
 td comment view id:123 --json                 # JSON output
+td comment view id:123 --json --full          # JSON with all fields
 td comment update id:123 --content "Updated text"
 td comment update id:123 --content "Updated text" --json  # Return updated comment as JSON
 td comment delete id:123 --yes
@@ -332,6 +334,7 @@ td filter browse "Urgent work"                # Open in browser
 td workspace list
 td workspace view "Workspace Name"
 td workspace view "Workspace Name" --json     # JSON output
+td workspace view "Workspace Name" --json --full  # JSON with all fields
 td workspace projects "Workspace Name"        # or --workspace "Workspace Name"
 td workspace users "Workspace Name" --role ADMIN,MEMBER  # or --workspace "..."
 td workspace insights "Workspace Name"       # Health and progress for all projects

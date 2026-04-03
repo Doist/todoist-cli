@@ -12,7 +12,7 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
     const comment = await api.getComment(id)
 
     if (options.json) {
-        console.log(formatJson(comment, 'comment', options.full))
+        console.log(formatJson(comment, 'comment', options.full, true))
         return
     }
 
