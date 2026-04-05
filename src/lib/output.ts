@@ -372,6 +372,14 @@ export function formatError(code: string, message: string, hints?: string[]): st
     return chalk.red(lines.join('\n'))
 }
 
+export function formatErrorJson(code: string, message: string, hints?: string[]): string {
+    return JSON.stringify({ error: { code, message, hints } })
+}
+
+export function isJsonMode(): boolean {
+    return process.argv.includes('--json')
+}
+
 export interface PaginatedOutput<T> {
     results: T[]
     nextCursor: string | null

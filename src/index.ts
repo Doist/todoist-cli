@@ -2,8 +2,10 @@
 
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
+import { CliError } from './lib/errors.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
+import { formatErrorJson, isJsonMode } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
@@ -189,7 +191,11 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        console.error(err.message)
+        if (err instanceof CliError && isJsonMode()) {
+            console.error(formatErrorJson(err.code, err.message, err.hints))
+        } else {
+            console.error(err.message)
+        }
         process.exit(1)
     })
     .finally(() => stopEarlySpinner())
