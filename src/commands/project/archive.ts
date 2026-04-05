@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function archiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {
@@ -12,5 +12,5 @@ export async function archiveProject(ref: string, options: { dryRun?: boolean })
     }
 
     await api.archiveProject(project.id)
-    console.log(`Archived: ${project.name}`)
+    if (!isQuiet()) console.log(`Archived: ${project.name} (id:${project.id})`)
 }

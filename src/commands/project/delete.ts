@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function deleteProject(
@@ -31,5 +31,5 @@ export async function deleteProject(
     }
 
     await api.deleteProject(project.id)
-    console.log(`Deleted project: ${project.name}`)
+    if (!isQuiet()) console.log(`Deleted project: ${project.name} (id:${project.id})`)
 }

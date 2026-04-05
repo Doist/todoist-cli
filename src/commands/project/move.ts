@@ -1,7 +1,7 @@
 import type { MoveProjectToWorkspaceArgs, ProjectVisibility } from '@doist/todoist-sdk'
 import { ProjectVisibilitySchema } from '@doist/todoist-sdk'
 import { getApi, isPersonalProject, isWorkspaceProject } from '../../lib/api/core.js'
-import { formatError } from '../../lib/output.js'
+import { formatError, isQuiet } from '../../lib/output.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 
 const validVisibilities = ProjectVisibilitySchema.options
@@ -93,11 +93,14 @@ export async function moveProject(ref: string, options: MoveOptions): Promise<vo
 
         await api.moveProjectToWorkspace(args)
 
-        let output = `Moved "${project.name}" to workspace "${workspace.name}"`
-        if (folderName) {
-            output += ` (folder: ${folderName})`
+        if (!isQuiet()) {
+            let output = `Moved "${project.name}" to workspace "${workspace.name}"`
+            if (folderName) {
+                output += ` (folder: ${folderName})`
+            }
+            output += ` (id:${project.id})`
+            console.log(output)
         }
-        console.log(output)
     } else {
         if (isPersonalProject(project)) {
             throw new Error(
@@ -115,6 +118,6 @@ export async function moveProject(ref: string, options: MoveOptions): Promise<vo
         }
 
         await api.moveProjectToPersonal({ projectId: project.id })
-        console.log(`Moved "${project.name}" to personal`)
+        if (!isQuiet()) console.log(`Moved "${project.name}" to personal (id:${project.id})`)
     }
 }

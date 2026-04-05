@@ -282,7 +282,7 @@ describe('filter delete', () => {
         await program.parseAsync(['node', 'td', 'filter', 'delete', 'Work', '--yes'])
 
         expect(mockDeleteFilter).toHaveBeenCalledWith('filter-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Work')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Work (id:filter-1)')
         consoleSpy.mockRestore()
     })
 
@@ -339,7 +339,7 @@ describe('filter update', () => {
         expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
             name: 'New Name',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name (id:filter-1)')
         consoleSpy.mockRestore()
     })
 

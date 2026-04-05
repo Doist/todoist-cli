@@ -386,7 +386,7 @@ describe('task complete', () => {
         await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1'])
 
         expect(mockApi.closeTask).toHaveBeenCalledWith('task-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Completed: Buy milk')
+        expect(consoleSpy).toHaveBeenCalledWith('Completed: Buy milk (id:task-1)')
         consoleSpy.mockRestore()
     })
 
@@ -457,7 +457,7 @@ describe('task complete', () => {
 
         expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
         expect(mockApi.closeTask).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Recurring task')
+        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Recurring task (id:task-1)')
         consoleSpy.mockRestore()
     })
 
@@ -477,7 +477,7 @@ describe('task complete', () => {
         expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
         expect(mockApi.closeTask).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Task is not recurring, completing normally.')
-        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Normal task')
+        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Normal task (id:task-1)')
         consoleSpy.mockRestore()
     })
 })
@@ -546,7 +546,7 @@ describe('task delete', () => {
         await program.parseAsync(['node', 'td', 'task', 'delete', 'id:task-1', '--yes'])
 
         expect(mockApi.deleteTask).toHaveBeenCalledWith('task-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Test task')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Test task (id:task-1)')
         consoleSpy.mockRestore()
     })
 })
@@ -1026,7 +1026,7 @@ describe('task update', () => {
         expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
             content: 'New content',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated: New content')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: New content (id:task-1)')
         consoleSpy.mockRestore()
     })
 
@@ -2362,7 +2362,7 @@ describe('task reschedule', () => {
         await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
 
         expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
-        expect(consoleSpy).toHaveBeenCalledWith('Rescheduled: My task')
+        expect(consoleSpy).toHaveBeenCalledWith('Rescheduled: My task (id:task-1)')
         expect(consoleSpy).toHaveBeenCalledWith('Due: Mar 20')
         consoleSpy.mockRestore()
     })

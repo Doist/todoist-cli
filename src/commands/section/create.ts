@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectId } from '../../lib/refs.js'
 
 interface CreateOptions {
@@ -29,6 +29,11 @@ export async function createSection(options: CreateOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson(section, 'section'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(section.id)
         return
     }
 

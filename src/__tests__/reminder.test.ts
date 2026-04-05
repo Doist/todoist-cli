@@ -634,7 +634,7 @@ describe('reminder update', () => {
             minuteOffset: 60,
             due: undefined,
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated reminder: 1h before due')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated reminder: 1h before due (id:rem-1)')
         consoleSpy.mockRestore()
     })
 
@@ -724,7 +724,7 @@ describe('reminder delete', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'delete', 'id:rem-123', '--yes'])
 
         expect(mockDeleteReminder).toHaveBeenCalledWith('rem-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted reminder: 1h before due')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted reminder: 1h before due (id:rem-123)')
         consoleSpy.mockRestore()
     })
 

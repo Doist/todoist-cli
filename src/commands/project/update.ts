@@ -1,6 +1,6 @@
 import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export interface UpdateOptions {
@@ -50,5 +50,5 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
         return
     }
 
-    console.log(`Updated: ${updated.name}`)
+    if (!isQuiet()) console.log(`Updated: ${updated.name} (id:${project.id})`)
 }

@@ -16,13 +16,15 @@ program
     .option('--progress-jsonl [path]', 'Output progress events as JSONL to stderr or file')
     .option('-v, --verbose', 'Increase output verbosity (repeat up to 4x: -v, -vv, -vvv, -vvvv)')
     .option('--accessible', 'Add text labels to color-coded output (also: TD_ACCESSIBLE=1)')
+    .option('-q, --quiet', 'Suppress success messages (create commands still print the ID)')
     .addHelpText(
         'after',
         `
 Note for AI/LLM agents:
   Use "td task add" (not "td add") to create tasks with structured flags.
   Use --json or --ndjson flags for unambiguous, parseable output.
-  Default JSON shows essential fields; use --full for all fields.`,
+  Default JSON shows essential fields; use --full for all fields.
+  Use --quiet to suppress success messages (create commands still print the ID).`,
     )
 
 // Lazy command registry: [description, loader]

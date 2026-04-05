@@ -1,6 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'
@@ -98,5 +98,5 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
         return
     }
 
-    console.log(`Updated: ${updated.content}`)
+    if (!isQuiet()) console.log(`Updated: ${updated.content} (id:${task.id})`)
 }

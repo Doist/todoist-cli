@@ -380,6 +380,10 @@ export function isJsonMode(): boolean {
     return process.argv.includes('--json')
 }
 
+export function isQuiet(): boolean {
+    return process.argv.includes('--quiet') || process.argv.includes('-q')
+}
+
 export interface PaginatedOutput<T> {
     results: T[]
     nextCursor: string | null

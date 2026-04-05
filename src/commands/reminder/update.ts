@@ -1,6 +1,6 @@
 import { updateReminder as apiUpdateReminder, type ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { parseDateTime } from './helpers.js'
 
@@ -57,9 +57,11 @@ export async function updateReminderCmd(reminderId: string, options: UpdateOptio
 
     await apiUpdateReminder(id, { minuteOffset, due })
 
-    if (minuteOffset !== undefined) {
-        console.log(`Updated reminder: ${formatDuration(minuteOffset)} before due`)
-    } else if (due) {
-        console.log(`Updated reminder: at ${due.date.replace('T', ' ')}`)
+    if (!isQuiet()) {
+        if (minuteOffset !== undefined) {
+            console.log(`Updated reminder: ${formatDuration(minuteOffset)} before due (id:${id})`)
+        } else if (due) {
+            console.log(`Updated reminder: at ${due.date.replace('T', ' ')} (id:${id})`)
+        }
     }
 }

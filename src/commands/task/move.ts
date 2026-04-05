@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
 import {
     resolveParentTaskId,
     resolveProjectId,
@@ -48,7 +48,7 @@ export async function moveTask(ref: string, options: MoveOptions): Promise<void>
             ? await resolveProjectId(api, options.project)
             : task.projectId
         await api.moveTask(task.id, { projectId: targetProjectId })
-        console.log(`Moved: ${task.content}`)
+        if (!isQuiet()) console.log(`Moved: ${task.content} (id:${task.id})`)
         return
     }
 

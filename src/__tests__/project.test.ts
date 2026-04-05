@@ -708,7 +708,7 @@ describe('project delete', () => {
         await program.parseAsync(['node', 'td', 'project', 'delete', 'Test Project', '--yes'])
 
         expect(mockApi.deleteProject).toHaveBeenCalledWith('proj-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted project: Test Project')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted project: Test Project (id:proj-1)')
         consoleSpy.mockRestore()
     })
 
@@ -910,7 +910,7 @@ describe('project update', () => {
         expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', {
             name: 'New Name',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated: New Name')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: New Name (id:proj-1)')
     })
 
     it('updates project color and favorite', async () => {
@@ -1115,7 +1115,7 @@ describe('project archive', () => {
         await program.parseAsync(['node', 'td', 'project', 'archive', 'My Project'])
 
         expect(mockApi.archiveProject).toHaveBeenCalledWith('proj-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Archived: My Project')
+        expect(consoleSpy).toHaveBeenCalledWith('Archived: My Project (id:proj-1)')
     })
 
     it('archives project by id: prefix', async () => {
@@ -1163,7 +1163,7 @@ describe('project unarchive', () => {
         await program.parseAsync(['node', 'td', 'project', 'unarchive', 'My Project'])
 
         expect(mockApi.unarchiveProject).toHaveBeenCalledWith('proj-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Project')
+        expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Project (id:proj-1)')
     })
 
     it('unarchives project by id: prefix', async () => {
@@ -1367,7 +1367,9 @@ describe('project move', () => {
             projectId: 'proj-1',
             workspaceId: 'ws-1',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Moved "My Project" to workspace "Acme Corp"')
+        expect(consoleSpy).toHaveBeenCalledWith(
+            'Moved "My Project" to workspace "Acme Corp" (id:proj-1)',
+        )
     })
 
     it('moves project to workspace with --folder', async () => {
@@ -1469,7 +1471,7 @@ describe('project move', () => {
         expect(mockApi.moveProjectToPersonal).toHaveBeenCalledWith({
             projectId: 'proj-ws-1',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Moved "Team Project" to personal')
+        expect(consoleSpy).toHaveBeenCalledWith('Moved "Team Project" to personal (id:proj-ws-1)')
     })
 
     it('shows dry-run when moving to workspace without --yes', async () => {

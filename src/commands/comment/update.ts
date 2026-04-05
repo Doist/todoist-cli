@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function updateComment(
@@ -27,5 +27,5 @@ export async function updateComment(
     const oldPreview =
         comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
     await api.updateComment(id, { content: options.content })
-    console.log(`Updated comment: ${oldPreview}`)
+    if (!isQuiet()) console.log(`Updated comment: ${oldPreview} (id:${id})`)
 }

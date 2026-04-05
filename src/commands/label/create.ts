@@ -1,7 +1,7 @@
 import type { ColorKey } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 
 export interface CreateOptions {
     name: string
@@ -31,6 +31,11 @@ export async function createLabel(options: CreateOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson(label, 'label'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(label.id)
         return
     }
 

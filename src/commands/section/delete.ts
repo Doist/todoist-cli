@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function deleteSection(
@@ -33,5 +33,5 @@ export async function deleteSection(
     }
 
     await api.deleteSection(id)
-    console.log(`Deleted section: ${section.name}`)
+    if (!isQuiet()) console.log(`Deleted section: ${section.name} (id:${id})`)
 }
