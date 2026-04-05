@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { deleteFilter } from '../../lib/api/filters.js'
-import { isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveFilterRef } from './helpers.js'
 
 export async function deleteFilterCmd(

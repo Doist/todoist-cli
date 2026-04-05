@@ -1,12 +1,12 @@
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
+import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
-    isAccessible,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'

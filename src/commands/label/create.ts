@@ -1,7 +1,8 @@
 import type { ColorKey } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 
 export interface CreateOptions {
     name: string

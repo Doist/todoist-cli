@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
-import { isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function archiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {

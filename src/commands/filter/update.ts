@@ -1,5 +1,6 @@
 import { type UpdateFilterArgs, updateFilter } from '../../lib/api/filters.js'
-import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, printDryRun } from '../../lib/output.js'
 import { resolveFilterRef } from './helpers.js'
 
 export interface UpdateOptions {

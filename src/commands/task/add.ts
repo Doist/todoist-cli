@@ -1,6 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
-import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, formatJson, printDryRun } from '../../lib/output.js'
 import {
     extractId,
     isIdRef,

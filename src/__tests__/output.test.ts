@@ -1,5 +1,6 @@
 import type { Task } from '@doist/todoist-sdk'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isAccessible, resetGlobalArgs } from '../lib/global-args.js'
 import {
     formatDue,
     formatError,
@@ -11,7 +12,6 @@ import {
     formatPriority,
     formatTaskRow,
     formatTaskView,
-    isAccessible,
 } from '../lib/output.js'
 import { fixtures } from './helpers/fixtures.js'
 
@@ -168,8 +168,13 @@ describe('isAccessible', () => {
     const originalArgv = process.argv
     const originalEnv = process.env.TD_ACCESSIBLE
 
+    beforeEach(() => {
+        resetGlobalArgs()
+    })
+
     afterEach(() => {
         process.argv = originalArgv
+        resetGlobalArgs()
         if (originalEnv === undefined) {
             delete process.env.TD_ACCESSIBLE
         } else {

@@ -1,5 +1,6 @@
 import { deleteReminder as apiDeleteReminder, fetchReminders } from '../../lib/api/reminders.js'
-import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { formatReminderTime } from './helpers.js'
 

@@ -1,7 +1,8 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { uploadFile } from '../../lib/api/uploads.js'
-import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 

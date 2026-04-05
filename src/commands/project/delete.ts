@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function deleteProject(
