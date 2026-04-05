@@ -1,3 +1,9 @@
+## [1.38.0](https://github.com/Doist/todoist-cli/compare/v1.37.1...v1.38.0) (2026-04-05)
+
+### Features
+
+* structured JSON errors, --quiet flag, and IDs in mutation output ([#225](https://github.com/Doist/todoist-cli/issues/225)) ([266d134](https://github.com/Doist/todoist-cli/commit/266d1346dcdbe0f624cf6e1c3cd494c8d111891a))
+
 ## [1.37.1](https://github.com/Doist/todoist-cli/compare/v1.37.0...v1.37.1) (2026-04-03)
 
 ### Bug Fixes
