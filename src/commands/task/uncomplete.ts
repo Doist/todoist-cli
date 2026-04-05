@@ -4,13 +4,19 @@ import { lenientIdRef } from '../../lib/refs.js'
 
 export async function uncompleteTask(ref: string, options: { dryRun?: boolean }): Promise<void> {
     const id = lenientIdRef(ref, 'task')
+    const api = await getApi()
+    const task = await api.getTask(id)
 
-    if (options.dryRun) {
-        printDryRun('reopen task', { ID: id })
+    if (!task.checked) {
+        console.log('Task is not completed.')
         return
     }
 
-    const api = await getApi()
-    await api.reopenTask(id)
-    if (!isQuiet()) console.log(`Reopened task ${id}`)
+    if (options.dryRun) {
+        printDryRun('reopen task', { Task: task.content })
+        return
+    }
+
+    await api.reopenTask(task.id)
+    if (!isQuiet()) console.log(`Reopened: ${task.content} (id:${task.id})`)
 }

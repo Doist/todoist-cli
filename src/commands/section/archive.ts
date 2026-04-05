@@ -10,6 +10,11 @@ export async function archiveSection(
     const api = await getApi()
     const section = await api.getSection(id)
 
+    if (section.isArchived) {
+        console.log('Section already archived.')
+        return
+    }
+
     if (options.dryRun) {
         printDryRun('archive section', { Section: section.name })
         return

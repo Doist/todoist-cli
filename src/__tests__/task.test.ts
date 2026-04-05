@@ -491,16 +491,38 @@ describe('task uncomplete', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('reopens task with id: prefix', async () => {
+    it('reopens completed task', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            checked: true,
+        })
         mockApi.reopenTask.mockResolvedValue(true)
 
         await program.parseAsync(['node', 'td', 'task', 'uncomplete', 'id:task-1'])
 
         expect(mockApi.reopenTask).toHaveBeenCalledWith('task-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Reopened task task-1')
+        expect(consoleSpy).toHaveBeenCalledWith('Reopened: Buy milk (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows message for non-completed task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Open task',
+            checked: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'uncomplete', 'id:task-1'])
+
+        expect(mockApi.reopenTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Task is not completed.')
         consoleSpy.mockRestore()
     })
 

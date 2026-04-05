@@ -10,6 +10,11 @@ export async function unarchiveSection(
     const api = await getApi()
     const section = await api.getSection(id)
 
+    if (!section.isArchived) {
+        console.log('Section is not archived.')
+        return
+    }
+
     if (options.dryRun) {
         printDryRun('unarchive section', { Section: section.name })
         return
