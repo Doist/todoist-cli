@@ -1,3 +1,9 @@
+## [1.38.1](https://github.com/Doist/todoist-cli/compare/v1.38.0...v1.38.1) (2026-04-05)
+
+### Bug Fixes
+
+* add state-checking guards for archive/unarchive/uncomplete ([#231](https://github.com/Doist/todoist-cli/issues/231)) ([57001f3](https://github.com/Doist/todoist-cli/commit/57001f36beeb03d4e60fc12ef3cca6ee236d52b9))
+
 ## [1.38.0](https://github.com/Doist/todoist-cli/compare/v1.37.1...v1.38.0) (2026-04-05)
 
 ### Features
