@@ -13,7 +13,7 @@ export interface GlobalArgs {
     json: boolean
     ndjson: boolean
     quiet: boolean
-    verbose: number // 0..4
+    verbose: 0 | 1 | 2 | 3 | 4
     accessible: boolean
     noSpinner: boolean
     raw: boolean
@@ -59,7 +59,7 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
         } else if (arg === '--quiet') {
             result.quiet = true
         } else if (arg === '--verbose') {
-            result.verbose = Math.min(result.verbose + 1, 4)
+            result.verbose = Math.min(result.verbose + 1, 4) as GlobalArgs['verbose']
         } else if (arg === '--accessible') {
             result.accessible = true
         } else if (arg === '--no-spinner') {
@@ -84,7 +84,7 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
                 const ch = arg[j]
                 const mapped = SHORT_FLAGS[ch]
                 if (mapped === 'verbose') {
-                    result.verbose = Math.min(result.verbose + 1, 4)
+                    result.verbose = Math.min(result.verbose + 1, 4) as GlobalArgs['verbose']
                 } else if (mapped === 'quiet') {
                     result.quiet = true
                 }
@@ -139,7 +139,7 @@ export function isRawMode(): boolean {
     return getGlobalArgs().raw
 }
 
-export function getVerboseLevel(): number {
+export function getVerboseLevel(): GlobalArgs['verbose'] {
     return getGlobalArgs().verbose
 }
 
