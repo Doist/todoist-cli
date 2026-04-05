@@ -28,7 +28,6 @@ export interface SaveApiTokenOptions {
     authScope?: string
 }
 
-export class NoTokenError extends CliError {
 export interface AuthProbeResult {
     token: string
     metadata: AuthMetadata
