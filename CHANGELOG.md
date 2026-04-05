@@ -1,3 +1,9 @@
+## [1.38.2](https://github.com/Doist/todoist-cli/compare/v1.38.1...v1.38.2) (2026-04-05)
+
+### Bug Fixes
+
+* migrate bare errors to CliError and wrap SDK errors consistently ([#233](https://github.com/Doist/todoist-cli/issues/233)) ([a12d362](https://github.com/Doist/todoist-cli/commit/a12d362e1ba794bb0b022ce7f2ffe4b13990755f))
+
 ## [1.38.1](https://github.com/Doist/todoist-cli/compare/v1.38.0...v1.38.1) (2026-04-05)
 
 ### Bug Fixes
