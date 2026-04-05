@@ -1,7 +1,8 @@
 import type { ColorKey } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveLabelRef } from './helpers.js'
 
 export interface UpdateLabelOptions {
@@ -26,7 +27,7 @@ export async function updateLabel(nameOrId: string, options: UpdateLabelOptions)
     if (options.favorite === false) args.isFavorite = false
 
     if (Object.keys(args).length === 0) {
-        throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
+        throw new CliError('NO_CHANGES', 'No changes specified.')
     }
 
     if (options.dryRun) {

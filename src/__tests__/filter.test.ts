@@ -308,7 +308,7 @@ describe('filter delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'filter', 'delete', 'nonexistent', '--yes']),
-        ).rejects.toThrow('FILTER_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'FILTER_NOT_FOUND')
     })
 })
 
@@ -446,7 +446,7 @@ describe('filter update', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'filter', 'update', 'Work']),
-        ).rejects.toThrow('NO_CHANGES')
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
     })
 
     it('throws for non-existent filter', async () => {
@@ -464,7 +464,7 @@ describe('filter update', () => {
                 '--name',
                 'new-name',
             ]),
-        ).rejects.toThrow('FILTER_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'FILTER_NOT_FOUND')
     })
 })
 
@@ -590,7 +590,7 @@ describe('filter show', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'filter', 'show', 'nonexistent']),
-        ).rejects.toThrow('FILTER_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'FILTER_NOT_FOUND')
     })
 
     it('resolves partial name match', async () => {
@@ -622,9 +622,9 @@ describe('filter show', () => {
             makeFilter({ id: 'filter-2', name: 'Work Projects', query: '#work' }),
         ])
 
-        await expect(program.parseAsync(['node', 'td', 'filter', 'show', 'work'])).rejects.toThrow(
-            'AMBIGUOUS_FILTER',
-        )
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'show', 'work']),
+        ).rejects.toHaveProperty('code', 'AMBIGUOUS_FILTER')
     })
 
     it('throws INVALID_FILTER_QUERY for invalid filter syntax', async () => {
@@ -636,9 +636,9 @@ describe('filter show', () => {
 
         mockApi.getTasksByFilter.mockRejectedValue(new Error('HTTP 400: Bad Request'))
 
-        await expect(program.parseAsync(['node', 'td', 'filter', 'show', 'Bad'])).rejects.toThrow(
-            'INVALID_FILTER_QUERY',
-        )
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'show', 'Bad']),
+        ).rejects.toHaveProperty('code', 'INVALID_FILTER_QUERY')
     })
 })
 

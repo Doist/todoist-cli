@@ -402,16 +402,13 @@ describe('auth command', () => {
             )
         })
 
-        it('outputs JSON error when --json flag is used and not authenticated', async () => {
+        it('throws NoTokenError when not authenticated (JSON handled by global handler)', async () => {
             const program = createProgram()
             mockGetApi.mockRejectedValue(new NoTokenError())
 
-            await program.parseAsync(['node', 'td', 'auth', 'status', '--json'])
-
-            expect(consoleSpy).toHaveBeenCalledWith(
-                JSON.stringify({ error: 'Not authenticated' }, null, 2),
-            )
-            expect(process.exitCode).toBe(1)
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'status', '--json']),
+            ).rejects.toHaveProperty('code', 'NO_TOKEN')
         })
 
         it('rethrows non-auth errors in JSON mode', async () => {
@@ -432,13 +429,13 @@ describe('auth command', () => {
             )
         })
 
-        it('shows not authenticated when no token', async () => {
+        it('throws NoTokenError when no token', async () => {
             const program = createProgram()
             mockGetApi.mockRejectedValue(new NoTokenError())
 
-            await program.parseAsync(['node', 'td', 'auth', 'status'])
-
-            expect(consoleSpy).toHaveBeenCalledWith('Not authenticated')
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'status']),
+            ).rejects.toHaveProperty('code', 'NO_TOKEN')
         })
     })
 

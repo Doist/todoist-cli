@@ -1,6 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { printDryRun } from '../../lib/output.js'
 import {
     resolveParentTaskId,
     resolveProjectId,
@@ -21,11 +22,9 @@ export async function moveTask(ref: string, options: MoveOptions): Promise<void>
     const hasDestination =
         options.project || options.section || options.parent || wantsNoParent || wantsNoSection
     if (!hasDestination) {
-        throw new Error(
-            formatError(
-                'MISSING_DESTINATION',
-                'At least one of --project, --section, --parent, --no-parent, or --no-section is required.',
-            ),
+        throw new CliError(
+            'MISSING_DESTINATION',
+            'At least one of --project, --section, --parent, --no-parent, or --no-section is required.',
         )
     }
 

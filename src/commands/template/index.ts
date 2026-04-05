@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { CliError } from '../../lib/errors.js'
 import { createFromTemplate, type CreateFromTemplateOptions } from './create.js'
 import { exportTemplateFile, type ExportFileOptions } from './export-file.js'
 import { exportTemplateUrl, type ExportUrlOptions } from './export-url.js'
@@ -19,7 +20,10 @@ export function registerTemplateCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .action((projectArg: string | undefined, options: ExportFileOptions) => {
             if (projectArg && options.project) {
-                throw new Error('Cannot specify project both as argument and --project flag')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify project both as argument and --project flag',
+                )
             }
             const ref = projectArg || options.project
             if (!ref) {
@@ -37,7 +41,10 @@ export function registerTemplateCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .action((projectArg: string | undefined, options: ExportUrlOptions) => {
             if (projectArg && options.project) {
-                throw new Error('Cannot specify project both as argument and --project flag')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify project both as argument and --project flag',
+                )
             }
             const ref = projectArg || options.project
             if (!ref) {
@@ -70,7 +77,10 @@ export function registerTemplateCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((projectArg: string | undefined, options: ImportFileOptions) => {
             if (projectArg && options.project) {
-                throw new Error('Cannot specify project both as argument and --project flag')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify project both as argument and --project flag',
+                )
             }
             const ref = projectArg || options.project
             if (!ref) {
@@ -90,7 +100,10 @@ export function registerTemplateCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((projectArg: string | undefined, options: ImportIdOptions) => {
             if (projectArg && options.project) {
-                throw new Error('Cannot specify project both as argument and --project flag')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify project both as argument and --project flag',
+                )
             }
             const ref = projectArg || options.project
             if (!ref) {

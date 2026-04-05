@@ -1,6 +1,6 @@
 import type { TodoistApi } from '@doist/todoist-sdk'
 import { getCurrentUserId, isWorkspaceProject, type Project, type Task } from './api/core.js'
-import { formatError } from './output.js'
+import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'
 
 export interface CollaboratorInfo {
@@ -212,7 +212,7 @@ async function fetchCollaboratorsForProject(
         return users
     }
 
-    throw new Error(formatError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.'))
+    throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
 }
 
 export async function resolveAssigneeId(
@@ -240,14 +240,12 @@ export async function resolveAssigneeId(
     const partialName = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
     if (partialName.length === 1) return partialName[0].id
     if (partialName.length > 1) {
-        throw new Error(
-            formatError(
-                'AMBIGUOUS_ASSIGNEE',
-                `Multiple users match "${ref}":`,
-                partialName.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
-            ),
+        throw new CliError(
+            'AMBIGUOUS_ASSIGNEE',
+            `Multiple users match "${ref}":`,
+            partialName.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
         )
     }
 
-    throw new Error(formatError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`))
+    throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
 }

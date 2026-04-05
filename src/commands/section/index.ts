@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { archiveSection } from './archive.js'
 import { browseSection } from './browse.js'
@@ -27,7 +28,10 @@ export function registerSectionCommand(program: Command): void {
                 options: PaginatedViewOptions & { project?: string },
             ) => {
                 if (projectArg && options.project) {
-                    throw new Error('Cannot specify project both as argument and --project flag')
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify project both as argument and --project flag',
+                    )
                 }
                 const project = projectArg || options.project
                 if (!project) {

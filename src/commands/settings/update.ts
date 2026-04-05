@@ -1,5 +1,5 @@
 import { updateUserSettings } from '../../lib/api/user-settings.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { parseBoolean, parseDateFormat, parseDay, parseTheme, parseTimeFormat } from './helpers.js'
 
 interface UpdateOptions {
@@ -39,9 +39,7 @@ export async function updateSettings(options: UpdateOptions): Promise<void> {
     if (options.autoReminder !== undefined) {
         const minutes = parseInt(options.autoReminder, 10)
         if (Number.isNaN(minutes) || minutes < 0) {
-            throw new Error(
-                formatError('INVALID_AUTO_REMINDER', 'Auto reminder must be >= 0 minutes.'),
-            )
+            throw new CliError('INVALID_AUTO_REMINDER', 'Auto reminder must be >= 0 minutes.')
         }
         args.autoReminder = minutes
     }

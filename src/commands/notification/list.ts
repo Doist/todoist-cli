@@ -1,7 +1,8 @@
 import chalk from 'chalk'
 import { fetchNotifications } from '../../lib/api/notifications.js'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatError, formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
 import { formatNotificationDetails, formatRelativeTime, stripInvitationSecret } from './helpers.js'
 
 type ListOptions = PaginatedViewOptions & {
@@ -13,7 +14,7 @@ type ListOptions = PaginatedViewOptions & {
 
 export async function listNotifications(options: ListOptions): Promise<void> {
     if (options.unread && options.read) {
-        throw new Error(formatError('INVALID_OPTIONS', 'Cannot specify both --read and --unread'))
+        throw new CliError('INVALID_OPTIONS', 'Cannot specify both --read and --unread')
     }
 
     // Note: All filtering (type, read state, pagination) is done client-side because

@@ -191,7 +191,7 @@ describe('comment delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'comment', 'delete', 'my-comment', '--yes']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('shows dry-run without --yes', async () => {
@@ -251,7 +251,7 @@ describe('comment update', () => {
                 '--content',
                 'New text',
             ]),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('updates comment content', async () => {
@@ -523,7 +523,7 @@ describe('comment view', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'comment', 'view', 'my-comment']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {

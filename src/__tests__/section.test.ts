@@ -270,7 +270,7 @@ describe('section delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'section', 'delete', 'Planning', '--yes']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('shows dry-run without --yes', async () => {
@@ -340,7 +340,7 @@ describe('section update', () => {
                 '--name',
                 'New Name',
             ]),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('updates section name', async () => {
@@ -490,7 +490,7 @@ describe('section archive', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'section', 'archive', 'Planning']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('archives section with id: prefix', async () => {
@@ -551,7 +551,7 @@ describe('section unarchive', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'section', 'unarchive', 'Planning']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('unarchives section with id: prefix', async () => {

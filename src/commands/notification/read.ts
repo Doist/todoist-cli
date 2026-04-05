@@ -3,8 +3,8 @@ import {
     markAllNotificationsRead,
     markNotificationRead,
 } from '../../lib/api/notifications.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError } from '../../lib/output.js'
 import { resolveNotification } from './helpers.js'
 
 interface ReadOptions {
@@ -29,7 +29,7 @@ export async function markRead(idRef: string | undefined, options: ReadOptions):
     }
 
     if (!idRef) {
-        throw new Error(formatError('MISSING_ID', 'Provide a notification ID or use --all'))
+        throw new CliError('MISSING_ID', 'Provide a notification ID or use --all')
     }
 
     const n = await resolveNotification(idRef)

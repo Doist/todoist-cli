@@ -1,6 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function deleteProject(
@@ -12,11 +13,9 @@ export async function deleteProject(
 
     const { results: tasks } = await api.getTasks({ projectId: project.id })
     if (tasks.length > 0) {
-        throw new Error(
-            formatError(
-                'HAS_TASKS',
-                `Cannot delete project: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
-            ),
+        throw new CliError(
+            'HAS_TASKS',
+            `Cannot delete project: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
         )
     }
 

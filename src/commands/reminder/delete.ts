@@ -1,6 +1,7 @@
 import { deleteReminder as apiDeleteReminder, fetchReminders } from '../../lib/api/reminders.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { formatReminderTime } from './helpers.js'
 
@@ -16,9 +17,7 @@ export async function deleteReminderCmd(reminderId: string, options: DeleteOptio
     const reminder = reminders.find((r) => r.id === id)
 
     if (!reminder) {
-        console.log(formatError('NOT_FOUND', `Reminder not found: ${id}`))
-        process.exitCode = 1
-        return
+        throw new CliError('NOT_FOUND', `Reminder not found: ${id}`)
     }
 
     const timeDesc = formatReminderTime(reminder)

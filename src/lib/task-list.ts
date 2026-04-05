@@ -2,9 +2,9 @@ import type { Task, TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
+import { CliError } from './errors.js'
 import type { PaginatedViewOptions } from './options.js'
 import {
-    formatError,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -34,11 +34,9 @@ export async function filterByWorkspaceOrPersonal({
     prefetchedProjects,
 }: FilterByWorkspaceOrPersonalOptions): Promise<{ tasks: Task[]; projects: Map<string, Project> }> {
     if (workspace && personal) {
-        throw new Error(
-            formatError(
-                'CONFLICTING_FILTERS',
-                '--workspace and --personal are mutually exclusive.',
-            ),
+        throw new CliError(
+            'CONFLICTING_FILTERS',
+            '--workspace and --personal are mutually exclusive.',
         )
     }
 
@@ -90,7 +88,7 @@ export const PRIORITY_CHOICES = Object.keys(PRIORITY_MAP)
 export function parsePriority(p: string): number {
     const result = PRIORITY_MAP[p.toLowerCase()]
     if (result !== undefined) return result
-    throw new Error(formatError('INVALID_PRIORITY', `Invalid priority "${p}".`))
+    throw new CliError('INVALID_PRIORITY', `Invalid priority "${p}".`)
 }
 
 function buildFilterQuery(options: TaskListOptions): string | null {

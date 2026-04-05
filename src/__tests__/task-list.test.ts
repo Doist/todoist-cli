@@ -27,24 +27,36 @@ describe('parsePriority', () => {
     })
 
     it('throws for invalid format like "high"', () => {
-        expect(() => parsePriority('high')).toThrow('INVALID_PRIORITY')
+        expect(() => parsePriority('high')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
     })
 
     it('throws for p0', () => {
-        expect(() => parsePriority('p0')).toThrow('INVALID_PRIORITY')
+        expect(() => parsePriority('p0')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
     })
 
     it('throws for p5', () => {
-        expect(() => parsePriority('p5')).toThrow('INVALID_PRIORITY')
+        expect(() => parsePriority('p5')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
     })
 
     it('throws for numeric strings', () => {
-        expect(() => parsePriority('1')).toThrow('INVALID_PRIORITY')
-        expect(() => parsePriority('4')).toThrow('INVALID_PRIORITY')
+        expect(() => parsePriority('1')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
+        expect(() => parsePriority('4')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
     })
 
     it('throws for empty string', () => {
-        expect(() => parsePriority('')).toThrow('INVALID_PRIORITY')
+        expect(() => parsePriority('')).toThrow(
+            expect.objectContaining({ code: 'INVALID_PRIORITY' }),
+        )
     })
 
     it.each(PRIORITY_CHOICES)('accepts choice "%s"', (value) => {

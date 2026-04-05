@@ -1,8 +1,8 @@
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
+import { CliError } from '../../lib/errors.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { formatError } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function listCollaborators(ref: string, options: ViewOptions = {}): Promise<void> {
@@ -78,7 +78,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
     }
 
     if (!project.isShared) {
-        throw new Error(formatError('NOT_SHARED', 'Project is not shared.'))
+        throw new CliError('NOT_SHARED', 'Project is not shared.')
     }
 
     const allUsers: Array<{ id: string; name: string; email: string }> = []

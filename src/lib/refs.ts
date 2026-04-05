@@ -6,7 +6,7 @@ import {
     type Workspace,
     type WorkspaceFolder,
 } from './api/workspaces.js'
-import { formatError } from './output.js'
+import { CliError } from './errors.js'
 import { paginate } from './pagination.js'
 
 const URL_ENTITY_TYPES = ['task', 'project', 'label', 'filter'] as const
@@ -73,11 +73,9 @@ function isMatchingUrlType(
 ): parsedUrl is ParsedTodoistUrl {
     if (!parsedUrl) return false
     if (parsedUrl.entityType !== expectedType) {
-        throw new Error(
-            formatError(
-                'ENTITY_TYPE_MISMATCH',
-                `Expected a ${expectedType} URL, but got a ${parsedUrl.entityType} URL.`,
-            ),
+        throw new CliError(
+            'ENTITY_TYPE_MISMATCH',
+            `Expected a ${expectedType} URL, but got a ${parsedUrl.entityType} URL.`,
         )
     }
     return true
@@ -110,7 +108,7 @@ export function lenientIdRef(ref: string, entityName: string): string {
     if (URL_ENTITY_TYPES.includes(entityName as UrlEntityType)) {
         hints.push(`Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`)
     }
-    throw new Error(formatError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, hints))
+    throw new CliError('INVALID_REF', `Invalid ${entityName} reference "${ref}".`, hints)
 }
 
 function fuzzyMatchInList<T extends { id: string }>(
@@ -128,12 +126,10 @@ function fuzzyMatchInList<T extends { id: string }>(
     if (partial.length === 1) return partial[0]
     if (partial.length > 1) {
         const suffix = context ? ` ${context}` : ''
-        throw new Error(
-            formatError(
-                `AMBIGUOUS_${entityType.toUpperCase()}`,
-                `Multiple ${entityType}s match "${ref}"${suffix}:`,
-                partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
-            ),
+        throw new CliError(
+            `AMBIGUOUS_${entityType.toUpperCase()}`,
+            `Multiple ${entityType}s match "${ref}"${suffix}:`,
+            partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
         )
     }
 
@@ -154,11 +150,9 @@ function resolveFromList<T extends { id: string }>(
         const id = extractId(ref)
         const match = items.find((item) => item.id === id)
         if (match) return match
-        throw new Error(
-            formatError(
-                `${entityType.toUpperCase()}_NOT_FOUND`,
-                `${label} id:${id} not found${suffix}.`,
-            ),
+        throw new CliError(
+            `${entityType.toUpperCase()}_NOT_FOUND`,
+            `${label} id:${id} not found${suffix}.`,
         )
     }
 
@@ -170,11 +164,9 @@ function resolveFromList<T extends { id: string }>(
         if (byId) return byId
     }
 
-    throw new Error(
-        formatError(
-            `${entityType.toUpperCase()}_NOT_FOUND`,
-            `${label} "${ref}" not found${suffix}.`,
-        ),
+    throw new CliError(
+        `${entityType.toUpperCase()}_NOT_FOUND`,
+        `${label} "${ref}" not found${suffix}.`,
     )
 }
 
@@ -210,11 +202,9 @@ async function resolveRef<T extends { id: string }>(
     entityType: string,
 ): Promise<T> {
     if (!ref.trim()) {
-        throw new Error(
-            formatError(
-                `INVALID_${entityType.toUpperCase()}`,
-                `${entityType} reference cannot be empty.`,
-            ),
+        throw new CliError(
+            `INVALID_${entityType.toUpperCase()}`,
+            `${entityType} reference cannot be empty.`,
         )
     }
 
@@ -231,24 +221,20 @@ async function resolveRef<T extends { id: string }>(
     const exact = results.filter((item) => getName(item).toLowerCase() === lower)
     if (exact.length === 1) return exact[0]
     if (exact.length > 1) {
-        throw new Error(
-            formatError(
-                `AMBIGUOUS_${entityType.toUpperCase()}`,
-                `Multiple ${entityType}s match "${ref}" exactly:`,
-                exact.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
-            ),
+        throw new CliError(
+            `AMBIGUOUS_${entityType.toUpperCase()}`,
+            `Multiple ${entityType}s match "${ref}" exactly:`,
+            exact.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
         )
     }
 
     const partial = results.filter((item) => getName(item).toLowerCase().includes(lower))
     if (partial.length === 1) return partial[0]
     if (partial.length > 1) {
-        throw new Error(
-            formatError(
-                `AMBIGUOUS_${entityType.toUpperCase()}`,
-                `Multiple ${entityType}s match "${ref}":`,
-                partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
-            ),
+        throw new CliError(
+            `AMBIGUOUS_${entityType.toUpperCase()}`,
+            `Multiple ${entityType}s match "${ref}":`,
+            partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
         )
     }
 
@@ -264,9 +250,7 @@ async function resolveRef<T extends { id: string }>(
         }
     }
 
-    throw new Error(
-        formatError(`${entityType.toUpperCase()}_NOT_FOUND`, `${entityType} "${ref}" not found.`),
-    )
+    throw new CliError(`${entityType.toUpperCase()}_NOT_FOUND`, `${entityType} "${ref}" not found.`)
 }
 
 export async function resolveTaskRef(api: TodoistApi, ref: string): Promise<Task> {
@@ -338,7 +322,7 @@ export async function resolveParentTaskId(
 
     if (looksLikeRawId(ref)) return ref
 
-    throw new Error(formatError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`))
+    throw new CliError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`)
 }
 
 export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {

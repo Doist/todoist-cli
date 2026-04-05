@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander'
 import { withUnvalidatedChoices } from '../../lib/completion.js'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 import { showWorkspaceInsights } from './insights.js'
@@ -48,7 +49,8 @@ export function registerWorkspaceCommand(program: Command): void {
                 options: PaginatedViewOptions & { workspace?: string },
             ) => {
                 if (refArg && options.workspace) {
-                    throw new Error(
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
@@ -86,7 +88,8 @@ export function registerWorkspaceCommand(program: Command): void {
                 options: PaginatedViewOptions & { role?: string; workspace?: string },
             ) => {
                 if (refArg && options.workspace) {
-                    throw new Error(
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
@@ -111,7 +114,8 @@ export function registerWorkspaceCommand(program: Command): void {
                 options: { json?: boolean; projectIds?: string; workspace?: string },
             ) => {
                 if (refArg && options.workspace) {
-                    throw new Error(
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }

@@ -2,6 +2,7 @@ import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
+import type { CliError, ErrorType } from './errors.js'
 import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
@@ -358,19 +359,52 @@ export function formatNdjson<T extends object>(
     return items.map((item) => JSON.stringify(processItem(item, type, full, showUrl))).join('\n')
 }
 
-export function formatError(code: string, message: string, hints?: string[]): string {
-    const lines = [`Error: ${code}`, message]
-    if (hints && hints.length > 0) {
+function resolveErrorParts(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): { code: string; message: string; hints: string[] | undefined; type: ErrorType } {
+    if (typeof codeOrError === 'string') {
+        return { code: codeOrError, message: message!, hints, type: 'error' }
+    }
+    return {
+        code: codeOrError.code,
+        message: codeOrError.message,
+        hints: codeOrError.hints,
+        type: codeOrError.type,
+    }
+}
+
+export function formatError(error: CliError): string
+export function formatError(code: string, message: string, hints?: string[]): string
+export function formatError(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): string {
+    const parts = resolveErrorParts(codeOrError, message, hints)
+    const color = parts.type === 'info' ? chalk.yellow : chalk.red
+    const lines = parts.type === 'info' ? [parts.message] : [`Error: ${parts.code}`, parts.message]
+    if (parts.hints && parts.hints.length > 0) {
         lines.push('')
-        for (const hint of hints) {
+        for (const hint of parts.hints) {
             lines.push(`  - ${hint}`)
         }
     }
-    return chalk.red(lines.join('\n'))
+    return color(lines.join('\n'))
 }
 
-export function formatErrorJson(code: string, message: string, hints?: string[]): string {
-    return JSON.stringify({ error: { code, message, hints } })
+export function formatErrorJson(error: CliError): string
+export function formatErrorJson(code: string, message: string, hints?: string[]): string
+export function formatErrorJson(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): string {
+    const parts = resolveErrorParts(codeOrError, message, hints)
+    return JSON.stringify({
+        error: { code: parts.code, message: parts.message, hints: parts.hints },
+    })
 }
 
 export interface PaginatedOutput<T> {

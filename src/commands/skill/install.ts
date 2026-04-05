@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { getInstaller, listAgents } from '../../lib/skills/index.js'
 
 export interface InstallOptions {
@@ -11,11 +11,9 @@ export async function installSkill(agent: string, options: InstallOptions): Prom
     const installer = getInstaller(agent)
     if (!installer) {
         const available = listAgents().join(', ')
-        throw new Error(
-            formatError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
-                `Available agents: ${available}`,
-            ]),
-        )
+        throw new CliError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
+            `Available agents: ${available}`,
+        ])
     }
 
     const local = options.local ?? false

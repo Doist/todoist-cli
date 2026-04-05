@@ -1,6 +1,6 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { PRIORITY_CHOICES } from '../../lib/task-list.js'
 import type { AddOptions } from './add.js'
 import { addTask } from './add.js'
@@ -121,11 +121,9 @@ export function registerTaskCommand(program: Command): void {
         .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
             const n = Number(val)
             if (!Number.isInteger(n) || n < 0) {
-                throw new Error(
-                    formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
-                        'Order must be a non-negative integer (e.g., 0 for top of list)',
-                    ]),
-                )
+                throw new CliError('INVALID_ORDER', `Invalid order value: "${val}"`, [
+                    'Order must be a non-negative integer (e.g., 0 for top of list)',
+                ])
             }
             return n
         })
@@ -133,7 +131,10 @@ export function registerTaskCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((contentArg: string | undefined, options: AddOptions & { content?: string }) => {
             if (contentArg && options.content) {
-                throw new Error('Cannot specify content both as argument and --content flag')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify content both as argument and --content flag',
+                )
             }
             const content = contentArg || options.content
             if (!content) {
@@ -167,11 +168,9 @@ export function registerTaskCommand(program: Command): void {
         .option('--order <number>', 'Task position within project/parent (0 = top)', (val) => {
             const n = Number(val)
             if (!Number.isInteger(n) || n < 0) {
-                throw new Error(
-                    formatError('INVALID_ORDER', `Invalid order value: "${val}"`, [
-                        'Order must be a non-negative integer (e.g., 0 for top of list)',
-                    ]),
-                )
+                throw new CliError('INVALID_ORDER', `Invalid order value: "${val}"`, [
+                    'Order must be a non-negative integer (e.g., 0 for top of list)',
+                ])
             }
             return n
         })

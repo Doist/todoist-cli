@@ -531,7 +531,7 @@ describe('task uncomplete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'task', 'uncomplete', 'some-task-name']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 })
 
@@ -725,7 +725,7 @@ describe('task add', () => {
                 '--section',
                 'Planning',
             ]),
-        ).rejects.toThrow('PROJECT_REQUIRED')
+        ).rejects.toHaveProperty('code', 'PROJECT_REQUIRED')
     })
 
     it('creates task with --section using id: prefix', async () => {
@@ -1451,7 +1451,7 @@ describe('task add --assignee', () => {
                 '--assignee',
                 'id:user-123',
             ]),
-        ).rejects.toThrow('PROJECT_REQUIRED')
+        ).rejects.toHaveProperty('code', 'PROJECT_REQUIRED')
     })
 })
 
@@ -2458,7 +2458,7 @@ describe('task reschedule', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20']),
-        ).rejects.toThrow('NO_DUE_DATE')
+        ).rejects.toHaveProperty('code', 'NO_DUE_DATE')
 
         expect(mockRescheduleTask).not.toHaveBeenCalled()
         consoleSpy.mockRestore()
@@ -2473,7 +2473,7 @@ describe('task reschedule', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', 'tomorrow']),
-        ).rejects.toThrow('INVALID_DATE')
+        ).rejects.toHaveProperty('code', 'INVALID_DATE')
 
         expect(mockRescheduleTask).not.toHaveBeenCalled()
         consoleSpy.mockRestore()

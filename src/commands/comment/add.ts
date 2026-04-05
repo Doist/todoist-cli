@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { uploadFile } from '../../lib/api/uploads.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
@@ -17,19 +18,19 @@ interface AddOptions {
 
 export async function addComment(ref: string, options: AddOptions): Promise<void> {
     if (options.content !== undefined && options.stdin) {
-        throw new Error('Cannot use both --content and --stdin')
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --content and --stdin')
     }
 
     let content: string
     if (options.stdin) {
         content = await readStdin()
         if (!content.trim()) {
-            throw new Error('Content is required: use --content or --stdin')
+            throw new CliError('MISSING_CONTENT', 'Content is required: use --content or --stdin')
         }
     } else if (options.content) {
         content = options.content
     } else {
-        throw new Error('Content is required: use --content or --stdin')
+        throw new CliError('MISSING_CONTENT', 'Content is required: use --content or --stdin')
     }
 
     if (options.dryRun) {

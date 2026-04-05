@@ -1,6 +1,7 @@
 import { type UpdateFilterArgs, updateFilter } from '../../lib/api/filters.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveFilterRef } from './helpers.js'
 
 export interface UpdateOptions {
@@ -21,7 +22,7 @@ export async function updateFilterCmd(nameOrId: string, options: UpdateOptions):
     if (options.favorite !== undefined) args.isFavorite = options.favorite
 
     if (Object.keys(args).length === 0) {
-        throw new Error(formatError('NO_CHANGES', 'No changes specified.'))
+        throw new CliError('NO_CHANGES', 'No changes specified.')
     }
 
     if (options.dryRun) {

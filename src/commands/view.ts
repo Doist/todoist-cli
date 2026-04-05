@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { formatError } from '../lib/output.js'
+import { CliError } from '../lib/errors.js'
 import { classifyTodoistUrl } from '../lib/refs.js'
 
 function looksLikeTodoistAppUrl(token: string): boolean {
@@ -69,9 +69,7 @@ Examples:
             const invocation = extractViewInvocation(command, url, args)
             const route = classifyTodoistUrl(invocation.url)
             if (!route) {
-                throw new Error(
-                    formatError('INVALID_URL', `Not a recognized Todoist URL: ${invocation.url}`),
-                )
+                throw new CliError('INVALID_URL', `Not a recognized Todoist URL: ${invocation.url}`)
             }
 
             if (route.kind === 'view') {

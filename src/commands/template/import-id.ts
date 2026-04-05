@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { formatImportResult } from './helpers.js'
 
@@ -16,9 +17,7 @@ export async function importTemplateById(
     options: ImportIdOptions,
 ): Promise<void> {
     if (!options.templateId) {
-        throw new Error(
-            formatError('MISSING_TEMPLATE_ID', 'Template ID is required (--template-id)'),
-        )
+        throw new CliError('MISSING_TEMPLATE_ID', 'Template ID is required (--template-id)')
     }
 
     if (options.dryRun) {

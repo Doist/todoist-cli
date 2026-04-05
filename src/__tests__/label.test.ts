@@ -343,7 +343,7 @@ describe('label delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'label', 'delete', 'nonexistent', '--yes']),
-        ).rejects.toThrow('LABEL_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'LABEL_NOT_FOUND')
     })
 })
 
@@ -498,9 +498,9 @@ describe('label update', () => {
             nextCursor: null,
         })
 
-        await expect(program.parseAsync(['node', 'td', 'label', 'update', 'work'])).rejects.toThrow(
-            'NO_CHANGES',
-        )
+        await expect(
+            program.parseAsync(['node', 'td', 'label', 'update', 'work']),
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
     })
 
     it('throws for non-existent label', async () => {
@@ -518,7 +518,7 @@ describe('label update', () => {
                 '--name',
                 'new-name',
             ]),
-        ).rejects.toThrow('LABEL_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'LABEL_NOT_FOUND')
     })
 })
 
@@ -615,7 +615,7 @@ describe('label URL resolution', () => {
                 'https://app.todoist.com/app/label/urgent-nonexistent',
                 '--yes',
             ]),
-        ).rejects.toThrow('LABEL_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'LABEL_NOT_FOUND')
     })
 })
 
@@ -942,7 +942,7 @@ describe('shared labels', () => {
 
             await expect(
                 program.parseAsync(['node', 'td', 'label', 'delete', 'team-review', '--yes']),
-            ).rejects.toThrow('LABEL_NOT_FOUND')
+            ).rejects.toHaveProperty('code', 'LABEL_NOT_FOUND')
         })
 
         it('update throws LABEL_NOT_FOUND for shared-only label', async () => {
@@ -964,7 +964,7 @@ describe('shared labels', () => {
                     '--name',
                     'new-name',
                 ]),
-            ).rejects.toThrow('LABEL_NOT_FOUND')
+            ).rejects.toHaveProperty('code', 'LABEL_NOT_FOUND')
         })
     })
 })

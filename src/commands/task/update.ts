@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
@@ -42,7 +43,7 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
     if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
 
     if (options.stdin && options.description !== undefined) {
-        throw new Error('Cannot use both --description and --stdin')
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --description and --stdin')
     }
     if (options.stdin) {
         args.description = await readStdin()
@@ -62,7 +63,10 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
     }
 
     if (options.uncompletable && options.completable) {
-        throw new Error('Cannot use --uncompletable and --completable together')
+        throw new CliError(
+            'CONFLICTING_OPTIONS',
+            'Cannot use --uncompletable and --completable together',
+        )
     } else if (options.uncompletable) {
         args.isUncompletable = true
     } else if (options.completable) {
