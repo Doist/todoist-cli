@@ -55,6 +55,8 @@ Tasks, projects, labels, and filters can be referenced by:
 - `id:xxx` - Explicit ID
 - Todoist URL - Paste directly from the web app (e.g., `https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB` or `https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT`)
 
+Some commands require `id:` or URL refs (name lookup unavailable): `task uncomplete`, `section archive/unarchive/update/delete/browse`, `comment update/delete/browse`, `reminder update/delete`, `notification view/accept/reject`.
+
 ## Commands
 
 ### Daily Views
