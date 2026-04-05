@@ -526,20 +526,12 @@ describe('task uncomplete', () => {
         consoleSpy.mockRestore()
     })
 
-    it('resolves task by name', async () => {
+    it('requires id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTasksByFilter.mockResolvedValue({
-            results: [{ id: 'task-1', content: 'Buy milk', checked: true }],
-            nextCursor: null,
-        })
-        mockApi.reopenTask.mockResolvedValue(true)
-
-        await program.parseAsync(['node', 'td', 'task', 'uncomplete', 'Buy milk'])
-
-        expect(mockApi.reopenTask).toHaveBeenCalledWith('task-1')
-        consoleSpy.mockRestore()
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'uncomplete', 'some-task-name']),
+        ).rejects.toThrow('INVALID_REF')
     })
 })
 
