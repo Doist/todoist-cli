@@ -17,7 +17,17 @@ import { viewTask } from './view.js'
 export { viewTask } from './view.js'
 
 export function registerTaskCommand(program: Command): void {
-    const task = program.command('task').description('Manage tasks')
+    const task = program
+        .command('task')
+        .description('Manage tasks')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td task add "Buy milk" --due tomorrow
+  td task list --project "Work" --priority p1
+  td task view "Buy milk"`,
+        )
 
     task.command('list')
         .description('List tasks')

@@ -2667,3 +2667,21 @@ describe('task --dry-run', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('task (no args)', () => {
+    it('shows parent help with examples', async () => {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        try {
+            await program.parseAsync(['node', 'td', 'task'])
+        } catch (err: unknown) {
+            if ((err as { code?: string }).code !== 'commander.help') throw err
+        }
+
+        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        expect(output).toContain('Examples:')
+        expect(output).toContain('td task add "Buy milk" --due tomorrow')
+        stdoutSpy.mockRestore()
+    })
+})

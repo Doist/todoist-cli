@@ -986,6 +986,7 @@ describe('label (no args)', () => {
         expect(output).toContain('delete')
         expect(output).toContain('update')
         expect(output).toContain('view')
+        expect(output).toContain('Examples:')
         stdoutSpy.mockRestore()
     })
 })

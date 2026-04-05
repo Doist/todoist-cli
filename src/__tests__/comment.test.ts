@@ -1048,3 +1048,21 @@ describe('comment --dry-run', () => {
         consoleSpy.mockRestore()
     })
 })
+
+describe('comment (no args)', () => {
+    it('shows parent help with examples', async () => {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        try {
+            await program.parseAsync(['node', 'td', 'comment'])
+        } catch (err: unknown) {
+            if ((err as { code?: string }).code !== 'commander.help') throw err
+        }
+
+        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        expect(output).toContain('Examples:')
+        expect(output).toContain('td comment list "Plan sprint"')
+        stdoutSpy.mockRestore()
+    })
+})
