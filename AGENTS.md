@@ -8,7 +8,8 @@ TypeScript CLI for Todoist. Binary name: `td`.
 npm run build       # compile TypeScript (uses tsconfig.build.json, excludes tests)
 npm run dev         # watch mode (uses tsconfig.build.json)
 npm run type-check  # type check source + tests (uses tsconfig.json)
-npm run format      # format code
+npm run check       # lint + format check
+npm run fix         # auto-fix lint + format
 npm test            # run tests
 ```
 

@@ -161,6 +161,5 @@ This builds the project and regenerates `skills/todoist-cli/SKILL.md` from the c
 ```bash
 npm run type-check
 npm test
-npm run lint:check
-npm run format:check
+npm run check
 ```

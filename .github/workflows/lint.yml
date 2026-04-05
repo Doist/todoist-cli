@@ -27,8 +27,5 @@ jobs:
             - name: Type check
               run: npm run type-check
 
-            - name: Lint check
-              run: npm run lint:check
-
-            - name: Format check
-              run: npm run format:check
+            - name: Lint and format check
+              run: npm run check

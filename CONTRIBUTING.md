@@ -24,10 +24,8 @@ After cloning the repository and installing dependencies with `npm install`, sev
 
 - `npm run build`: Builds the CLI
 - `npm run dev`: Runs in development mode
-- `npm run lint:check`: Validates code quality
-- `npm run lint:write`: Auto-fixes lint issues
-- `npm run format:check`: Checks formatting
-- `npm run format`: Auto-fixes formatting
+- `npm run check`: Validates code quality and formatting
+- `npm run fix`: Auto-fixes lint and formatting issues
 - `npm test`: Runs all tests
 - `npm run test:watch`: Runs tests in watch mode
 
