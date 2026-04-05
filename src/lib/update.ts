@@ -1,6 +1,6 @@
 import { readConfig, type UpdateChannel } from './config.js'
 
-const PACKAGE_NAME = '@doist/todoist-cli'
+export const PACKAGE_NAME = '@doist/todoist-cli'
 
 interface RegistryResponse {
     version: string
@@ -23,23 +23,27 @@ export function parseVersion(version: string): ParsedVersion {
     return { major, minor, patch, prerelease: rest.length > 0 ? rest.join('-') : undefined }
 }
 
-/** Returns true when `candidate` is strictly newer than `current` per semver. */
-export function isNewer(current: string, candidate: string): boolean {
-    const a = parseVersion(current)
-    const b = parseVersion(candidate)
+export function compareVersions(a: string, b: string): number {
+    const left = parseVersion(a)
+    const right = parseVersion(b)
 
     for (const key of ['major', 'minor', 'patch'] as const) {
-        if (b[key] !== a[key]) return b[key] > a[key]
+        if (left[key] !== right[key]) return left[key] > right[key] ? 1 : -1
     }
 
-    if (!a.prerelease && b.prerelease) return false
-    if (a.prerelease && !b.prerelease) return true
+    if (!left.prerelease && right.prerelease) return 1
+    if (left.prerelease && !right.prerelease) return -1
 
-    if (a.prerelease && b.prerelease) {
-        return b.prerelease.localeCompare(a.prerelease, undefined, { numeric: true }) > 0
+    if (left.prerelease && right.prerelease) {
+        return left.prerelease.localeCompare(right.prerelease, undefined, { numeric: true })
     }
 
-    return false
+    return 0
+}
+
+/** Returns true when `candidate` is strictly newer than `current` per semver. */
+export function isNewer(current: string, candidate: string): boolean {
+    return compareVersions(candidate, current) > 0
 }
 
 export async function fetchLatestVersion(channel: UpdateChannel): Promise<string> {

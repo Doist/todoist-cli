@@ -1,20 +1,14 @@
 import { readFile } from 'node:fs/promises'
+import { TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
-import { getApi } from '../lib/api/core.js'
+import { CONFIG_PATH, NoTokenError, TOKEN_ENV_VAR, probeApiToken } from '../lib/auth.js'
 import {
-    CONFIG_PATH,
-    NoTokenError,
-    TOKEN_ENV_VAR,
-    getApiToken,
-    getAuthMetadata,
-} from '../lib/auth.js'
-import {
+    compareVersions,
     fetchLatestVersion,
     getConfiguredUpdateChannel,
     isNewer,
-    parseVersion,
 } from '../lib/update.js'
 
 type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
@@ -36,25 +30,6 @@ interface Summary {
     warned: number
     failed: number
     skipped: number
-}
-
-function compareVersions(a: string, b: string): number {
-    const left = parseVersion(a)
-    const right = parseVersion(b)
-
-    for (const key of ['major', 'minor', 'patch'] as const) {
-        if (left[key] !== right[key]) {
-            return left[key] > right[key] ? 1 : -1
-        }
-    }
-
-    if (!left.prerelease && right.prerelease) return 1
-    if (left.prerelease && !right.prerelease) return -1
-    if (left.prerelease && right.prerelease) {
-        return left.prerelease.localeCompare(right.prerelease, undefined, { numeric: true })
-    }
-
-    return 0
 }
 
 function summarize(checks: DoctorCheck[]): Summary {
@@ -98,7 +73,7 @@ function isNoTokenError(error: unknown): boolean {
     )
 }
 
-function checkNodeVersion(): DoctorCheck {
+function checkNodeVersion(): DoctorCheck | null {
     const required = packageJson.engines.node
     const match = required.match(/^>=\s*v?(\d+\.\d+\.\d+)$/)
 
@@ -115,12 +90,14 @@ function checkNodeVersion(): DoctorCheck {
     const currentVersion = process.version
     const ok = compareVersions(currentVersion, minimumVersion) >= 0
 
+    if (ok) {
+        return null
+    }
+
     return {
         name: 'node',
-        status: ok ? 'pass' : 'fail',
-        message: ok
-            ? `Node.js ${currentVersion} satisfies ${required}`
-            : `Node.js ${currentVersion} does not satisfy ${required}`,
+        status: 'fail',
+        message: `Node.js ${currentVersion} does not satisfy ${required}`,
         details: { currentVersion, requiredVersion: required },
     }
 }
@@ -182,8 +159,13 @@ async function checkConfigFile(): Promise<DoctorCheck> {
 }
 
 async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
+    let token: string
+    let metadata: Awaited<ReturnType<typeof probeApiToken>>['metadata']
+
     try {
-        await getApiToken()
+        const probe = await probeApiToken()
+        token = probe.token
+        metadata = probe.metadata
     } catch (error) {
         if (isNoTokenError(error)) {
             return {
@@ -201,7 +183,6 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
         }
     }
 
-    const metadata = await getAuthMetadata()
     const details: Record<string, unknown> = {
         source: metadata.source,
         authMode: metadata.authMode,
@@ -221,7 +202,7 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
     }
 
     try {
-        const api = await getApi()
+        const api = new TodoistApi(token)
         const user = await api.getUser()
         details.email = user.email
         details.fullName = user.fullName
@@ -302,7 +283,7 @@ async function runDoctorChecks(options: DoctorOptions): Promise<DoctorCheck[]> {
         await checkConfigFile(),
         await checkAuthentication(Boolean(options.offline)),
         await checkForUpdates(Boolean(options.offline)),
-    ]
+    ].filter((check): check is DoctorCheck => check !== null)
 }
 
 export async function doctorAction(options: DoctorOptions): Promise<void> {

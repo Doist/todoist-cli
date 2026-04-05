@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')
 
+vi.mock('@doist/todoist-sdk', () => ({
+    TodoistApi: vi.fn(),
+}))
+
 vi.mock('node:fs/promises', () => ({
     readFile: vi.fn(),
 }))
@@ -22,14 +26,9 @@ vi.mock('../lib/auth.js', async (importOriginal) => {
     return {
         ...actual,
         CONFIG_PATH: '/tmp/test-config.json',
-        getApiToken: vi.fn(),
-        getAuthMetadata: vi.fn(),
+        probeApiToken: vi.fn(),
     }
 })
-
-vi.mock('../lib/api/core.js', () => ({
-    getApi: vi.fn(),
-}))
 
 vi.mock('../lib/config.js', async (importOriginal) => {
     const original = await importOriginal<typeof import('../lib/config.js')>()
@@ -39,15 +38,14 @@ vi.mock('../lib/config.js', async (importOriginal) => {
     }
 })
 
+import { TodoistApi } from '@doist/todoist-sdk'
 import { registerDoctorCommand } from '../commands/doctor.js'
-import { getApi } from '../lib/api/core.js'
-import { NoTokenError, getApiToken, getAuthMetadata } from '../lib/auth.js'
+import { NoTokenError, probeApiToken } from '../lib/auth.js'
 import { readConfig } from '../lib/config.js'
 
 const mockReadFile = vi.mocked(readFile)
-const mockGetApi = vi.mocked(getApi)
-const mockGetApiToken = vi.mocked(getApiToken)
-const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
+const mockTodoistApi = vi.mocked(TodoistApi)
+const mockProbeApiToken = vi.mocked(probeApiToken)
 const mockReadConfig = vi.mocked(readConfig)
 
 function createProgram() {
@@ -79,14 +77,18 @@ describe('doctor command', () => {
 
         mockReadFile.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }))
         mockReadConfig.mockResolvedValue({})
-        mockGetApiToken.mockResolvedValue('test_token_123456789')
-        mockGetAuthMetadata.mockResolvedValue({ authMode: 'read-write', source: 'secure-store' })
-        mockGetApi.mockResolvedValue({
-            getUser: vi.fn().mockResolvedValue({
-                id: 'user-1',
-                email: 'person@example.com',
-                fullName: 'Example Person',
-            }),
+        mockProbeApiToken.mockResolvedValue({
+            token: 'test_token_123456789',
+            metadata: { authMode: 'read-write', source: 'secure-store' },
+        })
+        mockTodoistApi.mockImplementation(function () {
+            return {
+                getUser: vi.fn().mockResolvedValue({
+                    id: 'user-1',
+                    email: 'person@example.com',
+                    fullName: 'Example Person',
+                }),
+            } as never
         } as never)
 
         originalProcessVersion = Object.getOwnPropertyDescriptor(process, 'version')
@@ -110,13 +112,14 @@ describe('doctor command', () => {
         const program = createProgram()
         await program.parseAsync(['node', 'td', 'doctor'])
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('PASS Node.js v20.18.1'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Node.js v20.18.1'))
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS Authenticated as person@example.com via secure-store'),
         )
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS CLI is up to date on stable (v1.0.0)'),
         )
+        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 3 passed')
         expect(process.exitCode).toBeUndefined()
     })
 
@@ -128,7 +131,10 @@ describe('doctor command', () => {
             }),
         )
         mockReadConfig.mockResolvedValue({ update_channel: 'pre-release' })
-        mockGetAuthMetadata.mockResolvedValue({ authMode: 'read-write', source: 'config-file' })
+        mockProbeApiToken.mockResolvedValue({
+            token: 'plaintext-token',
+            metadata: { authMode: 'read-write', source: 'config-file' },
+        })
         mockFetch('2.0.0')
 
         const program = createProgram()
@@ -151,7 +157,7 @@ describe('doctor command', () => {
     })
 
     it('supports json output and offline mode', async () => {
-        mockGetApiToken.mockRejectedValue(new NoTokenError())
+        mockProbeApiToken.mockRejectedValue(new NoTokenError())
 
         const program = createProgram()
         await program.parseAsync(['node', 'td', 'doctor', '--json', '--offline'])
@@ -166,6 +172,7 @@ describe('doctor command', () => {
         }
 
         expect(parsed.ok).toBe(true)
+        expect(parsed.summary.passed).toBe(1)
         expect(parsed.summary.skipped).toBe(1)
         expect(parsed.checks).toEqual(
             expect.arrayContaining([
@@ -173,6 +180,13 @@ describe('doctor command', () => {
                 expect.objectContaining({ name: 'update', status: 'skip' }),
             ]),
         )
+    })
+
+    it('does not instantiate the API client in offline mode', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'doctor', '--offline'])
+
+        expect(mockTodoistApi).not.toHaveBeenCalled()
     })
 
     it('fails when node or config are invalid', async () => {
