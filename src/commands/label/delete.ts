@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveLabelRef } from './helpers.js'
 
 export async function deleteLabel(
@@ -21,5 +21,5 @@ export async function deleteLabel(
 
     const api = await getApi()
     await api.deleteLabel(label.id)
-    console.log(`Deleted: @${label.name}`)
+    if (!isQuiet()) console.log(`Deleted: @${label.name} (id:${label.id})`)
 }

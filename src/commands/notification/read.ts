@@ -3,7 +3,7 @@ import {
     markAllNotificationsRead,
     markNotificationRead,
 } from '../../lib/api/notifications.js'
-import { formatError } from '../../lib/output.js'
+import { formatError, isQuiet } from '../../lib/output.js'
 import { resolveNotification } from './helpers.js'
 
 interface ReadOptions {
@@ -20,7 +20,10 @@ export async function markRead(idRef: string | undefined, options: ReadOptions):
         const notifications = await fetchNotifications()
         const unreadCount = notifications.filter((n) => n.isUnread).length
         await markAllNotificationsRead()
-        console.log(`Marked ${unreadCount} notification${unreadCount === 1 ? '' : 's'} as read.`)
+        if (!isQuiet())
+            console.log(
+                `Marked ${unreadCount} notification${unreadCount === 1 ? '' : 's'} as read.`,
+            )
         return
     }
 
@@ -30,5 +33,5 @@ export async function markRead(idRef: string | undefined, options: ReadOptions):
 
     const n = await resolveNotification(idRef)
     await markNotificationRead(n.id)
-    console.log('Marked as read.')
+    if (!isQuiet()) console.log(`Marked as read. (id:${n.id})`)
 }

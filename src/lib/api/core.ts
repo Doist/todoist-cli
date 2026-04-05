@@ -4,11 +4,13 @@ import {
     Section,
     Task,
     TodoistApi,
+    TodoistRequestError,
     User,
     WorkspaceProject,
     type DueDate,
 } from '@doist/todoist-sdk'
 import { getApiToken } from '../auth.js'
+import { CliError } from '../errors.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
@@ -128,11 +130,31 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             (error as Error).message,
                         )
                     }
-                    throw error
+                    throw wrapApiError(error)
                 }
             }
         },
     })
+}
+
+function wrapApiError(error: unknown): Error {
+    if (error instanceof CliError) return error
+    if (error instanceof TodoistRequestError) {
+        const status = error.httpStatusCode
+        if (status === 401 || status === 403) {
+            return new CliError('AUTH_ERROR', error.message, [
+                'Check your API token: td auth status',
+            ])
+        }
+        if (status === 404) {
+            return new CliError('NOT_FOUND', error.message)
+        }
+        if (status === 429) {
+            return new CliError('RATE_LIMITED', error.message, ['Wait a moment and retry'])
+        }
+        return new CliError('API_ERROR', error.message)
+    }
+    return error instanceof Error ? error : new Error(String(error))
 }
 
 function analyzeAndEmitApiResponse(

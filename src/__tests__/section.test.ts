@@ -299,7 +299,7 @@ describe('section delete', () => {
         await program.parseAsync(['node', 'td', 'section', 'delete', 'id:sec-123', '--yes'])
 
         expect(mockApi.deleteSection).toHaveBeenCalledWith('sec-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted section: My Section')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted section: My Section (id:sec-123)')
         consoleSpy.mockRestore()
     })
 
@@ -363,7 +363,7 @@ describe('section update', () => {
         expect(mockApi.updateSection).toHaveBeenCalledWith('sec-1', {
             name: 'New Name',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name → New Name')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name → New Name (id:sec-1)')
         consoleSpy.mockRestore()
     })
 })
@@ -510,7 +510,7 @@ describe('section archive', () => {
         await program.parseAsync(['node', 'td', 'section', 'archive', 'id:sec-123'])
 
         expect(mockApi.archiveSection).toHaveBeenCalledWith('sec-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Archived: My Section')
+        expect(consoleSpy).toHaveBeenCalledWith('Archived: My Section (id:sec-123)')
         consoleSpy.mockRestore()
     })
 })
@@ -551,7 +551,7 @@ describe('section unarchive', () => {
         await program.parseAsync(['node', 'td', 'section', 'unarchive', 'id:sec-123'])
 
         expect(mockApi.unarchiveSection).toHaveBeenCalledWith('sec-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Section')
+        expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Section (id:sec-123)')
         consoleSpy.mockRestore()
     })
 })

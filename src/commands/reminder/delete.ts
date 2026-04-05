@@ -1,5 +1,5 @@
 import { deleteReminder as apiDeleteReminder, fetchReminders } from '../../lib/api/reminders.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { formatReminderTime } from './helpers.js'
 
@@ -34,5 +34,5 @@ export async function deleteReminderCmd(reminderId: string, options: DeleteOptio
     }
 
     await apiDeleteReminder(id)
-    console.log(`Deleted reminder: ${timeDesc}`)
+    if (!isQuiet()) console.log(`Deleted reminder: ${timeDesc} (id:${id})`)
 }

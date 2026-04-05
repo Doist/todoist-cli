@@ -446,7 +446,7 @@ describe('notification read', () => {
         await program.parseAsync(['node', 'td', 'notification', 'read', 'id:notif-1'])
 
         expect(mockMarkRead).toHaveBeenCalledWith('notif-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Marked as read.')
+        expect(consoleSpy).toHaveBeenCalledWith('Marked as read. (id:notif-1)')
         consoleSpy.mockRestore()
     })
 

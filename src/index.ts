@@ -2,8 +2,10 @@
 
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
+import { CliError } from './lib/errors.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
+import { formatErrorJson, isJsonMode } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
@@ -14,13 +16,15 @@ program
     .option('--progress-jsonl [path]', 'Output progress events as JSONL to stderr or file')
     .option('-v, --verbose', 'Increase output verbosity (repeat up to 4x: -v, -vv, -vvv, -vvvv)')
     .option('--accessible', 'Add text labels to color-coded output (also: TD_ACCESSIBLE=1)')
+    .option('-q, --quiet', 'Suppress success messages (create commands still print the ID)')
     .addHelpText(
         'after',
         `
 Note for AI/LLM agents:
   Use "td task add" (not "td add") to create tasks with structured flags.
   Use --json or --ndjson flags for unambiguous, parseable output.
-  Default JSON shows essential fields; use --full for all fields.`,
+  Default JSON shows essential fields; use --full for all fields.
+  Use --quiet to suppress success messages (create commands still print the ID).`,
     )
 
 // Lazy command registry: [description, loader]
@@ -189,7 +193,13 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        console.error(err.message)
+        if (isJsonMode()) {
+            const code = err instanceof CliError ? err.code : 'INTERNAL_ERROR'
+            const hints = err instanceof CliError ? err.hints : undefined
+            console.error(formatErrorJson(code, err.message, hints))
+        } else {
+            console.error(err.message)
+        }
         process.exit(1)
     })
     .finally(() => stopEarlySpinner())

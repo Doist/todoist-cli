@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function archiveSection(
@@ -16,5 +16,5 @@ export async function archiveSection(
     }
 
     await api.archiveSection(id)
-    console.log(`Archived: ${section.name}`)
+    if (!isQuiet()) console.log(`Archived: ${section.name} (id:${id})`)
 }

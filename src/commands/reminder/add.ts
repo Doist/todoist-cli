@@ -6,7 +6,7 @@ import {
     type ReminderDue,
 } from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { parseDateTime } from './helpers.js'
 
@@ -101,6 +101,11 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
             isDeleted: false,
         }
         console.log(formatJson(reminder, 'reminder'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(reminderId)
         return
     }
 

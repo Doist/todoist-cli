@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function deleteComment(
@@ -25,5 +25,5 @@ export async function deleteComment(
     }
 
     await api.deleteComment(id)
-    console.log(`Deleted comment: ${preview}`)
+    if (!isQuiet()) console.log(`Deleted comment: ${preview} (id:${id})`)
 }

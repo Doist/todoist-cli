@@ -299,7 +299,7 @@ describe('label delete', () => {
         await program.parseAsync(['node', 'td', 'label', 'delete', 'urgent', '--yes'])
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-1')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent (id:label-1)')
         consoleSpy.mockRestore()
     })
 
@@ -316,7 +316,7 @@ describe('label delete', () => {
         await program.parseAsync(['node', 'td', 'label', 'delete', 'id:label-123', '--yes'])
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent (id:label-123)')
         consoleSpy.mockRestore()
     })
 
@@ -379,7 +379,7 @@ describe('label update', () => {
         expect(mockApi.updateLabel).toHaveBeenCalledWith('label-1', {
             name: 'new-name',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated: @old-name → @new-name')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: @old-name → @new-name (id:label-1)')
         consoleSpy.mockRestore()
     })
 

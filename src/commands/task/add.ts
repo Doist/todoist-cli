@@ -1,6 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import {
     extractId,
     isIdRef,
@@ -160,6 +160,11 @@ export async function addTask(options: AddOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson(task, 'task'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(task.id)
         return
     }
 

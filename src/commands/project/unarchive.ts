@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function unarchiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {
@@ -12,5 +12,5 @@ export async function unarchiveProject(ref: string, options: { dryRun?: boolean 
     }
 
     await api.unarchiveProject(project.id)
-    console.log(`Unarchived: ${project.name}`)
+    if (!isQuiet()) console.log(`Unarchived: ${project.name} (id:${project.id})`)
 }

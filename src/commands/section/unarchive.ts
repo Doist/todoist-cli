@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function unarchiveSection(
@@ -16,5 +16,5 @@ export async function unarchiveSection(
     }
 
     await api.unarchiveSection(id)
-    console.log(`Unarchived: ${section.name}`)
+    if (!isQuiet()) console.log(`Unarchived: ${section.name} (id:${id})`)
 }

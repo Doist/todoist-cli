@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { uploadFile } from '../../lib/api/uploads.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 
@@ -82,6 +82,11 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
 
     if (options.json) {
         console.log(formatJson(comment, 'comment'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(comment.id)
         return
     }
 

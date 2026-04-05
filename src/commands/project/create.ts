@@ -1,7 +1,7 @@
 import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export interface CreateOptions {
@@ -53,6 +53,11 @@ export async function createProject(options: CreateOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson(project, 'project'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(project.id)
         return
     }
 

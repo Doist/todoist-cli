@@ -1,5 +1,5 @@
 import { completeTaskForever, getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 
 export async function completeTask(
@@ -29,14 +29,14 @@ export async function completeTask(
 
     if (options.forever) {
         const isRecurring = task.due?.isRecurring ?? false
-        if (!isRecurring) {
+        if (!isRecurring && !isQuiet()) {
             console.log('Task is not recurring, completing normally.')
         }
         await completeTaskForever(task.id)
-        console.log(`Completed forever: ${task.content}`)
+        if (!isQuiet()) console.log(`Completed forever: ${task.content} (id:${task.id})`)
         return
     }
 
     await api.closeTask(task.id)
-    console.log(`Completed: ${task.content}`)
+    if (!isQuiet()) console.log(`Completed: ${task.content} (id:${task.id})`)
 }

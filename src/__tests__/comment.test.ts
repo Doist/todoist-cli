@@ -224,7 +224,7 @@ describe('comment delete', () => {
         await program.parseAsync(['node', 'td', 'comment', 'delete', 'id:comment-123', '--yes'])
 
         expect(mockApi.deleteComment).toHaveBeenCalledWith('comment-123')
-        expect(consoleSpy).toHaveBeenCalledWith('Deleted comment: Test comment')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted comment: Test comment (id:comment-123)')
         consoleSpy.mockRestore()
     })
 })
@@ -280,7 +280,7 @@ describe('comment update', () => {
         expect(mockApi.updateComment).toHaveBeenCalledWith('comment-123', {
             content: 'New content',
         })
-        expect(consoleSpy).toHaveBeenCalledWith('Updated comment: Old content')
+        expect(consoleSpy).toHaveBeenCalledWith('Updated comment: Old content (id:comment-123)')
         consoleSpy.mockRestore()
     })
 
@@ -308,7 +308,9 @@ describe('comment update', () => {
             'New content',
         ])
 
-        expect(consoleSpy).toHaveBeenCalledWith(`Updated comment: ${'A'.repeat(50)}...`)
+        expect(consoleSpy).toHaveBeenCalledWith(
+            `Updated comment: ${'A'.repeat(50)}... (id:comment-123)`,
+        )
         consoleSpy.mockRestore()
     })
 })

@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function updateSection(
@@ -23,5 +23,5 @@ export async function updateSection(
 
     const section = await api.getSection(id)
     const updated = await api.updateSection(id, { name: options.name })
-    console.log(`Updated: ${section.name} → ${updated.name}`)
+    if (!isQuiet()) console.log(`Updated: ${section.name} → ${updated.name} (id:${id})`)
 }

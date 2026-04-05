@@ -1,5 +1,5 @@
 import { getApi } from '../../lib/api/core.js'
-import { printDryRun } from '../../lib/output.js'
+import { isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 
 export async function deleteTask(
@@ -21,5 +21,5 @@ export async function deleteTask(
     }
 
     await api.deleteTask(task.id)
-    console.log(`Deleted: ${task.content}`)
+    if (!isQuiet()) console.log(`Deleted: ${task.content} (id:${task.id})`)
 }

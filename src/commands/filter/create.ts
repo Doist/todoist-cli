@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { addFilter, type UpdateFilterArgs } from '../../lib/api/filters.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 
 export interface CreateOptions {
     name: string
@@ -31,6 +31,11 @@ export async function createFilter(options: CreateOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson(filter, 'filter'))
+        return
+    }
+
+    if (isQuiet()) {
+        console.log(filter.id)
         return
     }
 

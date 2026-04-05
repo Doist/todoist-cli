@@ -1,6 +1,6 @@
 import type { ColorKey } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveLabelRef } from './helpers.js'
 
 export interface UpdateLabelOptions {
@@ -46,5 +46,8 @@ export async function updateLabel(nameOrId: string, options: UpdateLabelOptions)
         return
     }
 
-    console.log(`Updated: @${label.name}${options.name ? ` → @${updated.name}` : ''}`)
+    if (!isQuiet())
+        console.log(
+            `Updated: @${label.name}${options.name ? ` → @${updated.name}` : ''} (id:${label.id})`,
+        )
 }

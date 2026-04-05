@@ -1,5 +1,5 @@
 import { getApi, rescheduleTask as rescheduleTaskSync } from '../../lib/api/core.js'
-import { formatDue, formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatDue, formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 
 export async function rescheduleTask(
@@ -46,9 +46,11 @@ export async function rescheduleTask(
         return
     }
 
-    console.log(`Rescheduled: ${updated.content}`)
-    const due = formatDue(updated.due)
-    if (due) {
-        console.log(`Due: ${due}`)
+    if (!isQuiet()) {
+        console.log(`Rescheduled: ${updated.content} (id:${task.id})`)
+        const due = formatDue(updated.due)
+        if (due) {
+            console.log(`Due: ${due}`)
+        }
     }
 }
