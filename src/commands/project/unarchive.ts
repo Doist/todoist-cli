@@ -6,6 +6,11 @@ export async function unarchiveProject(ref: string, options: { dryRun?: boolean 
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
+    if (!project.isArchived) {
+        console.log('Project is not archived.')
+        return
+    }
+
     if (options.dryRun) {
         printDryRun('unarchive project', { Project: project.name })
         return

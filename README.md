@@ -160,6 +160,6 @@ npm install
 npm run build       # compile
 npm run dev         # watch mode
 npm run type-check  # type check
-npm run format      # format code
+npm run fix         # format code
 npm test            # run tests
 ```

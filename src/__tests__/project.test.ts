@@ -1104,7 +1104,7 @@ describe('project archive', () => {
         const program = createProgram()
 
         mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'My Project' }],
+            results: [{ id: 'proj-1', name: 'My Project', isArchived: false }],
             nextCursor: null,
         })
         mockApi.archiveProject.mockResolvedValue({
@@ -1121,7 +1121,11 @@ describe('project archive', () => {
     it('archives project by id: prefix', async () => {
         const program = createProgram()
 
-        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            isArchived: false,
+        })
         mockApi.archiveProject.mockResolvedValue({
             id: 'proj-1',
             name: 'My Project',
@@ -1130,6 +1134,17 @@ describe('project archive', () => {
         await program.parseAsync(['node', 'td', 'project', 'archive', 'id:proj-1'])
 
         expect(mockApi.archiveProject).toHaveBeenCalledWith('proj-1')
+    })
+
+    it('shows message for already archived project', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project', isArchived: true })
+
+        await program.parseAsync(['node', 'td', 'project', 'archive', 'id:proj-1'])
+
+        expect(mockApi.archiveProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Project already archived.')
     })
 })
 
@@ -1152,7 +1167,7 @@ describe('project unarchive', () => {
         const program = createProgram()
 
         mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'My Project' }],
+            results: [{ id: 'proj-1', name: 'My Project', isArchived: true }],
             nextCursor: null,
         })
         mockApi.unarchiveProject.mockResolvedValue({
@@ -1169,7 +1184,7 @@ describe('project unarchive', () => {
     it('unarchives project by id: prefix', async () => {
         const program = createProgram()
 
-        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project', isArchived: true })
         mockApi.unarchiveProject.mockResolvedValue({
             id: 'proj-1',
             name: 'My Project',
@@ -1178,6 +1193,21 @@ describe('project unarchive', () => {
         await program.parseAsync(['node', 'td', 'project', 'unarchive', 'id:proj-1'])
 
         expect(mockApi.unarchiveProject).toHaveBeenCalledWith('proj-1')
+    })
+
+    it('shows message for non-archived project', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            isArchived: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'unarchive', 'id:proj-1'])
+
+        expect(mockApi.unarchiveProject).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Project is not archived.')
     })
 })
 
@@ -1630,7 +1660,7 @@ describe('project --dry-run', () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Test' }],
+            results: [{ id: 'proj-1', name: 'Test', isArchived: false }],
             nextCursor: null,
         })
 

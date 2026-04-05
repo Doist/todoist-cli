@@ -446,6 +446,7 @@ describe('section --dry-run', () => {
             name: 'Backlog',
             projectId: 'proj-1',
             order: 1,
+            isArchived: false,
         })
 
         await program.parseAsync(['node', 'td', 'section', 'archive', 'id:sec-1', '--dry-run'])
@@ -464,6 +465,7 @@ describe('section --dry-run', () => {
             name: 'Backlog',
             projectId: 'proj-1',
             order: 1,
+            isArchived: true,
         })
 
         await program.parseAsync(['node', 'td', 'section', 'unarchive', 'id:sec-1', '--dry-run'])
@@ -500,6 +502,7 @@ describe('section archive', () => {
             name: 'My Section',
             projectId: 'proj-1',
             order: 1,
+            isArchived: false,
         })
         mockApi.archiveSection.mockResolvedValue({
             id: 'sec-123',
@@ -511,6 +514,25 @@ describe('section archive', () => {
 
         expect(mockApi.archiveSection).toHaveBeenCalledWith('sec-123')
         expect(consoleSpy).toHaveBeenCalledWith('Archived: My Section (id:sec-123)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows message for already archived section', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            projectId: 'proj-1',
+            order: 1,
+            isArchived: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'archive', 'id:sec-123'])
+
+        expect(mockApi.archiveSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Section already archived.')
         consoleSpy.mockRestore()
     })
 })
@@ -541,6 +563,7 @@ describe('section unarchive', () => {
             name: 'My Section',
             projectId: 'proj-1',
             order: 1,
+            isArchived: true,
         })
         mockApi.unarchiveSection.mockResolvedValue({
             id: 'sec-123',
@@ -552,6 +575,25 @@ describe('section unarchive', () => {
 
         expect(mockApi.unarchiveSection).toHaveBeenCalledWith('sec-123')
         expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Section (id:sec-123)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows message for non-archived section', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getSection.mockResolvedValue({
+            id: 'sec-123',
+            name: 'My Section',
+            projectId: 'proj-1',
+            order: 1,
+            isArchived: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'unarchive', 'id:sec-123'])
+
+        expect(mockApi.unarchiveSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Section is not archived.')
         consoleSpy.mockRestore()
     })
 })
