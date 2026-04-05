@@ -83,11 +83,14 @@ export type ErrorCode =
     // Escape hatch for dynamic codes
     | (string & {})
 
+export type ErrorType = 'error' | 'info'
+
 export class CliError extends Error {
     constructor(
         public readonly code: ErrorCode,
         message: string,
         public readonly hints?: string[],
+        public readonly type: ErrorType = 'error',
     ) {
         super(message)
         this.name = 'CliError'

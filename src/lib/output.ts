@@ -2,7 +2,7 @@ import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
-import type { CliError } from './errors.js'
+import type { CliError, ErrorType } from './errors.js'
 import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
@@ -363,11 +363,16 @@ function resolveErrorParts(
     codeOrError: string | CliError,
     message?: string,
     hints?: string[],
-): { code: string; message: string; hints: string[] | undefined } {
+): { code: string; message: string; hints: string[] | undefined; type: ErrorType } {
     if (typeof codeOrError === 'string') {
-        return { code: codeOrError, message: message!, hints }
+        return { code: codeOrError, message: message!, hints, type: 'error' }
     }
-    return { code: codeOrError.code, message: codeOrError.message, hints: codeOrError.hints }
+    return {
+        code: codeOrError.code,
+        message: codeOrError.message,
+        hints: codeOrError.hints,
+        type: codeOrError.type,
+    }
 }
 
 export function formatError(error: CliError): string
@@ -378,14 +383,15 @@ export function formatError(
     hints?: string[],
 ): string {
     const parts = resolveErrorParts(codeOrError, message, hints)
-    const lines = [`Error: ${parts.code}`, parts.message]
+    const color = parts.type === 'info' ? chalk.yellow : chalk.red
+    const lines = parts.type === 'info' ? [parts.message] : [`Error: ${parts.code}`, parts.message]
     if (parts.hints && parts.hints.length > 0) {
         lines.push('')
         for (const hint of parts.hints) {
             lines.push(`  - ${hint}`)
         }
     }
-    return chalk.red(lines.join('\n'))
+    return color(lines.join('\n'))
 }
 
 export function formatErrorJson(error: CliError): string

@@ -28,10 +28,13 @@ export interface SaveApiTokenOptions {
     authScope?: string
 }
 
-export class NoTokenError extends Error {
+export class NoTokenError extends CliError {
     constructor() {
         super(
+            'NO_TOKEN',
             `No API token found. Set ${TOKEN_ENV_VAR} or run \`td auth login\` or \`td auth token <token>\`.`,
+            ['Set TODOIST_API_TOKEN or run: td auth login'],
+            'info',
         )
         this.name = 'NoTokenError'
     }
