@@ -1,10 +1,10 @@
 export class CliError extends Error {
     constructor(
         public readonly code: string,
-        message: string,
+        public readonly userMessage: string,
         public readonly hints?: string[],
     ) {
-        super(message)
+        super(`${code}: ${userMessage}`)
         this.name = 'CliError'
     }
 }

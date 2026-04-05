@@ -1,4 +1,5 @@
 import { type AuthMetadata, getAuthMetadata } from './auth.js'
+import { CliError } from './errors.js'
 
 export const READ_ONLY_ERROR_MESSAGE =
     'This CLI is authenticated in read-only mode (OAuth scope data:read). Re-run `td auth login` without --read-only to enable write operations.'
@@ -75,7 +76,7 @@ export async function ensureWriteAllowed(): Promise<void> {
         cachedMetadata = await getAuthMetadata()
     }
     if (cachedMetadata.authMode === 'read-only') {
-        throw new Error(READ_ONLY_ERROR_MESSAGE)
+        throw new CliError('READ_ONLY', READ_ONLY_ERROR_MESSAGE)
     }
 }
 

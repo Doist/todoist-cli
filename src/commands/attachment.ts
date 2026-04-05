@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api/core.js'
+import { CliError } from '../lib/errors.js'
 import { formatFileSize } from '../lib/output.js'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -87,7 +88,10 @@ async function viewAttachment(url: string, options: ViewOptions): Promise<void> 
     const response = await api.viewAttachment(url)
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch attachment: ${response.status} ${response.statusText}`)
+        throw new CliError(
+            'FETCH_FAILED',
+            `Failed to fetch attachment: ${response.status} ${response.statusText}`,
+        )
     }
 
     const fileName = getFileNameFromUrl(url) ?? 'unknown'
@@ -104,7 +108,8 @@ async function viewAttachment(url: string, options: ViewOptions): Promise<void> 
     const contentLength = response.headers['content-length']
     const headerFileSize = contentLength ? Number.parseInt(contentLength, 10) : undefined
     if (headerFileSize && headerFileSize > MAX_FILE_SIZE) {
-        throw new Error(
+        throw new CliError(
+            'FILE_TOO_LARGE',
             `Attachment "${fileName}" is too large (${formatFileSize(headerFileSize)}, limit is ${formatFileSize(MAX_FILE_SIZE)})`,
         )
     }
@@ -116,7 +121,8 @@ async function viewAttachment(url: string, options: ViewOptions): Promise<void> 
     const fileSize = buffer.byteLength
 
     if (fileSize > MAX_FILE_SIZE) {
-        throw new Error(
+        throw new CliError(
+            'FILE_TOO_LARGE',
             `Attachment "${fileName}" is too large (${formatFileSize(fileSize)}, limit is ${formatFileSize(MAX_FILE_SIZE)})`,
         )
     }

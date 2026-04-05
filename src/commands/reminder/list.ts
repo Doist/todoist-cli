@@ -1,6 +1,7 @@
 import type { LocationReminder } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
@@ -23,7 +24,10 @@ export async function listReminders(
     const api = await getApi()
 
     if (options.cursor && !options.type) {
-        throw new Error('--cursor requires --type (time or location) to identify the endpoint')
+        throw new CliError(
+            'MISSING_TYPE',
+            '--cursor requires --type (time or location) to identify the endpoint',
+        )
     }
 
     let taskId: string | undefined

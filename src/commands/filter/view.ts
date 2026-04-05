@@ -1,9 +1,9 @@
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
-    formatError,
     formatNextCursorFooter,
     formatPaginatedJson,
     formatPaginatedNdjson,
@@ -41,10 +41,10 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         if (message.includes('400')) {
-            throw new Error(
-                formatError('INVALID_FILTER_QUERY', `Filter query "${filter.query}" is invalid.`, [
-                    'Check the Todoist filter syntax',
-                ]),
+            throw new CliError(
+                'INVALID_FILTER_QUERY',
+                `Filter query "${filter.query}" is invalid.`,
+                ['Check the Todoist filter syntax'],
             )
         }
         throw err

@@ -1,4 +1,5 @@
 import { getApiToken } from '../auth.js'
+import { CliError } from '../errors.js'
 import { ensureWriteAllowed } from '../permissions.js'
 
 export interface UploadResult {
@@ -33,7 +34,10 @@ export async function uploadFile(filePath: string): Promise<UploadResult> {
     })
 
     if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
+        throw new CliError(
+            'UPLOAD_FAILED',
+            `Upload failed: ${response.status} ${response.statusText}`,
+        )
     }
 
     const data = await response.json()

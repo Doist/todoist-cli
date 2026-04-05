@@ -1,8 +1,9 @@
 import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export interface CreateOptions {
@@ -33,12 +34,10 @@ export async function createProject(options: CreateOptions): Promise<void> {
     if (options.parent) {
         const parentProject = await resolveProjectRef(api, options.parent)
         if (isWorkspaceProject(parentProject)) {
-            throw new Error(
-                formatError(
-                    'WORKSPACE_NO_SUBPROJECTS',
-                    'Workspace projects do not support sub-projects.',
-                    ['Sub-projects are only supported for personal projects.'],
-                ),
+            throw new CliError(
+                'WORKSPACE_NO_SUBPROJECTS',
+                'Workspace projects do not support sub-projects.',
+                ['Sub-projects are only supported for personal projects.'],
             )
         }
         parentId = parentProject.id

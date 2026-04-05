@@ -1,7 +1,7 @@
 import type { LocationReminder, Reminder } from '@doist/todoist-sdk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 
 export type ReminderTypeFilter = 'time' | 'location'
 
@@ -49,9 +49,7 @@ export function parseDateTime(value: string): ReminderDue {
         return { date: trimmed }
     }
 
-    throw new Error(
-        formatError('INVALID_DATETIME', `Invalid datetime format: "${value}"`, [
-            'Examples: 2024-01-15 10:00, 2024-01-15T10:00:00, 2024-01-15',
-        ]),
-    )
+    throw new CliError('INVALID_DATETIME', `Invalid datetime format: "${value}"`, [
+        'Examples: 2024-01-15 10:00, 2024-01-15T10:00:00, 2024-01-15',
+    ])
 }

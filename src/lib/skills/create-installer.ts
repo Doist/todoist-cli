@@ -1,6 +1,7 @@
 import { access, mkdir, readdir, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { CliError } from '../errors.js'
 import { SKILL_CONTENT, SKILL_DESCRIPTION, SKILL_NAME } from './content.js'
 import type { SkillInstaller } from './types.js'
 
@@ -51,7 +52,8 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
                 try {
                     await access(agentDir)
                 } catch {
-                    throw new Error(
+                    throw new CliError(
+                        'NOT_INSTALLED',
                         `${config.name} does not appear to be installed (${agentDir} not found)`,
                     )
                 }
@@ -59,7 +61,8 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
             const filepath = getInstallPath(local)
             const exists = await this.isInstalled(local)
             if (exists && !force) {
-                throw new Error(
+                throw new CliError(
+                    'ALREADY_EXISTS',
                     `Skill file already exists at ${filepath}. Use --force to overwrite.`,
                 )
             }
@@ -76,7 +79,7 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
             const filepath = getInstallPath(local)
             const exists = await this.isInstalled(local)
             if (!exists) {
-                throw new Error(`Skill file not found at ${filepath}`)
+                throw new CliError('NOT_FOUND', `Skill file not found at ${filepath}`)
             }
             await unlink(filepath)
             const dir = dirname(filepath)

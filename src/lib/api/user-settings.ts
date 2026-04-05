@@ -7,6 +7,7 @@ import {
     DAY_OF_WEEK_TO_API,
     TIME_FORMAT_TO_API,
 } from '@doist/todoist-sdk'
+import { CliError } from '../errors.js'
 import { getApi, pickDefined } from './core.js'
 
 export interface UserSettings {
@@ -101,7 +102,7 @@ export async function updateUserSettings(args: UpdateUserSettingsArgs): Promise<
     }
 
     if (commands.length === 0) {
-        throw new Error('No settings to update')
+        throw new CliError('NO_CHANGES', 'No settings to update')
     }
 
     const api = await getApi()

@@ -1,7 +1,8 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import {
     extractId,
     isIdRef,
@@ -56,7 +57,10 @@ export async function addTask(options: AddOptions): Promise<void> {
     if (options.project) {
         project = await resolveProjectRef(api, options.project)
         if (project.isArchived) {
-            throw new Error(`Cannot create task in archived project "${project.name}"`)
+            throw new CliError(
+                'PROJECT_ARCHIVED',
+                `Cannot create task in archived project "${project.name}"`,
+            )
         }
         args.projectId = project.id
     }
@@ -69,12 +73,10 @@ export async function addTask(options: AddOptions): Promise<void> {
         } else if (looksLikeRawId(options.section)) {
             args.sectionId = options.section
         } else {
-            throw new Error(
-                formatError(
-                    'PROJECT_REQUIRED',
-                    'The --project flag is required when using --section with a name.',
-                    ['Use id:xxx format to specify section by ID without a project.'],
-                ),
+            throw new CliError(
+                'PROJECT_REQUIRED',
+                'The --project flag is required when using --section with a name.',
+                ['Use id:xxx format to specify section by ID without a project.'],
             )
         }
     }
@@ -88,12 +90,10 @@ export async function addTask(options: AddOptions): Promise<void> {
             args.parentId = extractId(options.parent)
         } else {
             if (!args.projectId) {
-                throw new Error(
-                    formatError(
-                        'PROJECT_REQUIRED',
-                        'The --project flag is required when using --parent with a task name.',
-                        ['Use id:xxx format to specify parent by ID without a project.'],
-                    ),
+                throw new CliError(
+                    'PROJECT_REQUIRED',
+                    'The --project flag is required when using --parent with a task name.',
+                    ['Use id:xxx format to specify parent by ID without a project.'],
                 )
             }
             args.parentId = await resolveParentTaskId(
@@ -106,7 +106,7 @@ export async function addTask(options: AddOptions): Promise<void> {
     }
 
     if (options.stdin && options.description !== undefined) {
-        throw new Error('Cannot use both --description and --stdin')
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --description and --stdin')
     }
     if (options.stdin) {
         args.description = await readStdin()
@@ -116,11 +116,9 @@ export async function addTask(options: AddOptions): Promise<void> {
 
     if (options.assignee) {
         if (!project) {
-            throw new Error(
-                formatError(
-                    'PROJECT_REQUIRED',
-                    'The --project flag is required when using --assignee.',
-                ),
+            throw new CliError(
+                'PROJECT_REQUIRED',
+                'The --project flag is required when using --assignee.',
             )
         }
         args.assigneeId = await resolveAssigneeId(api, options.assignee, project)

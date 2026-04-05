@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
 import { deleteReminderCmd } from './delete.js'
@@ -15,7 +16,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--type <type>', 'Filter by type (time or location)', (v: string) => {
             if (v !== 'time' && v !== 'location') {
-                throw new Error("--type must be 'time' or 'location'")
+                throw new CliError('INVALID_TYPE', "--type must be 'time' or 'location'")
             }
             return v as ReminderTypeFilter
         })
@@ -37,7 +38,10 @@ export function registerReminderCommand(program: Command): void {
                 },
             ) => {
                 if (taskArg && options.task) {
-                    throw new Error('Cannot specify task both as argument and --task flag')
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify task both as argument and --task flag',
+                    )
                 }
                 const task = taskArg || options.task
                 return listReminders(task, options)
@@ -64,7 +68,10 @@ export function registerReminderCommand(program: Command): void {
                 },
             ) => {
                 if (taskArg && options.task) {
-                    throw new Error('Cannot specify task both as argument and --task flag')
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify task both as argument and --task flag',
+                    )
                 }
                 const task = taskArg || options.task
                 if (!task) {

@@ -2,6 +2,7 @@ import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
+import type { CliError } from './errors.js'
 import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
@@ -358,19 +359,37 @@ export function formatNdjson<T extends object>(
     return items.map((item) => JSON.stringify(processItem(item, type, full, showUrl))).join('\n')
 }
 
-export function formatError(code: string, message: string, hints?: string[]): string {
-    const lines = [`Error: ${code}`, message]
-    if (hints && hints.length > 0) {
+export function formatError(error: CliError): string
+export function formatError(code: string, message: string, hints?: string[]): string
+export function formatError(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): string {
+    const code = typeof codeOrError === 'string' ? codeOrError : codeOrError.code
+    const msg = typeof codeOrError === 'string' ? message! : codeOrError.userMessage
+    const h = typeof codeOrError === 'string' ? hints : codeOrError.hints
+    const lines = [`Error: ${code}`, msg]
+    if (h && h.length > 0) {
         lines.push('')
-        for (const hint of hints) {
+        for (const hint of h) {
             lines.push(`  - ${hint}`)
         }
     }
     return chalk.red(lines.join('\n'))
 }
 
-export function formatErrorJson(code: string, message: string, hints?: string[]): string {
-    return JSON.stringify({ error: { code, message, hints } })
+export function formatErrorJson(error: CliError): string
+export function formatErrorJson(code: string, message: string, hints?: string[]): string
+export function formatErrorJson(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): string {
+    const code = typeof codeOrError === 'string' ? codeOrError : codeOrError.code
+    const msg = typeof codeOrError === 'string' ? message! : codeOrError.userMessage
+    const h = typeof codeOrError === 'string' ? hints : codeOrError.hints
+    return JSON.stringify({ error: { code, message: msg, hints: h } })
 }
 
 export interface PaginatedOutput<T> {

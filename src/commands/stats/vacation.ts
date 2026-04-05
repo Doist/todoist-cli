@@ -1,5 +1,6 @@
 import type { Command } from 'commander'
 import { updateGoals } from '../../lib/api/stats.js'
+import { CliError } from '../../lib/errors.js'
 
 interface VacationOptions {
     on?: boolean
@@ -8,7 +9,7 @@ interface VacationOptions {
 
 export async function vacationCommand(options: VacationOptions, command: Command): Promise<void> {
     if (options.on && options.off) {
-        throw new Error('Cannot use both --on and --off.')
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --on and --off.')
     }
 
     if (!options.on && !options.off) {

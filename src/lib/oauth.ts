@@ -1,3 +1,4 @@
+import { CliError } from './errors.js'
 import { OAUTH_REDIRECT_URI } from './oauth-server.js'
 
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
@@ -46,7 +47,7 @@ export async function exchangeCodeForToken(code: string, codeVerifier: string): 
 
     if (!response.ok) {
         const text = await response.text()
-        throw new Error(`Token exchange failed: ${response.status} ${text}`)
+        throw new CliError('AUTH_FAILED', `Token exchange failed: ${response.status} ${text}`)
     }
 
     const data: TokenResponse = await response.json()

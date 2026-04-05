@@ -6,7 +6,7 @@ import { CliError } from './lib/errors.js'
 import { isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
-import { formatErrorJson } from './lib/output.js'
+import { formatError, formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
@@ -195,12 +195,12 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        if (isJsonMode()) {
-            const code = err instanceof CliError ? err.code : 'INTERNAL_ERROR'
-            const hints = err instanceof CliError ? err.hints : undefined
-            console.error(formatErrorJson(code, err.message, hints))
+        if (err instanceof CliError) {
+            console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
         } else {
-            console.error(err.message)
+            console.error(
+                isJsonMode() ? formatErrorJson('INTERNAL_ERROR', err.message) : err.message,
+            )
         }
         process.exit(1)
     })

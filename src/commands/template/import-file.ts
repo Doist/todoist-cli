@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { getApi } from '../../lib/api/core.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { formatImportResult } from './helpers.js'
 
@@ -18,16 +19,14 @@ export async function importTemplateFile(
     options: ImportFileOptions,
 ): Promise<void> {
     if (!options.file) {
-        throw new Error(formatError('MISSING_FILE', 'Template file path is required (--file)'))
+        throw new CliError('MISSING_FILE', 'Template file path is required (--file)')
     }
 
     const filePath = path.resolve(options.file)
     if (!fs.existsSync(filePath)) {
-        throw new Error(
-            formatError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
-                'Check the file path and try again.',
-            ]),
-        )
+        throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
+            'Check the file path and try again.',
+        ])
     }
 
     if (options.dryRun) {
@@ -47,9 +46,7 @@ export async function importTemplateFile(
         file = fs.readFileSync(filePath) as Buffer
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        throw new Error(
-            formatError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message]),
-        )
+        throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
     }
     const fileName = options.fileName || path.basename(filePath)
 

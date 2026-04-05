@@ -1,6 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, printDryRun } from '../../lib/output.js'
+import { printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function deleteSection(
@@ -14,11 +15,9 @@ export async function deleteSection(
 
     const { results: tasks } = await api.getTasks({ sectionId: id })
     if (tasks.length > 0) {
-        throw new Error(
-            formatError(
-                'HAS_TASKS',
-                `Cannot delete section: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
-            ),
+        throw new CliError(
+            'HAS_TASKS',
+            `Cannot delete section: ${tasks.length} uncompleted task${tasks.length === 1 ? '' : 's'} remain.`,
         )
     }
 

@@ -475,43 +475,34 @@ describe('reminder add', () => {
 
     it('errors when neither --before nor --at specified', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
-
-        await program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1'])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('MISSING_TIME'))
+        await expect(
+            program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1']),
+        ).rejects.toThrow('MISSING_TIME')
         expect(mockAddReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('errors when both --before and --at specified', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
-
-        await program.parseAsync([
-            'node',
-            'td',
-            'reminder',
-            'add',
-            'id:task-1',
-            '--before',
-            '30m',
-            '--at',
-            '2024-01-15 10:00',
-        ])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('CONFLICTING_OPTIONS'))
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'reminder',
+                'add',
+                'id:task-1',
+                '--before',
+                '30m',
+                '--at',
+                '2024-01-15 10:00',
+            ]),
+        ).rejects.toThrow('CONFLICTING_OPTIONS')
         expect(mockAddReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('errors on invalid duration format', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -519,24 +510,22 @@ describe('reminder add', () => {
             due: { date: '2024-01-15T10:00:00' },
         })
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'reminder',
-            'add',
-            'id:task-1',
-            '--before',
-            'invalid',
-        ])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('INVALID_DURATION'))
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'reminder',
+                'add',
+                'id:task-1',
+                '--before',
+                'invalid',
+            ]),
+        ).rejects.toThrow('INVALID_DURATION')
         expect(mockAddReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('errors when --before used on task without due date', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -544,16 +533,14 @@ describe('reminder add', () => {
             due: null,
         })
 
-        await program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m'])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('NO_DUE_DATE'))
+        await expect(
+            program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m']),
+        ).rejects.toThrow('NO_DUE_DATE')
         expect(mockAddReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('errors when --before used on task with date-only due', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -561,11 +548,10 @@ describe('reminder add', () => {
             due: { date: '2024-01-15' },
         })
 
-        await program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m'])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('NO_DUE_TIME'))
+        await expect(
+            program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m']),
+        ).rejects.toThrow('NO_DUE_TIME')
         expect(mockAddReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('accepts --task flag instead of positional arg', async () => {
@@ -738,22 +724,13 @@ describe('reminder delete', () => {
 
     it('errors if reminder not found', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockFetchReminders.mockResolvedValue([])
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'reminder',
-            'delete',
-            'id:rem-nonexistent',
-            '--yes',
-        ])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('NOT_FOUND'))
+        await expect(
+            program.parseAsync(['node', 'td', 'reminder', 'delete', 'id:rem-nonexistent', '--yes']),
+        ).rejects.toThrow('NOT_FOUND')
         expect(mockDeleteReminder).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 })
 

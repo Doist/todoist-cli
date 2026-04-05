@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import chalk from 'chalk'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { readConfig, type UpdateChannel } from '../../lib/config.js'
+import { CliError } from '../../lib/errors.js'
 import { withSpinner } from '../../lib/spinner.js'
 
 const PACKAGE_NAME = '@doist/todoist-cli'
@@ -51,7 +52,7 @@ async function fetchVersion(channel: UpdateChannel): Promise<string> {
     const url = `https://registry.npmjs.org/${PACKAGE_NAME}/${getInstallTag(channel)}`
     const response = await fetch(url)
     if (!response.ok) {
-        throw new Error(`Registry request failed (HTTP ${response.status})`)
+        throw new CliError('REGISTRY_ERROR', `Registry request failed (HTTP ${response.status})`)
     }
     const data = (await response.json()) as RegistryResponse
     return data.version

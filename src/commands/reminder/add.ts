@@ -6,8 +6,9 @@ import {
     type ReminderDue,
 } from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatError, formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { parseDateTime } from './helpers.js'
 
@@ -20,15 +21,11 @@ interface AddOptions {
 
 export async function addReminder(taskRef: string, options: AddOptions): Promise<void> {
     if (!options.before && !options.at) {
-        console.log(formatError('MISSING_TIME', 'Must specify --before or --at'))
-        process.exitCode = 1
-        return
+        throw new CliError('MISSING_TIME', 'Must specify --before or --at')
     }
 
     if (options.before && options.at) {
-        console.log(formatError('CONFLICTING_OPTIONS', 'Cannot use both --before and --at'))
-        process.exitCode = 1
-        return
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --before and --at')
     }
 
     const api = await getApi()
@@ -37,22 +34,16 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
     if (options.before) {
         const taskDue = task.due as { date?: string } | null
         if (!taskDue?.date) {
-            console.log(
-                formatError('NO_DUE_DATE', 'Cannot use --before: task has no due date', [
-                    'Use --at to set a specific reminder time instead',
-                ]),
-            )
-            process.exitCode = 1
-            return
+            throw new CliError('NO_DUE_DATE', 'Cannot use --before: task has no due date', [
+                'Use --at to set a specific reminder time instead',
+            ])
         }
         if (!taskDue.date.includes('T')) {
-            console.log(
-                formatError('NO_DUE_TIME', 'Cannot use --before: task has a due date but no time', [
-                    'Use --at to set a specific reminder time, or add a time to the task',
-                ]),
+            throw new CliError(
+                'NO_DUE_TIME',
+                'Cannot use --before: task has a due date but no time',
+                ['Use --at to set a specific reminder time, or add a time to the task'],
             )
-            process.exitCode = 1
-            return
         }
     }
 
@@ -62,13 +53,9 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
     if (options.before) {
         const parsed = parseDuration(options.before)
         if (parsed === null) {
-            console.log(
-                formatError('INVALID_DURATION', `Invalid duration format: "${options.before}"`, [
-                    'Examples: 30m, 1h, 2h15m, 1 hour 30 minutes',
-                ]),
-            )
-            process.exitCode = 1
-            return
+            throw new CliError('INVALID_DURATION', `Invalid duration format: "${options.before}"`, [
+                'Examples: 30m, 1h, 2h15m, 1 hour 30 minutes',
+            ])
         }
         minuteOffset = parsed
     }

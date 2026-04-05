@@ -4,6 +4,7 @@ import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import { CliError } from '../lib/errors.js'
 import type { Pagination } from '../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { paginate } from '../lib/pagination.js'
@@ -223,7 +224,10 @@ export function registerActivityCommand(program: Command): void {
                 Boolean,
             ).length
             if (selectedOutputFormats > 1) {
-                throw new Error('Options --markdown, --json, and --ndjson are mutually exclusive.')
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Options --markdown, --json, and --ndjson are mutually exclusive.',
+                )
             }
 
             const api = await getApi()

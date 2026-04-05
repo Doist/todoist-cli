@@ -1,5 +1,6 @@
 import { createCommand } from '@doist/todoist-sdk'
 import { getApiToken } from '../auth.js'
+import { CliError } from '../errors.js'
 import { getApi, pickDefined } from './core.js'
 
 export interface Streak {
@@ -50,12 +51,12 @@ export async function fetchProductivityStats(): Promise<ProductivityStats> {
     })
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch productivity stats: ${response.status}`)
+        throw new CliError('API_ERROR', `Failed to fetch productivity stats: ${response.status}`)
     }
 
     const data = await response.json()
     if (data.error) {
-        throw new Error(`Productivity stats API error: ${data.error}`)
+        throw new CliError('API_ERROR', `Productivity stats API error: ${data.error}`)
     }
 
     const goals = data.goals ?? {}
@@ -107,7 +108,7 @@ export async function updateGoals(args: UpdateGoalsArgs): Promise<void> {
     })
 
     if (Object.keys(goalsArgs).length === 0) {
-        throw new Error('No goals to update')
+        throw new CliError('NO_CHANGES', 'No goals to update')
     }
 
     const api = await getApi()

@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import { Option } from 'commander'
 import type { UserSettings } from '../../lib/api/user-settings.js'
 import { withUnvalidatedChoices } from '../../lib/completion.js'
+import { CliError } from '../../lib/errors.js'
 
 export const THEMES: { id: number; name: string; label: string; isPro: boolean }[] = [
     { id: 0, name: 'todoist', label: 'Todoist', isPro: false },
@@ -59,25 +60,25 @@ export const THEME_CHOICES = THEMES.map((t) => t.name)
 export function parseTheme(value: string): number {
     const theme = THEMES.find((t) => t.name === value)
     if (theme) return theme.id
-    throw new Error(`Invalid theme: "${value}"`)
+    throw new CliError('INVALID_THEME', `Invalid theme: "${value}"`)
 }
 
 export function parseTimeFormat(value: string): TimeFormat {
     const result = TIME_FORMAT_MAP[value]
     if (result !== undefined) return result
-    throw new Error(`Invalid time format: "${value}"`)
+    throw new CliError('INVALID_TIME_FORMAT', `Invalid time format: "${value}"`)
 }
 
 export function parseDateFormat(value: string): DateFormat {
     const result = DATE_FORMAT_MAP[value.toLowerCase()]
     if (result !== undefined) return result
-    throw new Error(`Invalid date format: "${value}"`)
+    throw new CliError('INVALID_DATE_FORMAT', `Invalid date format: "${value}"`)
 }
 
 export function parseDay(value: string): DayOfWeek {
     const result = DAY_MAP[value.toLowerCase()]
     if (result !== undefined) return result
-    throw new Error(`Invalid day: "${value}"`)
+    throw new CliError('INVALID_DAY', `Invalid day: "${value}"`)
 }
 
 export function formatTheme(themeId: number): string {
@@ -177,7 +178,7 @@ export function parseBoolean(value: string): boolean {
     const v = value.toLowerCase()
     if (v === 'true' || v === 'on' || v === '1' || v === 'yes') return true
     if (v === 'false' || v === 'off' || v === '0' || v === 'no') return false
-    throw new Error(`Invalid boolean value: ${value}`)
+    throw new CliError('INVALID_BOOLEAN', `Invalid boolean value: ${value}`)
 }
 
 export function parseStartPageRef(

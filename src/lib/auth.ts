@@ -13,6 +13,7 @@ export {
 } from './config.js'
 
 import { CONFIG_PATH, readConfig, writeConfig, type AuthMode, type Config } from './config.js'
+import { CliError } from './errors.js'
 
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 
@@ -103,8 +104,10 @@ export async function getApiToken(): Promise<string> {
         }
     }
 
-    throw new Error(
+    throw new CliError(
+        'NO_TOKEN',
         `No API token found. Set ${TOKEN_ENV_VAR} or run \`td auth login\` or \`td auth token <token>\`.`,
+        ['Set TODOIST_API_TOKEN or run: td auth login'],
     )
 }
 
@@ -114,7 +117,7 @@ export async function saveApiToken(
 ): Promise<TokenStorageResult> {
     // Validate token (non-empty, reasonable length)
     if (!token || token.trim().length < 10) {
-        throw new Error('Invalid token: Token must be at least 10 characters')
+        throw new CliError('INVALID_TOKEN', 'Invalid token: Token must be at least 10 characters')
     }
 
     const trimmedToken = token.trim()

@@ -1,7 +1,7 @@
 import type { GetProjectActivityStatsArgs } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function showProjectActivityStats(
@@ -15,11 +15,9 @@ export async function showProjectActivityStats(
     if (options.weeks) {
         const weeks = parseInt(options.weeks, 10)
         if (isNaN(weeks) || weeks < 1 || weeks > 12) {
-            throw new Error(
-                formatError(
-                    'INVALID_WEEKS',
-                    'The --weeks value must be a number between 1 and 12.',
-                ),
+            throw new CliError(
+                'INVALID_WEEKS',
+                'The --weeks value must be a number between 1 and 12.',
             )
         }
         args.weeks = weeks

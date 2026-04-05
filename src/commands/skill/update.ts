@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { getInstaller, listAgents } from '../../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../../lib/skills/update-installed.js'
 
@@ -32,18 +32,17 @@ export async function updateSkill(agent: string, options: UpdateOptions): Promis
     const installer = getInstaller(agent)
     if (!installer) {
         const available = listAgents().join(', ')
-        throw new Error(
-            formatError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
-                `Available agents: ${available}`,
-            ]),
-        )
+        throw new CliError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
+            `Available agents: ${available}`,
+        ])
     }
 
     const local = options.local ?? false
     const installed = await installer.isInstalled(local)
 
     if (!installed) {
-        throw new Error(
+        throw new CliError(
+            'NOT_INSTALLED',
             `Skill is not installed for ${agent}. Use \`td skill install ${agent}${local ? ' --local' : ''}\` first.`,
         )
     }

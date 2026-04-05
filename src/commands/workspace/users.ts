@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
+import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { WORKSPACE_ROLES } from './helpers.js'
@@ -27,7 +28,8 @@ export async function listWorkspaceUsers(
         // Mimic Commander's .choices() error format for consistency
         for (const role of roles) {
             if (!WORKSPACE_ROLES.includes(role)) {
-                throw new Error(
+                throw new CliError(
+                    'INVALID_ROLE',
                     `error: option '--role <roles>' argument '${role}' is invalid. Allowed choices are ${WORKSPACE_ROLES.join(', ')}.`,
                 )
             }

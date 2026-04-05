@@ -1,6 +1,6 @@
 import type { Label } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { paginate } from '../../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../../lib/refs.js'
 
@@ -14,7 +14,7 @@ export async function resolveLabelRef(nameOrId: string): Promise<Label> {
     if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
         const id = lenientIdRef(nameOrId, 'label')
         const label = labels.find((l) => l.id === id)
-        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
+        if (!label) throw new CliError('LABEL_NOT_FOUND', 'Label not found.')
         return label
     }
 
@@ -28,7 +28,7 @@ export async function resolveLabelRef(nameOrId: string): Promise<Label> {
         if (byId) return byId
     }
 
-    throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
+    throw new CliError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`)
 }
 
 export interface ResolvedLabelForView {
@@ -46,7 +46,7 @@ export async function resolveLabelNameForView(nameOrId: string): Promise<Resolve
     if (parseTodoistUrl(nameOrId) || isIdRef(nameOrId)) {
         const id = lenientIdRef(nameOrId, 'label')
         const label = labels.find((l) => l.id === id)
-        if (!label) throw new Error(formatError('LABEL_NOT_FOUND', 'Label not found.'))
+        if (!label) throw new CliError('LABEL_NOT_FOUND', 'Label not found.')
         return { name: label.name, label }
     }
 
@@ -71,5 +71,5 @@ export async function resolveLabelNameForView(nameOrId: string): Promise<Resolve
     const sharedMatch = sharedLabels.find((s) => s.toLowerCase() === lower)
     if (sharedMatch) return { name: sharedMatch, label: null }
 
-    throw new Error(formatError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`))
+    throw new CliError('LABEL_NOT_FOUND', `Label "${nameOrId}" not found.`)
 }

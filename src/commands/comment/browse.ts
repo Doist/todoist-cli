@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
+import { CliError } from '../../lib/errors.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { commentUrl, projectCommentUrl } from '../../lib/urls.js'
 
@@ -15,7 +16,7 @@ export async function browseComment(commentId: string): Promise<void> {
           : null
 
     if (!url) {
-        throw new Error('Comment has no associated task or project.')
+        throw new CliError('NO_URL', 'Comment has no associated task or project.')
     }
 
     await openInBrowser(url)

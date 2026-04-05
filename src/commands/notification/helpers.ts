@@ -1,5 +1,5 @@
 import { fetchNotifications, type Notification } from '../../lib/api/notifications.js'
-import { formatError } from '../../lib/output.js'
+import { CliError } from '../../lib/errors.js'
 import { extractId, isIdRef } from '../../lib/refs.js'
 
 export function formatRelativeTime(dateStr: string): string {
@@ -73,7 +73,7 @@ export async function resolveNotification(idRef: string): Promise<Notification> 
 
     const notification = notifications.find((n) => n.id === id)
     if (!notification) {
-        throw new Error(formatError('NOTIFICATION_NOT_FOUND', `Notification not found: ${idRef}`))
+        throw new CliError('NOTIFICATION_NOT_FOUND', `Notification not found: ${idRef}`)
     }
 
     return notification
