@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetGlobalArgs } from '../lib/global-args.js'
 import type { ProgressEvent } from '../lib/progress.js'
 import { getProgressTracker, ProgressTracker, resetProgressTracker } from '../lib/progress.js'
 
@@ -40,6 +41,7 @@ describe('ProgressTracker', () => {
 
         vi.clearAllMocks()
         resetProgressTracker()
+        resetGlobalArgs()
     })
 
     afterEach(() => {
@@ -50,6 +52,7 @@ describe('ProgressTracker', () => {
         })
         vi.clearAllMocks()
         resetProgressTracker()
+        resetGlobalArgs()
     })
 
     describe('initialization and enabling', () => {
@@ -206,6 +209,7 @@ describe('ProgressTracker', () => {
 
         it('should not emit events when disabled', () => {
             resetProgressTracker()
+            resetGlobalArgs()
             process.argv = ['node', 'td', 'today'] // No --progress-jsonl flag
             const disabledTracker = new ProgressTracker()
 
@@ -266,16 +270,19 @@ describe('global progress tracker', () => {
     beforeEach(() => {
         originalArgv = [...process.argv]
         resetProgressTracker()
+        resetGlobalArgs()
         vi.clearAllMocks()
     })
 
     afterEach(() => {
         process.argv = originalArgv
         resetProgressTracker()
+        resetGlobalArgs()
     })
 
     it('should return singleton instance', () => {
         process.argv = ['node', 'td', 'today', '--progress-jsonl']
+        resetGlobalArgs()
 
         const tracker1 = getProgressTracker()
         const tracker2 = getProgressTracker()
@@ -285,9 +292,11 @@ describe('global progress tracker', () => {
 
     it('should create new instance after reset', () => {
         process.argv = ['node', 'td', 'today', '--progress-jsonl']
+        resetGlobalArgs()
 
         const tracker1 = getProgressTracker()
         resetProgressTracker()
+        resetGlobalArgs()
         const tracker2 = getProgressTracker()
 
         expect(tracker1).not.toBe(tracker2)
@@ -296,12 +305,14 @@ describe('global progress tracker', () => {
     it('should respect argv changes between instances', () => {
         // First instance - disabled
         process.argv = ['node', 'td', 'today']
+        resetGlobalArgs()
         const tracker1 = getProgressTracker()
         expect(tracker1.isEnabled()).toBe(false)
 
         // Reset and create new instance with flag
         resetProgressTracker()
         process.argv = ['node', 'td', 'today', '--progress-jsonl']
+        resetGlobalArgs()
         const tracker2 = getProgressTracker()
         expect(tracker2.isEnabled()).toBe(true)
     })
@@ -323,12 +334,14 @@ describe('edge cases and integration', () => {
         })
 
         resetProgressTracker()
+        resetGlobalArgs()
         vi.clearAllMocks()
     })
 
     afterEach(() => {
         process.argv = originalArgv
         resetProgressTracker()
+        resetGlobalArgs()
     })
 
     it.each([
@@ -338,6 +351,7 @@ describe('edge cases and integration', () => {
         ['flag followed by another flag', ['node', 'td', 'today', '--progress-jsonl', '--json']],
     ])('should handle %s', (_description, argv) => {
         process.argv = argv
+        resetGlobalArgs()
         const tracker = new ProgressTracker()
         expect(tracker.isEnabled()).toBe(true)
     })
@@ -350,6 +364,7 @@ describe('edge cases and integration', () => {
             '--progress-jsonl=/tmp/second',
             'today',
         ]
+        resetGlobalArgs()
         const _tracker = new ProgressTracker()
 
         expect(fs.createWriteStream).toHaveBeenLastCalledWith('/tmp/second', { flags: 'a' })

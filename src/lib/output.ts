@@ -2,6 +2,7 @@ import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
+import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
     commentUrl,
@@ -12,10 +13,6 @@ import {
     sectionUrl,
     taskUrl,
 } from './urls.js'
-
-export function isAccessible(): boolean {
-    return process.env.TD_ACCESSIBLE === '1' || process.argv.includes('--accessible')
-}
 
 const PRIORITY_COLORS: Record<number, (s: string) => string> = {
     4: chalk.red, // p1 = priority 4 in API (highest)
@@ -374,14 +371,6 @@ export function formatError(code: string, message: string, hints?: string[]): st
 
 export function formatErrorJson(code: string, message: string, hints?: string[]): string {
     return JSON.stringify({ error: { code, message, hints } })
-}
-
-export function isJsonMode(): boolean {
-    return process.argv.includes('--json')
-}
-
-export function isQuiet(): boolean {
-    return process.argv.includes('--quiet') || process.argv.includes('-q')
 }
 
 export interface PaginatedOutput<T> {

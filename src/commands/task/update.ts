@@ -1,6 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
-import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'

@@ -1,40 +1,11 @@
 import chalk from 'chalk'
 import yoctoSpinner from 'yocto-spinner'
+import { shouldDisableSpinner } from './global-args.js'
 
 interface SpinnerOptions {
     text: string
     color?: 'green' | 'yellow' | 'blue' | 'red' | 'gray' | 'cyan' | 'magenta'
     noSpinner?: boolean // Allow overriding spinner display
-}
-
-function shouldDisableSpinner(): boolean {
-    // Check for environment variables that should disable spinners
-    if (process.env.TD_SPINNER === 'false') {
-        return true
-    }
-
-    // Check if we're in CI environment
-    if (process.env.CI) {
-        return true
-    }
-
-    // Check process arguments for flags that should disable spinner
-    const args = process.argv
-    const spinnerDisablingFlags = [
-        '--json',
-        '--ndjson',
-        '--no-spinner',
-        '--progress-jsonl',
-        '--verbose',
-        '-v',
-    ]
-
-    // Check for both exact matches and prefix matches (to handle --flag=value variants)
-    return spinnerDisablingFlags.some(
-        (flag) =>
-            args.includes(flag) || // exact match
-            args.some((arg) => arg.startsWith(`${flag}=`)), // prefix match with equals
-    )
 }
 
 // Early spinner singleton — shown instantly before command modules load.

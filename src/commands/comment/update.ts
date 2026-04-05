@@ -1,5 +1,6 @@
 import { getApi } from '../../lib/api/core.js'
-import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 
 export async function updateComment(

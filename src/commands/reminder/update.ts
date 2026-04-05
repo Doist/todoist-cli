@@ -1,6 +1,7 @@
 import { updateReminder as apiUpdateReminder, type ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
-import { formatError, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { parseDateTime } from './helpers.js'
 

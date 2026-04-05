@@ -1,6 +1,7 @@
 import type { ColorKey } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
-import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, formatJson, printDryRun } from '../../lib/output.js'
 import { resolveLabelRef } from './helpers.js'
 
 export interface UpdateLabelOptions {

@@ -11,6 +11,8 @@
  * Can also be activated via TD_VERBOSE=1..4 environment variable.
  */
 
+import { getVerboseLevel } from './global-args.js'
+
 export const Verbosity = {
     SILENT: 0,
     INFO: 1,
@@ -42,19 +44,8 @@ class Logger {
             }
         }
 
-        // Count -v flags in argv (supports -v, -vv, -vvv, -vvvv, and repeated --verbose)
-        const args = process.argv.slice(2)
-        let cliLevel = 0
-        for (const arg of args) {
-            if (arg === '--verbose') {
-                cliLevel += 1
-            } else if (/^-v+$/.test(arg)) {
-                // -v = 1, -vv = 2, -vvv = 3, -vvvv = 4
-                cliLevel += arg.length - 1
-            }
-        }
-
         // CLI flags override env var if higher
+        const cliLevel = getVerboseLevel()
         if (cliLevel > 0) {
             this.level = Math.min(cliLevel, Verbosity.TRACE) as Verbosity
         }

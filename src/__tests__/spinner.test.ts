@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import yoctoSpinnerFactory from 'yocto-spinner'
+import { resetGlobalArgs } from '../lib/global-args.js'
 import {
     LoadingSpinner,
     resetEarlySpinner,
@@ -36,8 +37,9 @@ describe('withSpinner', () => {
             value: true,
             configurable: true,
         })
-        // Clear process.argv
+        // Clear process.argv and global args cache
         process.argv = ['node', 'td']
+        resetGlobalArgs()
     })
 
     afterEach(() => {
@@ -126,6 +128,7 @@ describe('withSpinner', () => {
         ['--progress-jsonl=path', ['node', 'td', 'today', '--progress-jsonl=/tmp/progress.jsonl']],
     ])('should not show spinner with %s flag', async (_flagName, argv) => {
         process.argv = argv
+        resetGlobalArgs()
 
         const result = await withSpinner(
             { text: 'Testing...', color: 'blue' },
@@ -149,8 +152,9 @@ describe('LoadingSpinner', () => {
             value: true,
             configurable: true,
         })
-        // Clear process.argv
+        // Clear process.argv and global args cache
         process.argv = ['node', 'td']
+        resetGlobalArgs()
     })
 
     afterEach(() => {
@@ -215,8 +219,9 @@ describe('early spinner', () => {
             value: true,
             configurable: true,
         })
-        // Clear process.argv
+        // Clear process.argv and global args cache
         process.argv = ['node', 'td']
+        resetGlobalArgs()
     })
 
     afterEach(() => {
@@ -250,6 +255,7 @@ describe('early spinner', () => {
         ['--no-spinner', ['node', 'td', 'today', '--no-spinner']],
     ])('should not start early spinner with %s flag', (_flagName, argv) => {
         process.argv = argv
+        resetGlobalArgs()
 
         startEarlySpinner()
         expect(yoctoSpinner).not.toHaveBeenCalled()

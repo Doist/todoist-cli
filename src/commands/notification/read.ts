@@ -3,7 +3,8 @@ import {
     markAllNotificationsRead,
     markNotificationRead,
 } from '../../lib/api/notifications.js'
-import { formatError, isQuiet } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError } from '../../lib/output.js'
 import { resolveNotification } from './helpers.js'
 
 interface ReadOptions {

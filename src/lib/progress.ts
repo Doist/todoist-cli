@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { getProgressJsonlPath } from './global-args.js'
 
 export type ProgressEvent = {
     type: 'start' | 'api_call' | 'api_response' | 'complete' | 'error'
@@ -22,40 +23,17 @@ export class ProgressTracker {
     }
 
     private checkAndInitialize() {
-        const args = process.argv
-
-        // Find all --progress-jsonl flags and use the last one
-        const progressIndices = args
-            .map((arg, index) => ({ arg, index }))
-            .filter(({ arg }) => arg.startsWith('--progress-jsonl'))
-
-        if (progressIndices.length === 0) {
-            return
-        }
+        const progressJsonl = getProgressJsonlPath()
+        if (progressJsonl === false) return
 
         this.enabled = true
 
-        // Use the last occurrence
-        const { arg, index: progressIndex } = progressIndices[progressIndices.length - 1]
-
-        // Handle both --progress-jsonl and --progress-jsonl=path formats
-        let outputPath: string | undefined
-
-        if (arg.includes('=')) {
-            // Format: --progress-jsonl=/path/to/file
-            outputPath = arg.split('=', 2)[1]
-        } else if (progressIndex + 1 < args.length && !args[progressIndex + 1].startsWith('-')) {
-            // Format: --progress-jsonl /path/to/file
-            outputPath = args[progressIndex + 1]
-        }
-
-        if (outputPath) {
+        if (typeof progressJsonl === 'string') {
             try {
-                this.outputStream = fs.createWriteStream(outputPath, { flags: 'a' })
+                this.outputStream = fs.createWriteStream(progressJsonl, { flags: 'a' })
             } catch (_error) {
-                // Fall back to stderr if file creation fails
                 console.error(
-                    `Warning: Could not create progress file ${outputPath}, falling back to stderr`,
+                    `Warning: Could not create progress file ${progressJsonl}, falling back to stderr`,
                 )
                 this.outputStream = process.stderr
             }

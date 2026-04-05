@@ -3,9 +3,10 @@
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { CliError } from './lib/errors.js'
+import { isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
-import { formatErrorJson, isJsonMode } from './lib/output.js'
+import { formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
 program
@@ -170,11 +171,12 @@ if (process.argv[2] === 'completion-server') {
         try {
             // Preload markdown renderer in parallel with the command module
             // when output will be pretty-printed (not JSON/NDJSON/raw)
-            const args = process.argv.slice(2)
             const noMarkdownCommands = new Set(['changelog', 'update', 'completion'])
             const needsMarkdown =
                 !noMarkdownCommands.has(commandName) &&
-                !args.some((a) => a === '--json' || a === '--ndjson' || a === '--raw')
+                !isJsonMode() &&
+                !isNdjsonMode() &&
+                !isRawMode()
             const markdownReady = needsMarkdown ? preloadMarkdown() : undefined
 
             const register = await loader()

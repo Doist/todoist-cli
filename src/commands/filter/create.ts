@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { addFilter, type UpdateFilterArgs } from '../../lib/api/filters.js'
-import { formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 
 export interface CreateOptions {
     name: string

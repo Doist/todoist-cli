@@ -6,7 +6,8 @@ import {
     type ReminderDue,
 } from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
-import { formatError, formatJson, isQuiet, printDryRun } from '../../lib/output.js'
+import { isQuiet } from '../../lib/global-args.js'
+import { formatError, formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { parseDateTime } from './helpers.js'
 
