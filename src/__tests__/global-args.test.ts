@@ -140,6 +140,21 @@ describe('parseGlobalArgs', () => {
                     .progressJsonl,
             ).toBe('/second')
         })
+
+        it('preserves = characters in path value', () => {
+            expect(parseGlobalArgs(['--progress-jsonl=/tmp/a=b=c']).progressJsonl).toBe(
+                '/tmp/a=b=c',
+            )
+        })
+    })
+
+    describe('-- terminator', () => {
+        it('stops parsing flags after --', () => {
+            const result = parseGlobalArgs(['--json', '--', '-vq', '--quiet'])
+            expect(result.json).toBe(true)
+            expect(result.verbose).toBe(0)
+            expect(result.quiet).toBe(false)
+        })
     })
 
     describe('positional arguments', () => {

@@ -48,6 +48,9 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
     for (let i = 0; i < args.length; i++) {
         const arg = args[i]
 
+        // Standard CLI terminator — everything after is positional
+        if (arg === '--') break
+
         // Long flags
         if (arg === '--json') {
             result.json = true
@@ -66,7 +69,7 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
         } else if (arg === '--progress-jsonl' || arg.startsWith('--progress-jsonl=')) {
             if (arg.includes('=')) {
                 // --progress-jsonl=path
-                result.progressJsonl = arg.split('=', 2)[1]
+                result.progressJsonl = arg.slice(arg.indexOf('=') + 1)
             } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
                 // --progress-jsonl path (next arg is a value, not a flag)
                 i++
