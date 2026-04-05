@@ -104,11 +104,7 @@ export async function getApiToken(): Promise<string> {
         }
     }
 
-    throw new CliError(
-        'NO_TOKEN',
-        `No API token found. Set ${TOKEN_ENV_VAR} or run \`td auth login\` or \`td auth token <token>\`.`,
-        ['Set TODOIST_API_TOKEN or run: td auth login'],
-    )
+    throw new NoTokenError()
 }
 
 export async function saveApiToken(

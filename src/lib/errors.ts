@@ -86,10 +86,10 @@ export type ErrorCode =
 export class CliError extends Error {
     constructor(
         public readonly code: ErrorCode,
-        public readonly userMessage: string,
+        message: string,
         public readonly hints?: string[],
     ) {
-        super(`${code}: ${userMessage}`)
+        super(message)
         this.name = 'CliError'
     }
 }

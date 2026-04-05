@@ -359,6 +359,17 @@ export function formatNdjson<T extends object>(
     return items.map((item) => JSON.stringify(processItem(item, type, full, showUrl))).join('\n')
 }
 
+function resolveErrorParts(
+    codeOrError: string | CliError,
+    message?: string,
+    hints?: string[],
+): { code: string; message: string; hints: string[] | undefined } {
+    if (typeof codeOrError === 'string') {
+        return { code: codeOrError, message: message!, hints }
+    }
+    return { code: codeOrError.code, message: codeOrError.message, hints: codeOrError.hints }
+}
+
 export function formatError(error: CliError): string
 export function formatError(code: string, message: string, hints?: string[]): string
 export function formatError(
@@ -366,13 +377,11 @@ export function formatError(
     message?: string,
     hints?: string[],
 ): string {
-    const code = typeof codeOrError === 'string' ? codeOrError : codeOrError.code
-    const msg = typeof codeOrError === 'string' ? message! : codeOrError.userMessage
-    const h = typeof codeOrError === 'string' ? hints : codeOrError.hints
-    const lines = [`Error: ${code}`, msg]
-    if (h && h.length > 0) {
+    const parts = resolveErrorParts(codeOrError, message, hints)
+    const lines = [`Error: ${parts.code}`, parts.message]
+    if (parts.hints && parts.hints.length > 0) {
         lines.push('')
-        for (const hint of h) {
+        for (const hint of parts.hints) {
             lines.push(`  - ${hint}`)
         }
     }
@@ -386,10 +395,10 @@ export function formatErrorJson(
     message?: string,
     hints?: string[],
 ): string {
-    const code = typeof codeOrError === 'string' ? codeOrError : codeOrError.code
-    const msg = typeof codeOrError === 'string' ? message! : codeOrError.userMessage
-    const h = typeof codeOrError === 'string' ? hints : codeOrError.hints
-    return JSON.stringify({ error: { code, message: msg, hints: h } })
+    const parts = resolveErrorParts(codeOrError, message, hints)
+    return JSON.stringify({
+        error: { code: parts.code, message: parts.message, hints: parts.hints },
+    })
 }
 
 export interface PaginatedOutput<T> {

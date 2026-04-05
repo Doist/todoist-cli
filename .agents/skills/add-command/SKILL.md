@@ -65,6 +65,18 @@ Single-subcommand commands (e.g., `add.ts`, `today.ts`) remain as flat files.
 | Destructive + irreversible     | `--yes`, `--dry-run`                     |
 | Reversible (archive/unarchive) | `--dry-run` (no `--yes`)                 |
 
+### Error handling
+
+Always use `CliError` from `src/lib/errors.ts` instead of bare `throw new Error(...)`. This ensures structured error output in JSON mode and consistent formatting in text mode.
+
+```typescript
+import { CliError } from '../../lib/errors.js'
+
+throw new CliError('ERROR_CODE', 'User-facing message', ['Optional hint'])
+```
+
+When adding a new error code, add it to the `ErrorCode` type in `src/lib/errors.ts` under the appropriate category. The type provides intellisense for known codes while accepting any string for dynamic codes.
+
 ### ID resolution
 
 - `resolveXxxRef(api, ref)` — when the user knows the entity by name (projects, tasks, labels). Add new wrappers in `refs.ts` — `resolveRef` is private.

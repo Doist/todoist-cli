@@ -478,7 +478,7 @@ describe('reminder add', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1']),
-        ).rejects.toThrow('MISSING_TIME')
+        ).rejects.toHaveProperty('code', 'MISSING_TIME')
         expect(mockAddReminder).not.toHaveBeenCalled()
     })
 
@@ -497,7 +497,7 @@ describe('reminder add', () => {
                 '--at',
                 '2024-01-15 10:00',
             ]),
-        ).rejects.toThrow('CONFLICTING_OPTIONS')
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
         expect(mockAddReminder).not.toHaveBeenCalled()
     })
 
@@ -520,7 +520,7 @@ describe('reminder add', () => {
                 '--before',
                 'invalid',
             ]),
-        ).rejects.toThrow('INVALID_DURATION')
+        ).rejects.toHaveProperty('code', 'INVALID_DURATION')
         expect(mockAddReminder).not.toHaveBeenCalled()
     })
 
@@ -535,7 +535,7 @@ describe('reminder add', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m']),
-        ).rejects.toThrow('NO_DUE_DATE')
+        ).rejects.toHaveProperty('code', 'NO_DUE_DATE')
         expect(mockAddReminder).not.toHaveBeenCalled()
     })
 
@@ -550,7 +550,7 @@ describe('reminder add', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '30m']),
-        ).rejects.toThrow('NO_DUE_TIME')
+        ).rejects.toHaveProperty('code', 'NO_DUE_TIME')
         expect(mockAddReminder).not.toHaveBeenCalled()
     })
 
@@ -661,7 +661,7 @@ describe('reminder update', () => {
                 '--before',
                 '1h',
             ]),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 })
 
@@ -719,7 +719,7 @@ describe('reminder delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'delete', 'my-reminder', '--yes']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('errors if reminder not found', async () => {
@@ -729,7 +729,7 @@ describe('reminder delete', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'delete', 'id:rem-nonexistent', '--yes']),
-        ).rejects.toThrow('NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'NOT_FOUND')
         expect(mockDeleteReminder).not.toHaveBeenCalled()
     })
 })

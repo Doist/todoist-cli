@@ -175,7 +175,7 @@ describe('notification list', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'notification', 'list', '--read', '--unread']),
-        ).rejects.toThrow('INVALID_OPTIONS')
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
     it('respects --offset', async () => {
@@ -353,7 +353,7 @@ describe('notification view', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'notification', 'view', 'id:nonexistent']),
-        ).rejects.toThrow('NOTIFICATION_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'NOTIFICATION_NOT_FOUND')
     })
 })
 
@@ -395,7 +395,7 @@ describe('notification accept', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'notification', 'accept', 'id:nonexistent']),
-        ).rejects.toThrow('NOTIFICATION_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'NOTIFICATION_NOT_FOUND')
     })
 })
 
@@ -483,9 +483,9 @@ describe('notification read', () => {
     it('throws when no id and no --all', async () => {
         const program = createProgram()
 
-        await expect(program.parseAsync(['node', 'td', 'notification', 'read'])).rejects.toThrow(
-            'MISSING_ID',
-        )
+        await expect(
+            program.parseAsync(['node', 'td', 'notification', 'read']),
+        ).rejects.toHaveProperty('code', 'MISSING_ID')
     })
 })
 
@@ -515,6 +515,6 @@ describe('notification unread', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'notification', 'unread', 'id:nonexistent']),
-        ).rejects.toThrow('NOTIFICATION_NOT_FOUND')
+        ).rejects.toHaveProperty('code', 'NOTIFICATION_NOT_FOUND')
     })
 })

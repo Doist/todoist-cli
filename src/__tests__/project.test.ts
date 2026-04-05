@@ -859,7 +859,7 @@ describe('project create', () => {
                 '--parent',
                 'Workspace Project',
             ]),
-        ).rejects.toThrow('WORKSPACE_NO_SUBPROJECTS')
+        ).rejects.toHaveProperty('code', 'WORKSPACE_NO_SUBPROJECTS')
     })
 
     it('shows project ID after creation', async () => {
@@ -994,7 +994,7 @@ describe('project update', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'project', 'update', 'id:proj-1']),
-        ).rejects.toThrow('NO_CHANGES')
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
     })
 })
 
@@ -1290,7 +1290,7 @@ describe('project move', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'project', 'move', 'My Project']),
-        ).rejects.toThrow('MISSING_DESTINATION')
+        ).rejects.toHaveProperty('code', 'MISSING_DESTINATION')
     })
 
     it('errors when both --to-workspace and --to-personal specified', async () => {
@@ -1307,7 +1307,7 @@ describe('project move', () => {
                 'Acme',
                 '--to-personal',
             ]),
-        ).rejects.toThrow('INVALID_OPTIONS')
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
     it('errors when --folder without --to-workspace', async () => {
@@ -1324,7 +1324,7 @@ describe('project move', () => {
                 '--folder',
                 'Engineering',
             ]),
-        ).rejects.toThrow('INVALID_OPTIONS')
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
     it('errors when --visibility without --to-workspace', async () => {
@@ -1341,7 +1341,7 @@ describe('project move', () => {
                 '--visibility',
                 'team',
             ]),
-        ).rejects.toThrow('INVALID_OPTIONS')
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
     it('errors when invalid --visibility value', async () => {
@@ -1365,7 +1365,7 @@ describe('project move', () => {
                 '--visibility',
                 'invalid',
             ]),
-        ).rejects.toThrow('INVALID_VISIBILITY')
+        ).rejects.toHaveProperty('code', 'INVALID_VISIBILITY')
     })
 
     it('moves project to workspace', async () => {
@@ -1554,7 +1554,7 @@ describe('project move', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'project', 'move', 'My Project', '--to-personal']),
-        ).rejects.toThrow('ALREADY_PERSONAL')
+        ).rejects.toHaveProperty('code', 'ALREADY_PERSONAL')
     })
 
     it('errors when moving workspace project to same workspace', async () => {
@@ -1577,7 +1577,7 @@ describe('project move', () => {
                 '--to-workspace',
                 'Acme Corp',
             ]),
-        ).rejects.toThrow('SAME_WORKSPACE')
+        ).rejects.toHaveProperty('code', 'SAME_WORKSPACE')
     })
 })
 
@@ -1924,7 +1924,7 @@ describe('project join', () => {
 
         await expect(
             program.parseAsync(['node', 'td', 'project', 'join', 'My Project']),
-        ).rejects.toThrow('INVALID_REF')
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
     })
 
     it('--dry-run fetches project name and previews', async () => {
@@ -2332,7 +2332,7 @@ describe('project activity-stats', () => {
                 '--weeks',
                 'foo',
             ]),
-        ).rejects.toThrow('INVALID_WEEKS')
+        ).rejects.toHaveProperty('code', 'INVALID_WEEKS')
 
         await expect(
             program.parseAsync([
@@ -2344,7 +2344,7 @@ describe('project activity-stats', () => {
                 '--weeks',
                 '15',
             ]),
-        ).rejects.toThrow('INVALID_WEEKS')
+        ).rejects.toHaveProperty('code', 'INVALID_WEEKS')
     })
 
     it('outputs JSON with --json', async () => {

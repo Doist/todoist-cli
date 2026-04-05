@@ -1,6 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { CliError } from '../lib/errors.js'
-
 vi.mock('../lib/api/workspaces.js', () => ({
     fetchWorkspaces: vi.fn(),
     fetchWorkspaceFolders: vi.fn(),
@@ -133,12 +131,18 @@ describe('lenientIdRef', () => {
     })
 
     it('throws for plain text names', () => {
-        expect(() => lenientIdRef('some-name', 'comment')).toThrow('INVALID_REF')
-        expect(() => lenientIdRef('Shopping', 'project')).toThrow('INVALID_REF')
+        expect(() => lenientIdRef('some-name', 'comment')).toThrow(
+            expect.objectContaining({ code: 'INVALID_REF' }),
+        )
+        expect(() => lenientIdRef('Shopping', 'project')).toThrow(
+            expect.objectContaining({ code: 'INVALID_REF' }),
+        )
     })
 
     it('throws for strings with spaces', () => {
-        expect(() => lenientIdRef('Buy milk', 'task')).toThrow('INVALID_REF')
+        expect(() => lenientIdRef('Buy milk', 'task')).toThrow(
+            expect.objectContaining({ code: 'INVALID_REF' }),
+        )
     })
 
     it('extracts ID from Todoist URL', () => {
@@ -148,25 +152,21 @@ describe('lenientIdRef', () => {
     })
 
     it('includes URL hint in error message for task', () => {
-        try {
-            lenientIdRef('some-name', 'task')
-            expect.fail('should throw')
-        } catch (err) {
-            expect((err as CliError).hints).toEqual(
-                expect.arrayContaining([expect.stringContaining('Todoist URL')]),
-            )
-        }
+        expect(() => lenientIdRef('some-name', 'task')).toThrow(
+            expect.objectContaining({
+                code: 'INVALID_REF',
+                hints: expect.arrayContaining([expect.stringContaining('Todoist URL')]),
+            }),
+        )
     })
 
     it('includes URL hint in error message for project', () => {
-        try {
-            lenientIdRef('some-name', 'project')
-            expect.fail('should throw')
-        } catch (err) {
-            expect((err as CliError).hints).toEqual(
-                expect.arrayContaining([expect.stringContaining('Todoist URL')]),
-            )
-        }
+        expect(() => lenientIdRef('some-name', 'project')).toThrow(
+            expect.objectContaining({
+                code: 'INVALID_REF',
+                hints: expect.arrayContaining([expect.stringContaining('Todoist URL')]),
+            }),
+        )
     })
 
     it('extracts ID from label URL', () => {
@@ -182,36 +182,30 @@ describe('lenientIdRef', () => {
     })
 
     it('includes URL hint in error message for label', () => {
-        try {
-            lenientIdRef('some-name', 'label')
-            expect.fail('should throw')
-        } catch (err) {
-            expect((err as CliError).hints).toEqual(
-                expect.arrayContaining([expect.stringContaining('Todoist URL')]),
-            )
-        }
+        expect(() => lenientIdRef('some-name', 'label')).toThrow(
+            expect.objectContaining({
+                code: 'INVALID_REF',
+                hints: expect.arrayContaining([expect.stringContaining('Todoist URL')]),
+            }),
+        )
     })
 
     it('includes URL hint in error message for filter', () => {
-        try {
-            lenientIdRef('some-name', 'filter')
-            expect.fail('should throw')
-        } catch (err) {
-            expect((err as CliError).hints).toEqual(
-                expect.arrayContaining([expect.stringContaining('Todoist URL')]),
-            )
-        }
+        expect(() => lenientIdRef('some-name', 'filter')).toThrow(
+            expect.objectContaining({
+                code: 'INVALID_REF',
+                hints: expect.arrayContaining([expect.stringContaining('Todoist URL')]),
+            }),
+        )
     })
 
     it('omits URL hint in error message for non-URL entity types', () => {
-        try {
-            lenientIdRef('some-name', 'comment')
-            expect.fail('should throw')
-        } catch (err) {
-            expect((err as CliError).hints).not.toEqual(
-                expect.arrayContaining([expect.stringContaining('Todoist URL')]),
-            )
-        }
+        expect(() => lenientIdRef('some-name', 'comment')).toThrow(
+            expect.objectContaining({
+                code: 'INVALID_REF',
+                hints: expect.not.arrayContaining([expect.stringContaining('Todoist URL')]),
+            }),
+        )
     })
 
     it('throws on entity type mismatch (project URL for task)', () => {
