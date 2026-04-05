@@ -23,7 +23,17 @@ import { viewProject } from './view.js'
 export { viewProject } from './view.js'
 
 export function registerProjectCommand(program: Command): void {
-    const project = program.command('project').description('Manage projects')
+    const project = program
+        .command('project')
+        .description('Manage projects')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td project list
+  td project create --name "New Project" --color blue
+  td project view "Roadmap" --detailed`,
+        )
 
     project
         .command('list')

@@ -7,7 +7,17 @@ import { updateComment } from './update.js'
 import { viewComment } from './view.js'
 
 export function registerCommentCommand(program: Command): void {
-    const comment = program.command('comment').description('Manage comments')
+    const comment = program
+        .command('comment')
+        .description('Manage comments')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td comment list "Plan sprint"
+  td comment add "Plan sprint" --content "Notes from meeting"
+  td comment list "Roadmap" --project`,
+        )
 
     const listCmd = comment
         .command('list [ref]')

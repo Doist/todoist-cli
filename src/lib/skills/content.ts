@@ -8,6 +8,7 @@ Use this skill when the user wants to interact with their Todoist tasks.
 
 ## Core Patterns
 
+- Run \`td <command> --help\` for available subcommands, flags, and usage examples where provided.
 - Prefer \`td <command> --help\` for exact flags when you already know the command family.
 - Tasks, projects, labels, and filters accept a name, \`id:...\`, or a Todoist web URL as a reference.
 - \`td task <ref>\`, \`td project <ref>\`, \`td workspace <ref>\`, \`td comment <ref>\`, and \`td notification <ref>\` default to \`view\`.

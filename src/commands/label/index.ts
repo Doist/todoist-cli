@@ -9,7 +9,17 @@ import { viewLabel } from './view.js'
 export { viewLabel } from './view.js'
 
 export function registerLabelCommand(program: Command): void {
-    const label = program.command('label').description('Manage labels')
+    const label = program
+        .command('label')
+        .description('Manage labels')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td label list
+  td label create --name "urgent" --color red
+  td label view "urgent"`,
+        )
 
     label
         .command('view [ref]', { isDefault: true })
