@@ -29,7 +29,7 @@ export async function completeTask(
 
     if (options.forever) {
         const isRecurring = task.due?.isRecurring ?? false
-        if (!isRecurring) {
+        if (!isRecurring && !isQuiet()) {
             console.log('Task is not recurring, completing normally.')
         }
         await completeTaskForever(task.id)

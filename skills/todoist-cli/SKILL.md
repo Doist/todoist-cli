@@ -22,7 +22,8 @@ Use this skill when the user wants to interact with their Todoist tasks.
 - Create and update commands commonly support `--json` to return the created or updated entity.
 - Mutating commands support `--dry-run` to preview actions without executing them.
 - Destructive commands typically require `--yes`.
-- Global flags: `--no-spinner`, `--progress-jsonl`, `-v/--verbose`, `--accessible`.
+- `--quiet` / `-q` suppresses success messages. Create commands still print the bare ID for scripting (e.g. `id=$(td task add "Buy milk" --quiet)`).
+- Global flags: `--no-spinner`, `--progress-jsonl`, `-v/--verbose`, `--accessible`, `--quiet`.
 
 ## Authentication
 

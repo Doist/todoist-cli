@@ -193,8 +193,10 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        if (err instanceof CliError && isJsonMode()) {
-            console.error(formatErrorJson(err.code, err.message, err.hints))
+        if (isJsonMode()) {
+            const code = err instanceof CliError ? err.code : 'INTERNAL_ERROR'
+            const hints = err instanceof CliError ? err.hints : undefined
+            console.error(formatErrorJson(code, err.message, hints))
         } else {
             console.error(err.message)
         }
