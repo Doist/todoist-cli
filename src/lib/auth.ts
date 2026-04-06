@@ -28,6 +28,11 @@ export interface SaveApiTokenOptions {
     authScope?: string
 }
 
+export interface AuthProbeResult {
+    token: string
+    metadata: AuthMetadata
+}
+
 export class NoTokenError extends CliError {
     constructor() {
         super(
@@ -105,6 +110,56 @@ export async function getApiToken(): Promise<string> {
         if (!(error instanceof SecureStoreUnavailableError)) {
             throw error
         }
+    }
+
+    throw new NoTokenError()
+}
+
+export async function probeApiToken(): Promise<AuthProbeResult> {
+    const envToken = process.env[TOKEN_ENV_VAR]
+    if (envToken) {
+        return {
+            token: envToken,
+            metadata: { authMode: 'unknown', source: 'env' },
+        }
+    }
+
+    const config = await readConfig()
+    const configToken = getConfigToken(config)
+
+    if (configToken) {
+        return {
+            token: configToken,
+            metadata: {
+                authMode: config.auth_mode ?? 'unknown',
+                authScope: config.auth_scope,
+                source: 'config-file',
+            },
+        }
+    }
+
+    if (config.pendingSecureStoreClear) {
+        throw new NoTokenError()
+    }
+
+    const secureStore = createSecureStore()
+    try {
+        const storedToken = await secureStore.getSecret()
+        if (storedToken?.trim()) {
+            return {
+                token: storedToken.trim(),
+                metadata: {
+                    authMode: config.auth_mode ?? 'unknown',
+                    authScope: config.auth_scope,
+                    source: 'secure-store',
+                },
+            }
+        }
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) {
+            throw error
+        }
+        throw error
     }
 
     throw new NoTokenError()

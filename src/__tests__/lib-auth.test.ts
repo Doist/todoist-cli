@@ -234,6 +234,56 @@ describe('lib/auth', () => {
         })
     })
 
+    it('probes a legacy config token without migrating it', async () => {
+        setConfig({
+            api_token: 'legacy-token-123456',
+            auth_mode: 'read-write',
+            currentWorkspace: 'team-1',
+        })
+
+        const { probeApiToken } = await import('../lib/auth.js')
+
+        await expect(probeApiToken()).resolves.toEqual({
+            token: 'legacy-token-123456',
+            metadata: {
+                authMode: 'read-write',
+                source: 'config-file',
+            },
+        })
+        expect(keyringState.setCalls).toEqual([])
+        expect(readConfig()).toEqual({
+            api_token: 'legacy-token-123456',
+            auth_mode: 'read-write',
+            currentWorkspace: 'team-1',
+        })
+    })
+
+    it('probes a secure-store token without mutating config', async () => {
+        keyringState.token = 'secure-token-123456'
+        setConfig({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+            currentWorkspace: 'team-1',
+        })
+
+        const { probeApiToken } = await import('../lib/auth.js')
+
+        await expect(probeApiToken()).resolves.toEqual({
+            token: 'secure-token-123456',
+            metadata: {
+                authMode: 'read-only',
+                authScope: 'data:read',
+                source: 'secure-store',
+            },
+        })
+        expect(keyringState.getCalls).toBe(1)
+        expect(readConfig()).toEqual({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+            currentWorkspace: 'team-1',
+        })
+    })
+
     it('migrates a plaintext config token into secure storage and preserves other config', async () => {
         setConfig({
             api_token: 'legacy-token-123456',
