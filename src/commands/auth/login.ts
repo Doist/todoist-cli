@@ -18,8 +18,11 @@ export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Prom
 
     console.log('Opening browser for Todoist authorization...')
 
-    const authUrl = buildAuthorizationUrl(codeChallenge, state, { readOnly: options.readOnly })
-    const { promise: callbackPromise, cleanup } = startCallbackServer(state)
+    const { promise: callbackPromise, port, cleanup } = await startCallbackServer(state)
+    const authUrl = buildAuthorizationUrl(codeChallenge, state, {
+        readOnly: options.readOnly,
+        port,
+    })
 
     try {
         await open(authUrl)
@@ -28,7 +31,7 @@ export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Prom
         const code = await callbackPromise
         console.log(chalk.dim('Exchanging code for token...'))
 
-        const accessToken = await exchangeCodeForToken(code, codeVerifier)
+        const accessToken = await exchangeCodeForToken(code, codeVerifier, port)
         const result = await saveApiToken(accessToken, {
             authMode: options.readOnly ? 'read-only' : 'read-write',
             authScope: options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES,
