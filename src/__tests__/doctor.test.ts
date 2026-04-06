@@ -2,6 +2,16 @@ import { readFile } from 'node:fs/promises'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const { mockWithSpinner, mockProgressTracker } = vi.hoisted(() => ({
+    mockWithSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
+    mockProgressTracker: {
+        isEnabled: vi.fn(() => true),
+        emitApiCall: vi.fn(),
+        emitApiResponse: vi.fn(),
+        emitError: vi.fn(),
+    },
+}))
+
 vi.mock('chalk')
 
 vi.mock('@doist/todoist-sdk', () => ({
@@ -10,6 +20,14 @@ vi.mock('@doist/todoist-sdk', () => ({
 
 vi.mock('node:fs/promises', () => ({
     readFile: vi.fn(),
+}))
+
+vi.mock('../lib/progress.js', () => ({
+    getProgressTracker: vi.fn(() => mockProgressTracker),
+}))
+
+vi.mock('../lib/spinner.js', () => ({
+    withSpinner: mockWithSpinner,
 }))
 
 vi.mock('../../package.json', () => ({
@@ -74,6 +92,8 @@ describe('doctor command', () => {
         vi.clearAllMocks()
         vi.unstubAllGlobals()
         process.exitCode = undefined
+        mockWithSpinner.mockImplementation((_opts: unknown, fn: () => Promise<unknown>) => fn())
+        mockProgressTracker.isEnabled.mockReturnValue(true)
 
         mockReadFile.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }))
         mockReadConfig.mockResolvedValue({})
@@ -119,8 +139,27 @@ describe('doctor command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS CLI is up to date on stable (v1.0.0)'),
         )
+        expect(mockWithSpinner).toHaveBeenCalledWith(
+            expect.objectContaining({ text: 'Checking authentication...', color: 'blue' }),
+            expect.any(Function),
+        )
+        expect(mockWithSpinner).toHaveBeenCalledWith(
+            expect.objectContaining({ text: 'Checking for updates...', color: 'blue' }),
+            expect.any(Function),
+        )
         expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 2 passed')
         expect(process.exitCode).toBeUndefined()
+    })
+
+    it('emits shared API progress events for auth validation when tracking is enabled', async () => {
+        mockFetch('1.0.0')
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'doctor'])
+
+        expect(mockProgressTracker.emitApiCall).toHaveBeenCalledWith('getUser', null)
+        expect(mockProgressTracker.emitApiResponse).toHaveBeenCalledWith(1, false, null)
+        expect(mockProgressTracker.emitError).not.toHaveBeenCalled()
     })
 
     it('warns when plaintext config fallback is in use and an update is available', async () => {
