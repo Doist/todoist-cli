@@ -15,6 +15,17 @@ export interface Config extends Record<string, unknown> {
     update_channel?: UpdateChannel
 }
 
+const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
+    'api_token',
+    'pendingSecureStoreClear',
+    'auth_mode',
+    'auth_scope',
+    'update_channel',
+])
+
+const AUTH_MODES: ReadonlySet<AuthMode> = new Set(['read-only', 'read-write', 'unknown'])
+const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
+
 export async function readConfig(): Promise<Config> {
     try {
         const content = await readFile(CONFIG_PATH, 'utf-8')
@@ -43,6 +54,53 @@ export async function writeConfig(config: Config): Promise<void> {
         mode: 0o600,
     })
     await chmod(CONFIG_PATH, 0o600)
+}
+
+// Keep this validator ad-hoc for now: it is only used by `td doctor`, and the
+// config schema is still small enough that adding a runtime validation
+// dependency would be heavier than the problem. If more config or payload
+// validation use cases show up elsewhere in the CLI, that would strengthen the
+// case for introducing zod and consolidating these checks.
+export function validateConfigForDoctor(config: Record<string, unknown>): string[] {
+    const issues: string[] = []
+
+    for (const key of Object.keys(config)) {
+        if (!KNOWN_CONFIG_KEYS.has(key)) {
+            issues.push(`contains unrecognized key "${key}"`)
+        }
+    }
+
+    if (config.api_token !== undefined && typeof config.api_token !== 'string') {
+        issues.push('api_token must be a string')
+    }
+
+    if (
+        config.pendingSecureStoreClear !== undefined &&
+        typeof config.pendingSecureStoreClear !== 'boolean'
+    ) {
+        issues.push('pendingSecureStoreClear must be a boolean')
+    }
+
+    if (
+        config.auth_mode !== undefined &&
+        (typeof config.auth_mode !== 'string' || !AUTH_MODES.has(config.auth_mode as AuthMode))
+    ) {
+        issues.push('auth_mode must be one of: read-only, read-write, unknown')
+    }
+
+    if (config.auth_scope !== undefined && typeof config.auth_scope !== 'string') {
+        issues.push('auth_scope must be a string')
+    }
+
+    if (
+        config.update_channel !== undefined &&
+        (typeof config.update_channel !== 'string' ||
+            !UPDATE_CHANNELS.has(config.update_channel as UpdateChannel))
+    ) {
+        issues.push('update_channel must be one of: stable, pre-release')
+    }
+
+    return issues
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

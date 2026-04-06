@@ -155,6 +155,44 @@ describe('doctor command', () => {
         expect(process.exitCode).toBeUndefined()
     })
 
+    it('warns when config fields are invalid or unrecognized', async () => {
+        mockReadFile.mockResolvedValue(
+            JSON.stringify({
+                pendingSecureStoreClear: 'yes',
+                auth_mode: 'admin',
+                update_channel: 'beta',
+                extra_setting: true,
+            }),
+        )
+        mockFetch('1.0.0')
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'doctor'])
+
+        const configWarning = consoleSpy.mock.calls.find(
+            (call: unknown[]) =>
+                typeof call[0] === 'string' &&
+                (call[0] as string).includes('WARN Config file is readable but'),
+        )?.[0]
+
+        expect(configWarning).toEqual(expect.any(String))
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('WARN Config file is readable but'),
+        )
+        expect(configWarning).toContain('contains unrecognized key "extra_setting"')
+        expect(configWarning).toContain('pendingSecureStoreClear must be a boolean')
+        expect(configWarning).toContain('auth_mode must be one of: read-only, read-write, unknown')
+        expect(configWarning).toContain('update_channel must be one of: stable, pre-release')
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('PASS Authenticated as person@example.com via secure-store'),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('PASS CLI is up to date on stable (v1.0.0)'),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 2 passed, 1 warnings')
+        expect(process.exitCode).toBeUndefined()
+    })
+
     it('supports json output and offline mode', async () => {
         mockProbeApiToken.mockRejectedValue(new NoTokenError())
 

@@ -4,6 +4,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
 import { CONFIG_PATH, NoTokenError, TOKEN_ENV_VAR, probeApiToken } from '../lib/auth.js'
+import { validateConfigForDoctor } from '../lib/config.js'
 import {
     compareVersions,
     fetchLatestVersion,
@@ -116,24 +117,16 @@ async function checkConfigFile(): Promise<DoctorCheck | null> {
             }
         }
 
-        const warnings: string[] = []
-        const config = parsed as Record<string, unknown>
-        if (
-            config.update_channel !== undefined &&
-            config.update_channel !== 'stable' &&
-            config.update_channel !== 'pre-release'
-        ) {
-            warnings.push(`has unknown update channel "${String(config.update_channel)}"`)
-        }
+        const issues = validateConfigForDoctor(parsed)
 
         return {
             name: 'config',
-            status: warnings.length > 0 ? 'warn' : 'pass',
+            status: issues.length > 0 ? 'warn' : 'pass',
             message:
-                warnings.length > 0
-                    ? `Config file is readable but ${warnings.join('; ')} (${CONFIG_PATH})`
+                issues.length > 0
+                    ? `Config file is readable but ${issues.join('; ')} (${CONFIG_PATH})`
                     : `Config file is readable (${CONFIG_PATH})`,
-            details: { path: CONFIG_PATH, exists: true },
+            details: { path: CONFIG_PATH, exists: true, issues },
         }
     } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
