@@ -1,3 +1,9 @@
+## [1.39.1](https://github.com/Doist/todoist-cli/compare/v1.39.0...v1.39.1) (2026-04-06)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-sdk to v8.1.0 ([#239](https://github.com/Doist/todoist-cli/issues/239)) ([877b4d0](https://github.com/Doist/todoist-cli/commit/877b4d0c9ef29894296a5fcaef103a9def42baa9))
+
 ## [1.39.0](https://github.com/Doist/todoist-cli/compare/v1.38.2...v1.39.0) (2026-04-06)
 
 ### Features
