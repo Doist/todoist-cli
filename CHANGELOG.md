@@ -1,3 +1,9 @@
+## [1.39.0](https://github.com/Doist/todoist-cli/compare/v1.38.2...v1.39.0) (2026-04-06)
+
+### Features
+
+* add td doctor command ([#224](https://github.com/Doist/todoist-cli/issues/224)) ([9addffa](https://github.com/Doist/todoist-cli/commit/9addffa1d6b04732a6a543fe05206020d6abd8f8))
+
 ## [1.38.2](https://github.com/Doist/todoist-cli/compare/v1.38.1...v1.38.2) (2026-04-05)
 
 ### Bug Fixes
