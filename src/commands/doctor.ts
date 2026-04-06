@@ -102,7 +102,7 @@ function checkNodeVersion(): DoctorCheck | null {
     }
 }
 
-async function checkConfigFile(): Promise<DoctorCheck> {
+async function checkConfigFile(): Promise<DoctorCheck | null> {
     try {
         const content = await readFile(CONFIG_PATH, 'utf-8')
         const parsed = JSON.parse(content)
@@ -118,9 +118,6 @@ async function checkConfigFile(): Promise<DoctorCheck> {
 
         const warnings: string[] = []
         const config = parsed as Record<string, unknown>
-        if (typeof config.api_token === 'string' && config.api_token.trim()) {
-            warnings.push('contains a plaintext API token fallback')
-        }
         if (
             config.update_channel !== undefined &&
             config.update_channel !== 'stable' &&
@@ -140,12 +137,7 @@ async function checkConfigFile(): Promise<DoctorCheck> {
         }
     } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-            return {
-                name: 'config',
-                status: 'pass',
-                message: `No config file found at ${CONFIG_PATH}`,
-                details: { path: CONFIG_PATH, exists: false },
-            }
+            return null
         }
 
         const message = error instanceof Error ? error.message : String(error)
@@ -192,11 +184,11 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
     if (offline) {
         return {
             name: 'auth',
-            status: metadata.source === 'config-file' ? 'warn' : 'pass',
+            status: metadata.source === 'config-file' ? 'warn' : 'skip',
             message:
                 metadata.source === 'config-file'
                     ? 'Token found in config-file fallback; skipped API validation (--offline)'
-                    : `Credentials found via ${metadata.source}; skipped API validation (--offline)`,
+                    : `Auth validation skipped (--offline); credentials found via ${metadata.source}`,
             details,
         }
     }

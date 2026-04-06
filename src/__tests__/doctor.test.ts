@@ -119,7 +119,7 @@ describe('doctor command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS CLI is up to date on stable (v1.0.0)'),
         )
-        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 3 passed')
+        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 2 passed')
         expect(process.exitCode).toBeUndefined()
     })
 
@@ -142,17 +142,16 @@ describe('doctor command', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining(
-                'WARN Config file is readable but contains a plaintext API token fallback',
-            ),
-        )
-        expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining(
                 'WARN Authenticated as person@example.com, but token is stored in plaintext config fallback',
             ),
         )
         expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('PASS Config file is readable (/tmp/test-config.json)'),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('WARN Update available on pre-release: v1.0.0 -> v2.0.0'),
         )
+        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 1 passed, 2 warnings')
         expect(process.exitCode).toBeUndefined()
     })
 
@@ -172,7 +171,7 @@ describe('doctor command', () => {
         }
 
         expect(parsed.ok).toBe(true)
-        expect(parsed.summary.passed).toBe(1)
+        expect(parsed.summary.passed).toBe(0)
         expect(parsed.summary.skipped).toBe(1)
         expect(parsed.checks).toEqual(
             expect.arrayContaining([
@@ -180,6 +179,18 @@ describe('doctor command', () => {
                 expect.objectContaining({ name: 'update', status: 'skip' }),
             ]),
         )
+    })
+
+    it('marks secure-store auth as skipped in offline mode', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'doctor', '--offline'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining(
+                'SKIP Auth validation skipped (--offline); credentials found via secure-store',
+            ),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 0 passed, 2 skipped')
     })
 
     it('does not instantiate the API client in offline mode', async () => {
