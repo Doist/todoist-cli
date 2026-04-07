@@ -2,15 +2,18 @@ import { readFile } from 'node:fs/promises'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockWithSpinner, mockProgressTracker } = vi.hoisted(() => ({
-    mockWithSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
-    mockProgressTracker: {
-        isEnabled: vi.fn(() => true),
-        emitApiCall: vi.fn(),
-        emitApiResponse: vi.fn(),
-        emitError: vi.fn(),
-    },
-}))
+const { mockWithSpinner, mockProgressTracker, mockLoadingSpinnerStart, mockLoadingSpinnerStop } =
+    vi.hoisted(() => ({
+        mockWithSpinner: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
+        mockProgressTracker: {
+            isEnabled: vi.fn(() => true),
+            emitApiCall: vi.fn(),
+            emitApiResponse: vi.fn(),
+            emitError: vi.fn(),
+        },
+        mockLoadingSpinnerStart: vi.fn(),
+        mockLoadingSpinnerStop: vi.fn(),
+    }))
 
 vi.mock('chalk')
 
@@ -28,6 +31,16 @@ vi.mock('../lib/progress.js', () => ({
 
 vi.mock('../lib/spinner.js', () => ({
     withSpinner: mockWithSpinner,
+    LoadingSpinner: class {
+        start(options: unknown) {
+            mockLoadingSpinnerStart(options)
+            return this
+        }
+
+        stop() {
+            mockLoadingSpinnerStop()
+        }
+    },
 }))
 
 vi.mock('../../package.json', () => ({
@@ -94,6 +107,8 @@ describe('doctor command', () => {
         process.exitCode = undefined
         mockWithSpinner.mockImplementation((_opts: unknown, fn: () => Promise<unknown>) => fn())
         mockProgressTracker.isEnabled.mockReturnValue(true)
+        mockLoadingSpinnerStart.mockClear()
+        mockLoadingSpinnerStop.mockClear()
 
         mockReadFile.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }))
         mockReadConfig.mockResolvedValue({})
@@ -143,10 +158,10 @@ describe('doctor command', () => {
             expect.objectContaining({ text: 'Checking authentication...', color: 'blue' }),
             expect.any(Function),
         )
-        expect(mockWithSpinner).toHaveBeenCalledWith(
+        expect(mockLoadingSpinnerStart).toHaveBeenCalledWith(
             expect.objectContaining({ text: 'Checking for updates...', color: 'blue' }),
-            expect.any(Function),
         )
+        expect(mockLoadingSpinnerStop).toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 2 passed')
         expect(process.exitCode).toBeUndefined()
     })
@@ -191,6 +206,22 @@ describe('doctor command', () => {
             expect.stringContaining('WARN Update available on pre-release: v1.0.0 -> v2.0.0'),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Doctor summary: 1 passed, 2 warnings')
+        expect(process.exitCode).toBeUndefined()
+    })
+
+    it('stops the update spinner cleanly when the registry lookup fails', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'doctor'])
+
+        expect(mockLoadingSpinnerStart).toHaveBeenCalledWith(
+            expect.objectContaining({ text: 'Checking for updates...', color: 'blue' }),
+        )
+        expect(mockLoadingSpinnerStop).toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('WARN Could not check npm registry for updates: network down'),
+        )
         expect(process.exitCode).toBeUndefined()
     })
 
