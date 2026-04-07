@@ -39,6 +39,18 @@ describe('startCallbackServer', { sequential: true }, () => {
         expect(port).toBe(8766)
     })
 
+    it('throws when all ports are exhausted', async () => {
+        for (const p of [8765, 8766, 8767, 8768, 8769]) {
+            const s = createServer()
+            await new Promise<void>((resolve) => s.listen(p, resolve))
+            cleanups.push(() => s.close())
+        }
+
+        await expect(startCallbackServer('test-state')).rejects.toThrow(
+            'Could not find an available port',
+        )
+    })
+
     it('skips multiple occupied ports', async () => {
         for (const p of [8765, 8766, 8767]) {
             const s = createServer()

@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http'
 
-const DEFAULT_PORT = 8765
+export const DEFAULT_PORT = 8765
 const MAX_PORT_ATTEMPTS = 5
 const TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes
 
@@ -734,7 +734,10 @@ export async function startCallbackServer(expectedState: string): Promise<{
 
     const server = createServer()
 
+    let closed = false
     const cleanup = () => {
+        if (closed) return
+        closed = true
         if (timeoutId) {
             clearTimeout(timeoutId)
             timeoutId = null

@@ -1,5 +1,5 @@
 import { CliError } from './errors.js'
-import { getRedirectUri } from './oauth-server.js'
+import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
 
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
@@ -13,7 +13,7 @@ export function buildAuthorizationUrl(
     options: { readOnly?: boolean; port?: number } = {},
 ): string {
     const scope = options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES
-    const redirectUri = options.port ? getRedirectUri(options.port) : getRedirectUri(8765)
+    const redirectUri = getRedirectUri(options.port ?? DEFAULT_PORT)
     const params = new URLSearchParams({
         client_id: TODOIST_CLIENT_ID,
         scope,
