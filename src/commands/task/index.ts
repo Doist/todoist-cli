@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
+import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import { PRIORITY_CHOICES } from '../../lib/task-list.js'
 import type { AddOptions } from './add.js'
@@ -47,7 +48,7 @@ Examples:
         .option('--workspace <name>', 'Filter to tasks in workspace')
         .option('--personal', 'Filter to tasks in personal projects')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')

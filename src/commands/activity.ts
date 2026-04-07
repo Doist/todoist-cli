@@ -4,6 +4,7 @@ import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
+import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { CliError } from '../lib/errors.js'
 import type { Pagination } from '../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
@@ -214,7 +215,7 @@ export function registerActivityCommand(program: Command): void {
         .option('--project <name>', 'Filter by project')
         .option('--by <user>', 'Filter by initiator (use "me" for yourself)')
         .option('--limit <n>', `Limit results (default: ${ACTIVITY_LIMIT})`)
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--markdown', 'Output as raw Markdown')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')

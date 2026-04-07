@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
@@ -144,7 +145,7 @@ export function registerTodayCommand(program: Command): void {
         .command('today')
         .description('Show tasks due today and overdue')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--any-assignee', 'Show tasks assigned to anyone (default: only me/unassigned)')
         .option('--workspace <name>', 'Filter to tasks in workspace')

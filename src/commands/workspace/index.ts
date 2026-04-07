@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander'
 import { withUnvalidatedChoices } from '../../lib/completion.js'
+import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { WORKSPACE_ROLES } from './helpers.js'
@@ -38,7 +39,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .description('List projects in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
         .option('--limit <n>', 'Limit number of results')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
@@ -77,7 +78,7 @@ export function registerWorkspaceCommand(program: Command): void {
             ),
         )
         .option('--limit <n>', 'Limit number of results')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
