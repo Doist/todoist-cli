@@ -231,8 +231,9 @@ describe('auth command', () => {
             const authCode = 'oauth_auth_code_123'
             const accessToken = 'oauth_access_token_456'
 
-            mockStartCallbackServer.mockReturnValue({
+            mockStartCallbackServer.mockResolvedValue({
                 promise: Promise.resolve(authCode),
+                port: 8765,
                 cleanup: vi.fn(),
             })
             mockExchangeCodeForToken.mockResolvedValue(accessToken)
@@ -243,7 +244,11 @@ describe('auth command', () => {
 
             expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
             expect(mockStartCallbackServer).toHaveBeenCalledWith('test_state')
-            expect(mockExchangeCodeForToken).toHaveBeenCalledWith(authCode, 'test_code_verifier')
+            expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
+                authCode,
+                'test_code_verifier',
+                8765,
+            )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete',
@@ -259,8 +264,9 @@ describe('auth command', () => {
             const authCode = 'oauth_auth_code_123'
             const accessToken = 'oauth_access_token_456'
 
-            mockStartCallbackServer.mockReturnValue({
+            mockStartCallbackServer.mockResolvedValue({
                 promise: Promise.resolve(authCode),
+                port: 8765,
                 cleanup: vi.fn(),
             })
             mockExchangeCodeForToken.mockResolvedValue(accessToken)
@@ -272,7 +278,7 @@ describe('auth command', () => {
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: true },
+                { readOnly: true, port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
@@ -284,8 +290,9 @@ describe('auth command', () => {
             const program = createProgram()
             const mockCleanup = vi.fn()
 
-            mockStartCallbackServer.mockReturnValue({
+            mockStartCallbackServer.mockResolvedValue({
                 promise: Promise.reject(new Error('OAuth callback timed out')),
+                port: 8765,
                 cleanup: mockCleanup,
             })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
@@ -302,8 +309,9 @@ describe('auth command', () => {
             const program = createProgram()
             const mockCleanup = vi.fn()
 
-            mockStartCallbackServer.mockReturnValue({
+            mockStartCallbackServer.mockResolvedValue({
                 promise: Promise.resolve('auth_code'),
+                port: 8765,
                 cleanup: mockCleanup,
             })
             mockExchangeCodeForToken.mockRejectedValue(new Error('Token exchange failed: 400'))
@@ -321,8 +329,9 @@ describe('auth command', () => {
             const program = createProgram()
             const mockCleanup = vi.fn()
 
-            mockStartCallbackServer.mockReturnValue({
+            mockStartCallbackServer.mockResolvedValue({
                 promise: new Promise(() => {}), // never resolves
+                port: 8765,
                 cleanup: mockCleanup,
             })
             mockOpen.mockRejectedValue(new Error('Failed to open browser'))

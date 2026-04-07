@@ -1,5 +1,5 @@
 import { CliError } from './errors.js'
-import { OAUTH_REDIRECT_URI } from './oauth-server.js'
+import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
 
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
@@ -10,14 +10,15 @@ export const READ_ONLY_SCOPES = 'data:read'
 export function buildAuthorizationUrl(
     codeChallenge: string,
     state: string,
-    options: { readOnly?: boolean } = {},
+    options: { readOnly?: boolean; port?: number } = {},
 ): string {
     const scope = options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES
+    const redirectUri = getRedirectUri(options.port ?? DEFAULT_PORT)
     const params = new URLSearchParams({
         client_id: TODOIST_CLIENT_ID,
         scope,
         state: state,
-        redirect_uri: OAUTH_REDIRECT_URI,
+        redirect_uri: redirectUri,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
     })
@@ -29,12 +30,16 @@ interface TokenResponse {
     token_type: string
 }
 
-export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<string> {
+export async function exchangeCodeForToken(
+    code: string,
+    codeVerifier: string,
+    port: number,
+): Promise<string> {
     const body = new URLSearchParams({
         client_id: TODOIST_CLIENT_ID,
         code: code,
         code_verifier: codeVerifier,
-        redirect_uri: OAUTH_REDIRECT_URI,
+        redirect_uri: getRedirectUri(port),
     })
 
     const response = await fetch(OAUTH_TOKEN_URL, {
