@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
+import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
 import { archiveProject } from './archive.js'
@@ -39,7 +40,7 @@ Examples:
         .command('list')
         .description('List all projects')
         .option('--limit <n>', 'Limit number of results (default: 50)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--personal', 'Show only personal projects')
         .option('--json', 'Output as JSON')

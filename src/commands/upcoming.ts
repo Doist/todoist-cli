@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
@@ -168,7 +169,7 @@ export function registerUpcomingCommand(program: Command): void {
         .command('upcoming [days]')
         .description('Show tasks due in the next N days (default: 7)')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--any-assignee', 'Show tasks assigned to anyone (default: only me/unassigned)')
         .option('--workspace <name>', 'Filter to tasks in workspace')

@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { browseFilter } from './browse.js'
 import { createFilter } from './create.js'
 import { deleteFilterCmd } from './delete.js'
@@ -72,7 +73,7 @@ export function registerFilterCommand(program: Command): void {
         .alias('show')
         .description('Show tasks matching a filter')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')

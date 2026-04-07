@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -32,7 +33,7 @@ export function registerCompletedCommand(program: Command): void {
         .option('--until <date>', 'End date (YYYY-MM-DD), default: tomorrow')
         .option('--project <name>', 'Filter by project')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')

@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
@@ -21,7 +22,7 @@ export function registerReminderCommand(program: Command): void {
             return v as ReminderTypeFilter
         })
         .option('--limit <n>', 'Limit number of results')
-        .option('--cursor <cursor>', 'Continue from cursor')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
