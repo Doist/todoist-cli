@@ -1,3 +1,9 @@
+## [1.39.2](https://github.com/Doist/todoist-cli/compare/v1.39.1...v1.39.2) (2026-04-07)
+
+### Bug Fixes
+
+* restore doctor loading feedback ([#238](https://github.com/Doist/todoist-cli/issues/238)) ([281b04d](https://github.com/Doist/todoist-cli/commit/281b04da73ccc971827dc32e1ad86b1a332e50bf))
+
 ## [1.39.1](https://github.com/Doist/todoist-cli/compare/v1.39.0...v1.39.1) (2026-04-06)
 
 ### Bug Fixes
