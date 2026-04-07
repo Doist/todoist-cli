@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises'
-import { TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
+import { createApiForToken } from '../lib/api/core.js'
 import { CONFIG_PATH, NoTokenError, TOKEN_ENV_VAR, probeApiToken } from '../lib/auth.js'
 import { validateConfigForDoctor } from '../lib/config.js'
+import { LoadingSpinner } from '../lib/spinner.js'
 import {
     compareVersions,
     fetchLatestVersion,
@@ -187,7 +188,7 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
     }
 
     try {
-        const api = new TodoistApi(token)
+        const api = createApiForToken(token)
         const user = await api.getUser()
         details.email = user.email
         details.fullName = user.fullName
@@ -225,8 +226,13 @@ async function checkForUpdates(offline: boolean): Promise<DoctorCheck> {
         }
     }
 
+    const channelLabel = channel === 'pre-release' ? ' (pre-release)' : ''
+    const spinner = new LoadingSpinner()
+    spinner.start({ text: `Checking for updates${channelLabel}...`, color: 'blue' })
+
     try {
         const latestVersion = await fetchLatestVersion(channel)
+        spinner.stop()
         if (isNewer(currentVersion, latestVersion)) {
             return {
                 name: 'update',
@@ -252,6 +258,7 @@ async function checkForUpdates(offline: boolean): Promise<DoctorCheck> {
             details: { currentVersion, latestVersion, channel },
         }
     } catch (error) {
+        spinner.stop()
         const message = error instanceof Error ? error.message : String(error)
         return {
             name: 'update',

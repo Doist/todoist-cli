@@ -186,11 +186,15 @@ function analyzeAndEmitApiResponse(
     progressTracker.emitApiResponse(1, false, null)
 }
 
+export function createApiForToken(token: string): TodoistApi {
+    const rawApi = new TodoistApi(token)
+    return createSpinnerWrappedApi(rawApi)
+}
+
 export async function getApi(): Promise<TodoistApi> {
     if (!apiClient) {
         const token = await getApiToken()
-        const rawApi = new TodoistApi(token)
-        apiClient = createSpinnerWrappedApi(rawApi)
+        apiClient = createApiForToken(token)
     }
     return apiClient
 }
