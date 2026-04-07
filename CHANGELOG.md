@@ -1,3 +1,9 @@
+## [1.39.3](https://github.com/Doist/todoist-cli/compare/v1.39.2...v1.39.3) (2026-04-07)
+
+### Bug Fixes
+
+* try fallback ports when OAuth callback port is in use ([#237](https://github.com/Doist/todoist-cli/issues/237)) ([5115b62](https://github.com/Doist/todoist-cli/commit/5115b62536837264e6901e29b77f02a8af797ffd))
+
 ## [1.39.2](https://github.com/Doist/todoist-cli/compare/v1.39.1...v1.39.2) (2026-04-07)
 
 ### Bug Fixes
