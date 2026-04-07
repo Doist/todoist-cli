@@ -41,13 +41,13 @@ Every new command should satisfy these properties. They ensure the CLI works wel
 
 3. **Fail fast with actionable errors** — Use `CliError` with a specific error code, a message naming the exact problem, and hints that include correct invocation syntax, valid values, or example commands. Validate all inputs before making API calls.
 
-4. **Safe retries and explicit mutation boundaries** — Mutating commands support `--dry-run`. Destructive + irreversible commands require `--yes`. Create/update commands return the entity ID (use `isQuiet()` for bare ID output for scripting, e.g. `id=$(td task add "Buy milk" -q)`).
+4. **Safe retries and explicit mutation boundaries** — Mutating commands support `--dry-run`. Destructive + irreversible commands require `--yes`. Create commands return the entity ID (use `isQuiet()` for bare ID output for scripting, e.g. `id=$(td task add "Buy milk" -q)`).
 
 5. **Progressive help discovery** — Parent command groups include `.addHelpText('after', ...)` with 2–3 concrete examples. Every `.description()` is a clear one-line purpose statement. When a required positional arg is missing, show help via `cmd.help()`.
 
 6. **Composable and predictable structure** — Use consistent subcommand verbs (`list`/`view`/`create`/`update`/`delete`/`browse`). Use consistent flag names across entities (`--project <ref>`, `--json`, `--dry-run`, `--yes`, `--limit`, `--cursor`, `--all`). Support `--stdin` for text content where applicable (see `readStdin()` in `src/lib/stdin.ts`).
 
-7. **Bounded, high-signal responses** — List commands use `paginate()` from `src/lib/pagination.ts` with `--limit <n>`, `--cursor`, and `--all` flags. When results are truncated, `formatNextCursorFooter()` tells the user how to fetch more. JSON output uses `pickFields()` to return essential fields by default, with `--full` for complete output.
+7. **Bounded, high-signal responses** — List commands use `paginate()` from `src/lib/pagination.ts` with `--limit <n>`, `--cursor`, and `--all` flags. When results are truncated, `formatNextCursorFooter()` tells the user how to fetch more. JSON output uses `formatJson()` or `formatPaginatedJson()` to return essential fields by default, passing the `--full` flag for complete output.
 
 ## 5. Command Implementation (`src/commands/<entity>/`)
 
@@ -82,9 +82,10 @@ Single-subcommand commands (e.g., `add.ts`, `today.ts`) remain as flat files.
 | Mutating (no return)           | `--dry-run`                                              |
 | Destructive + irreversible     | `--yes`, `--dry-run`                                     |
 | Reversible (archive/unarchive) | `--dry-run` (no `--yes`)                                 |
-| List commands                  | `--limit <n>`, `--cursor`, `--all`, `--json`, `--ndjson` |
+| List (paginated)               | `--limit <n>`, `--cursor`, `--all`, `--json`, `--ndjson` |
+| List (non-paginated)           | `--json`, `--ndjson`                                     |
 
-The `--quiet` / `-q` flag suppresses success messages on mutations. Create/update commands in quiet mode print only the bare entity ID for scripting (e.g., `id=$(td task add "Buy milk" -q)`).
+The `--quiet` / `-q` flag suppresses success messages on mutations. Create commands in quiet mode print only the bare entity ID for scripting (e.g., `id=$(td task add "Buy milk" -q)`).
 
 ### Error handling
 
