@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
+import { isAccessible } from '../lib/global-args.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatJson,
@@ -10,7 +11,6 @@ import {
     formatPaginatedNdjson,
     formatProgressBar,
     formatTaskRow,
-    isAccessible,
     printDryRun,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
@@ -68,7 +68,7 @@ async function listGoals(options: PaginatedViewOptions & { workspace?: string })
     for (const goal of goals) {
         const id = chalk.dim(goal.id.slice(0, 8))
         const name = goal.isCompleted ? chalk.strikethrough(goal.name) : goal.name
-        const progress = formatProgressBar(goal.progress.percentage, 10)
+        const progress = formatProgressBar(goal.progress?.percentage ?? 0, 10)
         const deadline = goal.isCompleted
             ? chalk.dim('completed')
             : goal.deadline
@@ -123,7 +123,7 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
     if (goal.description) console.log(`Desc:     ${goal.description}`)
     if (goal.deadline) console.log(`Deadline: ${chalk.green(goal.deadline)}`)
     console.log(
-        `Progress: ${formatProgressBar(goal.progress.percentage)} (${goal.progress.completedItemCount}/${goal.progress.totalItemCount})`,
+        `Progress: ${formatProgressBar(goal.progress?.percentage ?? 0)} (${goal.progress?.completedItemCount ?? 0}/${goal.progress?.totalItemCount ?? 0})`,
     )
     if (goal.isCompleted) {
         console.log(chalk.green(isAccessible() ? 'Goal completed' : '✓ Completed'))
@@ -310,7 +310,7 @@ async function linkGoal(ref: string, options: { task: string }): Promise<void> {
     const goal = await resolveGoalRef(api, ref)
     const task = await resolveTaskRef(api, options.task)
 
-    await api.linkTaskToGoal(goal.id, task.id)
+    await api.linkTaskToGoal({ goalId: goal.id, taskId: task.id })
     console.log(`Linked task "${task.content}" to goal "${goal.name}"`)
 }
 
@@ -319,7 +319,7 @@ async function unlinkGoal(ref: string, options: { task: string }): Promise<void>
     const goal = await resolveGoalRef(api, ref)
     const task = await resolveTaskRef(api, options.task)
 
-    await api.unlinkTaskFromGoal(goal.id, task.id)
+    await api.unlinkTaskFromGoal({ goalId: goal.id, taskId: task.id })
     console.log(`Unlinked task "${task.content}" from goal "${goal.name}"`)
 }
 
