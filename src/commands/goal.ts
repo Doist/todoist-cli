@@ -46,7 +46,7 @@ async function listGoals(options: PaginatedViewOptions & { workspace?: string })
                 workspaceId,
                 cursor: cursor ?? undefined,
                 limit,
-            } as Parameters<typeof api.getGoals>[0]),
+            }),
         { limit: targetLimit },
     )
 
