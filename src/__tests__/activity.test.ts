@@ -4,16 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getCurrentUserId: vi.fn(),
-    isWorkspaceProject: vi.fn(),
 }))
 
 import { registerActivityCommand } from '../commands/activity.js'
-import { getApi, getCurrentUserId, isWorkspaceProject } from '../lib/api/core.js'
+import { getApi, getCurrentUserId } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockGetCurrentUserId = vi.mocked(getCurrentUserId)
-const mockIsWorkspaceProject = vi.mocked(isWorkspaceProject)
 
 function createProgram() {
     const program = new Command()
@@ -31,7 +29,6 @@ describe('activity command', () => {
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockGetCurrentUserId.mockResolvedValue('user-123')
-        mockIsWorkspaceProject.mockReturnValue(false)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

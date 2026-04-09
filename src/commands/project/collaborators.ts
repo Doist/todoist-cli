@@ -1,5 +1,6 @@
+import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
+import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { ViewOptions } from '../../lib/options.js'

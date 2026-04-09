@@ -201,14 +201,6 @@ export async function getApi(): Promise<TodoistApi> {
 
 export type Project = PersonalProject | WorkspaceProject
 
-export function isWorkspaceProject(project: Project): project is WorkspaceProject {
-    return 'workspaceId' in project && project.workspaceId !== undefined
-}
-
-export function isPersonalProject(project: Project): project is PersonalProject {
-    return !isWorkspaceProject(project)
-}
-
 let currentUserIdCache: string | null = null
 
 export async function getCurrentUserId(): Promise<string> {

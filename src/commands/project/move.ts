@@ -1,6 +1,11 @@
-import type { MoveProjectToWorkspaceArgs, ProjectVisibility } from '@doist/todoist-sdk'
-import { ProjectVisibilitySchema } from '@doist/todoist-sdk'
-import { getApi, isPersonalProject, isWorkspaceProject } from '../../lib/api/core.js'
+import {
+    isPersonalProject,
+    isWorkspaceProject,
+    ProjectVisibilitySchema,
+    type MoveProjectToWorkspaceArgs,
+    type ProjectVisibility,
+} from '@doist/todoist-sdk'
+import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'

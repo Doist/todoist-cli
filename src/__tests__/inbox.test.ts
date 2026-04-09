@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
-    isWorkspaceProject: vi.fn().mockReturnValue(false),
 }))
 
 import { registerInboxCommand } from '../commands/inbox.js'
