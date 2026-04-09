@@ -723,6 +723,21 @@ describe('project delete', () => {
         ).rejects.toThrow('2 uncompleted tasks remain')
     })
 
+    it('fails when workspace project is not archived', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [
+                { id: 'proj-1', name: 'Work Project', workspaceId: 'ws-1', isArchived: false },
+            ],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'delete', 'Work Project', '--yes']),
+        ).rejects.toThrow('needs to be archived first')
+    })
+
     it('shows singular "task" for single uncompleted task', async () => {
         const program = createProgram()
 
