@@ -1,3 +1,9 @@
+## [1.40.0](https://github.com/Doist/todoist-cli/compare/v1.39.3...v1.40.0) (2026-04-09)
+
+### Features
+
+* prevent deletion of non-archived workspace projects ([#247](https://github.com/Doist/todoist-cli/issues/247)) ([21e7c84](https://github.com/Doist/todoist-cli/commit/21e7c8474aea4943fe128cd42ff82cec085811e2))
+
 ## [1.39.3](https://github.com/Doist/todoist-cli/compare/v1.39.2...v1.39.3) (2026-04-07)
 
 ### Bug Fixes
