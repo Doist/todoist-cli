@@ -1,5 +1,6 @@
+import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi, isWorkspaceProject, type Project } from '../../lib/api/core.js'
+import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'

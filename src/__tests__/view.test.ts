@@ -6,9 +6,6 @@ vi.mock('../lib/api/core.js', async (importOriginal) => {
     return {
         ...actual,
         getApi: vi.fn(),
-        isWorkspaceProject: vi.fn(
-            (project: { workspaceId?: string }) => project.workspaceId !== undefined,
-        ),
     }
 })
 

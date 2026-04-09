@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
-    isWorkspaceProject: vi.fn(
-        (project: { workspaceId?: string }) => project.workspaceId !== undefined,
-    ),
-    isPersonalProject: vi.fn(
-        (project: { workspaceId?: string }) => project.workspaceId === undefined,
-    ),
 }))
 
 vi.mock('../lib/api/workspaces.js', () => ({

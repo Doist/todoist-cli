@@ -1,7 +1,11 @@
-import type { ActivityEvent, ActivityObjectEventType } from '@doist/todoist-sdk'
+import {
+    isWorkspaceProject,
+    type ActivityEvent,
+    type ActivityObjectEventType,
+} from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
-import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
+import { getApi, getCurrentUserId, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'

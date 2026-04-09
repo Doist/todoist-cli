@@ -1,5 +1,5 @@
-import type { TodoistApi } from '@doist/todoist-sdk'
-import { getCurrentUserId, isWorkspaceProject, type Project, type Task } from './api/core.js'
+import { isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
+import { getCurrentUserId, type Project, type Task } from './api/core.js'
 import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'
 

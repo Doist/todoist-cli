@@ -4,9 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getCurrentUserId: vi.fn().mockResolvedValue('current-user-123'),
-    isWorkspaceProject: vi.fn(
-        (project: { workspaceId?: string }) => project.workspaceId !== undefined,
-    ),
 }))
 
 vi.mock('../lib/api/workspaces.js', () => ({
