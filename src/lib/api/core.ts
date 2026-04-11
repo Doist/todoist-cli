@@ -173,10 +173,16 @@ function analyzeAndEmitApiResponse(
     if (response && typeof response === 'object' && response !== null) {
         const resp = response as Record<string, unknown>
 
-        // Check if it's a paginated response with results array
-        if ('results' in resp && Array.isArray(resp.results)) {
+        // Check if it's a paginated response with results or items array
+        const items =
+            'results' in resp && Array.isArray(resp.results)
+                ? resp.results
+                : 'items' in resp && Array.isArray(resp.items)
+                  ? resp.items
+                  : null
+        if (items) {
             progressTracker.emitApiResponse(
-                resp.results.length,
+                items.length,
                 Boolean(resp.nextCursor),
                 typeof resp.nextCursor === 'string' ? resp.nextCursor : null,
             )

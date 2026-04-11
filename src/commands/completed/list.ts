@@ -26,7 +26,13 @@ function getLocalDate(daysOffset = 0): string {
 }
 
 export async function listCompleted(options: CompletedListOptions): Promise<void> {
-    if (options.search && (options.since || options.until || options.project)) {
+    const isSearch = options.search !== undefined
+
+    if (isSearch && !options.search) {
+        throw new CliError('INVALID_SEARCH', 'Search query cannot be empty')
+    }
+
+    if (isSearch && (options.since || options.until || options.project)) {
         throw new CliError(
             'CONFLICTING_OPTIONS',
             'Cannot use --since, --until, or --project with --search',
@@ -41,19 +47,19 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
           ? parseInt(options.limit, 10)
           : LIMITS.tasks
 
-    const since = options.search ? undefined : (options.since ?? getLocalDate(0))
-    const until = options.search ? undefined : (options.until ?? getLocalDate(1))
+    const since = isSearch ? undefined : (options.since ?? getLocalDate(0))
+    const until = isSearch ? undefined : (options.until ?? getLocalDate(1))
 
     let projectId: string | undefined
-    if (!options.search && options.project) {
+    if (!isSearch && options.project) {
         projectId = await resolveProjectId(api, options.project)
     }
 
     const { results: tasks, nextCursor } = await paginate(
         async (cursor, limit) => {
-            if (options.search) {
+            if (isSearch) {
                 const resp = await api.searchCompletedTasks({
-                    query: options.search,
+                    query: options.search!,
                     cursor: cursor ?? undefined,
                     limit,
                 })
@@ -92,9 +98,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
             )
         } else {
             console.log(
-                options.search
-                    ? 'No matching completed tasks.'
-                    : 'No completed tasks in this period.',
+                isSearch ? 'No matching completed tasks.' : 'No completed tasks in this period.',
             )
             console.log(formatNextCursorFooter(nextCursor))
         }
@@ -148,7 +152,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
         return
     }
 
-    const header = options.search
+    const header = isSearch
         ? chalk.bold(`Completed (${tasks.length}) - search: "${options.search}"`)
         : chalk.bold(
               `Completed (${tasks.length}) - ${since === until ? since : `${since} to ${until}`}`,
