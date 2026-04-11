@@ -102,6 +102,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage authentication',
         async () => (await import('./commands/auth/index.js')).registerAuthCommand,
     ],
+    backup: [
+        'Manage backups',
+        async () => (await import('./commands/backup/index.js')).registerBackupCommand,
+    ],
     stats: [
         'View productivity stats and karma',
         async () => (await import('./commands/stats/index.js')).registerStatsCommand,
@@ -175,7 +179,13 @@ if (process.argv[2] === 'completion-server') {
         try {
             // Preload markdown renderer in parallel with the command module
             // when output will be pretty-printed (not JSON/NDJSON/raw)
-            const noMarkdownCommands = new Set(['changelog', 'doctor', 'update', 'completion'])
+            const noMarkdownCommands = new Set([
+                'backup',
+                'changelog',
+                'doctor',
+                'update',
+                'completion',
+            ])
             const needsMarkdown =
                 !noMarkdownCommands.has(commandName) &&
                 !isJsonMode() &&

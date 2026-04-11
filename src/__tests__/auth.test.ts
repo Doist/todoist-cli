@@ -251,7 +251,7 @@ describe('auth command', () => {
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete',
+                authScope: 'data:read_write,data:delete,project:delete,backups:read',
             })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
             expect(consoleSpy).toHaveBeenCalledWith(
@@ -282,7 +282,7 @@ describe('auth command', () => {
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
-                authScope: 'data:read',
+                authScope: 'data:read,backups:read',
             })
         })
 

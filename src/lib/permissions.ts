@@ -57,6 +57,9 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Reminders (REST read)
     'getReminders',
     'getLocationReminders',
+    // Backups
+    'getBackups',
+    'downloadBackup',
     // Sync is handled separately via payload inspection
     'sync',
 ])

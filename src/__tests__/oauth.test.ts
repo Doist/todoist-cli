@@ -6,21 +6,21 @@ describe('buildAuthorizationUrl', () => {
         const url = buildAuthorizationUrl('challenge', 'state')
         const params = new URL(url).searchParams
 
-        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete')
+        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete,backups:read')
     })
 
     it('uses read-only scope when requested', () => {
         const url = buildAuthorizationUrl('challenge', 'state', { readOnly: true })
         const params = new URL(url).searchParams
 
-        expect(params.get('scope')).toBe('data:read')
+        expect(params.get('scope')).toBe('data:read,backups:read')
     })
 
     it('uses read-write scope when readOnly is false', () => {
         const url = buildAuthorizationUrl('challenge', 'state', { readOnly: false })
         const params = new URL(url).searchParams
 
-        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete')
+        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete,backups:read')
     })
 
     it('uses the specified port in redirect_uri', () => {
