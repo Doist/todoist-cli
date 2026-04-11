@@ -68,7 +68,7 @@ describe('folder list', () => {
         await program.parseAsync(['node', 'td', 'folder', 'list', 'Acme'])
 
         expect(mockApi.getFolders).toHaveBeenCalledWith(
-            expect.objectContaining({ workspaceId: 12345 }),
+            expect.objectContaining({ workspaceId: '12345' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Engineering'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Design'))
@@ -148,7 +148,7 @@ describe('folder create', () => {
 
         expect(mockApi.addFolder).toHaveBeenCalledWith({
             name: 'Engineering',
-            workspaceId: 12345,
+            workspaceId: '12345',
             defaultOrder: undefined,
             childOrder: undefined,
         })
