@@ -105,6 +105,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppTestToken: { text: 'Loading app...', color: 'blue' },
         getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
+        // Folders
+        getFolders: { text: 'Loading folders...', color: 'blue' },
+        getFolder: { text: 'Loading folder...', color: 'blue' },
+        addFolder: { text: 'Creating folder...', color: 'green' },
+        updateFolder: { text: 'Updating folder...', color: 'yellow' },
+        deleteFolder: { text: 'Deleting folder...', color: 'yellow' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
