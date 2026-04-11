@@ -123,6 +123,7 @@ td label create --name "urgent" --color red
 td label update "urgent" --color orange
 td label delete "urgent" --yes
 td label browse "urgent"
+td label rename-shared "oldname" --name "newname"
 
 td filter list
 td filter view "Urgent work"

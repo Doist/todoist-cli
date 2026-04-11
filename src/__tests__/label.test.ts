@@ -155,6 +155,78 @@ describe('label list --search', () => {
     })
 })
 
+describe('label rename-shared', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('renames a shared label', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            'oldname',
+            '--name',
+            'newname',
+        ])
+
+        expect(mockApi.renameSharedLabel).toHaveBeenCalledWith({
+            name: 'oldname',
+            newName: 'newname',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Renamed: @oldname → @newname')
+        consoleSpy.mockRestore()
+    })
+
+    it('strips @ prefix from name', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            '@oldname',
+            '--name',
+            'newname',
+        ])
+
+        expect(mockApi.renameSharedLabel).toHaveBeenCalledWith({
+            name: 'oldname',
+            newName: 'newname',
+        })
+    })
+
+    it('previews rename with --dry-run', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            'oldname',
+            '--name',
+            'newname',
+            '--dry-run',
+        ])
+
+        expect(mockApi.renameSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('label create --json', () => {
     let mockApi: MockApi
 
