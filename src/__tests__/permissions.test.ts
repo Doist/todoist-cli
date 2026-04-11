@@ -34,7 +34,7 @@ describe('permissions', () => {
     it('allows writes in read-write mode', async () => {
         mockGetAuthMetadata.mockResolvedValue({
             authMode: 'read-write',
-            authScope: 'data:read_write,data:delete,project:delete',
+            authScope: 'data:read_write,data:delete,project:delete,backups:read',
             source: 'secure-store',
         })
 
@@ -83,6 +83,8 @@ describe('permissions', () => {
         expect(isMutatingApiMethod('exportTemplateAsFile')).toBe(false)
         expect(isMutatingApiMethod('getReminders')).toBe(false)
         expect(isMutatingApiMethod('getWorkspaceInsights')).toBe(false)
+        expect(isMutatingApiMethod('getBackups')).toBe(false)
+        expect(isMutatingApiMethod('downloadBackup')).toBe(false)
         expect(isMutatingApiMethod('sync')).toBe(false)
     })
 

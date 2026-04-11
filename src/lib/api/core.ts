@@ -75,6 +75,9 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         importTemplateFromId: { text: 'Importing template...', color: 'green' },
         getReminders: { text: 'Loading reminders...', color: 'blue' },
         getLocationReminders: { text: 'Loading location reminders...', color: 'blue' },
+        // Backups
+        getBackups: { text: 'Loading backups...', color: 'blue' },
+        downloadBackup: { text: 'Downloading backup...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {

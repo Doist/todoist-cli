@@ -45,7 +45,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Project analytics: \`td project progress/health/health-context/activity-stats/analyze-health\`
 - Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
-- Templates and files: \`td template ...\`, \`td attachment view <file-url>\`
+- Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 
 ## References
@@ -181,6 +181,12 @@ td template export-url "Roadmap"
 td template create --name "New Project" --file template.csv --workspace "Acme"
 td template import-file "Roadmap" --file template.csv
 td template import-id "Roadmap" --template-id product-launch --locale fr
+\`\`\`
+
+### Backups
+\`\`\`bash
+td backup list
+td backup download "2024-01-15_12:00" --output-file backup.zip
 \`\`\`
 
 ### Settings, Stats, And Utilities

@@ -4,8 +4,8 @@ import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
 const OAUTH_TOKEN_URL = 'https://todoist.com/oauth/access_token'
-export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
-export const READ_ONLY_SCOPES = 'data:read'
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete,backups:read'
+export const READ_ONLY_SCOPES = 'data:read,backups:read'
 
 export function buildAuthorizationUrl(
     codeChallenge: string,
