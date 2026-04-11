@@ -5,7 +5,7 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { registerCompletedCommand } from '../commands/completed.js'
+import { registerCompletedCommand } from '../commands/completed/index.js'
 import { getApi } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
@@ -338,5 +338,136 @@ describe('completed command', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.results[0].responsibleName).toBe('Alice S.')
+    })
+
+    describe('--search', () => {
+        it('searches completed tasks by query', async () => {
+            const program = createProgram()
+
+            mockApi.searchCompletedTasks.mockResolvedValue({
+                items: [
+                    {
+                        id: 'task-1',
+                        content: 'Meeting notes review',
+                        projectId: 'proj-1',
+                        priority: 1,
+                    },
+                ],
+                nextCursor: null,
+            })
+            mockApi.getProjects.mockResolvedValue({
+                results: [{ id: 'proj-1', name: 'Work' }],
+                nextCursor: null,
+            })
+
+            await program.parseAsync(['node', 'td', 'completed', 'list', '--search', 'meeting'])
+
+            expect(mockApi.searchCompletedTasks).toHaveBeenCalledWith(
+                expect.objectContaining({ query: 'meeting' }),
+            )
+            expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('search: "meeting"'))
+        })
+
+        it('does not call searchCompletedTasks when --search is not provided', async () => {
+            const program = createProgram()
+
+            await program.parseAsync(['node', 'td', 'completed', 'list'])
+
+            expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalled()
+            expect(mockApi.searchCompletedTasks).not.toHaveBeenCalled()
+        })
+
+        it('shows empty message when search returns no results', async () => {
+            const program = createProgram()
+
+            mockApi.searchCompletedTasks.mockResolvedValue({
+                items: [],
+                nextCursor: null,
+            })
+
+            await program.parseAsync(['node', 'td', 'completed', 'list', '--search', 'nonexistent'])
+
+            expect(consoleSpy).toHaveBeenCalledWith('No matching completed tasks.')
+        })
+
+        it('outputs JSON with --search and --json', async () => {
+            const program = createProgram()
+
+            mockApi.searchCompletedTasks.mockResolvedValue({
+                items: [{ id: 'task-1', content: 'Found task', projectId: 'proj-1' }],
+                nextCursor: null,
+            })
+            mockApi.getProjects.mockResolvedValue({
+                results: [{ id: 'proj-1', name: 'Work' }],
+                nextCursor: null,
+            })
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'completed',
+                'list',
+                '--search',
+                'found',
+                '--json',
+            ])
+
+            const output = consoleSpy.mock.calls[0][0]
+            const parsed = JSON.parse(output)
+            expect(parsed.results).toBeDefined()
+            expect(parsed.results[0].content).toBe('Found task')
+        })
+
+        it('errors when --search is used with --since', async () => {
+            const program = createProgram()
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'completed',
+                    'list',
+                    '--search',
+                    'test',
+                    '--since',
+                    '2024-01-01',
+                ]),
+            ).rejects.toThrow('Cannot use --since, --until, or --project with --search')
+        })
+
+        it('errors when --search is used with --until', async () => {
+            const program = createProgram()
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'completed',
+                    'list',
+                    '--search',
+                    'test',
+                    '--until',
+                    '2024-12-31',
+                ]),
+            ).rejects.toThrow('Cannot use --since, --until, or --project with --search')
+        })
+
+        it('errors when --search is used with --project', async () => {
+            const program = createProgram()
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'completed',
+                    'list',
+                    '--search',
+                    'test',
+                    '--project',
+                    'Work',
+                ]),
+            ).rejects.toThrow('Cannot use --since, --until, or --project with --search')
+        })
     })
 })

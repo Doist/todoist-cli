@@ -14,6 +14,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getTask',
     'getTasksByFilter',
     'getCompletedTasksByCompletionDate',
+    'searchCompletedTasks',
     // Projects
     'getProjects',
     'getProject',

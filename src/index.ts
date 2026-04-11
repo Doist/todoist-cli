@@ -56,7 +56,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
     completed: [
         'Show completed tasks',
-        async () => (await import('./commands/completed.js')).registerCompletedCommand,
+        async () => (await import('./commands/completed/index.js')).registerCompletedCommand,
     ],
     task: [
         'Manage tasks',
