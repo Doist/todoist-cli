@@ -26,6 +26,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getCompletedTasksByCompletionDate: vi
             .fn()
             .mockResolvedValue({ items: [], nextCursor: null }),
+        searchCompletedTasks: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
         // Projects
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProject: vi.fn(),
@@ -36,6 +37,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         deleteProject: vi.fn(),
         moveProjectToWorkspace: vi.fn(),
         moveProjectToPersonal: vi.fn(),
+        searchProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getArchivedProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getArchivedProjectsCount: vi.fn().mockResolvedValue({ count: 0 }),
         getProjectPermissions: vi.fn().mockResolvedValue({
             projectCollaboratorActions: [],
@@ -58,12 +61,16 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         updateSection: vi.fn(),
         archiveSection: vi.fn(),
         unarchiveSection: vi.fn(),
+        searchSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         // Labels
         getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getLabel: vi.fn(),
         addLabel: vi.fn(),
         deleteLabel: vi.fn(),
         getSharedLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        searchLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        renameSharedLabel: vi.fn().mockResolvedValue(true),
+        removeSharedLabel: vi.fn().mockResolvedValue(true),
         updateLabel: vi.fn(),
         // Comments
         getComments: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
@@ -171,6 +178,9 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         // Reminders (REST)
         getReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getLocationReminders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        // Backups
+        getBackups: vi.fn().mockResolvedValue([]),
+        downloadBackup: vi.fn(),
         ...overrides,
     } as unknown as MockApi
 }

@@ -9,7 +9,7 @@ export function registerAuthCommand(program: Command): void {
 
     auth.command('login')
         .description('Authenticate with Todoist via OAuth')
-        .option('--read-only', 'Authenticate with read-only scope (data:read)')
+        .option('--read-only', 'Authenticate with read-only scope (data:read,backups:read)')
         .action(loginWithOAuth)
 
     auth.command('token [token]')

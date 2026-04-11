@@ -23,9 +23,15 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getUser: { text: 'Checking authentication...', color: 'blue' },
         getTasks: { text: 'Loading tasks...', color: 'blue' },
         getProjects: { text: 'Loading projects...', color: 'blue' },
+        searchProjects: { text: 'Searching projects...', color: 'blue' },
+        getArchivedProjects: { text: 'Loading archived projects...', color: 'blue' },
         getLabels: { text: 'Loading labels...', color: 'blue' },
         getSharedLabels: { text: 'Loading shared labels...', color: 'blue' },
+        searchLabels: { text: 'Searching labels...', color: 'blue' },
+        renameSharedLabel: { text: 'Renaming shared label...', color: 'yellow' },
+        removeSharedLabel: { text: 'Removing shared label...', color: 'yellow' },
         getSections: { text: 'Loading sections...', color: 'blue' },
+        searchSections: { text: 'Searching sections...', color: 'blue' },
         getComments: { text: 'Loading comments...', color: 'blue' },
         addTask: { text: 'Creating task...', color: 'green' },
         updateTask: { text: 'Updating task...', color: 'yellow' },
@@ -67,8 +73,13 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         createProjectFromTemplate: { text: 'Creating project from template...', color: 'green' },
         importTemplateIntoProject: { text: 'Importing template...', color: 'green' },
         importTemplateFromId: { text: 'Importing template...', color: 'green' },
+        getCompletedTasksByCompletionDate: { text: 'Loading completed tasks...', color: 'blue' },
+        searchCompletedTasks: { text: 'Searching completed tasks...', color: 'blue' },
         getReminders: { text: 'Loading reminders...', color: 'blue' },
         getLocationReminders: { text: 'Loading location reminders...', color: 'blue' },
+        // Backups
+        getBackups: { text: 'Loading backups...', color: 'blue' },
+        downloadBackup: { text: 'Downloading backup...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
@@ -165,10 +176,16 @@ function analyzeAndEmitApiResponse(
     if (response && typeof response === 'object' && response !== null) {
         const resp = response as Record<string, unknown>
 
-        // Check if it's a paginated response with results array
-        if ('results' in resp && Array.isArray(resp.results)) {
+        // Check if it's a paginated response with results or items array
+        const items =
+            'results' in resp && Array.isArray(resp.results)
+                ? resp.results
+                : 'items' in resp && Array.isArray(resp.items)
+                  ? resp.items
+                  : null
+        if (items) {
             progressTracker.emitApiResponse(
-                resp.results.length,
+                items.length,
                 Boolean(resp.nextCursor),
                 typeof resp.nextCursor === 'string' ? resp.nextCursor : null,
             )
@@ -200,14 +217,6 @@ export async function getApi(): Promise<TodoistApi> {
 }
 
 export type Project = PersonalProject | WorkspaceProject
-
-export function isWorkspaceProject(project: Project): project is WorkspaceProject {
-    return 'workspaceId' in project && project.workspaceId !== undefined
-}
-
-export function isPersonalProject(project: Project): project is PersonalProject {
-    return !isWorkspaceProject(project)
-}
 
 let currentUserIdCache: string | null = null
 

@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
-    isWorkspaceProject: vi.fn(
-        (project: { workspaceId?: string }) => project.workspaceId !== undefined,
-    ),
-    isPersonalProject: vi.fn(
-        (project: { workspaceId?: string }) => project.workspaceId === undefined,
-    ),
 }))
 
 vi.mock('../lib/api/workspaces.js', () => ({
@@ -117,6 +111,146 @@ describe('project list', () => {
         await program.parseAsync(['node', 'td', 'project', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('more items exist'))
+    })
+
+    it('searches projects by name with --search', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Roadmap', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'Road'])
+
+        expect(mockApi.searchProjects).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'Road' }),
+        )
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Roadmap'))
+    })
+
+    it('uses getProjects when no --search provided', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list'])
+
+        expect(mockApi.getProjects).toHaveBeenCalled()
+        expect(mockApi.searchProjects).not.toHaveBeenCalled()
+    })
+
+    it('shows empty message when search returns no results', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'nonexistent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No matching projects.')
+    })
+
+    it('outputs JSON with --search and --json', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Roadmap', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'Road', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0].name).toBe('Roadmap')
+    })
+})
+
+describe('project archived', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('lists archived projects', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjects.mockResolvedValue({
+            results: [
+                { id: 'proj-1', name: 'Old Project', isFavorite: false },
+                { id: 'proj-2', name: 'Done Project', isFavorite: false },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived'])
+
+        expect(mockApi.getArchivedProjects).toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Old Project'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Done Project'))
+    })
+
+    it('shows empty message when no archived projects', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjects.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No archived projects.')
+    })
+
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Old Project', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].name).toBe('Old Project')
+    })
+
+    it('outputs NDJSON with --ndjson flag', async () => {
+        const program = createProgram()
+
+        mockApi.getArchivedProjects.mockResolvedValue({
+            results: [
+                { id: 'proj-1', name: 'Old Project' },
+                { id: 'proj-2', name: 'Done Project' },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'archived', '--ndjson'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(2)
     })
 })
 
@@ -727,6 +861,21 @@ describe('project delete', () => {
         await expect(
             program.parseAsync(['node', 'td', 'project', 'delete', 'Test Project', '--yes']),
         ).rejects.toThrow('2 uncompleted tasks remain')
+    })
+
+    it('fails when workspace project is not archived', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [
+                { id: 'proj-1', name: 'Work Project', workspaceId: 'ws-1', isArchived: false },
+            ],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'delete', 'Work Project', '--yes']),
+        ).rejects.toThrow('needs to be archived first')
     })
 
     it('shows singular "task" for single uncompleted task', async () => {
@@ -1743,7 +1892,7 @@ describe('project archived-count', () => {
         await program.parseAsync(['node', 'td', 'project', 'archived-count', '--workspace', 'Work'])
 
         expect(mockApi.getArchivedProjectsCount).toHaveBeenCalledWith(
-            expect.objectContaining({ workspaceId: 100 }),
+            expect.objectContaining({ workspaceId: '100' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Archived projects: 3 (workspace: Work)')
     })

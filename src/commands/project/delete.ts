@@ -1,3 +1,4 @@
+import { isWorkspaceProject } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -10,6 +11,13 @@ export async function deleteProject(
 ): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    if (isWorkspaceProject(project) && !project.isArchived) {
+        throw new CliError(
+            'INVALID_PROJECT',
+            `Cannot delete project: ${project.name} needs to be archived first.`,
+        )
+    }
 
     const { results: tasks } = await api.getTasks({ projectId: project.id })
     if (tasks.length > 0) {

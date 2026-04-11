@@ -41,7 +41,7 @@ export interface Notification {
     type: NotificationType
     isUnread: boolean
     isDeleted: boolean
-    createdAt: string
+    createdAt: Date
     fromUser?: NotificationUser
     project?: NotificationProject
     task?: NotificationTask

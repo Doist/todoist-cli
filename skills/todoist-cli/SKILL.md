@@ -42,12 +42,12 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
 - Task lifecycle: `td task list/view/add/update/reschedule/move/complete/uncomplete/delete/browse`
-- Projects: `td project list/view/create/update/archive/unarchive/delete/move/join/browse/collaborators/permissions`
+- Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
 - Goals: `td goal list/view/create/update/delete/complete/uncomplete/link/unlink`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td workspace ...`
 - Collaboration: `td comment ...`, `td notification ...`, `td reminder ...`
-- Templates and files: `td template ...`, `td attachment view <file-url>`
+- Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Account and tooling: `td stats`, `td settings ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
 
 ## References
@@ -66,7 +66,8 @@ Some commands require `id:` or URL refs (name lookup unavailable): `task uncompl
 td today
 td inbox --priority p1
 td upcoming 14 --workspace "Work"
-td completed --since 2024-01-01 --until 2024-01-31
+td completed list --since 2024-01-01 --until 2024-01-31
+td completed list --search "meeting notes"
 td activity --type task --event completed
 ```
 
@@ -93,6 +94,8 @@ Useful task flags:
 ### Projects And Workspaces
 ```bash
 td project list --personal
+td project list --search "Road"
+td project archived
 td project view "Roadmap" --detailed
 td project collaborators "Roadmap"
 td project create --name "New Project" --color blue
@@ -119,11 +122,14 @@ td workspace insights "Acme" --project-ids "id1,id2"
 ### Labels, Filters, And Sections
 ```bash
 td label list
+td label list --search "bug"
 td label view "urgent"
 td label create --name "urgent" --color red
 td label update "urgent" --color orange
 td label delete "urgent" --yes
 td label browse "urgent"
+td label rename-shared "oldname" --name "newname"
+td label remove-shared "oldname" --yes
 
 td filter list
 td filter view "Urgent work"
@@ -133,6 +139,8 @@ td filter delete "Urgent work" --yes
 td filter browse "Urgent work"
 
 td section list "Roadmap"
+td section list --search "Planning"
+td section list --search "Planning" --project "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
 td section update id:123 --name "Done"
 td section archive id:123
@@ -141,7 +149,7 @@ td section delete id:123 --yes
 td section browse id:123
 ```
 
-Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs.
+Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs. Use `td label rename-shared` and `td label remove-shared` for shared labels.
 
 ### Goals
 ```bash
@@ -195,6 +203,12 @@ td template export-url "Roadmap"
 td template create --name "New Project" --file template.csv --workspace "Acme"
 td template import-file "Roadmap" --file template.csv
 td template import-id "Roadmap" --template-id product-launch --locale fr
+```
+
+### Backups
+```bash
+td backup list
+td backup download "2024-01-15_12:00" --output-file backup.zip
 ```
 
 ### Settings, Stats, And Utilities

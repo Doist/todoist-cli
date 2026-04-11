@@ -1,3 +1,29 @@
+## [1.42.0](https://github.com/Doist/todoist-cli/compare/v1.41.0...v1.42.0) (2026-04-11)
+
+### Features
+
+* add backup list and download commands ([#253](https://github.com/Doist/todoist-cli/issues/253)) ([36de53a](https://github.com/Doist/todoist-cli/commit/36de53a491b874ca7e5b5f702b22d2b046d4ec54))
+* add completed task search ([#252](https://github.com/Doist/todoist-cli/issues/252)) ([7023ce0](https://github.com/Doist/todoist-cli/commit/7023ce0b15ffe6ccb655f1e464ee23c9ef306630))
+
+## [1.41.0](https://github.com/Doist/todoist-cli/compare/v1.40.0...v1.41.0) (2026-04-11)
+
+### Features
+
+* add label search, rename-shared, and remove-shared commands ([#251](https://github.com/Doist/todoist-cli/issues/251)) ([1c5da60](https://github.com/Doist/todoist-cli/commit/1c5da60893259a6e282e21921074c83989ea4f81))
+* add project search, archived projects, and section search ([#250](https://github.com/Doist/todoist-cli/issues/250)) ([169b2d2](https://github.com/Doist/todoist-cli/commit/169b2d25ed6f56cf9875d47560ba3bbc3ab0a6b7))
+
+## [1.40.0](https://github.com/Doist/todoist-cli/compare/v1.39.3...v1.40.0) (2026-04-09)
+
+### Features
+
+* prevent deletion of non-archived workspace projects ([#247](https://github.com/Doist/todoist-cli/issues/247)) ([21e7c84](https://github.com/Doist/todoist-cli/commit/21e7c8474aea4943fe128cd42ff82cec085811e2))
+
+## [1.39.3](https://github.com/Doist/todoist-cli/compare/v1.39.2...v1.39.3) (2026-04-07)
+
+### Bug Fixes
+
+* try fallback ports when OAuth callback port is in use ([#237](https://github.com/Doist/todoist-cli/issues/237)) ([5115b62](https://github.com/Doist/todoist-cli/commit/5115b62536837264e6901e29b77f02a8af797ffd))
+
 ## [1.39.2](https://github.com/Doist/todoist-cli/compare/v1.39.1...v1.39.2) (2026-04-07)
 
 ### Bug Fixes

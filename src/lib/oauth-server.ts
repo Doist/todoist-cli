@@ -1,6 +1,7 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http'
 
-const PORT = 8765
+export const DEFAULT_PORT = 8765
+const MAX_PORT_ATTEMPTS = 5
 const TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes
 
 const SUCCESS_HTML = `
@@ -709,27 +710,67 @@ const ERROR_HTML = (message: string) => `
 </html>
 `
 
-export function startCallbackServer(expectedState: string): {
-    promise: Promise<string>
-    cleanup: () => void
-} {
-    let server: Server | null = null
-    let timeoutId: NodeJS.Timeout | null = null
+export function getRedirectUri(port: number): string {
+    return `http://localhost:${port}/callback`
+}
 
+function tryListen(server: Server, port: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(port, () => {
+            server.removeListener('error', reject)
+            resolve()
+        })
+    })
+}
+
+export async function startCallbackServer(expectedState: string): Promise<{
+    promise: Promise<string>
+    port: number
+    cleanup: () => void
+}> {
+    let timeoutId: NodeJS.Timeout | null = null
+    let boundPort = DEFAULT_PORT
+
+    const server = createServer()
+
+    let closed = false
     const cleanup = () => {
+        if (closed) return
+        closed = true
         if (timeoutId) {
             clearTimeout(timeoutId)
             timeoutId = null
         }
-        if (server) {
-            server.close()
-            server = null
+        server.close()
+    }
+
+    // Find an available port
+    for (let port = DEFAULT_PORT; port < DEFAULT_PORT + MAX_PORT_ATTEMPTS; port++) {
+        try {
+            await tryListen(server, port)
+            boundPort = port
+            break
+        } catch (err: unknown) {
+            if (
+                err instanceof Error &&
+                'code' in err &&
+                (err as NodeJS.ErrnoException).code === 'EADDRINUSE'
+            ) {
+                if (port === DEFAULT_PORT + MAX_PORT_ATTEMPTS - 1) {
+                    throw new Error(
+                        `Could not find an available port (tried ${DEFAULT_PORT}-${DEFAULT_PORT + MAX_PORT_ATTEMPTS - 1})`,
+                    )
+                }
+                continue
+            }
+            throw err
         }
     }
 
     const promise = new Promise<string>((resolve, reject) => {
-        const handleRequest = (req: IncomingMessage, res: ServerResponse) => {
-            const url = new URL(req.url || '/', `http://localhost:${PORT}`)
+        server.on('request', (req: IncomingMessage, res: ServerResponse) => {
+            const url = new URL(req.url || '/', `http://localhost:${boundPort}`)
 
             if (url.pathname !== '/callback') {
                 res.writeHead(404)
@@ -769,24 +810,18 @@ export function startCallbackServer(expectedState: string): {
             res.end(SUCCESS_HTML)
             cleanup()
             resolve(code)
-        }
-
-        server = createServer(handleRequest)
+        })
 
         server.on('error', (err) => {
             cleanup()
             reject(err)
         })
 
-        server.listen(PORT, () => {
-            timeoutId = setTimeout(() => {
-                cleanup()
-                reject(new Error('OAuth callback timed out'))
-            }, TIMEOUT_MS)
-        })
+        timeoutId = setTimeout(() => {
+            cleanup()
+            reject(new Error('OAuth callback timed out'))
+        }, TIMEOUT_MS)
     })
 
-    return { promise, cleanup }
+    return { promise, port: boundPort, cleanup }
 }
-
-export const OAUTH_REDIRECT_URI = `http://localhost:${PORT}/callback`

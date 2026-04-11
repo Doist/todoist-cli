@@ -51,12 +51,12 @@ describe('comment list', () => {
                 {
                     id: 'comment-1',
                     content: 'Remember organic',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                 },
                 {
                     id: 'comment-2',
                     content: 'Got it',
-                    postedAt: '2026-01-09T14:00:00Z',
+                    postedAt: new Date('2026-01-09T14:00:00Z'),
                 },
             ],
             nextCursor: null,
@@ -91,7 +91,9 @@ describe('comment list', () => {
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
-            results: [{ id: 'comment-1', content: 'Note', postedAt: '2026-01-08T10:00:00Z' }],
+            results: [
+                { id: 'comment-1', content: 'Note', postedAt: new Date('2026-01-08T10:00:00Z') },
+            ],
             nextCursor: null,
         })
 
@@ -409,7 +411,7 @@ describe('comment list with attachments', () => {
                 {
                     id: 'comment-1',
                     content: 'See attached',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                     fileAttachment: {
                         resourceType: 'file',
                         fileName: 'doc.pdf',
@@ -436,7 +438,7 @@ describe('comment list with attachments', () => {
                 {
                     id: 'comment-1',
                     content: 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                     fileAttachment: null,
                 },
             ],
@@ -462,7 +464,7 @@ describe('comment list with attachments', () => {
                 {
                     id: 'comment-1',
                     content: 'Line 1\nLine 2\nLine 3',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                     fileAttachment: null,
                 },
             ],
@@ -486,13 +488,13 @@ describe('comment list with attachments', () => {
                 {
                     id: 'comment-1',
                     content: 'Note',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                     fileAttachment: { resourceType: 'file', fileName: 'doc.pdf' },
                 },
                 {
                     id: 'comment-2',
                     content: 'Another',
-                    postedAt: '2026-01-09T10:00:00Z',
+                    postedAt: new Date('2026-01-09T10:00:00Z'),
                     fileAttachment: null,
                 },
             ],
@@ -533,7 +535,7 @@ describe('comment view', () => {
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
             content: 'Test content',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             fileAttachment: null,
         })
 
@@ -550,7 +552,7 @@ describe('comment view', () => {
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
             content: 'Full content here\nWith multiple lines\nNo truncation',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             fileAttachment: null,
         })
 
@@ -570,7 +572,7 @@ describe('comment view', () => {
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
             content: 'See attached',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             fileAttachment: {
                 resourceType: 'file',
                 fileName: 'document.pdf',
@@ -598,7 +600,7 @@ describe('comment view', () => {
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
             content: 'Test content',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             taskId: 'task-1',
             projectId: null,
             fileAttachment: null,
@@ -610,7 +612,7 @@ describe('comment view', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('comment-123')
         expect(parsed.content).toBe('Test content')
-        expect(parsed.postedAt).toBe('2026-01-08T10:00:00Z')
+        expect(parsed.postedAt).toBe('2026-01-08T10:00:00.000Z')
         consoleSpy.mockRestore()
     })
 
@@ -621,7 +623,7 @@ describe('comment view', () => {
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
             content: 'Test content',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             taskId: 'task-1',
             projectId: null,
             fileAttachment: null,
@@ -664,7 +666,7 @@ describe('project comment list', () => {
                 {
                     id: 'comment-1',
                     content: 'Project note',
-                    postedAt: '2026-01-08T10:00:00Z',
+                    postedAt: new Date('2026-01-08T10:00:00Z'),
                     fileAttachment: null,
                 },
             ],
@@ -810,7 +812,7 @@ describe('comment add --json', () => {
         mockApi.addComment.mockResolvedValue({
             id: 'comment-new',
             content: 'Test note',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             taskId: 'task-1',
             projectId: null,
             fileAttachment: null,
@@ -842,7 +844,7 @@ describe('comment add --json', () => {
         mockApi.addComment.mockResolvedValue({
             id: 'comment-new',
             content: 'Test note',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             taskId: 'task-1',
         })
 
@@ -882,7 +884,7 @@ describe('comment update --json', () => {
         mockApi.updateComment.mockResolvedValue({
             id: 'comment-123',
             content: 'New content',
-            postedAt: '2026-01-08T10:00:00Z',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
             taskId: 'task-1',
         })
 

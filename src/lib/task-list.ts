@@ -1,6 +1,6 @@
-import type { Task, TodoistApi } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type Task, type TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi, isWorkspaceProject, type Project, type Section } from './api/core.js'
+import { getApi, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
 import { CliError } from './errors.js'
 import type { PaginatedViewOptions } from './options.js'

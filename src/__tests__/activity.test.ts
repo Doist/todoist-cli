@@ -4,16 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getCurrentUserId: vi.fn(),
-    isWorkspaceProject: vi.fn(),
 }))
 
 import { registerActivityCommand } from '../commands/activity.js'
-import { getApi, getCurrentUserId, isWorkspaceProject } from '../lib/api/core.js'
+import { getApi, getCurrentUserId } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockGetCurrentUserId = vi.mocked(getCurrentUserId)
-const mockIsWorkspaceProject = vi.mocked(isWorkspaceProject)
 
 function createProgram() {
     const program = new Command()
@@ -31,7 +29,6 @@ describe('activity command', () => {
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockGetCurrentUserId.mockResolvedValue('user-123')
-        mockIsWorkspaceProject.mockReturnValue(false)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -49,7 +46,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-1',
                     eventType: 'completed',
-                    eventDate: '2025-01-10T14:30:00Z',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
                     parentProjectId: 'proj-1',
                     parentItemId: null,
                     initiatorId: 'user-1',
@@ -180,7 +177,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-1',
                     eventType: 'added',
-                    eventDate: '2025-01-10T14:30:00Z',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
                     parentProjectId: null,
                     parentItemId: null,
                     initiatorId: null,
@@ -208,7 +205,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-1',
                     eventType: 'added',
-                    eventDate: '2025-01-10T14:30:00Z',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
                     parentProjectId: null,
                     parentItemId: null,
                     initiatorId: null,
@@ -219,7 +216,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-2',
                     eventType: 'completed',
-                    eventDate: '2025-01-10T14:35:00Z',
+                    eventDate: new Date('2025-01-10T14:35:00Z'),
                     parentProjectId: null,
                     parentItemId: null,
                     initiatorId: null,
@@ -246,7 +243,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-1',
                     eventType: 'completed',
-                    eventDate: '2025-01-10T14:30:00Z',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
                     parentProjectId: 'proj-1',
                     parentItemId: null,
                     initiatorId: null,
@@ -313,7 +310,7 @@ describe('activity command', () => {
                     objectType: 'task',
                     objectId: 'task-1',
                     eventType: 'added',
-                    eventDate: '2025-01-10T14:30:00Z',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
                     parentProjectId: 'proj-1',
                     parentItemId: null,
                     initiatorId: null,
@@ -338,7 +335,7 @@ describe('activity command', () => {
             objectType: 'task',
             objectId: 'task-1',
             eventType: 'added',
-            eventDate: '2025-01-10T14:30:00Z',
+            eventDate: new Date('2025-01-10T14:30:00Z'),
             parentProjectId: 'proj-1',
             parentItemId: null,
             initiatorId: null,

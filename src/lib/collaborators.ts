@@ -1,5 +1,5 @@
-import type { TodoistApi } from '@doist/todoist-sdk'
-import { getCurrentUserId, isWorkspaceProject, type Project, type Task } from './api/core.js'
+import { isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
+import { getCurrentUserId, type Project, type Task } from './api/core.js'
 import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'
 
@@ -58,10 +58,9 @@ export class CollaboratorCache {
         const userMap = new Map<string, CollaboratorInfo>()
         let cursor: string | undefined
 
-        const workspaceIdNum = parseInt(workspaceId, 10)
         while (true) {
             const response = await api.getWorkspaceUsers({
-                workspaceId: workspaceIdNum,
+                workspaceId,
                 cursor,
                 limit: 200,
             })
@@ -166,11 +165,9 @@ async function fetchCollaboratorsForProject(
     if (isWorkspaceProject(project)) {
         const users: CollaboratorInfo[] = []
         let cursor: string | undefined
-        const workspaceIdNum = parseInt(project.workspaceId, 10)
-
         while (true) {
             const response = await api.getWorkspaceUsers({
-                workspaceId: workspaceIdNum,
+                workspaceId: project.workspaceId,
                 cursor,
                 limit: 200,
             })

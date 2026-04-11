@@ -1,6 +1,6 @@
-import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
+import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'

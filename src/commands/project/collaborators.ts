@@ -1,5 +1,6 @@
+import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi, isWorkspaceProject } from '../../lib/api/core.js'
+import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { ViewOptions } from '../../lib/options.js'
@@ -10,7 +11,6 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
     const project = await resolveProjectRef(api, ref)
 
     if (isWorkspaceProject(project)) {
-        const workspaceIdNum = parseInt(project.workspaceId, 10)
         const allUsers: Array<{
             userId: string
             fullName: string
@@ -21,7 +21,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
 
         while (true) {
             const response = await api.getWorkspaceUsers({
-                workspaceId: workspaceIdNum,
+                workspaceId: project.workspaceId,
                 cursor,
                 limit: 200,
             })

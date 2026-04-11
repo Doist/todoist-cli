@@ -29,7 +29,7 @@ export async function showWorkspaceInsights(
     const { results: workspaceProjects } = await paginate(
         (cursor, limit) =>
             api.getWorkspaceActiveProjects({
-                workspaceId: parseInt(workspace.id, 10),
+                workspaceId: workspace.id,
                 cursor: cursor ?? undefined,
                 limit,
             }),

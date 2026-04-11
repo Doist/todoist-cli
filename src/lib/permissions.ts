@@ -14,10 +14,13 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getTask',
     'getTasksByFilter',
     'getCompletedTasksByCompletionDate',
+    'searchCompletedTasks',
     // Projects
     'getProjects',
     'getProject',
     'getFullProject',
+    'searchProjects',
+    'getArchivedProjects',
     'getArchivedProjectsCount',
     'getProjectPermissions',
     'getProjectCollaborators',
@@ -25,9 +28,11 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getLabels',
     'getLabel',
     'getSharedLabels',
+    'searchLabels',
     // Sections
     'getSections',
     'getSection',
+    'searchSections',
     // Comments
     'getComments',
     'getComment',
@@ -52,6 +57,9 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Reminders (REST read)
     'getReminders',
     'getLocationReminders',
+    // Backups
+    'getBackups',
+    'downloadBackup',
     // Sync is handled separately via payload inspection
     'sync',
 ])

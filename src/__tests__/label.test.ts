@@ -97,6 +97,259 @@ describe('label list', () => {
     })
 })
 
+describe('label list --search', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('searches labels by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'bug'])
+
+        expect(mockApi.searchLabels).toHaveBeenCalledWith(expect.objectContaining({ query: 'bug' }))
+        expect(mockApi.getLabels).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@bugfix'))
+        consoleSpy.mockRestore()
+    })
+
+    it('includes matching shared labels in search results', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['team-bug', 'team-review'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'bug'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-bug'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@team-review'))
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs search results as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'bug', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].name).toBe('bugfix')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows "No labels found" when search has no results', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'nonexistent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No labels found.')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('label rename-shared', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('renames a shared label', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            'oldname',
+            '--name',
+            'newname',
+        ])
+
+        expect(mockApi.renameSharedLabel).toHaveBeenCalledWith({
+            name: 'oldname',
+            newName: 'newname',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Renamed: @oldname → @newname')
+        consoleSpy.mockRestore()
+    })
+
+    it('strips @ prefix from name', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            '@oldname',
+            '--name',
+            'newname',
+        ])
+
+        expect(mockApi.renameSharedLabel).toHaveBeenCalledWith({
+            name: 'oldname',
+            newName: 'newname',
+        })
+    })
+
+    it('previews rename with --dry-run', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'label',
+            'rename-shared',
+            'oldname',
+            '--name',
+            'newname',
+            '--dry-run',
+        ])
+
+        expect(mockApi.renameSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+        consoleSpy.mockRestore()
+    })
+
+    it('throws when shared label not found', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'label',
+                'rename-shared',
+                'nonexistent',
+                '--name',
+                'newname',
+            ]),
+        ).rejects.toThrow('Shared label "nonexistent" not found.')
+    })
+})
+
+describe('label remove-shared', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('removes a shared label with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname', '--yes'])
+
+        expect(mockApi.removeSharedLabel).toHaveBeenCalledWith({ name: 'oldname' })
+        expect(consoleSpy).toHaveBeenCalledWith('Removed shared label: @oldname')
+        consoleSpy.mockRestore()
+    })
+
+    it('strips @ prefix from name', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', '@oldname', '--yes'])
+
+        expect(mockApi.removeSharedLabel).toHaveBeenCalledWith({ name: 'oldname' })
+    })
+
+    it('shows confirmation prompt without --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname'])
+
+        expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would remove shared label: @oldname')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+        consoleSpy.mockRestore()
+    })
+
+    it('previews removal with --dry-run', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getSharedLabels.mockResolvedValue({
+            results: ['oldname'],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname', '--dry-run'])
+
+        expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+        consoleSpy.mockRestore()
+    })
+
+    it('throws when shared label not found', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await expect(
+            program.parseAsync(['node', 'td', 'label', 'remove-shared', 'nonexistent', '--yes']),
+        ).rejects.toThrow('Shared label "nonexistent" not found.')
+    })
+})
+
 describe('label create --json', () => {
     let mockApi: MockApi
 

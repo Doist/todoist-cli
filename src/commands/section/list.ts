@@ -10,12 +10,18 @@ import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveProjectId } from '../../lib/refs.js'
 import { sectionUrl } from '../../lib/urls.js'
 
+type ListSectionOptions = PaginatedViewOptions & { project?: string; search?: string }
+
 export async function listSections(
-    projectRef: string,
-    options: PaginatedViewOptions,
+    projectRef: string | undefined,
+    options: ListSectionOptions,
 ): Promise<void> {
     const api = await getApi()
-    const projectId = await resolveProjectId(api, projectRef)
+
+    let projectId: string | undefined
+    if (projectRef) {
+        projectId = await resolveProjectId(api, projectRef)
+    }
 
     const targetLimit = options.all
         ? Number.MAX_SAFE_INTEGER
@@ -24,7 +30,15 @@ export async function listSections(
           : LIMITS.sections
 
     const { results: sections, nextCursor } = await paginate(
-        (cursor, limit) => api.getSections({ projectId, cursor: cursor ?? undefined, limit }),
+        (cursor, limit) =>
+            options.search
+                ? api.searchSections({
+                      query: options.search,
+                      projectId: projectId ?? undefined,
+                      cursor: cursor ?? undefined,
+                      limit,
+                  })
+                : api.getSections({ projectId: projectId!, cursor: cursor ?? undefined, limit }),
         { limit: targetLimit },
     )
 

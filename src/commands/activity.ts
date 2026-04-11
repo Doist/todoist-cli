@@ -1,7 +1,11 @@
-import type { ActivityEvent, ActivityObjectEventType } from '@doist/todoist-sdk'
+import {
+    isWorkspaceProject,
+    type ActivityEvent,
+    type ActivityObjectEventType,
+} from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
-import { getApi, getCurrentUserId, isWorkspaceProject, type Project } from '../lib/api/core.js'
+import { getApi, getCurrentUserId, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
@@ -61,8 +65,7 @@ function formatObjectType(objectType: string): string {
     return chalk.dim(label.padEnd(8))
 }
 
-function formatEventDate(eventDate: string): string {
-    const date = new Date(eventDate)
+function formatEventDate(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const hours = String(date.getHours()).padStart(2, '0')
@@ -126,16 +129,14 @@ function normalizeInlineText(text: string): string {
     return text.replace(/\s+/g, ' ').trim()
 }
 
-function formatMarkdownDay(eventDate: string): string {
-    const date = new Date(eventDate)
+function formatMarkdownDay(date: Date): string {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
 }
 
-function formatMarkdownTime(eventDate: string): string {
-    const date = new Date(eventDate)
+function formatMarkdownTime(date: Date): string {
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     return `${hours}:${minutes}`
@@ -325,7 +326,7 @@ export function registerActivityCommand(program: Command): void {
                 let cursor: string | undefined
                 while (true) {
                     const response = await api.getWorkspaceUsers({
-                        workspaceId: parseInt(wsId, 10),
+                        workspaceId: wsId,
                         cursor,
                         limit: 200,
                     })
