@@ -1,3 +1,10 @@
+## [1.42.0](https://github.com/Doist/todoist-cli/compare/v1.41.0...v1.42.0) (2026-04-11)
+
+### Features
+
+* add backup list and download commands ([#253](https://github.com/Doist/todoist-cli/issues/253)) ([36de53a](https://github.com/Doist/todoist-cli/commit/36de53a491b874ca7e5b5f702b22d2b046d4ec54))
+* add completed task search ([#252](https://github.com/Doist/todoist-cli/issues/252)) ([7023ce0](https://github.com/Doist/todoist-cli/commit/7023ce0b15ffe6ccb655f1e464ee23c9ef306630))
+
 ## [1.41.0](https://github.com/Doist/todoist-cli/compare/v1.40.0...v1.41.0) (2026-04-11)
 
 ### Features
