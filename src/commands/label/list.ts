@@ -2,6 +2,10 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+
+export interface ListLabelsOptions extends PaginatedViewOptions {
+    search?: string
+}
 import {
     formatNextCursorFooter,
     formatPaginatedJson,
@@ -10,7 +14,7 @@ import {
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { labelUrl } from '../../lib/urls.js'
 
-export async function listLabels(options: PaginatedViewOptions): Promise<void> {
+export async function listLabels(options: ListLabelsOptions): Promise<void> {
     const api = await getApi()
 
     const targetLimit = options.all
@@ -20,12 +24,15 @@ export async function listLabels(options: PaginatedViewOptions): Promise<void> {
           : LIMITS.labels
 
     const { results: labels, nextCursor } = await paginate(
-        (cursor, limit) => api.getLabels({ cursor: cursor ?? undefined, limit }),
+        (cursor, limit) =>
+            options.search
+                ? api.searchLabels({ query: options.search, cursor: cursor ?? undefined, limit })
+                : api.getLabels({ cursor: cursor ?? undefined, limit }),
         { limit: targetLimit },
     )
 
     // Fetch shared-only labels (not in personal labels)
-    const { results: sharedLabels } = await paginate(
+    const { results: allSharedLabels } = await paginate(
         (cursor, limit) =>
             api.getSharedLabels({
                 omitPersonal: true,
@@ -34,6 +41,13 @@ export async function listLabels(options: PaginatedViewOptions): Promise<void> {
             }),
         { limit: targetLimit },
     )
+
+    // When searching, filter shared labels client-side to match the search term
+    const sharedLabels = options.search
+        ? allSharedLabels.filter((name) =>
+              name.toLowerCase().includes(options.search!.toLowerCase()),
+          )
+        : allSharedLabels
 
     if (options.json) {
         const base = JSON.parse(

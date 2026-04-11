@@ -4,6 +4,23 @@ import { CliError } from '../../lib/errors.js'
 import { paginate } from '../../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../../lib/refs.js'
 
+// Resolves a shared label name by checking it exists in the shared labels list.
+// Returns the canonical casing of the label name.
+export async function resolveSharedLabelName(nameArg: string): Promise<string> {
+    const name = nameArg.startsWith('@') ? nameArg.slice(1) : nameArg
+    const lower = name.toLowerCase()
+
+    const api = await getApi()
+    const { results: sharedLabels } = await paginate(
+        (cursor, limit) => api.getSharedLabels({ cursor: cursor ?? undefined, limit }),
+        { limit: Number.MAX_SAFE_INTEGER },
+    )
+
+    const match = sharedLabels.find((s) => s.toLowerCase() === lower)
+    if (!match) throw new CliError('LABEL_NOT_FOUND', `Shared label "${name}" not found.`)
+    return match
+}
+
 // Resolves a label ref to a personal Label object. Used by delete/update/browse
 // which require an ID. Does NOT fall back to shared labels — use
 // resolveLabelNameForView() for view which only needs a name.

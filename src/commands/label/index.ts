@@ -3,6 +3,8 @@ import { browseLabel } from './browse.js'
 import { createLabel } from './create.js'
 import { deleteLabel } from './delete.js'
 import { listLabels } from './list.js'
+import { removeSharedLabel } from './remove-shared.js'
+import { renameSharedLabel } from './rename-shared.js'
 import { updateLabel } from './update.js'
 import { viewLabel } from './view.js'
 
@@ -17,8 +19,11 @@ export function registerLabelCommand(program: Command): void {
             `
 Examples:
   td label list
+  td label list --search "bug"
   td label create --name "urgent" --color red
-  td label view "urgent"`,
+  td label view "urgent"
+  td label rename-shared "oldname" --name "newname"
+  td label remove-shared "oldname" --yes`,
         )
 
     label
@@ -40,7 +45,8 @@ Examples:
 
     label
         .command('list')
-        .description('List all labels')
+        .description('List or search labels')
+        .option('--search <term>', 'Search labels by name')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
@@ -104,5 +110,31 @@ Examples:
                 return
             }
             return browseLabel(ref)
+        })
+
+    const renameSharedCmd = label
+        .command('rename-shared [name]')
+        .description('Rename a shared label')
+        .option('--name <name>', 'New name (required)')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((name, options) => {
+            if (!name || !options.name) {
+                renameSharedCmd.help()
+                return
+            }
+            return renameSharedLabel(name, options)
+        })
+
+    const removeSharedCmd = label
+        .command('remove-shared [name]')
+        .description('Remove a shared label')
+        .option('--yes', 'Confirm removal')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((name, options) => {
+            if (!name) {
+                removeSharedCmd.help()
+                return
+            }
+            return removeSharedLabel(name, options)
         })
 }
