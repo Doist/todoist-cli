@@ -11,7 +11,6 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
     const project = await resolveProjectRef(api, ref)
 
     if (isWorkspaceProject(project)) {
-        const workspaceIdNum = parseInt(project.workspaceId, 10)
         const allUsers: Array<{
             userId: string
             fullName: string
@@ -22,7 +21,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
 
         while (true) {
             const response = await api.getWorkspaceUsers({
-                workspaceId: workspaceIdNum,
+                workspaceId: project.workspaceId,
                 cursor,
                 limit: 200,
             })
