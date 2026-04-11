@@ -22,7 +22,7 @@ export async function listFolders(ref: string, options: PaginatedViewOptions): P
                 cursor: cursor ?? undefined,
                 limit,
             }),
-        { limit: targetLimit },
+        { limit: targetLimit, startCursor: options.cursor },
     )
 
     if (options.json) {
