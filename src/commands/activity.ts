@@ -65,8 +65,7 @@ function formatObjectType(objectType: string): string {
     return chalk.dim(label.padEnd(8))
 }
 
-function formatEventDate(eventDate: string | Date): string {
-    const date = eventDate instanceof Date ? eventDate : new Date(eventDate)
+function formatEventDate(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const hours = String(date.getHours()).padStart(2, '0')
@@ -130,16 +129,14 @@ function normalizeInlineText(text: string): string {
     return text.replace(/\s+/g, ' ').trim()
 }
 
-function formatMarkdownDay(eventDate: string | Date): string {
-    const date = eventDate instanceof Date ? eventDate : new Date(eventDate)
+function formatMarkdownDay(date: Date): string {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
 }
 
-function formatMarkdownTime(eventDate: string | Date): string {
-    const date = eventDate instanceof Date ? eventDate : new Date(eventDate)
+function formatMarkdownTime(date: Date): string {
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     return `${hours}:${minutes}`
