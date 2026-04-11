@@ -75,7 +75,9 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
 
     for (const comment of comments) {
         const id = chalk.dim(comment.id)
-        const date = chalk.green(comment.postedAt.split('T')[0])
+        const postedAt =
+            comment.postedAt instanceof Date ? comment.postedAt.toISOString() : comment.postedAt
+        const date = chalk.green(postedAt.split('T')[0])
         const hasAttachment = comment.fileAttachment !== null
         console.log(`${id}  ${date}${hasAttachment ? `  ${chalk.blue('[file]')}` : ''}`)
         const content = options.raw ? comment.content : renderMarkdown(comment.content)

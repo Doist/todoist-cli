@@ -275,7 +275,7 @@ describe('formatTaskView', () => {
     })
 
     it('shows metadata section when full=true', () => {
-        const task = { ...fixtures.tasks.basic, addedAt: '2026-01-01T00:00:00Z' }
+        const task = { ...fixtures.tasks.basic, addedAt: new Date('2026-01-01T00:00:00Z') }
         const result = formatTaskView({ task, full: true })
         expect(result).toContain('Metadata')
         expect(result).toContain('Created:')
@@ -342,20 +342,20 @@ describe('formatJson', () => {
     it('returns full object when type is undefined', () => {
         const task = fixtures.tasks.basic
         const result = JSON.parse(formatJson(task))
-        expect(result).toEqual(task)
+        expect(result).toEqual(JSON.parse(JSON.stringify(task)))
     })
 
     it('returns full object when full=true', () => {
         const task = fixtures.tasks.basic
         const result = JSON.parse(formatJson(task, 'task', true))
-        expect(result).toEqual(task)
+        expect(result).toEqual(JSON.parse(JSON.stringify(task)))
     })
 
     it('adds webUrl when showUrl=true', () => {
         const task = fixtures.tasks.basic
         const result = JSON.parse(formatJson(task, 'task', true, true))
         expect(result).toEqual({
-            ...task,
+            ...JSON.parse(JSON.stringify(task)),
             webUrl: 'https://app.todoist.com/app/task/task-1',
         })
     })
@@ -420,7 +420,7 @@ describe('formatNdjson', () => {
         const tasks = [fixtures.tasks.basic]
         const result = formatNdjson(tasks, 'task', true)
         const parsed = JSON.parse(result)
-        expect(parsed).toEqual(fixtures.tasks.basic)
+        expect(parsed).toEqual(JSON.parse(JSON.stringify(fixtures.tasks.basic)))
     })
 
     it('adds webUrl when showUrl=true', () => {
@@ -428,7 +428,7 @@ describe('formatNdjson', () => {
         const result = formatNdjson(tasks, 'task', true, true)
         const parsed = JSON.parse(result)
         expect(parsed).toEqual({
-            ...fixtures.tasks.basic,
+            ...JSON.parse(JSON.stringify(fixtures.tasks.basic)),
             webUrl: 'https://app.todoist.com/app/task/task-1',
         })
     })
@@ -474,7 +474,7 @@ describe('formatPaginatedJson', () => {
             nextCursor: null,
         }
         const result = JSON.parse(formatPaginatedJson(data, 'task', true))
-        expect(result.results[0]).toEqual(fixtures.tasks.basic)
+        expect(result.results[0]).toEqual(JSON.parse(JSON.stringify(fixtures.tasks.basic)))
     })
 
     it('adds webUrl when showUrl=true', () => {
@@ -484,7 +484,7 @@ describe('formatPaginatedJson', () => {
         }
         const result = JSON.parse(formatPaginatedJson(data, 'task', true, true))
         expect(result.results[0]).toEqual({
-            ...fixtures.tasks.basic,
+            ...JSON.parse(JSON.stringify(fixtures.tasks.basic)),
             webUrl: 'https://app.todoist.com/app/task/task-1',
         })
     })

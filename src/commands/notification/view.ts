@@ -25,8 +25,7 @@ export async function viewNotification(idRef: string, options: ViewOptions): Pro
     if (n.task?.content) {
         console.log(`Task:       ${n.task.content}`)
     }
-    const date = new Date(n.createdAt)
-    console.log(`Received:   ${formatRelativeTime(n.createdAt)} (${date.toLocaleString()})`)
+    console.log(`Received:   ${formatRelativeTime(n.createdAt)} (${n.createdAt.toLocaleString()})`)
     console.log(`Status:     ${n.isUnread ? 'Unread' : 'Read'}`)
 
     console.log('')

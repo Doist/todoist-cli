@@ -2,8 +2,8 @@ import { fetchNotifications, type Notification } from '../../lib/api/notificatio
 import { CliError } from '../../lib/errors.js'
 import { extractId, isIdRef } from '../../lib/refs.js'
 
-export function formatRelativeTime(dateStr: string): string {
-    const date = new Date(dateStr)
+export function formatRelativeTime(dateStr: string | Date): string {
+    const date = dateStr instanceof Date ? dateStr : new Date(dateStr)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMin = Math.floor(diffMs / 60000)

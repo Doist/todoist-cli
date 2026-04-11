@@ -45,10 +45,9 @@ export async function listWorkspaceUsers(
     }> = []
     let cursor: string | undefined = options.cursor
 
-    const workspaceIdNum = parseInt(workspace.id, 10)
     while (allUsers.length < targetLimit) {
         const response = await api.getWorkspaceUsers({
-            workspaceId: workspaceIdNum,
+            workspaceId: workspace.id,
             cursor,
             limit: Math.min(targetLimit - allUsers.length, 200),
         })

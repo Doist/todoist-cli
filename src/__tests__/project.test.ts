@@ -1752,7 +1752,7 @@ describe('project archived-count', () => {
         await program.parseAsync(['node', 'td', 'project', 'archived-count', '--workspace', 'Work'])
 
         expect(mockApi.getArchivedProjectsCount).toHaveBeenCalledWith(
-            expect.objectContaining({ workspaceId: 100 }),
+            expect.objectContaining({ workspaceId: '100' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Archived projects: 3 (workspace: Work)')
     })

@@ -8,11 +8,11 @@ export async function archivedCount(options: {
 }): Promise<void> {
     const api = await getApi()
 
-    const args: { workspaceId?: number; joined?: boolean } = {}
+    const args: { workspaceId?: string; joined?: boolean } = {}
     let workspaceName: string | undefined
     if (options.workspace) {
         const workspace = await resolveWorkspaceRef(options.workspace)
-        args.workspaceId = parseInt(workspace.id, 10)
+        args.workspaceId = workspace.id
         workspaceName = workspace.name
     }
     if (options.joined) {
