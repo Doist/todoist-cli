@@ -64,7 +64,8 @@ Some commands require \`id:\` or URL refs (name lookup unavailable): \`task unco
 td today
 td inbox --priority p1
 td upcoming 14 --workspace "Work"
-td completed --since 2024-01-01 --until 2024-01-31
+td completed list --since 2024-01-01 --until 2024-01-31
+td completed list --search "meeting notes"
 td activity --type task --event completed
 \`\`\`
 

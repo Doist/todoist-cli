@@ -73,6 +73,8 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         createProjectFromTemplate: { text: 'Creating project from template...', color: 'green' },
         importTemplateIntoProject: { text: 'Importing template...', color: 'green' },
         importTemplateFromId: { text: 'Importing template...', color: 'green' },
+        getCompletedTasksByCompletionDate: { text: 'Loading completed tasks...', color: 'blue' },
+        searchCompletedTasks: { text: 'Searching completed tasks...', color: 'blue' },
         getReminders: { text: 'Loading reminders...', color: 'blue' },
         getLocationReminders: { text: 'Loading location reminders...', color: 'blue' },
     }

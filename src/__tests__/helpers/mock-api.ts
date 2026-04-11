@@ -26,6 +26,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getCompletedTasksByCompletionDate: vi
             .fn()
             .mockResolvedValue({ items: [], nextCursor: null }),
+        searchCompletedTasks: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
         // Projects
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProject: vi.fn(),
