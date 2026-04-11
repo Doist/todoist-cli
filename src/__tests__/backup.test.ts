@@ -6,11 +6,17 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
+vi.mock('../lib/auth.js', () => ({
+    getAuthMetadata: vi.fn(),
+}))
+
 import { registerBackupCommand } from '../commands/backup/index.js'
 import { getApi } from '../lib/api/core.js'
+import { getAuthMetadata } from '../lib/auth.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
     const program = new Command()
@@ -26,6 +32,11 @@ describe('backup list', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete,backups:read',
+            source: 'secure-store',
+        })
     })
 
     it('lists available backups', async () => {
@@ -70,6 +81,7 @@ describe('backup list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toHaveLength(1)
         expect(parsed.results[0].version).toBe('2024-01-15_12:00')
+        expect(parsed.nextCursor).toBeNull()
         consoleSpy.mockRestore()
     })
 
@@ -84,11 +96,26 @@ describe('backup list', () => {
 
         await program.parseAsync(['node', 'td', 'backup', 'list', '--ndjson'])
 
-        expect(consoleSpy).toHaveBeenCalledTimes(2)
-        const line1 = JSON.parse(consoleSpy.mock.calls[0][0])
-        expect(line1._type).toBe('backup')
+        const output = consoleSpy.mock.calls[0][0]
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(2)
+        const line1 = JSON.parse(lines[0])
         expect(line1.version).toBe('2024-01-15_12:00')
         consoleSpy.mockRestore()
+    })
+
+    it('throws error when token is missing backups:read scope', async () => {
+        const program = createProgram()
+
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete',
+            source: 'secure-store',
+        })
+
+        await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toThrow(
+            'missing the backups:read scope',
+        )
     })
 })
 
@@ -99,6 +126,11 @@ describe('backup download', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete,backups:read',
+            source: 'secure-store',
+        })
     })
 
     it('downloads a backup to the specified output path', async () => {
@@ -110,6 +142,9 @@ describe('backup download', () => {
             { version: '2024-01-15_12:00', url: 'https://example.com/backup1.zip' },
         ])
         mockApi.downloadBackup.mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
             arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
         })
 
@@ -130,6 +165,32 @@ describe('backup download', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('/tmp/backup.zip'))
         consoleSpy.mockRestore()
         writeSpy.mockRestore()
+    })
+
+    it('throws error when download response is not ok', async () => {
+        const program = createProgram()
+
+        mockApi.getBackups.mockResolvedValue([
+            { version: '2024-01-15_12:00', url: 'https://example.com/backup1.zip' },
+        ])
+        mockApi.downloadBackup.mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'backup',
+                'download',
+                '2024-01-15_12:00',
+                '--output-file',
+                '/tmp/backup.zip',
+            ]),
+        ).rejects.toThrow('Failed to download backup: 404 Not Found')
     })
 
     it('errors when --output-file is not provided', async () => {

@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { CliError } from '../../lib/errors.js'
+import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
+import { fetchBackups } from './helpers.js'
 
 interface ListBackupsOptions {
     json?: boolean
@@ -9,33 +10,16 @@ interface ListBackupsOptions {
 
 export async function listBackups(options: ListBackupsOptions): Promise<void> {
     const api = await getApi()
-
-    let backups
-    try {
-        backups = await api.getBackups()
-    } catch (error) {
-        if (error instanceof CliError && error.code === 'AUTH_ERROR') {
-            throw new CliError(
-                'AUTH_ERROR',
-                'Failed to access backups. Your token may be missing the backups:read scope.',
-                [
-                    'Re-authenticate to grant backup access: td auth login',
-                    'If using an API token, ensure it has the backups:read scope',
-                ],
-            )
-        }
-        throw error
-    }
+    const backups = await fetchBackups(api)
+    const paginated = { results: backups, nextCursor: null }
 
     if (options.json) {
-        console.log(JSON.stringify({ results: backups }, null, 2))
+        console.log(formatPaginatedJson(paginated))
         return
     }
 
     if (options.ndjson) {
-        for (const backup of backups) {
-            console.log(JSON.stringify({ _type: 'backup', ...backup }))
-        }
+        console.log(formatPaginatedNdjson(paginated))
         return
     }
 
