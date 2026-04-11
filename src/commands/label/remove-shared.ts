@@ -1,12 +1,13 @@
 import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
+import { resolveSharedLabelName } from './helpers.js'
 
 export async function removeSharedLabel(
     nameArg: string,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
-    const name = nameArg.startsWith('@') ? nameArg.slice(1) : nameArg
+    const name = await resolveSharedLabelName(nameArg)
 
     if (options.dryRun) {
         printDryRun('remove shared label', { Label: `@${name}` })

@@ -1,12 +1,13 @@
 import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
+import { resolveSharedLabelName } from './helpers.js'
 
 export async function renameSharedLabel(
     nameArg: string,
     options: { name?: string; dryRun?: boolean },
 ): Promise<void> {
-    const name = nameArg.startsWith('@') ? nameArg.slice(1) : nameArg
+    const name = await resolveSharedLabelName(nameArg)
 
     if (options.dryRun) {
         printDryRun('rename shared label', { From: `@${name}`, To: `@${options.name}` })

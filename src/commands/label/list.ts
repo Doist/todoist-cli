@@ -31,21 +31,23 @@ export async function listLabels(options: ListLabelsOptions): Promise<void> {
         { limit: targetLimit },
     )
 
-    // Fetch shared-only labels (not in personal labels) — skip when searching
-    // since searchLabels only covers personal labels
-    const sharedLabels: string[] = options.search
-        ? []
-        : (
-              await paginate(
-                  (cursor, limit) =>
-                      api.getSharedLabels({
-                          omitPersonal: true,
-                          cursor: cursor ?? undefined,
-                          limit,
-                      }),
-                  { limit: targetLimit },
-              )
-          ).results
+    // Fetch shared-only labels (not in personal labels)
+    const { results: allSharedLabels } = await paginate(
+        (cursor, limit) =>
+            api.getSharedLabels({
+                omitPersonal: true,
+                cursor: cursor ?? undefined,
+                limit,
+            }),
+        { limit: targetLimit },
+    )
+
+    // When searching, filter shared labels client-side to match the search term
+    const sharedLabels = options.search
+        ? allSharedLabels.filter((name) =>
+              name.toLowerCase().includes(options.search!.toLowerCase()),
+          )
+        : allSharedLabels
 
     if (options.json) {
         const base = JSON.parse(
