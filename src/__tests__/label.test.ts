@@ -97,6 +97,64 @@ describe('label list', () => {
     })
 })
 
+describe('label list --search', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('searches labels by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'bug'])
+
+        expect(mockApi.searchLabels).toHaveBeenCalledWith(expect.objectContaining({ query: 'bug' }))
+        expect(mockApi.getLabels).not.toHaveBeenCalled()
+        expect(mockApi.getSharedLabels).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@bugfix'))
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs search results as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({
+            results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'bug', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].name).toBe('bugfix')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows "No labels found" when search has no results', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'nonexistent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No labels found.')
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('label create --json', () => {
     let mockApi: MockApi
 

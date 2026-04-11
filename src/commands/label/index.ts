@@ -17,6 +17,7 @@ export function registerLabelCommand(program: Command): void {
             `
 Examples:
   td label list
+  td label list --search "bug"
   td label create --name "urgent" --color red
   td label view "urgent"`,
         )
@@ -40,7 +41,8 @@ Examples:
 
     label
         .command('list')
-        .description('List all labels')
+        .description('List or search labels')
+        .option('--search <term>', 'Search labels by name')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')

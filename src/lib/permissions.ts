@@ -25,6 +25,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getLabels',
     'getLabel',
     'getSharedLabels',
+    'searchLabels',
     // Sections
     'getSections',
     'getSection',

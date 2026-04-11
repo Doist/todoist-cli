@@ -117,6 +117,7 @@ td workspace insights "Acme" --project-ids "id1,id2"
 ### Labels, Filters, And Sections
 \`\`\`bash
 td label list
+td label list --search "bug"
 td label view "urgent"
 td label create --name "urgent" --color red
 td label update "urgent" --color orange
