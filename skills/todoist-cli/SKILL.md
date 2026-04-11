@@ -125,6 +125,7 @@ td label update "urgent" --color orange
 td label delete "urgent" --yes
 td label browse "urgent"
 td label rename-shared "oldname" --name "newname"
+td label remove-shared "oldname" --yes
 
 td filter list
 td filter view "Urgent work"
@@ -142,7 +143,7 @@ td section delete id:123 --yes
 td section browse id:123
 ```
 
-Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs.
+Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs. Use `td label rename-shared` and `td label remove-shared` for shared labels.
 
 ### Comments, Attachments, Notifications, And Reminders
 ```bash

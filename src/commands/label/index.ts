@@ -3,6 +3,7 @@ import { browseLabel } from './browse.js'
 import { createLabel } from './create.js'
 import { deleteLabel } from './delete.js'
 import { listLabels } from './list.js'
+import { removeSharedLabel } from './remove-shared.js'
 import { renameSharedLabel } from './rename-shared.js'
 import { updateLabel } from './update.js'
 import { viewLabel } from './view.js'
@@ -21,7 +22,8 @@ Examples:
   td label list --search "bug"
   td label create --name "urgent" --color red
   td label view "urgent"
-  td label rename-shared "oldname" --name "newname"`,
+  td label rename-shared "oldname" --name "newname"
+  td label remove-shared "oldname" --yes`,
         )
 
     label
@@ -121,5 +123,18 @@ Examples:
                 return
             }
             return renameSharedLabel(name, options)
+        })
+
+    const removeSharedCmd = label
+        .command('remove-shared [name]')
+        .description('Remove a shared label')
+        .option('--yes', 'Confirm removal')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((name, options) => {
+            if (!name) {
+                removeSharedCmd.help()
+                return
+            }
+            return removeSharedLabel(name, options)
         })
 }

@@ -227,6 +227,59 @@ describe('label rename-shared', () => {
     })
 })
 
+describe('label remove-shared', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('removes a shared label with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname', '--yes'])
+
+        expect(mockApi.removeSharedLabel).toHaveBeenCalledWith({ name: 'oldname' })
+        expect(consoleSpy).toHaveBeenCalledWith('Removed shared label: @oldname')
+        consoleSpy.mockRestore()
+    })
+
+    it('strips @ prefix from name', async () => {
+        const program = createProgram()
+        vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', '@oldname', '--yes'])
+
+        expect(mockApi.removeSharedLabel).toHaveBeenCalledWith({ name: 'oldname' })
+    })
+
+    it('shows confirmation prompt without --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname'])
+
+        expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would remove shared label: @oldname')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+        consoleSpy.mockRestore()
+    })
+
+    it('previews removal with --dry-run', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'label', 'remove-shared', 'oldname', '--dry-run'])
+
+        expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('label create --json', () => {
     let mockApi: MockApi
 

@@ -27,6 +27,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getSharedLabels: { text: 'Loading shared labels...', color: 'blue' },
         searchLabels: { text: 'Searching labels...', color: 'blue' },
         renameSharedLabel: { text: 'Renaming shared label...', color: 'yellow' },
+        removeSharedLabel: { text: 'Removing shared label...', color: 'yellow' },
         getSections: { text: 'Loading sections...', color: 'blue' },
         getComments: { text: 'Loading comments...', color: 'blue' },
         addTask: { text: 'Creating task...', color: 'green' },

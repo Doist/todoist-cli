@@ -66,6 +66,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getSharedLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         searchLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         renameSharedLabel: vi.fn().mockResolvedValue(true),
+        removeSharedLabel: vi.fn().mockResolvedValue(true),
         updateLabel: vi.fn(),
         // Comments
         getComments: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
