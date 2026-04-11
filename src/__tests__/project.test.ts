@@ -144,6 +144,19 @@ describe('project list', () => {
         expect(mockApi.searchProjects).not.toHaveBeenCalled()
     })
 
+    it('shows empty message when search returns no results', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'nonexistent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('No matching projects.')
+    })
+
     it('outputs JSON with --search and --json', async () => {
         const program = createProgram()
 

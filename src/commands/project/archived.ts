@@ -80,9 +80,12 @@ export async function listArchivedProjects(options: PaginatedViewOptions): Promi
         }
         for (const project of personalProjects) {
             const id = chalk.dim(project.id)
-            const name = project.isFavorite
+            let name = project.isFavorite
                 ? chalk.yellow(`${project.name}${isAccessible() ? ' ★' : ''}`)
                 : project.name
+            if (project.isShared) {
+                name = `${name} ${chalk.dim('[shared]')}`
+            }
             const indent = workspaceProjects.size > 0 ? '  ' : ''
             console.log(`${indent}${id}  ${name}`)
             if (options.showUrls) {

@@ -59,6 +59,11 @@ export async function listProjects(options: ListOptions): Promise<void> {
         return
     }
 
+    if (options.search && projects.length === 0) {
+        console.log('No matching projects.')
+        return
+    }
+
     if (options.personal) {
         const personalOnly = projects.filter((p) => !isWorkspaceProject(p))
         for (const project of personalOnly) {
