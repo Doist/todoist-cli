@@ -32,7 +32,7 @@ export async function createFolder(
 
     const folder = await api.addFolder({
         name: options.name,
-        workspaceId: parseInt(workspace.id, 10),
+        workspaceId: workspace.id,
         defaultOrder: options.defaultOrder ? parseInt(options.defaultOrder, 10) : undefined,
         childOrder: options.childOrder ? parseInt(options.childOrder, 10) : undefined,
     })

@@ -18,7 +18,7 @@ export async function listFolders(ref: string, options: PaginatedViewOptions): P
     const { results: folders, nextCursor } = await paginate(
         (cursor, limit) =>
             api.getFolders({
-                workspaceId: parseInt(workspace.id, 10),
+                workspaceId: workspace.id,
                 cursor: cursor ?? undefined,
                 limit,
             }),
