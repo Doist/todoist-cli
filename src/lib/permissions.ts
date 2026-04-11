@@ -18,6 +18,8 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getProjects',
     'getProject',
     'getFullProject',
+    'searchProjects',
+    'getArchivedProjects',
     'getArchivedProjectsCount',
     'getProjectPermissions',
     'getProjectCollaborators',
@@ -28,6 +30,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Sections
     'getSections',
     'getSection',
+    'searchSections',
     // Comments
     'getComments',
     'getComment',

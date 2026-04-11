@@ -38,7 +38,8 @@ Examples:
 
     project
         .command('list')
-        .description('List all projects')
+        .description('List all projects, or search by name')
+        .option('--search <query>', 'Search projects by name')
         .option('--limit <n>', 'Limit number of results (default: 50)')
         .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')

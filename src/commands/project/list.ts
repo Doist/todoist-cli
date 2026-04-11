@@ -12,7 +12,7 @@ import {
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'
 
-type ListOptions = PaginatedViewOptions & { personal?: boolean }
+type ListOptions = PaginatedViewOptions & { personal?: boolean; search?: string }
 
 export async function listProjects(options: ListOptions): Promise<void> {
     const api = await getApi()
@@ -24,7 +24,14 @@ export async function listProjects(options: ListOptions): Promise<void> {
           : LIMITS.projects
 
     const { results: projects, nextCursor } = await paginate(
-        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+        (cursor, limit) =>
+            options.search
+                ? api.searchProjects({
+                      query: options.search,
+                      cursor: cursor ?? undefined,
+                      limit,
+                  })
+                : api.getProjects({ cursor: cursor ?? undefined, limit }),
         { limit: targetLimit, startCursor: options.cursor },
     )
 

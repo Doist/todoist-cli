@@ -112,6 +112,52 @@ describe('project list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('more items exist'))
     })
+
+    it('searches projects by name with --search', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Roadmap', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'Road'])
+
+        expect(mockApi.searchProjects).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'Road' }),
+        )
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Roadmap'))
+    })
+
+    it('uses getProjects when no --search provided', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list'])
+
+        expect(mockApi.getProjects).toHaveBeenCalled()
+        expect(mockApi.searchProjects).not.toHaveBeenCalled()
+    })
+
+    it('outputs JSON with --search and --json', async () => {
+        const program = createProgram()
+
+        mockApi.searchProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Roadmap', isFavorite: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'list', '--search', 'Road', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0].name).toBe('Roadmap')
+    })
 })
 
 describe('project view', () => {
