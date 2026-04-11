@@ -14,8 +14,9 @@ export function registerSectionCommand(program: Command): void {
 
     const listCmd = section
         .command('list [project]')
-        .description('List sections in a project')
+        .description('List sections in a project, or search by name')
         .option('--project <ref>', 'Project name or id:xxx')
+        .option('--search <query>', 'Search sections by name')
         .option('--limit <n>', 'Limit number of results (default: 300)')
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
@@ -25,7 +26,7 @@ export function registerSectionCommand(program: Command): void {
         .action(
             (
                 projectArg: string | undefined,
-                options: PaginatedViewOptions & { project?: string },
+                options: PaginatedViewOptions & { project?: string; search?: string },
             ) => {
                 if (projectArg && options.project) {
                     throw new CliError(
@@ -34,7 +35,7 @@ export function registerSectionCommand(program: Command): void {
                     )
                 }
                 const project = projectArg || options.project
-                if (!project) {
+                if (!project && !options.search) {
                     listCmd.help()
                     return
                 }
