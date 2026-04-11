@@ -41,7 +41,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 
 - Daily views: \`td today\`, \`td inbox\`, \`td upcoming\`, \`td completed\`, \`td activity\`
 - Task lifecycle: \`td task list/view/add/update/reschedule/move/complete/uncomplete/delete/browse\`
-- Projects: \`td project list/view/create/update/archive/unarchive/delete/move/join/browse/collaborators/permissions\`
+- Projects: \`td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions\`
 - Project analytics: \`td project progress/health/health-context/activity-stats/analyze-health\`
 - Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
@@ -91,6 +91,8 @@ Useful task flags:
 ### Projects And Workspaces
 \`\`\`bash
 td project list --personal
+td project list --search "Road"
+td project archived
 td project view "Roadmap" --detailed
 td project collaborators "Roadmap"
 td project create --name "New Project" --color blue
@@ -131,6 +133,8 @@ td filter delete "Urgent work" --yes
 td filter browse "Urgent work"
 
 td section list "Roadmap"
+td section list --search "Planning"
+td section list --search "Planning" --project "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
 td section update id:123 --name "Done"
 td section archive id:123

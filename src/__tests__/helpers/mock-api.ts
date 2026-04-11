@@ -36,6 +36,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         deleteProject: vi.fn(),
         moveProjectToWorkspace: vi.fn(),
         moveProjectToPersonal: vi.fn(),
+        searchProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+        getArchivedProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getArchivedProjectsCount: vi.fn().mockResolvedValue({ count: 0 }),
         getProjectPermissions: vi.fn().mockResolvedValue({
             projectCollaboratorActions: [],
@@ -58,6 +60,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         updateSection: vi.fn(),
         archiveSection: vi.fn(),
         unarchiveSection: vi.fn(),
+        searchSections: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         // Labels
         getLabels: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getLabel: vi.fn(),

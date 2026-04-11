@@ -12,9 +12,7 @@ import {
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'
 
-type ListOptions = PaginatedViewOptions & { personal?: boolean; search?: string }
-
-export async function listProjects(options: ListOptions): Promise<void> {
+export async function listArchivedProjects(options: PaginatedViewOptions): Promise<void> {
     const api = await getApi()
 
     const targetLimit = options.all
@@ -24,14 +22,7 @@ export async function listProjects(options: ListOptions): Promise<void> {
           : LIMITS.projects
 
     const { results: projects, nextCursor } = await paginate(
-        (cursor, limit) =>
-            options.search
-                ? api.searchProjects({
-                      query: options.search,
-                      cursor: cursor ?? undefined,
-                      limit,
-                  })
-                : api.getProjects({ cursor: cursor ?? undefined, limit }),
+        (cursor, limit) => api.getArchivedProjects({ cursor: cursor ?? undefined, limit }),
         { limit: targetLimit, startCursor: options.cursor },
     )
 
@@ -59,27 +50,8 @@ export async function listProjects(options: ListOptions): Promise<void> {
         return
     }
 
-    if (options.search && projects.length === 0) {
-        console.log('No matching projects.')
-        return
-    }
-
-    if (options.personal) {
-        const personalOnly = projects.filter((p) => !isWorkspaceProject(p))
-        for (const project of personalOnly) {
-            const id = chalk.dim(project.id)
-            let name = project.isFavorite
-                ? chalk.yellow(`${project.name}${isAccessible() ? ' ★' : ''}`)
-                : project.name
-            if (project.isShared) {
-                name = `${name} ${chalk.dim('[shared]')}`
-            }
-            console.log(`${id}  ${name}`)
-            if (options.showUrls) {
-                console.log(`  ${chalk.dim(projectUrl(project.id))}`)
-            }
-        }
-        console.log(formatNextCursorFooter(nextCursor))
+    if (projects.length === 0) {
+        console.log('No archived projects.')
         return
     }
 
@@ -133,7 +105,7 @@ export async function listProjects(options: ListOptions): Promise<void> {
 
     for (const workspaceId of sortedWorkspaceIds) {
         const wprojects = workspaceProjects.get(workspaceId)
-        if (!wprojects) continue // Should not happen since workspaceId comes from keys()
+        if (!wprojects) continue
         const workspace = workspaceMap.get(workspaceId)
         const workspaceName = workspace?.name ?? `Workspace ${workspaceId}`
         console.log(chalk.bold(workspaceName))
@@ -150,10 +122,4 @@ export async function listProjects(options: ListOptions): Promise<void> {
         console.log('')
     }
     console.log(formatNextCursorFooter(nextCursor))
-
-    if (sortedWorkspaceIds.length > 0) {
-        console.log(
-            chalk.dim('Tip: Use `td workspace projects <name>` for a detailed view with folders.'),
-        )
-    }
 }

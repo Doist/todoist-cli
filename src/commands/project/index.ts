@@ -5,6 +5,7 @@ import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
 import { archiveProject } from './archive.js'
 import { archivedCount } from './archived-count.js'
+import { listArchivedProjects } from './archived.js'
 import { browseProject } from './browse.js'
 import { listCollaborators } from './collaborators.js'
 import { createProject } from './create.js'
@@ -38,7 +39,8 @@ Examples:
 
     project
         .command('list')
-        .description('List all projects')
+        .description('List all projects, or search by name')
+        .option('--search <query>', 'Search projects by name')
         .option('--limit <n>', 'Limit number of results (default: 50)')
         .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
@@ -189,6 +191,18 @@ Examples:
             }
             return moveProject(ref, options)
         })
+
+    project
+        .command('archived')
+        .description('List archived projects')
+        .option('--limit <n>', 'Limit number of results (default: 50)')
+        .option('--cursor <cursor>', CURSOR_DESCRIPTION)
+        .option('--all', 'Fetch all results (no limit)')
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .option('--show-urls', 'Show web app URLs for each project')
+        .action(listArchivedProjects)
 
     project
         .command('archived-count')

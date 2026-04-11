@@ -110,6 +110,75 @@ describe('section list', () => {
             program.parseAsync(['node', 'td', 'section', 'list', 'Work', '--project', 'Personal']),
         ).rejects.toThrow('Cannot specify project both as argument and --project flag')
     })
+
+    it('searches sections by name with --search', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchSections.mockResolvedValue({
+            results: [
+                { id: 'sec-1', name: 'Planning' },
+                { id: 'sec-2', name: 'Planning v2' },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'list', '--search', 'Plan'])
+
+        expect(mockApi.searchSections).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'Plan' }),
+        )
+        expect(mockApi.getSections).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planning'))
+        consoleSpy.mockRestore()
+    })
+
+    it('searches sections scoped to a project with --search and --project', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.searchSections.mockResolvedValue({
+            results: [{ id: 'sec-1', name: 'Planning' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'list',
+            '--search',
+            'Plan',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.searchSections).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'Plan', projectId: 'proj-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --search and --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.searchSections.mockResolvedValue({
+            results: [{ id: 'sec-1', name: 'Planning', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'section', 'list', '--search', 'Plan', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0].name).toBe('Planning')
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('section create --json', () => {
