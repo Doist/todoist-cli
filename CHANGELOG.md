@@ -1,3 +1,10 @@
+## [1.41.0](https://github.com/Doist/todoist-cli/compare/v1.40.0...v1.41.0) (2026-04-11)
+
+### Features
+
+* add label search, rename-shared, and remove-shared commands ([#251](https://github.com/Doist/todoist-cli/issues/251)) ([1c5da60](https://github.com/Doist/todoist-cli/commit/1c5da60893259a6e282e21921074c83989ea4f81))
+* add project search, archived projects, and section search ([#250](https://github.com/Doist/todoist-cli/issues/250)) ([169b2d2](https://github.com/Doist/todoist-cli/commit/169b2d25ed6f56cf9875d47560ba3bbc3ab0a6b7))
+
 ## [1.40.0](https://github.com/Doist/todoist-cli/compare/v1.39.3...v1.40.0) (2026-04-09)
 
 ### Features
