@@ -38,7 +38,7 @@ export async function createFolder(
     })
 
     if (options.json) {
-        console.log(formatJson(folder))
+        console.log(formatJson(folder, 'folder'))
         return
     }
 

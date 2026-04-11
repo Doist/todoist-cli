@@ -40,7 +40,7 @@ export async function updateFolder(ref: string, options: UpdateFolderOptions): P
     const updated = await api.updateFolder(folder.id, args)
 
     if (options.json) {
-        console.log(formatJson(updated))
+        console.log(formatJson(updated, 'folder'))
         return
     }
 
