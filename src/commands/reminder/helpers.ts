@@ -1,4 +1,9 @@
-import type { LocationReminder, LocationTrigger, Reminder } from '@doist/todoist-sdk'
+import {
+    LOCATION_TRIGGERS,
+    type LocationReminder,
+    type LocationTrigger,
+    type Reminder,
+} from '@doist/todoist-sdk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
@@ -55,12 +60,12 @@ export function parseDateTime(value: string): ReminderDue {
 }
 
 export function parseTrigger(value: string): LocationTrigger {
-    if (value !== 'on_enter' && value !== 'on_leave') {
+    if (!LOCATION_TRIGGERS.includes(value as LocationTrigger)) {
         throw new CliError('INVALID_TRIGGER', `Invalid trigger: "${value}"`, [
-            'Must be one of: on_enter, on_leave',
+            `Must be one of: ${LOCATION_TRIGGERS.join(', ')}`,
         ])
     }
-    return value
+    return value as LocationTrigger
 }
 
 export function parseLat(value: string): string {

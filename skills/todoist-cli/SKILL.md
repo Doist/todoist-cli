@@ -173,8 +173,8 @@ td reminder add "Plan sprint" --before 30m
 td reminder update id:123 --before 1h
 td reminder delete id:123 --yes
 td reminder get id:123
-td reminder location add "Plan sprint" --name "Office" --lat 40.7128 --long -74.0060 --trigger on_enter --radius 100
-td reminder location update id:456 --radius 200
+td reminder location add "Plan sprint" --name "Office" --lat 40.7128 --long -74.0060 --trigger on_enter --radius 100  # radius in meters
+td reminder location update id:456 --radius 200  # radius in meters
 td reminder location delete id:456 --yes
 td reminder location get id:456
 ```
