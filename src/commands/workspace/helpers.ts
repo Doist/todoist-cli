@@ -9,6 +9,28 @@ import { extractId, isIdRef } from '../../lib/refs.js'
 export const WORKSPACE_ROLES: readonly string[] = SDK_WORKSPACE_ROLES
 
 /**
+ * Curated JSON shape for a workspace, matching the output of
+ * `workspace view --json` / `workspace list --json`. Used by create/update
+ * so scripts that round-trip through these commands see a consistent
+ * contract regardless of which operation produced the payload.
+ */
+export function formatWorkspaceJson(
+    workspace: Workspace,
+    full: boolean,
+): Workspace | Record<string, unknown> {
+    if (full) return workspace
+    return {
+        id: workspace.id,
+        name: workspace.name,
+        plan: workspace.plan,
+        role: workspace.role,
+        domainName: workspace.domainName,
+        memberCount: workspace.currentMemberCount,
+        projectCount: workspace.currentActiveProjects,
+    }
+}
+
+/**
  * Throws `NOT_ADMIN` if the current user is not an ADMIN of the workspace.
  * Safe to call before a `--dry-run` early return so non-admins fail loudly
  * even when previewing.

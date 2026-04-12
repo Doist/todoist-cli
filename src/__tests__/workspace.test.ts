@@ -844,13 +844,39 @@ describe('workspace create', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
     })
 
-    it('--json outputs JSON response', async () => {
+    it('--json outputs curated workspace shape', async () => {
         mockApi.addWorkspace.mockResolvedValue({ id: 'ws-new', name: 'NewWS', plan: 'STARTER' })
+        // After clearWorkspaceCache, the next fetch returns the new workspace
+        // in the local (sync-derived) shape.
+        mockFetchWorkspaces.mockResolvedValueOnce([
+            ...mockWorkspaces,
+            {
+                id: 'ws-new',
+                name: 'NewWS',
+                role: 'ADMIN' as const,
+                plan: 'STARTER',
+                domainName: null,
+                currentMemberCount: 1,
+                currentActiveProjects: 0,
+                memberCountByType: { adminCount: 1, memberCount: 0, guestCount: 0 },
+            },
+        ])
         const program = createProgram()
         await program.parseAsync(['node', 'td', 'workspace', 'create', '--name', 'NewWS', '--json'])
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
-        expect(JSON.parse(output)).toMatchObject({ id: 'ws-new', name: 'NewWS' })
+        const parsed = JSON.parse(output)
+        // Curated shape mirrors `workspace view --json` so create/view/update
+        // all speak the same contract.
+        expect(parsed).toEqual({
+            id: 'ws-new',
+            name: 'NewWS',
+            plan: 'STARTER',
+            role: 'ADMIN',
+            domainName: null,
+            memberCount: 1,
+            projectCount: 0,
+        })
     })
 
     it('shows help when --name is missing', async () => {
@@ -924,6 +950,17 @@ describe('workspace update', () => {
         expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
     })
 
+    it('NO_CHANGES wins over NOT_ADMIN when no flags are passed to a non-admin workspace', async () => {
+        // A user who simply forgot their flags should see "no changes" rather
+        // than a confusing NOT_ADMIN error about a mutation that was never
+        // going to happen.
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'update', 'Doist']),
+        ).rejects.toThrow(/No changes/i)
+        expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
+    })
+
     it('--dry-run skips API when admin', async () => {
         const program = createProgram()
         await program.parseAsync([
@@ -940,8 +977,14 @@ describe('workspace update', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
     })
 
-    it('--json outputs JSON response', async () => {
+    it('--json outputs curated workspace shape', async () => {
         mockApi.updateWorkspace.mockResolvedValue({ id: 'ws-2', name: 'Renamed' })
+        // First fetch = resolveWorkspaceRef (pre-update); second = post-update
+        // refresh for the curated JSON output.
+        mockFetchWorkspaces.mockReset()
+        mockFetchWorkspaces
+            .mockResolvedValueOnce(mockWorkspaces)
+            .mockResolvedValueOnce([mockWorkspaces[0]!, { ...mockWorkspaces[1]!, name: 'Renamed' }])
         const program = createProgram()
         await program.parseAsync([
             'node',
@@ -954,7 +997,15 @@ describe('workspace update', () => {
             '--json',
         ])
         const output = consoleSpy.mock.calls[0]?.[0] as string
-        expect(JSON.parse(output)).toMatchObject({ id: 'ws-2', name: 'Renamed' })
+        expect(JSON.parse(output)).toEqual({
+            id: 'ws-2',
+            name: 'Renamed',
+            plan: 'STARTER',
+            role: 'ADMIN',
+            domainName: null,
+            memberCount: 2,
+            projectCount: 5,
+        })
     })
 })
 
@@ -1141,6 +1192,8 @@ describe('workspace user-tasks', () => {
         const output = consoleSpy.mock.calls[0]?.[0] as string
         const parsed = JSON.parse(output)
         expect(parsed.results[0]).toMatchObject({ id: 't-1', isOverdue: true })
+        // Collection shape matches other list/report commands.
+        expect(parsed.nextCursor).toBeNull()
     })
 })
 
@@ -1194,5 +1247,6 @@ describe('workspace activity', () => {
         const output = consoleSpy.mock.calls[0]?.[0] as string
         const parsed = JSON.parse(output)
         expect(parsed.results[0]).toMatchObject({ userId: 'u-1', tasksAssigned: 5 })
+        expect(parsed.nextCursor).toBeNull()
     })
 })

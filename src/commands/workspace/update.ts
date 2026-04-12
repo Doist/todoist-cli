@@ -1,11 +1,11 @@
 import type { UpdateWorkspaceArgs } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
-import { clearWorkspaceCache } from '../../lib/api/workspaces.js'
+import { clearWorkspaceCache, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
-import { assertWorkspaceAdmin } from './helpers.js'
+import { assertWorkspaceAdmin, formatWorkspaceJson } from './helpers.js'
 
 export interface UpdateWorkspaceOptions {
     name?: string
@@ -17,6 +17,7 @@ export interface UpdateWorkspaceOptions {
     restrictEmailDomains?: boolean
     collapsed?: boolean
     json?: boolean
+    full?: boolean
     dryRun?: boolean
 }
 
@@ -25,10 +26,6 @@ export async function updateWorkspaceCommand(
     options: UpdateWorkspaceOptions,
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)
-    // Admin check must run BEFORE dry-run short-circuit so a non-admin's
-    // preview still fails loudly — otherwise a dry-run would lie about
-    // what would happen.
-    assertWorkspaceAdmin(workspace, 'update')
 
     const args: UpdateWorkspaceArgs = {}
     if (options.name !== undefined) args.name = options.name
@@ -42,9 +39,17 @@ export async function updateWorkspaceCommand(
     }
     if (options.collapsed !== undefined) args.isCollapsed = options.collapsed
 
+    // Guard no-op calls before the admin check — a user who forgot their
+    // flags should see NO_CHANGES, not NOT_ADMIN, since no mutation is
+    // actually being attempted.
     if (Object.keys(args).length === 0) {
         throw new CliError('NO_CHANGES', 'No changes specified.')
     }
+
+    // Admin check runs BEFORE the dry-run short-circuit so a non-admin's
+    // preview still fails loudly — otherwise a dry-run would lie about
+    // what would happen.
+    assertWorkspaceAdmin(workspace, 'update')
 
     if (options.dryRun) {
         printDryRun('update workspace', {
@@ -76,7 +81,19 @@ export async function updateWorkspaceCommand(
     clearWorkspaceCache()
 
     if (options.json) {
-        console.log(JSON.stringify(updated, null, 2))
+        // Re-fetch via sync so we emit the curated Workspace shape that
+        // `workspace view --json` uses — keeps the contract consistent for
+        // scripts that round-trip through read commands. Fall back to the
+        // raw SDK response if sync doesn't yet list it (shouldn't happen
+        // post-update, but be safe).
+        const refreshed = (await fetchWorkspaces()).find((w) => w.id === workspace.id)
+        console.log(
+            JSON.stringify(
+                refreshed ? formatWorkspaceJson(refreshed, options.full ?? false) : updated,
+                null,
+                2,
+            ),
+        )
         return
     }
 

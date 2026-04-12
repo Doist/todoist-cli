@@ -52,7 +52,10 @@ export async function listWorkspaceUserTasks(
                   due: t.due?.date ?? null,
                   isOverdue: t.isOverdue,
               }))
-        console.log(JSON.stringify({ results: output }, null, 2))
+        // `nextCursor: null` mirrors the shape used by other list/report
+        // commands so generic JSON consumers can treat all collections
+        // uniformly even when the endpoint is unpaginated.
+        console.log(JSON.stringify({ results: output, nextCursor: null }, null, 2))
         return
     }
 

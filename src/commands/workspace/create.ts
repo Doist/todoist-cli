@@ -1,9 +1,10 @@
 import type { AddWorkspaceArgs } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { clearWorkspaceCache } from '../../lib/api/workspaces.js'
+import { clearWorkspaceCache, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
+import { formatWorkspaceJson } from './helpers.js'
 
 export interface CreateWorkspaceOptions {
     name?: string
@@ -14,6 +15,7 @@ export interface CreateWorkspaceOptions {
     domainDiscovery?: boolean
     restrictEmailDomains?: boolean
     json?: boolean
+    full?: boolean
     dryRun?: boolean
 }
 
@@ -56,7 +58,18 @@ export async function createWorkspace(options: CreateWorkspaceOptions): Promise<
     clearWorkspaceCache()
 
     if (options.json) {
-        console.log(JSON.stringify(workspace, null, 2))
+        // Emit the curated Workspace shape used by `workspace view --json`
+        // so scripts see a consistent contract across create/view/update.
+        // Fall back to the raw SDK response if sync hasn't picked up the
+        // new workspace yet.
+        const refreshed = (await fetchWorkspaces()).find((w) => w.id === workspace.id)
+        console.log(
+            JSON.stringify(
+                refreshed ? formatWorkspaceJson(refreshed, options.full ?? false) : workspace,
+                null,
+                2,
+            ),
+        )
         return
     }
 

@@ -54,6 +54,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--restrict-email-domains', 'Restrict invites to the workspace domain')
         .option('--no-restrict-email-domains', 'Do not restrict invites to the workspace domain')
         .option('--json', 'Output as JSON')
+        .option('--full', 'Include all fields in JSON output')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options: CreateWorkspaceOptions) => {
             if (!options.name) {
@@ -80,6 +81,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--collapsed', 'Collapse workspace in the UI')
         .option('--no-collapsed', 'Uncollapse workspace in the UI')
         .option('--json', 'Output as JSON')
+        .option('--full', 'Include all fields in JSON output')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref: string | undefined, options: UpdateWorkspaceOptions) => {
             if (!ref) {

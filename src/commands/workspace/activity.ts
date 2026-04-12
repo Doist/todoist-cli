@@ -54,7 +54,10 @@ export async function showWorkspaceActivity(
                   email: userMap?.get(m.userId)?.userEmail ?? null,
               }))
             : members
-        console.log(JSON.stringify({ results: output }, null, 2))
+        // `nextCursor: null` matches the shape used by other list/report
+        // commands so generic JSON consumers can treat all collections
+        // uniformly.
+        console.log(JSON.stringify({ results: output, nextCursor: null }, null, 2))
         return
     }
 
