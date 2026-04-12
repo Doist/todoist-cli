@@ -1,4 +1,3 @@
-import type { LocationReminder } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getLocationReminderById } from '../../../lib/api/reminders.js'
 import { formatJson } from '../../../lib/output.js'
@@ -15,7 +14,7 @@ export async function getLocationReminderCmd(
     options: GetOptions,
 ): Promise<void> {
     const id = lenientIdRef(reminderId, 'reminder')
-    const reminder = (await getLocationReminderById(id)) as LocationReminder
+    const reminder = await getLocationReminderById(id)
 
     if (options.json) {
         console.log(formatJson(reminder, 'location-reminder', options.full))

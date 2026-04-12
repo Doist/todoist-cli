@@ -1,4 +1,3 @@
-import type { LocationReminder } from '@doist/todoist-sdk'
 import {
     deleteLocationReminder as apiDeleteLocationReminder,
     getLocationReminderById,
@@ -19,7 +18,7 @@ export async function deleteLocationReminderCmd(
 ): Promise<void> {
     const id = lenientIdRef(reminderId, 'reminder')
 
-    const reminder = (await getLocationReminderById(id)) as LocationReminder
+    const reminder = await getLocationReminderById(id)
     const detail = formatLocationReminderRow(reminder)
 
     if (options.dryRun) {

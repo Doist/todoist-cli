@@ -1,11 +1,10 @@
-import type { LocationReminder } from '@doist/todoist-sdk'
 import {
     updateLocationReminder as apiUpdateLocationReminder,
     type UpdateLocationReminderArgs,
 } from '../../../lib/api/reminders.js'
 import { CliError } from '../../../lib/errors.js'
 import { isQuiet } from '../../../lib/global-args.js'
-import { printDryRun } from '../../../lib/output.js'
+import { formatJson, printDryRun } from '../../../lib/output.js'
 import { lenientIdRef } from '../../../lib/refs.js'
 import {
     formatLocationReminderRow,
@@ -21,6 +20,7 @@ interface UpdateOptions {
     long?: string
     trigger?: string
     radius?: string
+    json?: boolean
     dryRun?: boolean
 }
 
@@ -57,9 +57,12 @@ export async function updateLocationReminderCmd(
 
     const reminder = await apiUpdateLocationReminder(id, args)
 
+    if (options.json) {
+        console.log(formatJson(reminder, 'location-reminder'))
+        return
+    }
+
     if (!isQuiet()) {
-        console.log(
-            `Updated location reminder: ${formatLocationReminderRow(reminder as LocationReminder)} (id:${id})`,
-        )
+        console.log(`Updated location reminder: ${formatLocationReminderRow(reminder)} (id:${id})`)
     }
 }

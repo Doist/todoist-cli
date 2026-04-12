@@ -1122,6 +1122,42 @@ describe('reminder location update', () => {
         ).rejects.toMatchObject({ code: 'MISSING_UPDATE' })
     })
 
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockUpdateLocationReminder.mockResolvedValue({
+            id: 'loc-1',
+            notifyUid: 'user-1',
+            itemId: 'task-1',
+            type: 'location',
+            name: 'Grocery',
+            locLat: '40.7128',
+            locLong: '-74.0060',
+            locTrigger: 'on_enter',
+            radius: 300,
+            isDeleted: false,
+            // biome-ignore lint/suspicious/noExplicitAny: mock
+        } as any)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'location',
+            'update',
+            'id:loc-1',
+            '--radius',
+            '300',
+            '--json',
+        ])
+
+        const firstCall = consoleSpy.mock.calls[0]?.[0] as string
+        expect(firstCall).toContain('"id": "loc-1"')
+        expect(firstCall).toContain('"radius": 300')
+        consoleSpy.mockRestore()
+    })
+
     it('--dry-run does not call the API', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

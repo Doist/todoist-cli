@@ -56,6 +56,7 @@ export function registerLocationReminderCommand(reminder: Command): void {
         .option('--long <longitude>', 'Longitude (-180 to 180)')
         .option('--trigger <trigger>', 'Trigger condition (on_enter or on_leave)')
         .option('--radius <meters>', 'Radius in meters (positive integer)')
+        .option('--json', 'Output the updated reminder as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {

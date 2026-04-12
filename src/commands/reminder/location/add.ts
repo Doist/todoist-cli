@@ -1,4 +1,3 @@
-import type { LocationReminder } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../../lib/api/core.js'
 import { addLocationReminder as apiAddLocationReminder } from '../../../lib/api/reminders.js'
@@ -70,7 +69,7 @@ export async function addLocationReminderCmd(taskRef: string, options: AddOption
     })
 
     if (options.json) {
-        console.log(formatJson(reminder as LocationReminder, 'location-reminder'))
+        console.log(formatJson(reminder, 'location-reminder'))
         return
     }
 
@@ -79,8 +78,6 @@ export async function addLocationReminderCmd(taskRef: string, options: AddOption
         return
     }
 
-    console.log(
-        `Added location reminder: ${formatLocationReminderRow(reminder as LocationReminder)}`,
-    )
+    console.log(`Added location reminder: ${formatLocationReminderRow(reminder)}`)
     console.log(chalk.dim(`ID: ${reminder.id}`))
 }

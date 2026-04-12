@@ -113,9 +113,10 @@ export async function getReminderById(id: string): Promise<SdkReminder> {
     return api.getReminder(id)
 }
 
-export async function getLocationReminderById(id: string): Promise<SdkReminder> {
+export async function getLocationReminderById(id: string): Promise<LocationReminder> {
     const api = await getApi()
-    return api.getLocationReminder(id)
+    const reminder = await api.getLocationReminder(id)
+    return reminder as LocationReminder
 }
 
 export interface AddLocationReminderArgs {
