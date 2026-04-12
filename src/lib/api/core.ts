@@ -76,7 +76,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getCompletedTasksByCompletionDate: { text: 'Loading completed tasks...', color: 'blue' },
         searchCompletedTasks: { text: 'Searching completed tasks...', color: 'blue' },
         getReminders: { text: 'Loading reminders...', color: 'blue' },
+        getReminder: { text: 'Loading reminder...', color: 'blue' },
         getLocationReminders: { text: 'Loading location reminders...', color: 'blue' },
+        getLocationReminder: { text: 'Loading location reminder...', color: 'blue' },
+        addLocationReminder: { text: 'Creating location reminder...', color: 'green' },
+        updateLocationReminder: { text: 'Updating location reminder...', color: 'yellow' },
+        deleteLocationReminder: { text: 'Deleting location reminder...', color: 'yellow' },
         // Backups
         getBackups: { text: 'Loading backups...', color: 'blue' },
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
