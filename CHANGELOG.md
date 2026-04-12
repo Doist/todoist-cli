@@ -1,3 +1,10 @@
+## [1.43.0](https://github.com/Doist/todoist-cli/compare/v1.42.0...v1.43.0) (2026-04-12)
+
+### Features
+
+* add location reminder commands and single-reminder get ([#254](https://github.com/Doist/todoist-cli/issues/254)) ([cc807e9](https://github.com/Doist/todoist-cli/commit/cc807e952e37df1478a01e8cd6868df5b848048a))
+* add workspace CRUD and reporting commands ([#255](https://github.com/Doist/todoist-cli/issues/255)) ([26ec672](https://github.com/Doist/todoist-cli/commit/26ec67215c84f68b1b86ebcb1368e38e7003c6de))
+
 ## [1.42.0](https://github.com/Doist/todoist-cli/compare/v1.41.0...v1.42.0) (2026-04-11)
 
 ### Features
