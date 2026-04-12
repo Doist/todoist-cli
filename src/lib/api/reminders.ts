@@ -1,4 +1,9 @@
-import { createCommand, type Reminder as SdkReminder } from '@doist/todoist-sdk'
+import {
+    createCommand,
+    type LocationReminder,
+    type LocationTrigger,
+    type Reminder as SdkReminder,
+} from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
 export interface ReminderDue {
@@ -101,4 +106,69 @@ export async function deleteReminder(id: string): Promise<void> {
     await api.sync({
         commands: [createCommand('reminder_delete', { id })],
     })
+}
+
+export async function getReminderById(id: string): Promise<SdkReminder> {
+    const api = await getApi()
+    return api.getReminder(id)
+}
+
+export async function getLocationReminderById(id: string): Promise<SdkReminder> {
+    const api = await getApi()
+    return api.getLocationReminder(id)
+}
+
+export interface AddLocationReminderArgs {
+    taskId: string
+    name: string
+    locLat: string
+    locLong: string
+    locTrigger: LocationTrigger
+    radius?: number
+}
+
+export async function addLocationReminder(
+    args: AddLocationReminderArgs,
+): Promise<LocationReminder> {
+    const api = await getApi()
+    const reminder = await api.addLocationReminder({
+        taskId: args.taskId,
+        name: args.name,
+        locLat: args.locLat,
+        locLong: args.locLong,
+        locTrigger: args.locTrigger,
+        ...pickDefined({ radius: args.radius }),
+    })
+    return reminder as LocationReminder
+}
+
+export interface UpdateLocationReminderArgs {
+    name?: string
+    locLat?: string
+    locLong?: string
+    locTrigger?: LocationTrigger
+    radius?: number
+}
+
+export async function updateLocationReminder(
+    id: string,
+    args: UpdateLocationReminderArgs,
+): Promise<LocationReminder> {
+    const api = await getApi()
+    const reminder = await api.updateLocationReminder(
+        id,
+        pickDefined({
+            name: args.name,
+            locLat: args.locLat,
+            locLong: args.locLong,
+            locTrigger: args.locTrigger,
+            radius: args.radius,
+        }),
+    )
+    return reminder as LocationReminder
+}
+
+export async function deleteLocationReminder(id: string): Promise<void> {
+    const api = await getApi()
+    await api.deleteLocationReminder(id)
 }

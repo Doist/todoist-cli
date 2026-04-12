@@ -56,7 +56,9 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'exportTemplateAsUrl',
     // Reminders (REST read)
     'getReminders',
+    'getReminder',
     'getLocationReminders',
+    'getLocationReminder',
     // Backups
     'getBackups',
     'downloadBackup',

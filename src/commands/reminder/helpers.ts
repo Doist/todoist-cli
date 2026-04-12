@@ -1,4 +1,4 @@
-import type { LocationReminder, Reminder } from '@doist/todoist-sdk'
+import type { LocationReminder, LocationTrigger, Reminder } from '@doist/todoist-sdk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
@@ -52,4 +52,44 @@ export function parseDateTime(value: string): ReminderDue {
     throw new CliError('INVALID_DATETIME', `Invalid datetime format: "${value}"`, [
         'Examples: 2024-01-15 10:00, 2024-01-15T10:00:00, 2024-01-15',
     ])
+}
+
+export function parseTrigger(value: string): LocationTrigger {
+    if (value !== 'on_enter' && value !== 'on_leave') {
+        throw new CliError('INVALID_TRIGGER', `Invalid trigger: "${value}"`, [
+            'Must be one of: on_enter, on_leave',
+        ])
+    }
+    return value
+}
+
+export function parseLat(value: string): string {
+    const n = Number(value)
+    if (!Number.isFinite(n) || n < -90 || n > 90) {
+        throw new CliError('INVALID_LAT', `Invalid latitude: "${value}"`, [
+            'Latitude must be a number between -90 and 90',
+        ])
+    }
+    // Pass through the original string — the SDK expects a string
+    return value
+}
+
+export function parseLong(value: string): string {
+    const n = Number(value)
+    if (!Number.isFinite(n) || n < -180 || n > 180) {
+        throw new CliError('INVALID_LONG', `Invalid longitude: "${value}"`, [
+            'Longitude must be a number between -180 and 180',
+        ])
+    }
+    return value
+}
+
+export function parseRadius(value: string): number {
+    const n = Number(value)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+        throw new CliError('INVALID_RADIUS', `Invalid radius: "${value}"`, [
+            'Radius must be a positive integer (meters)',
+        ])
+    }
+    return n
 }

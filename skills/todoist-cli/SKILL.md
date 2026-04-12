@@ -56,7 +56,7 @@ Tasks, projects, labels, and filters can be referenced by:
 - `id:xxx` - Explicit ID
 - Todoist URL - Paste directly from the web app (e.g., `https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB` or `https://app.todoist.com/app/project/work-2pN7vKx49mRq6YhT`)
 
-Some commands require `id:` or URL refs (name lookup unavailable): `task uncomplete`, `section archive/unarchive/update/delete/browse`, `comment update/delete/browse`, `reminder update/delete`, `notification view/accept/reject`.
+Some commands require `id:` or URL refs (name lookup unavailable): `task uncomplete`, `section archive/unarchive/update/delete/browse`, `comment update/delete/browse`, `reminder get/update/delete`, `reminder location get/update/delete`, `notification view/accept/reject`.
 
 ## Commands
 
@@ -172,6 +172,11 @@ td reminder list --type time
 td reminder add "Plan sprint" --before 30m
 td reminder update id:123 --before 1h
 td reminder delete id:123 --yes
+td reminder get id:123
+td reminder location add "Plan sprint" --name "Office" --lat 40.7128 --long -74.0060 --trigger on_enter --radius 100
+td reminder location update id:456 --radius 200
+td reminder location delete id:456 --yes
+td reminder location get id:456
 ```
 
 `td attachment view` prints text attachments directly and encodes binary content as base64. Use `--json` for metadata plus content.
