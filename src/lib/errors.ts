@@ -36,6 +36,7 @@ export type ErrorCode =
     | 'INVALID_URL'
     | 'INVALID_VISIBILITY'
     | 'INVALID_ROLE'
+    | 'NOT_ADMIN'
     // Missing input
     | 'MISSING_CONTENT'
     | 'MISSING_DESTINATION'

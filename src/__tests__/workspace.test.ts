@@ -8,6 +8,7 @@ vi.mock('../lib/api/core.js', () => ({
 vi.mock('../lib/api/workspaces.js', () => ({
     fetchWorkspaces: vi.fn(),
     fetchWorkspaceFolders: vi.fn(),
+    clearWorkspaceCache: vi.fn(),
 }))
 
 import { registerWorkspaceCommand } from '../commands/workspace/index.js'
@@ -768,5 +769,484 @@ describe('workspace insights', () => {
             folderId: null,
             projectInsights: [{ projectId: 'proj-1' }],
         })
+    })
+})
+
+// --- CRUD tests ---
+
+describe('workspace create', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('creates a workspace with --name', async () => {
+        mockApi.addWorkspace.mockResolvedValue({ id: 'ws-new', name: 'NewWS' })
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'create', '--name', 'NewWS'])
+
+        expect(mockApi.addWorkspace).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'NewWS' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Created: NewWS'))
+    })
+
+    it('passes through sharing and domain flags', async () => {
+        mockApi.addWorkspace.mockResolvedValue({ id: 'ws-new', name: 'NewWS' })
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'create',
+            '--name',
+            'NewWS',
+            '--description',
+            'Hello',
+            '--link-sharing',
+            '--no-guest-access',
+            '--domain',
+            'acme.com',
+        ])
+
+        expect(mockApi.addWorkspace).toHaveBeenCalledWith({
+            name: 'NewWS',
+            description: 'Hello',
+            isLinkSharingEnabled: true,
+            isGuestAllowed: false,
+            domainName: 'acme.com',
+        })
+    })
+
+    it('--dry-run skips API and prints preview', async () => {
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'create',
+            '--name',
+            'NewWS',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+    })
+
+    it('--json outputs curated workspace shape', async () => {
+        mockApi.addWorkspace.mockResolvedValue({ id: 'ws-new', name: 'NewWS', plan: 'STARTER' })
+        // After clearWorkspaceCache, the next fetch returns the new workspace
+        // in the local (sync-derived) shape.
+        mockFetchWorkspaces.mockResolvedValueOnce([
+            ...mockWorkspaces,
+            {
+                id: 'ws-new',
+                name: 'NewWS',
+                role: 'ADMIN' as const,
+                plan: 'STARTER',
+                domainName: null,
+                currentMemberCount: 1,
+                currentActiveProjects: 0,
+                memberCountByType: { adminCount: 1, memberCount: 0, guestCount: 0 },
+            },
+        ])
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'create', '--name', 'NewWS', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        const parsed = JSON.parse(output)
+        // Curated shape mirrors `workspace view --json` so create/view/update
+        // all speak the same contract.
+        expect(parsed).toEqual({
+            id: 'ws-new',
+            name: 'NewWS',
+            plan: 'STARTER',
+            role: 'ADMIN',
+            domainName: null,
+            memberCount: 1,
+            projectCount: 0,
+        })
+    })
+
+    it('shows help when --name is missing', async () => {
+        const program = createProgram()
+        // Commander .help() throws CommanderError under exitOverride; we just
+        // verify addWorkspace was never called.
+        await program.parseAsync(['node', 'td', 'workspace', 'create']).catch(() => undefined)
+        expect(mockApi.addWorkspace).not.toHaveBeenCalled()
+    })
+})
+
+describe('workspace update', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('updates an admin-owned workspace', async () => {
+        mockApi.updateWorkspace.mockResolvedValue({
+            id: 'ws-2',
+            name: 'Playground',
+            description: 'hi',
+        })
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'update',
+            'Playground',
+            '--description',
+            'hi',
+        ])
+
+        expect(mockApi.updateWorkspace).toHaveBeenCalledWith('ws-2', { description: 'hi' })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Updated: Playground'))
+    })
+
+    it('throws NOT_ADMIN for non-admin workspace (even on --dry-run)', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'workspace',
+                'update',
+                'Doist',
+                '--description',
+                'hi',
+                '--dry-run',
+            ]),
+        ).rejects.toThrow(/admin/i)
+        expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
+    })
+
+    it('throws NO_CHANGES when no update flags provided', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'update', 'Playground']),
+        ).rejects.toThrow(/No changes/i)
+        expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
+    })
+
+    it('NO_CHANGES wins over NOT_ADMIN when no flags are passed to a non-admin workspace', async () => {
+        // A user who simply forgot their flags should see "no changes" rather
+        // than a confusing NOT_ADMIN error about a mutation that was never
+        // going to happen.
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'update', 'Doist']),
+        ).rejects.toThrow(/No changes/i)
+        expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
+    })
+
+    it('--dry-run skips API when admin', async () => {
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'update',
+            'Playground',
+            '--name',
+            'New',
+            '--dry-run',
+        ])
+        expect(mockApi.updateWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+    })
+
+    it('--json outputs curated workspace shape', async () => {
+        mockApi.updateWorkspace.mockResolvedValue({ id: 'ws-2', name: 'Renamed' })
+        // First fetch = resolveWorkspaceRef (pre-update); second = post-update
+        // refresh for the curated JSON output.
+        mockFetchWorkspaces.mockReset()
+        mockFetchWorkspaces
+            .mockResolvedValueOnce(mockWorkspaces)
+            .mockResolvedValueOnce([mockWorkspaces[0]!, { ...mockWorkspaces[1]!, name: 'Renamed' }])
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'update',
+            'Playground',
+            '--name',
+            'Renamed',
+            '--json',
+        ])
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        expect(JSON.parse(output)).toEqual({
+            id: 'ws-2',
+            name: 'Renamed',
+            plan: 'STARTER',
+            role: 'ADMIN',
+            domainName: null,
+            memberCount: 2,
+            projectCount: 5,
+        })
+    })
+})
+
+describe('workspace delete', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('throws NOT_ADMIN on non-admin workspace (even on --dry-run)', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'delete', 'Doist', '--dry-run']),
+        ).rejects.toThrow(/admin/i)
+        expect(mockApi.deleteWorkspace).not.toHaveBeenCalled()
+    })
+
+    it('requires --yes to actually delete', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'delete', 'Playground'])
+
+        expect(mockApi.deleteWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('--yes'))
+    })
+
+    it('deletes when admin and --yes provided', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'delete', 'Playground', '--yes'])
+
+        expect(mockApi.deleteWorkspace).toHaveBeenCalledWith('ws-2')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Deleted: Playground'))
+    })
+
+    it('--dry-run on admin workspace prints preview without deleting', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'delete', 'Playground', '--dry-run'])
+        expect(mockApi.deleteWorkspace).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
+    })
+})
+
+describe('workspace user-tasks', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        mockApi.getWorkspaceUsers.mockResolvedValue({
+            workspaceUsers: [
+                {
+                    userId: 'u-1',
+                    workspaceId: 'ws-1',
+                    userEmail: 'alice@example.com',
+                    fullName: 'Alice Example',
+                    timezone: 'UTC',
+                    role: 'MEMBER',
+                    imageId: null,
+                    isDeleted: false,
+                },
+            ],
+            hasMore: false,
+        })
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves user by email and calls API', async () => {
+        mockApi.getWorkspaceUserTasks.mockResolvedValue({
+            tasks: [
+                {
+                    id: 't-1',
+                    content: 'Do thing',
+                    responsibleUid: 'u-1',
+                    due: null,
+                    deadline: null,
+                    labels: [],
+                    notesCount: 0,
+                    projectId: 'p-1',
+                    projectName: 'Proj',
+                    priority: 1,
+                    description: '',
+                    isOverdue: false,
+                },
+            ],
+        })
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'user-tasks',
+            'Doist',
+            '--user',
+            'alice@example.com',
+        ])
+
+        expect(mockApi.getWorkspaceUserTasks).toHaveBeenCalledWith({
+            workspaceId: 'ws-1',
+            userId: 'u-1',
+            projectIds: undefined,
+        })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Do thing'))
+    })
+
+    it('errors when --user is missing', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'user-tasks', 'Doist']),
+        ).rejects.toThrow(/--user/i)
+    })
+
+    it('passes through --project-ids', async () => {
+        mockApi.getWorkspaceUserTasks.mockResolvedValue({ tasks: [] })
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'user-tasks',
+            'Doist',
+            '--user',
+            'alice@example.com',
+            '--project-ids',
+            'id:p-1,id:p-2',
+        ])
+
+        expect(mockApi.getWorkspaceUserTasks).toHaveBeenCalledWith({
+            workspaceId: 'ws-1',
+            userId: 'u-1',
+            projectIds: 'p-1,p-2',
+        })
+    })
+
+    it('--json outputs structured response', async () => {
+        mockApi.getWorkspaceUserTasks.mockResolvedValue({
+            tasks: [
+                {
+                    id: 't-1',
+                    content: 'Do thing',
+                    responsibleUid: 'u-1',
+                    due: { date: '2026-05-01', isRecurring: false, string: 'may 1' },
+                    deadline: null,
+                    labels: [],
+                    notesCount: 0,
+                    projectId: 'p-1',
+                    projectName: 'Proj',
+                    priority: 1,
+                    description: '',
+                    isOverdue: true,
+                },
+            ],
+        })
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'user-tasks',
+            'Doist',
+            '--user',
+            'alice@example.com',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0]).toMatchObject({ id: 't-1', isOverdue: true })
+        // Collection shape matches other list/report commands.
+        expect(parsed.nextCursor).toBeNull()
+    })
+})
+
+describe('workspace activity', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('calls API with workspace id and passes through filters', async () => {
+        mockApi.getWorkspaceMembersActivity.mockResolvedValue({ members: [] })
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'activity',
+            'Doist',
+            '--user-ids',
+            'u-1,u-2',
+            '--project-ids',
+            'id:p-1',
+            '--json',
+        ])
+
+        expect(mockApi.getWorkspaceMembersActivity).toHaveBeenCalledWith({
+            workspaceId: 'ws-1',
+            userIds: 'u-1,u-2',
+            projectIds: 'p-1',
+        })
+    })
+
+    it('--json outputs structured response', async () => {
+        mockApi.getWorkspaceMembersActivity.mockResolvedValue({
+            members: [{ userId: 'u-1', tasksAssigned: 5, tasksOverdue: 1 }],
+        })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'activity', 'Doist', '--json'])
+
+        const output = consoleSpy.mock.calls[0]?.[0] as string
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0]).toMatchObject({ userId: 'u-1', tasksAssigned: 5 })
+        expect(parsed.nextCursor).toBeNull()
     })
 })

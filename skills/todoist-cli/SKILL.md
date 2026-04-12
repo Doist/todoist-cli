@@ -118,6 +118,11 @@ td workspace view "Acme"
 td workspace projects "Acme"
 td workspace users "Acme" --role ADMIN,MEMBER
 td workspace insights "Acme" --project-ids "id1,id2"
+td workspace create --name "Acme"
+td workspace update "Acme" --description "Acme Inc." --dry-run   # admin-only
+td workspace delete "Old WS" --yes                                # admin-only
+td workspace user-tasks "Acme" --user alice@example.com
+td workspace activity "Acme" --json
 ```
 
 ### Labels, Filters, And Sections
