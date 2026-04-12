@@ -142,7 +142,7 @@ export function registerWorkspaceCommand(program: Command): void {
                     '--role <roles>',
                     `Filter by role (comma-separated: ${WORKSPACE_ROLES.join(',')})`,
                 ),
-                WORKSPACE_ROLES,
+                [...WORKSPACE_ROLES],
             ),
         )
         .option('--limit <n>', 'Limit number of results')

@@ -1,10 +1,12 @@
-import type { WorkspaceUser } from '@doist/todoist-sdk'
+import { WORKSPACE_ROLES as SDK_WORKSPACE_ROLES, type WorkspaceUser } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import type { Workspace } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'
 import { extractId, isIdRef } from '../../lib/refs.js'
 
-export const WORKSPACE_ROLES = ['ADMIN', 'MEMBER', 'GUEST']
+// Widen the SDK's readonly tuple to `readonly string[]` so callers can use
+// `.includes(someString)` and spread into mutable arrays without casts.
+export const WORKSPACE_ROLES: readonly string[] = SDK_WORKSPACE_ROLES
 
 /**
  * Throws `NOT_ADMIN` if the current user is not an ADMIN of the workspace.
