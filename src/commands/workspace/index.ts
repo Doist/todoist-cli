@@ -3,10 +3,15 @@ import { withUnvalidatedChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { showWorkspaceActivity, type WorkspaceActivityOptions } from './activity.js'
+import { createWorkspace, type CreateWorkspaceOptions } from './create.js'
+import { deleteWorkspaceCommand } from './delete.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 import { showWorkspaceInsights } from './insights.js'
 import { listWorkspaces } from './list.js'
 import { listWorkspaceProjects } from './projects.js'
+import { updateWorkspaceCommand, type UpdateWorkspaceOptions } from './update.js'
+import { listWorkspaceUserTasks, type WorkspaceUserTasksOptions } from './user-tasks.js'
 import { listWorkspaceUsers } from './users.js'
 import { viewWorkspace } from './view.js'
 
@@ -32,6 +37,69 @@ export function registerWorkspaceCommand(program: Command): void {
                 return
             }
             return viewWorkspace(ref, options)
+        })
+
+    const createCmd = workspace
+        .command('create')
+        .description('Create a new workspace')
+        .option('--name <name>', 'Workspace name (required)')
+        .option('--description <text>', 'Workspace description')
+        .option('--link-sharing', 'Enable link sharing')
+        .option('--no-link-sharing', 'Disable link sharing')
+        .option('--guest-access', 'Allow guests')
+        .option('--no-guest-access', 'Disallow guests')
+        .option('--domain <domain>', 'Workspace email domain')
+        .option('--domain-discovery', 'Allow matching domains to discover this workspace')
+        .option('--no-domain-discovery', 'Disallow matching domains to discover this workspace')
+        .option('--restrict-email-domains', 'Restrict invites to the workspace domain')
+        .option('--no-restrict-email-domains', 'Do not restrict invites to the workspace domain')
+        .option('--json', 'Output as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((options: CreateWorkspaceOptions) => {
+            if (!options.name) {
+                createCmd.help()
+                return
+            }
+            return createWorkspace(options)
+        })
+
+    const updateCmd = workspace
+        .command('update [ref]')
+        .description('Update a workspace (admin only)')
+        .option('--name <name>', 'New workspace name')
+        .option('--description <text>', 'Workspace description')
+        .option('--link-sharing', 'Enable link sharing')
+        .option('--no-link-sharing', 'Disable link sharing')
+        .option('--guest-access', 'Allow guests')
+        .option('--no-guest-access', 'Disallow guests')
+        .option('--domain <domain>', 'Workspace email domain')
+        .option('--domain-discovery', 'Allow matching domains to discover this workspace')
+        .option('--no-domain-discovery', 'Disallow matching domains to discover this workspace')
+        .option('--restrict-email-domains', 'Restrict invites to the workspace domain')
+        .option('--no-restrict-email-domains', 'Do not restrict invites to the workspace domain')
+        .option('--collapsed', 'Collapse workspace in the UI')
+        .option('--no-collapsed', 'Uncollapse workspace in the UI')
+        .option('--json', 'Output as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref: string | undefined, options: UpdateWorkspaceOptions) => {
+            if (!ref) {
+                updateCmd.help()
+                return
+            }
+            return updateWorkspaceCommand(ref, options)
+        })
+
+    const deleteCmd = workspace
+        .command('delete [ref]')
+        .description('Delete a workspace (admin only)')
+        .option('--yes', 'Skip confirmation prompt')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref: string | undefined, options: { yes?: boolean; dryRun?: boolean }) => {
+            if (!ref) {
+                deleteCmd.help()
+                return
+            }
+            return deleteWorkspaceCommand(ref, options)
         })
 
     const projectsCmd = workspace
@@ -103,6 +171,64 @@ export function registerWorkspaceCommand(program: Command): void {
             },
         )
 
+    const userTasksCmd = workspace
+        .command('user-tasks [ref]')
+        .description('List tasks assigned to a user in a workspace')
+        .option('--workspace <ref>', 'Workspace name or id:xxx')
+        .option('--user <ref>', 'User email, full name, or id:xxx (required)')
+        .option('--project-ids <ids>', 'Comma-separated project IDs to filter')
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .action(
+            (
+                refArg: string | undefined,
+                options: WorkspaceUserTasksOptions & { workspace?: string },
+            ) => {
+                if (refArg && options.workspace) {
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify workspace both as argument and --workspace flag',
+                    )
+                }
+                const ref = refArg || options.workspace
+                if (!ref) {
+                    userTasksCmd.help()
+                    return
+                }
+                return listWorkspaceUserTasks(ref, options)
+            },
+        )
+
+    const activityCmd = workspace
+        .command('activity [ref]')
+        .description('Show workspace members activity (tasks assigned/overdue)')
+        .option('--workspace <ref>', 'Workspace name or id:xxx')
+        .option('--user-ids <ids>', 'Comma-separated user IDs to filter')
+        .option('--project-ids <ids>', 'Comma-separated project IDs to filter')
+        .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--full', 'Enrich output with user names/emails')
+        .action(
+            (
+                refArg: string | undefined,
+                options: WorkspaceActivityOptions & { workspace?: string },
+            ) => {
+                if (refArg && options.workspace) {
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify workspace both as argument and --workspace flag',
+                    )
+                }
+                const ref = refArg || options.workspace
+                if (!ref) {
+                    activityCmd.help()
+                    return
+                }
+                return showWorkspaceActivity(ref, options)
+            },
+        )
+
     const insightsCmd = workspace
         .command('insights [ref]')
         .description('Show health and progress insights for workspace projects')
@@ -128,4 +254,15 @@ export function registerWorkspaceCommand(program: Command): void {
                 return showWorkspaceInsights(ref, options)
             },
         )
+
+    workspace.addHelpText(
+        'after',
+        `
+Examples:
+  $ td workspace create --name "Acme"
+  $ td workspace update "Acme" --description "Acme Inc." --dry-run
+  $ td workspace delete "Old WS" --yes
+  $ td workspace user-tasks "Acme" --user alice@example.com
+  $ td workspace activity "Acme" --json`,
+    )
 }
