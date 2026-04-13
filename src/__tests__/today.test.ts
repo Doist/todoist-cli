@@ -12,8 +12,7 @@ vi.mock('../lib/api/workspaces.js', () => ({
 
 vi.mock('../lib/markdown.js', () => ({
     preloadMarkdown: vi.fn().mockResolvedValue(undefined),
-    prerenderMarkdown: vi.fn().mockResolvedValue(undefined),
-    renderMarkdown: vi.fn((text: string) => text),
+    renderMarkdown: vi.fn((text: string) => Promise.resolve(text)),
 }))
 
 import { registerTodayCommand } from '../commands/today.js'

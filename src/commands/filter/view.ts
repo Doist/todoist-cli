@@ -2,7 +2,6 @@ import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
-import { prerenderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -95,8 +94,6 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
     const collaboratorCache = new CollaboratorCache()
     await collaboratorCache.preload(api, tasks, projectMap)
 
-    await prerenderMarkdown(tasks.map((t) => t.content))
-
     for (const task of tasks) {
         const assignee = formatAssignee({
             userId: task.responsibleUid,
@@ -105,7 +102,7 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
             cache: collaboratorCache,
         })
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName: projectMap.get(task.projectId)?.name,
                 assignee: assignee ?? undefined,

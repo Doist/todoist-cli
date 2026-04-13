@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { prerenderMarkdown, renderMarkdown } from '../../lib/markdown.js'
+import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatFileSize, formatJson } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
@@ -29,10 +29,7 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
     if (url) console.log(`URL:     ${url}`)
     console.log('')
     console.log('Content:')
-    if (!options.raw) {
-        await prerenderMarkdown([comment.content])
-    }
-    const content = options.raw ? comment.content : renderMarkdown(comment.content)
+    const content = options.raw ? comment.content : await renderMarkdown(comment.content)
     console.log(content)
 
     if (comment.fileAttachment) {

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { prerenderMarkdown, renderMarkdown } from '../../lib/markdown.js'
+import { renderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -73,16 +73,12 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
 
     const maxLines = options.lines ? parseInt(options.lines, 10) : 3
 
-    if (!options.raw) {
-        await prerenderMarkdown(comments.map((c) => c.content))
-    }
-
     for (const comment of comments) {
         const id = chalk.dim(comment.id)
         const date = chalk.green(comment.postedAt.toISOString().split('T')[0])
         const hasAttachment = comment.fileAttachment !== null
         console.log(`${id}  ${date}${hasAttachment ? `  ${chalk.blue('[file]')}` : ''}`)
-        const content = options.raw ? comment.content : renderMarkdown(comment.content)
+        const content = options.raw ? comment.content : await renderMarkdown(comment.content)
         const truncated = truncateContent(content, maxLines)
         for (const line of truncated.split('\n')) {
             console.log(`  ${line}`)

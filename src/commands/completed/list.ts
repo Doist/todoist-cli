@@ -2,7 +2,6 @@ import chalk from 'chalk'
 import { getApi, type Project, type Task } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
-import { prerenderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -161,12 +160,10 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
     console.log(header)
     console.log('')
 
-    await prerenderMarkdown(tasks.map((t) => t.content))
-
     for (const task of tasks) {
         const projectName = projects.get(task.projectId)?.name
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName,
                 assignee: getAssigneeName(task) ?? undefined,
