@@ -280,7 +280,7 @@ async function listByDate(api: TodoistApi, options: CompletedListOptions): Promi
     for (const task of tasks) {
         const projectName = getProjectName(task.projectId)
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName,
                 assignee: getAssigneeName(task) ?? undefined,
