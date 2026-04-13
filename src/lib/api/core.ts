@@ -177,21 +177,26 @@ function isInsufficientScopeError(error: TodoistRequestError): boolean {
  * hint instead of a generic "re-auth" line. Add new methods here as scope-
  * gated SDK surface lands.
  *
- * Methods not listed fall back to the `standard` group — that's the safe
- * default for endpoints gated by scopes that are already part of the standard
- * grant (e.g. `backups:read` for `td backup …`), where the right fix is just
- * `td auth login` rather than any specific opt-in flag.
+ * Methods not listed fall back to the `standard` group — appropriate for
+ * endpoints gated by scopes that are part of the standard grant.
+ * Opt-in scopes (e.g. `dev:app_console` via `--app-management`,
+ * `backups:read` via `--backups`) get their own group with flag-specific
+ * remediation strings.
  */
-type ScopeGroup = 'app-management' | 'standard'
+type ScopeGroup = 'app-management' | 'backups' | 'standard'
 
 const METHOD_SCOPE_GROUP: Record<string, ScopeGroup> = {
     getApps: 'app-management',
     getApp: 'app-management',
+    getBackups: 'backups',
+    downloadBackup: 'backups',
 }
 
 const SCOPE_REMEDIATION: Record<ScopeGroup, string> = {
     'app-management':
         'This command requires the dev:app_console scope. Re-run `td auth login --app-management` (combine with --read-only if desired).',
+    backups:
+        'This command requires the backups:read scope. Re-run `td auth login --backups` (combine with --read-only if desired).',
     standard:
         'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.',
 }

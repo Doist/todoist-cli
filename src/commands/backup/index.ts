@@ -12,7 +12,10 @@ export function registerBackupCommand(program: Command): void {
 Examples:
   td backup list
   td backup list --json
-  td backup download "2024-01-15_12:00" --output-file backup.zip`,
+  td backup download "2024-01-15_12:00" --output-file backup.zip
+
+Requires authenticating with the backups:read scope:
+  td auth login --backups`,
         )
 
     backup

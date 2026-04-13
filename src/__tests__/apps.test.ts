@@ -374,10 +374,20 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
         }
     })
 
-    it('emits the generic re-auth hint for non-app methods (e.g. getBackups)', () => {
-        const wrapped = wrapApiError(scopeError(), 'getBackups') as CliError
+    it('emits the --backups hint for backup methods (getBackups, downloadBackup)', () => {
+        for (const method of ['getBackups', 'downloadBackup']) {
+            const wrapped = wrapApiError(scopeError(), method) as CliError
+            expect(wrapped.code).toBe('MISSING_SCOPE')
+            expect(wrapped.hints?.[0]).toContain('--backups')
+            expect(wrapped.hints?.[0]).toContain('backups:read')
+        }
+    })
+
+    it('emits the generic re-auth hint for methods without a scope group (e.g. getTasks)', () => {
+        const wrapped = wrapApiError(scopeError(), 'getTasks') as CliError
         expect(wrapped.code).toBe('MISSING_SCOPE')
         expect(wrapped.hints?.[0]).not.toContain('--app-management')
+        expect(wrapped.hints?.[0]).not.toContain('--backups')
         expect(wrapped.hints?.[0]).toContain('td auth login')
     })
 

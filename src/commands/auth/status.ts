@@ -4,7 +4,7 @@ import { type AuthMode, getAuthMetadata } from '../../lib/auth.js'
 
 function formatAuthMode(authMode: AuthMode, authScope?: string): string {
     if (authMode === 'read-only') {
-        return `read-only (OAuth scope ${authScope ?? 'data:read,backups:read'})`
+        return `read-only (OAuth scope ${authScope ?? 'data:read'})`
     }
     if (authMode === 'read-write') {
         return 'read-write'

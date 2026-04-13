@@ -7,7 +7,7 @@ import { generateCodeChallenge, generateCodeVerifier, generateState } from '../.
 import { logTokenStorageResult } from './helpers.js'
 
 export async function loginWithOAuth(
-    options: { readOnly?: boolean; appManagement?: boolean } = {},
+    options: { readOnly?: boolean; appManagement?: boolean; backups?: boolean } = {},
 ): Promise<void> {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
@@ -19,6 +19,7 @@ export async function loginWithOAuth(
     const authUrl = buildAuthorizationUrl(codeChallenge, state, {
         readOnly: options.readOnly,
         appManagement: options.appManagement,
+        backups: options.backups,
         port,
     })
 
