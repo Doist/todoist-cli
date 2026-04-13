@@ -10,6 +10,8 @@ import { completeTask } from './complete.js'
 import { deleteTask } from './delete.js'
 import { listTasks } from './list.js'
 import { moveTask } from './move.js'
+import type { QuickaddOptions } from './quickadd.js'
+import { quickaddTask } from './quickadd.js'
 import { rescheduleTask } from './reschedule.js'
 import { uncompleteTask } from './uncomplete.js'
 import { updateTask } from './update.js'
@@ -26,6 +28,7 @@ export function registerTaskCommand(program: Command): void {
             `
 Examples:
   td task add "Buy milk" --due tomorrow
+  td task qa "Buy milk tomorrow p1 #Shopping"
   td task list --project "Work" --priority p1
   td task view "Buy milk"`,
         )
@@ -153,6 +156,23 @@ Examples:
                 return
             }
             return addTask({ ...options, content })
+        })
+
+    const quickaddCmd = task
+        .command('quickadd [text]')
+        .alias('qa')
+        .description(
+            'Quick add a task using natural language (e.g. "Buy milk tomorrow p1 #Shopping")',
+        )
+        .option('--stdin', 'Read text from stdin')
+        .option('--json', 'Output the created task as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((text: string | undefined, options: QuickaddOptions) => {
+            if (!text && !options.stdin) {
+                quickaddCmd.help()
+                return
+            }
+            return quickaddTask({ ...options, text })
         })
 
     const updateCmd = task

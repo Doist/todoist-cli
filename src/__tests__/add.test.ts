@@ -5,11 +5,17 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
+vi.mock('../lib/stdin.js', () => ({
+    readStdin: vi.fn(),
+}))
+
 import { registerAddCommand } from '../commands/add.js'
 import { getApi } from '../lib/api/core.js'
+import { readStdin } from '../lib/stdin.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     const program = new Command()
@@ -120,32 +126,48 @@ describe('add command', () => {
         consoleSpy.mockRestore()
     })
 
-    it('assigns task with --assignee flag', async () => {
+    it('reads text from stdin with --stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
+        mockApi.quickAddTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            due: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'add', '--stdin'])
+
+        expect(mockReadStdin).toHaveBeenCalled()
+        expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk tomorrow' })
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both text and --stdin are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'add', 'Buy milk', '--stdin']),
+        ).rejects.toThrow(/Cannot specify text both as argument and --stdin/)
+    })
+
+    it('--json outputs JSON of created task', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
-            content: 'Review PR',
-            projectId: 'proj-1',
-            due: null,
-        })
-        mockApi.getProject.mockResolvedValue({
-            id: 'proj-1',
-            name: 'Work',
-            isShared: true,
-        })
-        mockApi.updateTask.mockResolvedValue({
-            id: 'task-1',
-            content: 'Review PR',
+            content: 'Buy milk',
             due: null,
         })
 
-        await program.parseAsync(['node', 'td', 'add', 'Review PR', '--assignee', 'id:user-123'])
+        await program.parseAsync(['node', 'td', 'add', 'Buy milk', '--json'])
 
-        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
-            assigneeId: 'user-123',
-        })
+        expect(mockApi.quickAddTask).toHaveBeenCalled()
+        const output = consoleSpy.mock.calls[0][0] as string
+        expect(() => JSON.parse(output)).not.toThrow()
+        expect(JSON.parse(output)).toMatchObject({ id: 'task-1', content: 'Buy milk' })
         consoleSpy.mockRestore()
     })
 })
