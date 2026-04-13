@@ -95,7 +95,7 @@ Choosing between `task add` and `task quickadd`:
 - `td task quickadd` supports `--stdin`, `--json`, and `--dry-run` only; everything else is embedded in the text.
 
 Useful task flags:
-- `--stdin` on `task add` reads the task description from stdin; on `task quickadd` it reads the full natural-language text from stdin.
+- `--stdin` on `task add` reads the task description from stdin; on `task quickadd` (and the top-level `td add`) it reads the full natural-language text from stdin.
 - `--parent`, `--section`, `--project`, `--workspace`, `--assignee`, `--labels`, `--due`, `--deadline`, `--duration`, and `--priority` cover most task workflows.
 - `td task complete --forever` stops recurrence; `td task update --no-deadline` clears deadlines; `td task move --no-parent` and `--no-section` detach from hierarchy.
 
