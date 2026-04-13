@@ -1,4 +1,4 @@
-import type { Marked, MarkedExtension } from 'marked'
+import type { Marked } from 'marked'
 
 let markedInstance: Marked | null = null
 
@@ -9,8 +9,7 @@ export async function preloadMarkdown(): Promise<void> {
         import('marked-terminal-renderer'),
     ])
     const instance = new Marked()
-    // Types are not declared on the renderer module; cast to MarkedExtension
-    instance.use(createTerminalRenderer(darkTheme()) as unknown as MarkedExtension)
+    instance.use(createTerminalRenderer(darkTheme()))
     markedInstance = instance
 }
 
