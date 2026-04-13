@@ -162,7 +162,7 @@ Examples:
         .command('quickadd [text]')
         .alias('qa')
         .description(
-            'Quick add a task using natural language (e.g. "Buy milk tomorrow p1 #Shopping +John")',
+            'Quick add a task using natural language (e.g. "Buy milk tomorrow p1 #Shopping")',
         )
         .option('--stdin', 'Read text from stdin')
         .option('--json', 'Output the created task as JSON')

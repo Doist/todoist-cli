@@ -95,6 +95,34 @@ describe('task quickadd command', () => {
         ).rejects.toThrow(/Cannot specify text both as argument and --stdin/)
     })
 
+    it('errors when empty-string text and --stdin are both provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'qa', '', '--stdin']),
+        ).rejects.toThrow(/Cannot specify text both as argument and --stdin/)
+        expect(mockReadStdin).not.toHaveBeenCalled()
+    })
+
+    it('errors on whitespace-only text without hitting the API', async () => {
+        const program = createProgram()
+
+        await expect(program.parseAsync(['node', 'td', 'task', 'qa', '   '])).rejects.toThrow(
+            /No text provided for quick add/,
+        )
+        expect(mockApi.quickAddTask).not.toHaveBeenCalled()
+    })
+
+    it('errors on whitespace-only stdin without hitting the API', async () => {
+        const program = createProgram()
+        mockReadStdin.mockResolvedValue('   \n')
+
+        await expect(program.parseAsync(['node', 'td', 'task', 'qa', '--stdin'])).rejects.toThrow(
+            /No text provided for quick add/,
+        )
+        expect(mockApi.quickAddTask).not.toHaveBeenCalled()
+    })
+
     it('--dry-run skips API call and prints preview', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

@@ -13,14 +13,15 @@ export interface QuickaddOptions {
 }
 
 export async function quickaddTask(options: QuickaddOptions): Promise<void> {
-    if (options.text && options.stdin) {
+    if (options.text !== undefined && options.stdin) {
         throw new CliError(
             'CONFLICTING_OPTIONS',
             'Cannot specify text both as argument and --stdin',
         )
     }
 
-    const text = options.stdin ? (await readStdin()).trim() : options.text
+    const raw = options.stdin ? await readStdin() : (options.text ?? '')
+    const text = raw.trim()
 
     if (!text) {
         throw new CliError('MISSING_CONTENT', 'No text provided for quick add')

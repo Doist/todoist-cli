@@ -92,6 +92,7 @@ Choosing between \`task add\` and \`task quickadd\`:
 - \`td task quickadd\` (alias \`td task qa\`) uses Todoist's natural-language parser. Inline syntax covers dates ("tomorrow at 2pm"), priority (\`p1\`–\`p4\`), project (\`#Project\`), labels (\`@label\`), sections (\`/Section\`), and assignee (\`+Person\` on shared projects). **Prefer \`quickadd\` when all task attributes can be expressed inline and you do not need to set additional structured fields** — it's one call and no name-resolution lookups are required.
 - Use \`td task add\` when you need flags that Quick Add syntax can't express (\`--deadline\`, \`--description\`, \`--parent\`, \`--duration\`, \`--uncompletable\`, \`--order\`), when the text is being composed programmatically, or when you need explicit \`id:\` / URL references for project/section/parent.
 - \`td task quickadd\` supports \`--stdin\`, \`--json\`, and \`--dry-run\` only; everything else is embedded in the text.
+- The top-level \`td add <text>\` is a human shorthand for \`td task quickadd\` — same parser, same flag surface (\`--stdin\`, \`--json\`, \`--dry-run\`). Agents should prefer \`td task quickadd\` / \`qa\` for discoverability alongside the other task subcommands.
 
 Useful task flags:
 - \`--stdin\` on \`task add\` reads the task description from stdin; on \`task quickadd\` (and the top-level \`td add\`) it reads the full natural-language text from stdin.
