@@ -26,14 +26,13 @@ Requires authenticating with the dev:app_console scope:
         .option('--ndjson', 'Output as newline-delimited JSON')
         .action(listApps)
 
-    const viewCmd = apps
-        .command('view [ref]')
+    apps.command('view [ref]', { isDefault: true })
         .description('View details for a single app (by name, id:N, or raw id)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                apps.help()
                 return
             }
             return viewApp(ref, options)

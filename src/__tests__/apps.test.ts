@@ -267,6 +267,33 @@ describe('apps view', () => {
         expect(mockApi.getApps).not.toHaveBeenCalled()
     })
 
+    it('also converts a wrapped 404 to APP_NOT_FOUND for the id:N form (shared id-path handling)', async () => {
+        const program = createProgram()
+
+        mockApi.getApp.mockRejectedValue(new CliError('NOT_FOUND', 'HTTP 404: Not Found'))
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'view', 'id:99999999']),
+        ).rejects.toMatchObject({ code: 'APP_NOT_FOUND' })
+        expect(mockApi.getApp).toHaveBeenCalledWith('99999999')
+        expect(mockApi.getApps).not.toHaveBeenCalled()
+    })
+
+    it('treats `td apps <ref>` as `td apps view <ref>` (implicit default subcommand)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'id:9909'])
+
+        expect(mockApi.getApp).toHaveBeenCalledWith('9909')
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Todoist for VS Code')
+        expect(output).toContain('ID:             9909')
+        consoleSpy.mockRestore()
+    })
+
     it('does not attempt getApp() for alphanumeric refs (avoids the 400 from the apps endpoint)', async () => {
         const program = createProgram()
 
@@ -328,26 +355,42 @@ describe('apps view', () => {
 })
 
 describe('wrapApiError → MISSING_SCOPE detection', () => {
-    it('converts 403 + AUTH_INSUFFICIENT_TOKEN_SCOPE into a MISSING_SCOPE CliError with --app-management hint', () => {
-        const error = new TodoistRequestError('HTTP 403: Forbidden', 403, {
+    function scopeError() {
+        return new TodoistRequestError('HTTP 403: Forbidden', 403, {
             error: 'Insufficient Token scope',
             error_code: 403,
             error_extra: { access_type: 'access_token' },
             error_tag: 'AUTH_INSUFFICIENT_TOKEN_SCOPE',
             http_code: 403,
         })
+    }
 
-        const wrapped = wrapApiError(error)
+    it('emits the --app-management hint for app-management methods (getApps, getApp)', () => {
+        for (const method of ['getApps', 'getApp']) {
+            const wrapped = wrapApiError(scopeError(), method) as CliError
+            expect(wrapped.code).toBe('MISSING_SCOPE')
+            expect(wrapped.hints?.[0]).toContain('--app-management')
+            expect(wrapped.hints?.[0]).toContain('dev:app_console')
+        }
+    })
 
-        expect(wrapped).toBeInstanceOf(CliError)
-        expect((wrapped as CliError).code).toBe('MISSING_SCOPE')
-        expect((wrapped as CliError).hints?.some((h) => h.includes('--app-management'))).toBe(true)
+    it('emits the generic re-auth hint for non-app methods (e.g. getBackups)', () => {
+        const wrapped = wrapApiError(scopeError(), 'getBackups') as CliError
+        expect(wrapped.code).toBe('MISSING_SCOPE')
+        expect(wrapped.hints?.[0]).not.toContain('--app-management')
+        expect(wrapped.hints?.[0]).toContain('td auth login')
+    })
+
+    it('falls back to the standard hint when no method name is supplied', () => {
+        const wrapped = wrapApiError(scopeError()) as CliError
+        expect(wrapped.code).toBe('MISSING_SCOPE')
+        expect(wrapped.hints?.[0]).not.toContain('--app-management')
     })
 
     it('falls through to AUTH_ERROR for a generic 403 without the scope tag', () => {
         const error = new TodoistRequestError('HTTP 403: Forbidden', 403, { error: 'Forbidden' })
 
-        const wrapped = wrapApiError(error)
+        const wrapped = wrapApiError(error, 'getApps')
 
         expect(wrapped).toBeInstanceOf(CliError)
         expect((wrapped as CliError).code).toBe('AUTH_ERROR')
@@ -356,7 +399,7 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
     it('falls through to AUTH_ERROR for 403 with non-object responseData', () => {
         const error = new TodoistRequestError('HTTP 403: Forbidden', 403, 'Forbidden')
 
-        const wrapped = wrapApiError(error)
+        const wrapped = wrapApiError(error, 'getApps')
 
         expect((wrapped as CliError).code).toBe('AUTH_ERROR')
     })
@@ -366,7 +409,7 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
             error_tag: 'AUTH_INSUFFICIENT_TOKEN_SCOPE',
         })
 
-        const wrapped = wrapApiError(error)
+        const wrapped = wrapApiError(error, 'getApps')
 
         expect((wrapped as CliError).code).toBe('API_ERROR')
     })

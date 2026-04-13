@@ -304,13 +304,15 @@ export async function resolveAppRef(api: TodoistApi, ref: string): Promise<AppWi
         throw new CliError('INVALID_APP', 'app reference cannot be empty.')
     }
 
-    if (isIdRef(ref)) {
-        return api.getApp(extractId(ref))
-    }
+    // Both `id:N` and a pure-numeric ref are direct id-bearing forms — share
+    // a single fetch + friendly-404 path so both surface APP_NOT_FOUND on miss
+    // (rather than `id:9999` falling through to the generic NOT_FOUND).
+    const explicitId = isIdRef(ref) ? extractId(ref) : null
+    const idToFetch = explicitId ?? (/^\d+$/.test(ref) ? ref : null)
 
-    if (/^\d+$/.test(ref)) {
+    if (idToFetch !== null) {
         try {
-            return await api.getApp(ref)
+            return await api.getApp(idToFetch)
         } catch (error) {
             // The api Proxy in core.ts already wraps TodoistRequestError into a
             // generic CliError('NOT_FOUND', …). Catch both shapes so the
