@@ -30,10 +30,14 @@ Use this skill when the user wants to interact with their Todoist tasks.
 \`\`\`bash
 td auth login
 td auth login --read-only
+td auth login --app-management
+td auth login --app-management --read-only
 td auth token
 td auth status
 td auth logout
 \`\`\`
+
+\`--app-management\` adds the \`dev:app_console\` OAuth scope to the requested grant. Combine with \`--read-only\` to keep data access read-only while still gaining app-management access. Granting this scope is opt-in because it allows the token to manage your registered Todoist apps (rotate secrets, edit webhooks, etc.).
 
 Tokens are stored in the OS credential manager when available, with fallback to \`~/.config/todoist-cli/config.json\`. \`TODOIST_API_TOKEN\` takes precedence over stored credentials.
 
