@@ -93,6 +93,9 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         // Backups
         getBackups: { text: 'Loading backups...', color: 'blue' },
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
+        // Apps
+        getApps: { text: 'Loading apps...', color: 'blue' },
+        getApp: { text: 'Loading app...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
@@ -154,17 +157,61 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             (error as Error).message,
                         )
                     }
-                    throw wrapApiError(error)
+                    throw wrapApiError(error, property)
                 }
             }
         },
     })
 }
 
-function wrapApiError(error: unknown): Error {
+function isInsufficientScopeError(error: TodoistRequestError): boolean {
+    if (error.httpStatusCode !== 403) return false
+    const data = error.responseData
+    if (typeof data !== 'object' || data === null) return false
+    return (data as { error_tag?: unknown }).error_tag === 'AUTH_INSUFFICIENT_TOKEN_SCOPE'
+}
+
+/**
+ * Group SDK methods by the OAuth scope they require, so a 403
+ * `AUTH_INSUFFICIENT_TOKEN_SCOPE` can surface a *command-specific* remediation
+ * hint instead of a generic "re-auth" line. Add new methods here as scope-
+ * gated SDK surface lands.
+ *
+ * Methods not listed fall back to the `standard` group — that's the safe
+ * default for endpoints gated by scopes that are already part of the standard
+ * grant (e.g. `backups:read` for `td backup …`), where the right fix is just
+ * `td auth login` rather than any specific opt-in flag.
+ */
+type ScopeGroup = 'app-management' | 'standard'
+
+const METHOD_SCOPE_GROUP: Record<string, ScopeGroup> = {
+    getApps: 'app-management',
+    getApp: 'app-management',
+}
+
+const SCOPE_REMEDIATION: Record<ScopeGroup, string> = {
+    'app-management':
+        'This command requires the dev:app_console scope. Re-run `td auth login --app-management` (combine with --read-only if desired).',
+    standard:
+        'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.',
+}
+
+function getScopeRemediation(methodName: string | undefined): string {
+    const group: ScopeGroup = (methodName && METHOD_SCOPE_GROUP[methodName]) || 'standard'
+    return SCOPE_REMEDIATION[group]
+}
+
+export function wrapApiError(error: unknown, methodName?: string): Error {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode
+        if (status === 403 && isInsufficientScopeError(error)) {
+            return new CliError(
+                'MISSING_SCOPE',
+                'Your token is missing the OAuth scope required for this command.',
+                [getScopeRemediation(methodName)],
+            )
+        }
         if (status === 401 || status === 403) {
             return new CliError('AUTH_ERROR', error.message, [
                 'Check your API token: td auth status',

@@ -286,6 +286,68 @@ describe('auth command', () => {
             })
         })
 
+        it('appends dev:app_console scope when --app-management is set', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_app'
+            const accessToken = 'oauth_access_token_app'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--app-management'])
+
+            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
+                'test_code_challenge',
+                'test_state',
+                { readOnly: undefined, appManagement: true, port: 8765 },
+            )
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope:
+                    'data:read_write,data:delete,project:delete,backups:read,dev:app_console',
+            })
+        })
+
+        it('combines --app-management with --read-only', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_app_ro'
+            const accessToken = 'oauth_access_token_app_ro'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'login',
+                '--app-management',
+                '--read-only',
+            ])
+
+            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
+                'test_code_challenge',
+                'test_state',
+                { readOnly: true, appManagement: true, port: 8765 },
+            )
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-only',
+                authScope: 'data:read,backups:read,dev:app_console',
+            })
+        })
+
         it('handles OAuth callback server error', async () => {
             const program = createProgram()
             const mockCleanup = vi.fn()

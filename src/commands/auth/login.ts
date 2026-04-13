@@ -2,16 +2,13 @@ import chalk from 'chalk'
 import open from 'open'
 import { saveApiToken } from '../../lib/auth.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
-import {
-    READ_ONLY_SCOPES,
-    READ_WRITE_SCOPES,
-    buildAuthorizationUrl,
-    exchangeCodeForToken,
-} from '../../lib/oauth.js'
+import { buildAuthorizationUrl, exchangeCodeForToken, resolveAuthScope } from '../../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../lib/pkce.js'
 import { logTokenStorageResult } from './helpers.js'
 
-export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Promise<void> {
+export async function loginWithOAuth(
+    options: { readOnly?: boolean; appManagement?: boolean } = {},
+): Promise<void> {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
     const state = generateState()
@@ -21,6 +18,7 @@ export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Prom
     const { promise: callbackPromise, port, cleanup } = await startCallbackServer(state)
     const authUrl = buildAuthorizationUrl(codeChallenge, state, {
         readOnly: options.readOnly,
+        appManagement: options.appManagement,
         port,
     })
 
@@ -34,7 +32,7 @@ export async function loginWithOAuth(options: { readOnly?: boolean } = {}): Prom
         const accessToken = await exchangeCodeForToken(code, codeVerifier, port)
         const result = await saveApiToken(accessToken, {
             authMode: options.readOnly ? 'read-only' : 'read-write',
-            authScope: options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES,
+            authScope: resolveAuthScope(options),
         })
 
         console.log(chalk.green('✓'), 'Successfully logged in!')

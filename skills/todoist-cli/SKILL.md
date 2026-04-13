@@ -31,10 +31,14 @@ Use this skill when the user wants to interact with their Todoist tasks.
 ```bash
 td auth login
 td auth login --read-only
+td auth login --app-management
+td auth login --app-management --read-only
 td auth token
 td auth status
 td auth logout
 ```
+
+`--app-management` adds the `dev:app_console` OAuth scope to the requested grant. Combine with `--read-only` to keep data access read-only while still gaining app-management access. Granting this scope is opt-in because it allows the token to manage your registered Todoist apps (rotate secrets, edit webhooks, etc.).
 
 Tokens are stored in the OS credential manager when available, with fallback to `~/.config/todoist-cli/config.json`. `TODOIST_API_TOKEN` takes precedence over stored credentials.
 
@@ -48,6 +52,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Collaboration: `td comment ...`, `td notification ...`, `td reminder ...`
 - Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Account and tooling: `td stats`, `td settings ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
+- Developer apps: `td apps list/view` (requires `td auth login --app-management`)
 
 ## References
 
@@ -210,6 +215,22 @@ td template import-id "Roadmap" --template-id product-launch --locale fr
 td backup list
 td backup download "2024-01-15_12:00" --output-file backup.zip
 ```
+
+### Developer Apps
+```bash
+td apps list
+td apps list --json
+td apps view "Todoist for VS Code"
+td apps view id:9909
+td apps view 9909
+td apps view id:9909 --json
+```
+
+The `apps` command surface manages the user's registered Todoist developer apps (integrations). All `apps` subcommands require the `dev:app_console` OAuth scope — re-run `td auth login --app-management` to grant it. Without the scope, calls fail with a `MISSING_SCOPE` error pointing at the same hint.
+
+`td apps list` plain output leads with the display name and follows it with `(id:N)` (self-describing in `--accessible` mode). `--json` / `--ndjson` dump the full app payload (id, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
+
+`td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL) followed by the description. `--json` returns the AppWithUserCount payload (App + `userCount`).
 
 ### Settings, Stats, And Utilities
 ```bash
