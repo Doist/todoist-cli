@@ -1,3 +1,9 @@
+## [1.44.0](https://github.com/Doist/todoist-cli/compare/v1.43.0...v1.44.0) (2026-04-13)
+
+### Features
+
+* add td task quickadd subcommand with qa alias ([#262](https://github.com/Doist/todoist-cli/issues/262)) ([75a329a](https://github.com/Doist/todoist-cli/commit/75a329ae9255c7722e236e2913f718271f53458a))
+
 ## [1.43.0](https://github.com/Doist/todoist-cli/compare/v1.42.0...v1.43.0) (2026-04-12)
 
 ### Features
