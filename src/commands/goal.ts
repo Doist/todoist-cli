@@ -123,7 +123,7 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
     if (goal.description) console.log(`Desc:     ${goal.description}`)
     if (goal.deadline) console.log(`Deadline: ${chalk.green(goal.deadline)}`)
     console.log(
-        `Progress: ${formatProgressBar(goal.progress?.percentage ?? 0)} (${goal.progress?.completedItemCount ?? 0}/${goal.progress?.totalItemCount ?? 0})`,
+        `Progress: ${formatProgressBar(goal.progress?.percentage ?? 0)} (${goal.progress?.completedTaskCount ?? 0}/${goal.progress?.totalTaskCount ?? 0})`,
     )
     if (goal.isCompleted) {
         console.log(chalk.green(isAccessible() ? 'Goal completed' : '✓ Completed'))
