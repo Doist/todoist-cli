@@ -1,3 +1,9 @@
+## [1.45.0](https://github.com/Doist/todoist-cli/compare/v1.44.0...v1.45.0) (2026-04-13)
+
+### Features
+
+* **apps:** add td auth login --app-management and td apps list/view ([#264](https://github.com/Doist/todoist-cli/issues/264)) ([9797094](https://github.com/Doist/todoist-cli/commit/97970949bd78b882e3e79ef0155115907f6cfe9b))
+
 ## [1.44.0](https://github.com/Doist/todoist-cli/compare/v1.43.0...v1.44.0) (2026-04-13)
 
 ### Features
