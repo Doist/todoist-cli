@@ -154,7 +154,7 @@ interface FormatGroupedTaskListOptions {
     showUrl?: boolean
 }
 
-function formatGroupedTaskList({
+async function formatGroupedTaskList({
     tasks,
     project,
     sections,
@@ -162,7 +162,7 @@ function formatGroupedTaskList({
     collaboratorCache,
     raw = false,
     showUrl = false,
-}: FormatGroupedTaskListOptions): string {
+}: FormatGroupedTaskListOptions): Promise<string> {
     if (tasks.length === 0) {
         return 'No tasks found.'
     }
@@ -177,7 +177,7 @@ function formatGroupedTaskList({
         }
     }
 
-    function renderTask(task: Task, indent: number): void {
+    async function renderTask(task: Task, indent: number): Promise<void> {
         const assignee = formatAssignee({
             userId: task.responsibleUid,
             projectId: task.projectId,
@@ -185,7 +185,7 @@ function formatGroupedTaskList({
             cache: collaboratorCache,
         })
         lines.push(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 assignee: assignee ?? undefined,
                 raw,
@@ -196,7 +196,7 @@ function formatGroupedTaskList({
         lines.push('')
         const children = childrenMap.get(task.id) || []
         for (const child of children) {
-            renderTask(child, indent + 1)
+            await renderTask(child, indent + 1)
         }
     }
 
@@ -219,7 +219,7 @@ function formatGroupedTaskList({
         lines.push(chalk.italic.dim(`(no section) (${noSection.length})`))
         const topLevel = noSection.filter((t) => !t.parentId || !taskIds.has(t.parentId))
         for (const task of topLevel) {
-            renderTask(task, 0)
+            await renderTask(task, 0)
         }
     }
 
@@ -229,7 +229,7 @@ function formatGroupedTaskList({
             lines.push(`${section.name} (${sectionTasks.length})`)
             const topLevel = sectionTasks.filter((t) => !t.parentId || !taskIds.has(t.parentId))
             for (const task of topLevel) {
-                renderTask(task, 0)
+                await renderTask(task, 0)
             }
         }
     }
@@ -245,33 +245,35 @@ interface FormatFlatTaskListOptions {
     showUrl?: boolean
 }
 
-function formatFlatTaskList({
+async function formatFlatTaskList({
     tasks,
     projects,
     collaboratorCache,
     raw = false,
     showUrl = false,
-}: FormatFlatTaskListOptions): string {
+}: FormatFlatTaskListOptions): Promise<string> {
     if (tasks.length === 0) {
         return 'No tasks found.'
     }
 
-    const blocks = tasks.map((task) => {
-        const projectName = projects.get(task.projectId)?.name
-        const assignee = formatAssignee({
-            userId: task.responsibleUid,
-            projectId: task.projectId,
-            projects,
-            cache: collaboratorCache,
-        })
-        return formatTaskRow({
-            task,
-            projectName,
-            assignee: assignee ?? undefined,
-            raw,
-            showUrl,
-        })
-    })
+    const blocks = await Promise.all(
+        tasks.map((task) => {
+            const projectName = projects.get(task.projectId)?.name
+            const assignee = formatAssignee({
+                userId: task.responsibleUid,
+                projectId: task.projectId,
+                projects,
+                cache: collaboratorCache,
+            })
+            return formatTaskRow({
+                task,
+                projectName,
+                assignee: assignee ?? undefined,
+                raw,
+                showUrl,
+            })
+        }),
+    )
 
     return blocks.join('\n\n')
 }
@@ -375,7 +377,7 @@ export async function listTasksForProject(
         await collaboratorCache.preload(api, filtered, projects)
 
         console.log(
-            formatGroupedTaskList({
+            await formatGroupedTaskList({
                 tasks: filtered,
                 project: projectRes,
                 sections: sectionsRes.results,
@@ -392,7 +394,7 @@ export async function listTasksForProject(
         await collaboratorCache.preload(api, filtered, projects)
 
         console.log(
-            formatFlatTaskList({
+            await formatFlatTaskList({
                 tasks: filtered,
                 projects,
                 collaboratorCache,

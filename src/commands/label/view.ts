@@ -90,7 +90,7 @@ export async function viewLabel(nameOrId: string, options: PaginatedViewOptions)
             cache: collaboratorCache,
         })
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName: projectMap.get(task.projectId)?.name,
                 assignee: assignee ?? undefined,

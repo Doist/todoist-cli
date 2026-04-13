@@ -60,7 +60,7 @@ export interface FormatTaskRowOptions {
     accessible?: boolean
 }
 
-export function formatTaskRow({
+export async function formatTaskRow({
     task,
     projectName,
     assignee,
@@ -68,9 +68,9 @@ export function formatTaskRow({
     indent = 0,
     showUrl = false,
     accessible,
-}: FormatTaskRowOptions): string {
+}: FormatTaskRowOptions): Promise<string> {
     const a11y = accessible ?? isAccessible()
-    const content = raw ? task.content : renderMarkdown(task.content)
+    const content = raw ? task.content : await renderMarkdown(task.content)
     const baseIndent = '  '
     const extraIndent = '  '.repeat(indent)
     const line1 = baseIndent + extraIndent + content
@@ -102,16 +102,16 @@ export interface FormatTaskViewOptions {
     raw?: boolean
 }
 
-export function formatTaskView({
+export async function formatTaskView({
     task,
     project,
     parentTask,
     subtaskCount,
     full = false,
     raw = false,
-}: FormatTaskViewOptions): string {
+}: FormatTaskViewOptions): Promise<string> {
     const lines: string[] = []
-    const content = raw ? task.content : renderMarkdown(task.content)
+    const content = raw ? task.content : await renderMarkdown(task.content)
 
     lines.push(content)
     lines.push('')
@@ -149,7 +149,7 @@ export function formatTaskView({
     if (task.description) {
         lines.push('')
         lines.push('Description:')
-        const desc = raw ? task.description : renderMarkdown(task.description)
+        const desc = raw ? task.description : await renderMarkdown(task.description)
         lines.push(desc)
     }
 

@@ -78,7 +78,7 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
         const date = chalk.green(comment.postedAt.toISOString().split('T')[0])
         const hasAttachment = comment.fileAttachment !== null
         console.log(`${id}  ${date}${hasAttachment ? `  ${chalk.blue('[file]')}` : ''}`)
-        const content = options.raw ? comment.content : renderMarkdown(comment.content)
+        const content = options.raw ? comment.content : await renderMarkdown(comment.content)
         const truncated = truncateContent(content, maxLines)
         for (const line of truncated.split('\n')) {
             console.log(`  ${line}`)

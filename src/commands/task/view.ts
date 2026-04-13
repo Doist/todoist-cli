@@ -25,7 +25,7 @@ export async function viewTask(ref: string, options: ViewOptions): Promise<void>
     const subtaskCount = subtasks.length
 
     console.log(
-        formatTaskView({
+        await formatTaskView({
             task,
             project,
             parentTask,

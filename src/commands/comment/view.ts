@@ -29,7 +29,7 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
     if (url) console.log(`URL:     ${url}`)
     console.log('')
     console.log('Content:')
-    const content = options.raw ? comment.content : renderMarkdown(comment.content)
+    const content = options.raw ? comment.content : await renderMarkdown(comment.content)
     console.log(content)
 
     if (comment.fileAttachment) {
