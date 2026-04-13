@@ -41,7 +41,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 ## Quick Reference
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
-- Task lifecycle: `td task list/view/add/update/reschedule/move/complete/uncomplete/delete/browse`
+- Task lifecycle: `td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
 - Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td workspace ...`
@@ -75,6 +75,8 @@ td activity --type task --event completed
 ### Tasks
 ```bash
 td task add "Buy milk" --due tomorrow
+td task quickadd "Buy milk tomorrow p1 #Shopping"
+td task qa "Review PR @urgent +Alice"
 td task list --project "Work" --label "urgent" --priority p1
 td task view "Buy milk"
 td task add "Plan sprint" --project "Work" --section "Planning" --labels "urgent,review"
@@ -87,8 +89,13 @@ td task delete "Plan sprint" --yes
 td task browse "Plan sprint"
 ```
 
+Choosing between `task add` and `task quickadd`:
+- `td task quickadd` (alias `td task qa`) uses Todoist's natural-language parser. Inline syntax covers dates ("tomorrow at 2pm"), priority (`p1`–`p4`), project (`#Project`), labels (`@label`), sections (`/Section`), and assignee (`+Person` on shared projects). **Prefer `quickadd` when all task attributes can be expressed inline and you do not need to set additional structured fields** — it's one call and no name-resolution lookups are required.
+- Use `td task add` when you need flags that Quick Add syntax can't express (`--deadline`, `--description`, `--parent`, `--duration`, `--uncompletable`, `--order`), when the text is being composed programmatically, or when you need explicit `id:` / URL references for project/section/parent.
+- `td task quickadd` supports `--stdin`, `--json`, and `--dry-run` only; everything else is embedded in the text.
+
 Useful task flags:
-- `--stdin` reads the task description from stdin.
+- `--stdin` on `task add` reads the task description from stdin; on `task quickadd` it reads the full natural-language text from stdin.
 - `--parent`, `--section`, `--project`, `--workspace`, `--assignee`, `--labels`, `--due`, `--deadline`, `--duration`, and `--priority` cover most task workflows.
 - `td task complete --forever` stops recurrence; `td task update --no-deadline` clears deadlines; `td task move --no-parent` and `--no-section` detach from hierarchy.
 
