@@ -284,8 +284,8 @@ export const fixtures = {
             responsibleUid: null,
             isDeleted: false,
             progress: {
-                totalItemCount: 5,
-                completedItemCount: 2,
+                totalTaskCount: 5,
+                completedTaskCount: 2,
                 percentage: 40,
             },
             creatorUid: 'user-1',
@@ -306,8 +306,8 @@ export const fixtures = {
             responsibleUid: null,
             isDeleted: false,
             progress: {
-                totalItemCount: 3,
-                completedItemCount: 3,
+                totalTaskCount: 3,
+                completedTaskCount: 3,
                 percentage: 100,
             },
             creatorUid: 'user-1',
