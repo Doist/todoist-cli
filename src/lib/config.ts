@@ -6,7 +6,16 @@ export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.jso
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
-export type AuthFlag = 'read-only' | 'app-management' | 'backups'
+
+/**
+ * Canonical ordered list of login flags. Acts as the single source of truth —
+ * `AuthFlag`, `AUTH_FLAGS` (validation), and the display order of re-login
+ * suggestions in `buildReloginCommand` all derive from this one list. Adding
+ * a new flag only requires appending it here and wiring it into the login
+ * command; everything downstream stays consistent.
+ */
+export const AUTH_FLAG_ORDER = ['read-only', 'app-management', 'backups'] as const
+export type AuthFlag = (typeof AUTH_FLAG_ORDER)[number]
 
 export interface Config extends Record<string, unknown> {
     api_token?: string
@@ -27,7 +36,7 @@ const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
 ])
 
 const AUTH_MODES: ReadonlySet<AuthMode> = new Set(['read-only', 'read-write', 'unknown'])
-export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(['read-only', 'app-management', 'backups'])
+export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
 const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
 
 export async function readConfig(): Promise<Config> {
@@ -103,7 +112,7 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
                 (flag) => typeof flag === 'string' && AUTH_FLAGS.has(flag as AuthFlag),
             )
         ) {
-            issues.push('auth_flags must be an array of: read-only, app-management, backups')
+            issues.push(`auth_flags must be an array of: ${AUTH_FLAG_ORDER.join(', ')}`)
         }
     }
 

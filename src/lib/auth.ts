@@ -4,6 +4,7 @@ import {
     SECURE_STORE_DESCRIPTION,
 } from './secure-store.js'
 export {
+    AUTH_FLAG_ORDER,
     CONFIG_PATH,
     readConfig,
     writeConfig,

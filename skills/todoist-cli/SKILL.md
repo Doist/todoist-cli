@@ -33,12 +33,16 @@ td auth login
 td auth login --read-only
 td auth login --app-management
 td auth login --app-management --read-only
+td auth login --backups
+td auth login --read-only --backups
 td auth token
 td auth status
 td auth logout
 ```
 
 `--app-management` adds the `dev:app_console` OAuth scope to the requested grant. Combine with `--read-only` to keep data access read-only while still gaining app-management access. Granting this scope is opt-in because it allows the token to manage your registered Todoist apps (rotate secrets, edit webhooks, etc.).
+
+`--backups` adds the `backups:read` OAuth scope, required by `td backup list` and `td backup download`. It is opt-in for the same reason as `--app-management`: users who never pull backups should not grant access to them. Flags combine freely (e.g. `td auth login --read-only --backups`). When a backup command fails for lack of the scope, the error suggests a re-login command that preserves whichever flags were originally used.
 
 Tokens are stored in the OS credential manager when available, with fallback to `~/.config/todoist-cli/config.json`. `TODOIST_API_TOKEN` takes precedence over stored credentials.
 
@@ -53,6 +57,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Account and tooling: `td stats`, `td settings ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
 - Developer apps: `td apps list/view` (requires `td auth login --app-management`)
+- Backups: `td backup list/download` (requires `td auth login --backups`)
 
 ## References
 
@@ -215,6 +220,8 @@ td template import-id "Roadmap" --template-id product-launch --locale fr
 td backup list
 td backup download "2024-01-15_12:00" --output-file backup.zip
 ```
+
+The `backup` command surface requires the `backups:read` OAuth scope — re-run `td auth login --backups` to grant it. Without the scope, calls fail with an `AUTH_ERROR` whose hint preserves any previously used flags (e.g. a read-only user sees `td auth login --read-only --backups`).
 
 ### Developer Apps
 ```bash
