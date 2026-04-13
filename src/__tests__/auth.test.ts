@@ -252,6 +252,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete',
+                authFlags: [],
             })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
             expect(consoleSpy).toHaveBeenCalledWith(
@@ -283,6 +284,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
                 authScope: 'data:read',
+                authFlags: ['read-only'],
             })
         })
 
@@ -310,6 +312,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
+                authFlags: ['app-management'],
             })
         })
 
@@ -344,6 +347,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
                 authScope: 'data:read,dev:app_console',
+                authFlags: ['read-only', 'app-management'],
             })
         })
 
@@ -371,6 +375,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete,backups:read',
+                authFlags: ['backups'],
             })
         })
 
@@ -393,6 +398,7 @@ describe('auth command', () => {
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
                 authScope: 'data:read,backups:read',
+                authFlags: ['read-only', 'backups'],
             })
         })
 
@@ -423,6 +429,7 @@ describe('auth command', () => {
                 authMode: 'read-write',
                 authScope:
                     'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
+                authFlags: ['app-management', 'backups'],
             })
         })
 

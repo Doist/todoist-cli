@@ -27,6 +27,7 @@ export async function showStatus(options: { json?: boolean }): Promise<void> {
                     fullName: user.fullName,
                     authMode: metadata.authMode,
                     authScope: metadata.authScope,
+                    authFlags: metadata.authFlags,
                 },
                 null,
                 2,

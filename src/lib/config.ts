@@ -6,12 +6,14 @@ export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.jso
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
+export type AuthFlag = 'read-only' | 'app-management' | 'backups'
 
 export interface Config extends Record<string, unknown> {
     api_token?: string
     pendingSecureStoreClear?: boolean
     auth_mode?: AuthMode
     auth_scope?: string
+    auth_flags?: AuthFlag[]
     update_channel?: UpdateChannel
 }
 
@@ -20,10 +22,12 @@ const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
     'pendingSecureStoreClear',
     'auth_mode',
     'auth_scope',
+    'auth_flags',
     'update_channel',
 ])
 
 const AUTH_MODES: ReadonlySet<AuthMode> = new Set(['read-only', 'read-write', 'unknown'])
+export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(['read-only', 'app-management', 'backups'])
 const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
 
 export async function readConfig(): Promise<Config> {
@@ -90,6 +94,17 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
 
     if (config.auth_scope !== undefined && typeof config.auth_scope !== 'string') {
         issues.push('auth_scope must be a string')
+    }
+
+    if (config.auth_flags !== undefined) {
+        if (
+            !Array.isArray(config.auth_flags) ||
+            !config.auth_flags.every(
+                (flag) => typeof flag === 'string' && AUTH_FLAGS.has(flag as AuthFlag),
+            )
+        ) {
+            issues.push('auth_flags must be an array of: read-only, app-management, backups')
+        }
     }
 
     if (

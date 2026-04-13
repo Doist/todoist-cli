@@ -117,6 +117,52 @@ describe('backup list', () => {
             'missing the backups:read scope',
         )
     })
+
+    it('suggests `td auth login --backups` when no prior flags were recorded', async () => {
+        const program = createProgram()
+
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete',
+            source: 'secure-store',
+        })
+
+        await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
+            hints: ['Re-authenticate to grant backup access: td auth login --backups'],
+        })
+    })
+
+    it('preserves prior --read-only flag in the suggested re-login command', async () => {
+        const program = createProgram()
+
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-only',
+            authScope: 'data:read',
+            authFlags: ['read-only'],
+            source: 'secure-store',
+        })
+
+        await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
+            hints: ['Re-authenticate to grant backup access: td auth login --read-only --backups'],
+        })
+    })
+
+    it('preserves prior --app-management flag in the suggested re-login command', async () => {
+        const program = createProgram()
+
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
+            authFlags: ['app-management'],
+            source: 'secure-store',
+        })
+
+        await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
+            hints: [
+                'Re-authenticate to grant backup access: td auth login --app-management --backups',
+            ],
+        })
+    })
 })
 
 describe('backup download', () => {

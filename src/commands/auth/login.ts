@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import open from 'open'
-import { saveApiToken } from '../../lib/auth.js'
+import { saveApiToken, type AuthFlag } from '../../lib/auth.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken, resolveAuthScope } from '../../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../lib/pkce.js'
@@ -31,9 +31,14 @@ export async function loginWithOAuth(
         console.log(chalk.dim('Exchanging code for token...'))
 
         const accessToken = await exchangeCodeForToken(code, codeVerifier, port)
+        const authFlags: AuthFlag[] = []
+        if (options.readOnly) authFlags.push('read-only')
+        if (options.appManagement) authFlags.push('app-management')
+        if (options.backups) authFlags.push('backups')
         const result = await saveApiToken(accessToken, {
             authMode: options.readOnly ? 'read-only' : 'read-write',
             authScope: resolveAuthScope(options),
+            authFlags,
         })
 
         console.log(chalk.green('✓'), 'Successfully logged in!')

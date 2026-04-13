@@ -7,12 +7,20 @@ export {
     CONFIG_PATH,
     readConfig,
     writeConfig,
+    type AuthFlag,
     type AuthMode,
     type Config,
     type UpdateChannel,
 } from './config.js'
 
-import { CONFIG_PATH, readConfig, writeConfig, type AuthMode, type Config } from './config.js'
+import {
+    CONFIG_PATH,
+    readConfig,
+    writeConfig,
+    type AuthFlag,
+    type AuthMode,
+    type Config,
+} from './config.js'
 import { CliError } from './errors.js'
 
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
@@ -20,12 +28,14 @@ export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 export interface AuthMetadata {
     authMode: AuthMode
     authScope?: string
+    authFlags?: AuthFlag[]
     source: 'env' | 'secure-store' | 'config-file'
 }
 
 export interface SaveApiTokenOptions {
     authMode?: AuthMode
     authScope?: string
+    authFlags?: AuthFlag[]
 }
 
 export interface AuthProbeResult {
@@ -133,6 +143,7 @@ export async function probeApiToken(): Promise<AuthProbeResult> {
             metadata: {
                 authMode: config.auth_mode ?? 'unknown',
                 authScope: config.auth_scope,
+                authFlags: config.auth_flags,
                 source: 'config-file',
             },
         }
@@ -151,6 +162,7 @@ export async function probeApiToken(): Promise<AuthProbeResult> {
                 metadata: {
                     authMode: config.auth_mode ?? 'unknown',
                     authScope: config.auth_scope,
+                    authFlags: config.auth_flags,
                     source: 'secure-store',
                 },
             }
@@ -194,6 +206,7 @@ export async function saveApiToken(
     delete config.pendingSecureStoreClear
     config.auth_mode = options.authMode
     config.auth_scope = options.authScope
+    config.auth_flags = options.authFlags
     await writeConfig(config)
     return {
         storage: 'config-file',
@@ -233,6 +246,7 @@ export async function getAuthMetadata(): Promise<AuthMetadata> {
         return {
             authMode: config.auth_mode,
             authScope: config.auth_scope,
+            authFlags: config.auth_flags,
             source: getConfigToken(config) ? 'config-file' : 'secure-store',
         }
     }
@@ -275,11 +289,12 @@ function withAuthMetadata(config: Config, options: SaveApiTokenOptions): Config 
         ...config,
         auth_mode: options.authMode,
         auth_scope: options.authScope,
+        auth_flags: options.authFlags,
     }
 }
 
 function withoutAuthMetadata(config: Config): Config {
-    const { auth_mode: _mode, auth_scope: _scope, ...rest } = config
+    const { auth_mode: _mode, auth_scope: _scope, auth_flags: _flags, ...rest } = config
     return rest
 }
 
