@@ -66,6 +66,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'downloadBackup',
     // Apps (developer app management — gated by dev:app_console scope)
     'getApps',
+    'getApp',
     // Sync is handled separately via payload inspection
     'sync',
 ])

@@ -54,6 +54,19 @@ const APP_B = {
     appTokenScopes: ['data:read'],
 }
 
+const APP_A_DETAIL = {
+    ...APP_A,
+    description: 'Helps you manage tasks from VS Code',
+    appTokenScopes: ['data:read', 'data:read_write'],
+    iconMd: 'https://cdn.example.com/icon.png',
+    userCount: 42,
+}
+
+const APP_B_DETAIL = {
+    ...APP_B,
+    userCount: 7,
+}
+
 describe('apps list', () => {
     let mockApi: MockApi
 
@@ -122,6 +135,194 @@ describe('apps list', () => {
         expect(lines).toHaveLength(2)
         expect(JSON.parse(lines[0]).id).toBe('9909')
         expect(JSON.parse(lines[1]).id).toBe('9910')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('apps view', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('resolves id:N directly via getApp without listing', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        expect(mockApi.getApp).toHaveBeenCalledWith('9909')
+        expect(mockApi.getApps).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves a raw numeric id via getApp directly (no listing roundtrip)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', '9909'])
+
+        expect(mockApi.getApp).toHaveBeenCalledWith('9909')
+        expect(mockApi.getApps).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves a name via fuzzy match then re-fetches via getApp to enrich with userCount', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApps.mockResolvedValue([APP_A, APP_B])
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'Todoist for VS Code'])
+
+        // Listing roundtrip for the name match, then a single detail fetch
+        // (no third call from inside viewApp).
+        expect(mockApi.getApps).toHaveBeenCalledTimes(1)
+        expect(mockApi.getApp).toHaveBeenCalledTimes(1)
+        expect(mockApi.getApp).toHaveBeenCalledWith('9909')
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Todoist for VS Code')
+        expect(output).toContain('ID:             9909')
+        expect(output).toContain('Status:         public')
+        expect(output).toContain('Users:          42')
+        expect(output).toContain('Created:        2020-03-13')
+        expect(output).toContain('Service URL:    http://localhost')
+        expect(output).toContain('OAuth redirect: vscode://doist.todoist-vs-code/auth-complete')
+        expect(output).toContain('Token scopes:   data:read, data:read_write')
+        expect(output).toContain('Helps you manage tasks from VS Code')
+        consoleSpy.mockRestore()
+    })
+
+    it('does not call getApp twice on id:N (no redundant detail fetch)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        expect(mockApi.getApp).toHaveBeenCalledTimes(1)
+        consoleSpy.mockRestore()
+    })
+
+    it('shows fallback strings for null fields and (none) for empty token scopes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9910'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Service URL:    (none)')
+        expect(output).toContain('OAuth redirect: (none)')
+        expect(output).toContain('Token scopes:   data:read')
+        expect(output).toContain('(no description)')
+        consoleSpy.mockRestore()
+    })
+
+    it('throws AMBIGUOUS_APP when a substring matches multiple apps', async () => {
+        const program = createProgram()
+
+        mockApi.getApps.mockResolvedValue([
+            { ...APP_A, displayName: 'Todoist for VS Code' },
+            { ...APP_B, displayName: 'Todoist for Twist' },
+        ])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'view', 'todoist for']),
+        ).rejects.toMatchObject({ code: 'AMBIGUOUS_APP' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('throws APP_NOT_FOUND when nothing matches', async () => {
+        const program = createProgram()
+
+        mockApi.getApps.mockResolvedValue([APP_A])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'view', 'nope']),
+        ).rejects.toMatchObject({ code: 'APP_NOT_FOUND' })
+    })
+
+    it('converts a wrapped 404 from getApp into APP_NOT_FOUND for a non-existent numeric id', async () => {
+        const program = createProgram()
+
+        // The api Proxy in core.ts wraps TodoistRequestError(404) → CliError('NOT_FOUND').
+        // resolveAppRef must catch that wrapped form too, not just the raw SDK error.
+        mockApi.getApp.mockRejectedValue(new CliError('NOT_FOUND', 'HTTP 404: Not Found'))
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'view', '99999999']),
+        ).rejects.toMatchObject({ code: 'APP_NOT_FOUND' })
+        expect(mockApi.getApps).not.toHaveBeenCalled()
+    })
+
+    it('does not attempt getApp() for alphanumeric refs (avoids the 400 from the apps endpoint)', async () => {
+        const program = createProgram()
+
+        mockApi.getApps.mockResolvedValue([APP_A])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'view', 'doesnotexist-xyz123']),
+        ).rejects.toMatchObject({ code: 'APP_NOT_FOUND' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('treats empty-string serviceUrl/oauthRedirectUri the same as null', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            serviceUrl: '',
+            oauthRedirectUri: '',
+        })
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Service URL:    (none)')
+        expect(output).toContain('OAuth redirect: (none)')
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs full JSON of AppWithUserCount with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0] as string
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('9909')
+        expect(parsed.userCount).toBe(42)
+        expect(parsed.appTokenScopes).toEqual(['data:read', 'data:read_write'])
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs single-line JSON with --ndjson', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--ndjson'])
+
+        const output = consoleSpy.mock.calls[0][0] as string
+        expect(output.split('\n')).toHaveLength(1)
+        expect(JSON.parse(output).id).toBe('9909')
         consoleSpy.mockRestore()
     })
 })

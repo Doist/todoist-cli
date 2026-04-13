@@ -1,4 +1,4 @@
-import { TodoistApi, TodoistRequestError } from '@doist/todoist-sdk'
+import { type AppWithUserCount, TodoistApi, TodoistRequestError } from '@doist/todoist-sdk'
 import type { Project, Task } from './api/core.js'
 import {
     fetchWorkspaceFolders,
@@ -280,6 +280,55 @@ export async function resolveProjectRef(api: TodoistApi, ref: string): Promise<P
         (p) => p.name,
         'project',
     )
+}
+
+/**
+ * App IDs are pure-numeric strings (the apps endpoint 400s on alphanumeric IDs
+ * — unlike most entities, where IDs can mix letters and digits). So we can't
+ * use the generic `resolveRef`'s `looksLikeRawId` fallback, which would
+ * happily try `getApp('abc123')` and surface a confusing 400.
+ *
+ * Always returns `AppWithUserCount` — the only caller (`apps view`) wants the
+ * detail record, and folding the guarantee in here avoids a redundant fetch
+ * on the id and raw-numeric paths (which already return the detail shape).
+ *
+ * Resolution order:
+ *  1. `id:N` prefix → `getApp(N)` directly
+ *  2. Pure-numeric ref → `getApp(ref)` directly (skip the listing roundtrip)
+ *  3. Otherwise → `getApps()` then exact / substring match on `displayName`
+ *     via the in-memory `resolveFromList`, then `getApp(matchedId)` to
+ *     enrich with `userCount`
+ */
+export async function resolveAppRef(api: TodoistApi, ref: string): Promise<AppWithUserCount> {
+    if (!ref.trim()) {
+        throw new CliError('INVALID_APP', 'app reference cannot be empty.')
+    }
+
+    if (isIdRef(ref)) {
+        return api.getApp(extractId(ref))
+    }
+
+    if (/^\d+$/.test(ref)) {
+        try {
+            return await api.getApp(ref)
+        } catch (error) {
+            // The api Proxy in core.ts already wraps TodoistRequestError into a
+            // generic CliError('NOT_FOUND', …). Catch both shapes so the
+            // user-facing error names the entity (App "…" not found) instead
+            // of the raw HTTP message.
+            if (error instanceof CliError && error.code === 'NOT_FOUND') {
+                throw new CliError('APP_NOT_FOUND', `App "${ref}" not found.`)
+            }
+            if (error instanceof TodoistRequestError && error.httpStatusCode === 404) {
+                throw new CliError('APP_NOT_FOUND', `App "${ref}" not found.`)
+            }
+            throw error
+        }
+    }
+
+    const apps = await api.getApps()
+    const matched = resolveFromList(ref, apps, (a) => a.displayName, 'app')
+    return api.getApp(matched.id)
 }
 
 export async function resolveProjectId(api: TodoistApi, ref: string): Promise<string> {

@@ -95,6 +95,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
         // Apps
         getApps: { text: 'Loading apps...', color: 'blue' },
+        getApp: { text: 'Loading app...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
