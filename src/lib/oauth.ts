@@ -4,19 +4,31 @@ import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
 const OAUTH_TOKEN_URL = 'https://todoist.com/oauth/access_token'
-export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete,backups:read'
-export const READ_ONLY_SCOPES = 'data:read,backups:read'
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
+export const READ_ONLY_SCOPES = 'data:read'
 export const APP_MANAGEMENT_SCOPE = 'dev:app_console'
+export const BACKUPS_SCOPE = 'backups:read'
 
-export function resolveAuthScope(options: { readOnly?: boolean; appManagement?: boolean }): string {
-    const baseScope = options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES
-    return options.appManagement ? `${baseScope},${APP_MANAGEMENT_SCOPE}` : baseScope
+export function resolveAuthScope(options: {
+    readOnly?: boolean
+    appManagement?: boolean
+    backups?: boolean
+}): string {
+    const parts = [options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES]
+    if (options.appManagement) parts.push(APP_MANAGEMENT_SCOPE)
+    if (options.backups) parts.push(BACKUPS_SCOPE)
+    return parts.join(',')
 }
 
 export function buildAuthorizationUrl(
     codeChallenge: string,
     state: string,
-    options: { readOnly?: boolean; appManagement?: boolean; port?: number } = {},
+    options: {
+        readOnly?: boolean
+        appManagement?: boolean
+        backups?: boolean
+        port?: number
+    } = {},
 ): string {
     const scope = resolveAuthScope(options)
     const redirectUri = getRedirectUri(options.port ?? DEFAULT_PORT)

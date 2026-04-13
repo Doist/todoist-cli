@@ -230,6 +230,7 @@ describe('doctor command', () => {
             JSON.stringify({
                 pendingSecureStoreClear: 'yes',
                 auth_mode: 'admin',
+                auth_flags: ['read-only', 'not-a-flag'],
                 update_channel: 'beta',
                 extra_setting: true,
             }),
@@ -252,6 +253,9 @@ describe('doctor command', () => {
         expect(configWarning).toContain('contains unrecognized key "extra_setting"')
         expect(configWarning).toContain('pendingSecureStoreClear must be a boolean')
         expect(configWarning).toContain('auth_mode must be one of: read-only, read-write, unknown')
+        expect(configWarning).toContain(
+            'auth_flags must be an array of: read-only, app-management, backups',
+        )
         expect(configWarning).toContain('update_channel must be one of: stable, pre-release')
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS Authenticated as person@example.com via secure-store'),

@@ -9,10 +9,14 @@ export function registerAuthCommand(program: Command): void {
 
     auth.command('login')
         .description('Authenticate with Todoist via OAuth')
-        .option('--read-only', 'Authenticate with read-only scope (data:read,backups:read)')
+        .option('--read-only', 'Authenticate with read-only scope (data:read)')
         .option(
             '--app-management',
             'Also request the dev:app_console scope (manage your Todoist apps). Combine with --read-only if desired.',
+        )
+        .option(
+            '--backups',
+            'Also request the backups:read scope (list/download Todoist backups). Combine with --read-only if desired.',
         )
         .action(loginWithOAuth)
 

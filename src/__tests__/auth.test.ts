@@ -251,7 +251,8 @@ describe('auth command', () => {
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete,backups:read',
+                authScope: 'data:read_write,data:delete,project:delete',
+                authFlags: [],
             })
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
             expect(consoleSpy).toHaveBeenCalledWith(
@@ -282,7 +283,8 @@ describe('auth command', () => {
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
-                authScope: 'data:read,backups:read',
+                authScope: 'data:read',
+                authFlags: ['read-only'],
             })
         })
 
@@ -305,12 +307,12 @@ describe('auth command', () => {
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: undefined, appManagement: true, port: 8765 },
+                { readOnly: undefined, appManagement: true, backups: undefined, port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
-                authScope:
-                    'data:read_write,data:delete,project:delete,backups:read,dev:app_console',
+                authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
+                authFlags: ['app-management'],
             })
         })
 
@@ -340,11 +342,94 @@ describe('auth command', () => {
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: true, appManagement: true, port: 8765 },
+                { readOnly: true, appManagement: true, backups: undefined, port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
-                authScope: 'data:read,backups:read,dev:app_console',
+                authScope: 'data:read,dev:app_console',
+                authFlags: ['read-only', 'app-management'],
+            })
+        })
+
+        it('appends backups:read scope when --backups is set', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_backups'
+            const accessToken = 'oauth_access_token_backups'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--backups'])
+
+            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
+                'test_code_challenge',
+                'test_state',
+                { readOnly: undefined, appManagement: undefined, backups: true, port: 8765 },
+            )
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope: 'data:read_write,data:delete,project:delete,backups:read',
+                authFlags: ['backups'],
+            })
+        })
+
+        it('combines --backups with --read-only', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_backups_ro'
+            const accessToken = 'oauth_access_token_backups_ro'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--backups', '--read-only'])
+
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-only',
+                authScope: 'data:read,backups:read',
+                authFlags: ['read-only', 'backups'],
+            })
+        })
+
+        it('combines --backups with --app-management', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_backups_app'
+            const accessToken = 'oauth_access_token_backups_app'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'login',
+                '--backups',
+                '--app-management',
+            ])
+
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope:
+                    'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
+                authFlags: ['app-management', 'backups'],
             })
         })
 

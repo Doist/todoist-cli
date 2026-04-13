@@ -34,7 +34,7 @@ describe('permissions', () => {
     it('allows writes in read-write mode', async () => {
         mockGetAuthMetadata.mockResolvedValue({
             authMode: 'read-write',
-            authScope: 'data:read_write,data:delete,project:delete,backups:read',
+            authScope: 'data:read_write,data:delete,project:delete',
             source: 'secure-store',
         })
 

@@ -6,21 +6,47 @@ describe('buildAuthorizationUrl', () => {
         const url = buildAuthorizationUrl('challenge', 'state')
         const params = new URL(url).searchParams
 
-        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete,backups:read')
+        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete')
     })
 
     it('uses read-only scope when requested', () => {
         const url = buildAuthorizationUrl('challenge', 'state', { readOnly: true })
         const params = new URL(url).searchParams
 
-        expect(params.get('scope')).toBe('data:read,backups:read')
+        expect(params.get('scope')).toBe('data:read')
     })
 
     it('uses read-write scope when readOnly is false', () => {
         const url = buildAuthorizationUrl('challenge', 'state', { readOnly: false })
         const params = new URL(url).searchParams
 
+        expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete')
+    })
+
+    it('appends backups:read when --backups is set', () => {
+        const url = buildAuthorizationUrl('challenge', 'state', { backups: true })
+        const params = new URL(url).searchParams
+
         expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete,backups:read')
+    })
+
+    it('appends backups:read to read-only scope when combined', () => {
+        const url = buildAuthorizationUrl('challenge', 'state', { readOnly: true, backups: true })
+        const params = new URL(url).searchParams
+
+        expect(params.get('scope')).toBe('data:read,backups:read')
+    })
+
+    it('combines --backups with --app-management', () => {
+        const url = buildAuthorizationUrl('challenge', 'state', {
+            appManagement: true,
+            backups: true,
+        })
+        const params = new URL(url).searchParams
+
+        expect(params.get('scope')).toBe(
+            'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
+        )
     })
 
     it('uses the specified port in redirect_uri', () => {
