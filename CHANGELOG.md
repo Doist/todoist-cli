@@ -1,3 +1,9 @@
+## [1.46.0](https://github.com/Doist/todoist-cli/compare/v1.45.0...v1.46.0) (2026-04-13)
+
+### Features
+
+* **auth:** make backups:read opt-in and persist login flags ([#265](https://github.com/Doist/todoist-cli/issues/265)) ([ad4debf](https://github.com/Doist/todoist-cli/commit/ad4debfe028f8497daadef57302e37207f857f2c))
+
 ## [1.45.0](https://github.com/Doist/todoist-cli/compare/v1.44.0...v1.45.0) (2026-04-13)
 
 ### Features
