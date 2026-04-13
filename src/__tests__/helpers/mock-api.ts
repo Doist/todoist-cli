@@ -180,6 +180,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         // Backups
         getBackups: vi.fn().mockResolvedValue([]),
         downloadBackup: vi.fn(),
+        // Apps
+        getApps: vi.fn().mockResolvedValue([]),
         ...overrides,
     } as unknown as MockApi
 }

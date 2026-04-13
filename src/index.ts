@@ -102,6 +102,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage authentication',
         async () => (await import('./commands/auth/index.js')).registerAuthCommand,
     ],
+    apps: [
+        'Manage your registered Todoist developer apps',
+        async () => (await import('./commands/apps/index.js')).registerAppsCommand,
+    ],
     backup: [
         'Manage backups',
         async () => (await import('./commands/backup/index.js')).registerBackupCommand,

@@ -93,6 +93,8 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         // Backups
         getBackups: { text: 'Loading backups...', color: 'blue' },
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
+        // Apps
+        getApps: { text: 'Loading apps...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
@@ -161,10 +163,26 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
     })
 }
 
-function wrapApiError(error: unknown): Error {
+function isInsufficientScopeError(error: TodoistRequestError): boolean {
+    if (error.httpStatusCode !== 403) return false
+    const data = error.responseData
+    if (typeof data !== 'object' || data === null) return false
+    return (data as { error_tag?: unknown }).error_tag === 'AUTH_INSUFFICIENT_TOKEN_SCOPE'
+}
+
+export function wrapApiError(error: unknown): Error {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode
+        if (status === 403 && isInsufficientScopeError(error)) {
+            return new CliError(
+                'MISSING_SCOPE',
+                'Your token is missing the OAuth scope required for this command.',
+                [
+                    'For app management commands: re-run `td auth login --app-management` (combine with --read-only if desired).',
+                ],
+            )
+        }
         if (status === 401 || status === 403) {
             return new CliError('AUTH_ERROR', error.message, [
                 'Check your API token: td auth status',

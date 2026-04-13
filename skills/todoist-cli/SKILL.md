@@ -52,6 +52,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Collaboration: `td comment ...`, `td notification ...`, `td reminder ...`
 - Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Account and tooling: `td stats`, `td settings ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
+- Developer apps: `td apps list` (requires `td auth login --app-management`)
 
 ## References
 
@@ -214,6 +215,14 @@ td template import-id "Roadmap" --template-id product-launch --locale fr
 td backup list
 td backup download "2024-01-15_12:00" --output-file backup.zip
 ```
+
+### Developer Apps
+```bash
+td apps list
+td apps list --json
+```
+
+The `apps` command surface manages the user's registered Todoist developer apps (integrations). All `apps` subcommands require the `dev:app_console` OAuth scope — re-run `td auth login --app-management` to grant it. Without the scope, calls fail with a `MISSING_SCOPE` error pointing at the same hint. `td apps list` in plain mode shows id and display name with a dim description; `--json` / `--ndjson` dump the full app payload (id, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
 
 ### Settings, Stats, And Utilities
 ```bash
