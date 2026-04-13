@@ -1,5 +1,6 @@
 import type { Task } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
+import { prerenderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatJson, formatTaskView } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
@@ -23,6 +24,10 @@ export async function viewTask(ref: string, options: ViewOptions): Promise<void>
 
     const { results: subtasks } = await api.getTasks({ parentId: task.id })
     const subtaskCount = subtasks.length
+
+    if (!options.raw) {
+        await prerenderMarkdown([task.content, task.description])
+    }
 
     console.log(
         formatTaskView({

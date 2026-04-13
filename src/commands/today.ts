@@ -4,6 +4,7 @@ import { getApi, type Project } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
+import { prerenderMarkdown } from '../lib/markdown.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -89,6 +90,10 @@ export async function showToday(options: TodayOptions): Promise<void> {
 
     const collaboratorCache = new CollaboratorCache()
     await collaboratorCache.preload(api, allTodayTasks, filterResult.projects)
+
+    if (!options.raw) {
+        await prerenderMarkdown(allTodayTasks.map((t) => t.content))
+    }
 
     if (overdue.length === 0 && dueToday.length === 0) {
         console.log('No tasks due today.')

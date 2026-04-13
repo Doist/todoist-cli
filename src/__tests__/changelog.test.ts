@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs/promises')
 vi.mock('chalk')
-vi.mock('../lib/markdown.js', () => ({
-    renderMarkdown: (text: string) => text,
-}))
 
 import { readFile } from 'node:fs/promises'
 import { registerChangelogCommand } from '../commands/changelog.js'

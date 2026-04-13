@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
+import { prerenderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -81,6 +82,8 @@ export async function viewLabel(nameOrId: string, options: PaginatedViewOptions)
 
     const collaboratorCache = new CollaboratorCache()
     await collaboratorCache.preload(api, tasks, projectMap)
+
+    await prerenderMarkdown(tasks.map((t) => t.content))
 
     for (const task of tasks) {
         const assignee = formatAssignee({

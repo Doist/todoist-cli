@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import { getApi, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
 import { CliError } from './errors.js'
+import { prerenderMarkdown } from './markdown.js'
 import type { PaginatedViewOptions } from './options.js'
 import {
     formatNextCursorFooter,
@@ -363,6 +364,10 @@ export async function listTasksForProject(
     }
 
     const collaboratorCache = new CollaboratorCache()
+
+    if (!options.raw) {
+        await prerenderMarkdown(filtered.map((t) => t.content))
+    }
 
     if (projectId) {
         // When listing tasks for a specific project, we only need that project's info

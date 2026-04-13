@@ -58,14 +58,13 @@
     "commander": "14.0.3",
     "date-fns": "4.1.0",
     "marked": "18.0.0",
-    "marked-terminal": "7.3.0",
+    "marked-terminal-renderer": "2.2.0",
     "open": "11.0.0",
     "yocto-spinner": "1.1.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/git": "10.0.1",
-    "@types/marked-terminal": "6.1.1",
     "@types/node": "25.5.2",
     "conventional-changelog-conventionalcommits": "9.3.1",
     "lefthook": "2.1.5",

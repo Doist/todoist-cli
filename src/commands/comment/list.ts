@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { renderMarkdown } from '../../lib/markdown.js'
+import { prerenderMarkdown, renderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -72,6 +72,10 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
     }
 
     const maxLines = options.lines ? parseInt(options.lines, 10) : 3
+
+    if (!options.raw) {
+        await prerenderMarkdown(comments.map((c) => c.content))
+    }
 
     for (const comment of comments) {
         const id = chalk.dim(comment.id)

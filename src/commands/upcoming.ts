@@ -4,6 +4,7 @@ import { getApi, type Task } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
+import { prerenderMarkdown } from '../lib/markdown.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
@@ -93,6 +94,8 @@ export async function showUpcoming(
 
     const collaboratorCache = new CollaboratorCache()
     await collaboratorCache.preload(api, relevantTasks, filterResult.projects)
+
+    await prerenderMarkdown(relevantTasks.map((t) => t.content))
 
     if (relevantTasks.length === 0) {
         console.log(`No tasks due in the next ${days} day${days === 1 ? '' : 's'}.`)

@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
+import { prerenderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatJson, formatNdjson, formatTaskRow } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
@@ -93,6 +94,7 @@ export async function viewProject(
         console.log(`URL:      ${projectUrl(displayProject.id)}`)
 
         if (fullData.tasks.length > 0) {
+            await prerenderMarkdown(fullData.tasks.map((t) => t.content))
             console.log('')
             console.log(chalk.dim(`--- Tasks (${fullData.tasks.length}) ---`))
             for (const task of fullData.tasks) {
@@ -173,6 +175,7 @@ export async function viewProject(
     console.log(`URL:      ${projectUrl(project.id)}`)
 
     if (tasks.length > 0) {
+        await prerenderMarkdown(tasks.map((t) => t.content))
         console.log('')
         console.log(chalk.dim(`--- Tasks (${tasks.length}) ---`))
         for (const task of tasks) {
