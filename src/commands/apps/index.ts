@@ -15,6 +15,12 @@ Examples:
   td apps view "Todoist for VS Code"
   td apps view id:9909
   td apps view 9909
+  td apps view id:9909 --include-secrets
+  td apps view id:9909 --json --include-secrets
+
+Sensitive values (client id, client secret, verification token, test token,
+distribution token) are hidden by default. Pass --include-secrets to fetch
+and reveal them — they are not pulled onto your machine unless you do.
 
 Requires authenticating with the dev:app_console scope:
   td auth login --app-management`,

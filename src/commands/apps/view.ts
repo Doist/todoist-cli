@@ -19,24 +19,24 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     const app = await resolveAppRef(api, ref)
     const reveal = Boolean(options.includeSecrets)
 
-    // Always fetch: secrets (for the public clientId) and webhook config.
-    // Verification / test / distribution tokens are only useful when reveal is
-    // on, so gate the fetch to avoid paying for data we can't display.
-    const [secrets, webhook, verification, testToken, distribution] = await Promise.all([
-        api.getAppSecrets(app.id),
+    // Webhook config is always shown (callback URL is user-supplied, not a
+    // secret). Everything else is gated on `reveal` so we never transport
+    // secret data onto the user's machine unless they asked for it — this
+    // includes `getAppSecrets`, whose payload also carries the `clientId`.
+    // The public `client_id` is only available via that endpoint today, so
+    // gating the call also gates the visible Client ID line.
+    const [webhook, secrets, verification, testToken, distribution] = await Promise.all([
         api.getAppWebhook(app.id),
+        reveal ? api.getAppSecrets(app.id) : Promise.resolve(null),
         reveal ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
         reveal ? api.getAppTestToken(app.id) : Promise.resolve(null),
         reveal ? api.getAppDistributionToken(app.id) : Promise.resolve(null),
     ])
 
     if (options.json || options.ndjson) {
-        const payload: Record<string, unknown> = {
-            ...app,
-            clientId: secrets.clientId,
-            webhook,
-        }
-        if (reveal) {
+        const payload: Record<string, unknown> = { ...app, webhook }
+        if (reveal && secrets) {
+            payload.clientId = secrets.clientId
             payload.clientSecret = secrets.clientSecret
             payload.verificationToken = verification?.verificationToken ?? null
             payload.distributionToken = distribution?.distributionToken ?? null
@@ -67,9 +67,9 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     }
 
     console.log('')
-    console.log(`  Client ID:          ${secrets.clientId}`)
 
-    if (reveal) {
+    if (reveal && secrets) {
+        console.log(`  Client ID:          ${secrets.clientId}`)
         console.log(`  Client secret:      ${secrets.clientSecret}`)
         console.log(`  Verification token: ${verification?.verificationToken ?? '(none)'}`)
         const accessToken = testToken?.accessToken
@@ -78,6 +78,7 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
         )
         console.log(`  Distribution token: ${distribution?.distributionToken ?? '(none)'}`)
     } else {
+        console.log(hiddenLine('Client ID:          '))
         console.log(hiddenLine('Client secret:      '))
         console.log(hiddenLine('Verification token: '))
         console.log(hiddenLine('Test token:         '))
