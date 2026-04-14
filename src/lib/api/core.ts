@@ -93,9 +93,16 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         // Backups
         getBackups: { text: 'Loading backups...', color: 'blue' },
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
-        // Apps
+        // Apps — all the per-app detail methods share the same 'Loading app...'
+        // label so the concurrent enrichment batch in `td apps view` reads as a
+        // single spinner rather than several labels flashing past.
         getApps: { text: 'Loading apps...', color: 'blue' },
         getApp: { text: 'Loading app...', color: 'blue' },
+        getAppSecrets: { text: 'Loading app...', color: 'blue' },
+        getAppVerificationToken: { text: 'Loading app...', color: 'blue' },
+        getAppTestToken: { text: 'Loading app...', color: 'blue' },
+        getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
+        getAppWebhook: { text: 'Loading app...', color: 'blue' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
@@ -188,6 +195,11 @@ type ScopeGroup = 'app-management' | 'backups' | 'standard'
 const METHOD_SCOPE_GROUP: Record<string, ScopeGroup> = {
     getApps: 'app-management',
     getApp: 'app-management',
+    getAppSecrets: 'app-management',
+    getAppVerificationToken: 'app-management',
+    getAppTestToken: 'app-management',
+    getAppDistributionToken: 'app-management',
+    getAppWebhook: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
 }

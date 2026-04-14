@@ -191,13 +191,13 @@ describe('apps view', () => {
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Todoist for VS Code')
-        expect(output).toContain('ID:             9909')
-        expect(output).toContain('Status:         public')
-        expect(output).toContain('Users:          42')
-        expect(output).toContain('Created:        2020-03-13')
-        expect(output).toContain('Service URL:    http://localhost')
-        expect(output).toContain('OAuth redirect: vscode://doist.todoist-vs-code/auth-complete')
-        expect(output).toContain('Token scopes:   data:read, data:read_write')
+        expect(output).toContain('ID:                 9909')
+        expect(output).toContain('Status:             public')
+        expect(output).toContain('Users:              42')
+        expect(output).toContain('Created:            2020-03-13')
+        expect(output).toContain('Service URL:        http://localhost')
+        expect(output).toContain('OAuth redirect:     vscode://doist.todoist-vs-code/auth-complete')
+        expect(output).toContain('Token scopes:       data:read, data:read_write')
         expect(output).toContain('Helps you manage tasks from VS Code')
         consoleSpy.mockRestore()
     })
@@ -223,9 +223,9 @@ describe('apps view', () => {
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9910'])
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Service URL:    (none)')
-        expect(output).toContain('OAuth redirect: (none)')
-        expect(output).toContain('Token scopes:   data:read')
+        expect(output).toContain('Service URL:        (none)')
+        expect(output).toContain('OAuth redirect:     (none)')
+        expect(output).toContain('Token scopes:       data:read')
         expect(output).toContain('(no description)')
         consoleSpy.mockRestore()
     })
@@ -290,7 +290,7 @@ describe('apps view', () => {
         expect(mockApi.getApp).toHaveBeenCalledWith('9909')
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Todoist for VS Code')
-        expect(output).toContain('ID:             9909')
+        expect(output).toContain('ID:                 9909')
         consoleSpy.mockRestore()
     })
 
@@ -318,8 +318,8 @@ describe('apps view', () => {
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Service URL:    (none)')
-        expect(output).toContain('OAuth redirect: (none)')
+        expect(output).toContain('Service URL:        (none)')
+        expect(output).toContain('OAuth redirect:     (none)')
         consoleSpy.mockRestore()
     })
 
@@ -350,6 +350,192 @@ describe('apps view', () => {
         const output = consoleSpy.mock.calls[0][0] as string
         expect(output.split('\n')).toHaveLength(1)
         expect(JSON.parse(output).id).toBe('9909')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('apps view — enriched fields', () => {
+    let mockApi: MockApi
+
+    const SECRETS = { clientId: 'client-abc', clientSecret: 'secret-def' }
+    const VERIFICATION = { verificationToken: 'verify-ghi' }
+    const DISTRIBUTION = { distributionToken: 'dist-jkl' }
+    const WEBHOOK = {
+        status: 'active' as const,
+        callbackUrl: 'https://example.com/hook',
+        version: '1' as const,
+        events: ['item:added', 'item:completed'] as const,
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppSecrets.mockResolvedValue(SECRETS)
+        mockApi.getAppVerificationToken.mockResolvedValue(VERIFICATION)
+        mockApi.getAppTestToken.mockResolvedValue({ accessToken: null })
+        mockApi.getAppDistributionToken.mockResolvedValue(DISTRIBUTION)
+        mockApi.getAppWebhook.mockResolvedValue(null)
+    })
+
+    it('only fetches secrets + webhook by default (skips verification/test/distribution calls)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        expect(mockApi.getAppSecrets).toHaveBeenCalledWith('9909')
+        expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
+        // The three sensitive-only endpoints must not be hit unless opted in
+        expect(mockApi.getAppVerificationToken).not.toHaveBeenCalled()
+        expect(mockApi.getAppTestToken).not.toHaveBeenCalled()
+        expect(mockApi.getAppDistributionToken).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('fires all five enrichment calls with --include-secrets', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--include-secrets'])
+
+        expect(mockApi.getAppSecrets).toHaveBeenCalledWith('9909')
+        expect(mockApi.getAppVerificationToken).toHaveBeenCalledWith('9909')
+        expect(mockApi.getAppTestToken).toHaveBeenCalledWith('9909')
+        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
+        expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
+        consoleSpy.mockRestore()
+    })
+
+    it('hides secret values by default and renders a --include-secrets hint', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        // clientId is non-sensitive — always shown
+        expect(output).toContain('Client ID:          client-abc')
+        // All four sensitive lines render the same generic hint — including
+        // Test token, which no longer distinguishes "not created" when hidden
+        // (that state is only discoverable with --include-secrets).
+        expect(output).toContain('Client secret:      (hidden — pass --include-secrets to reveal)')
+        expect(output).toContain('Verification token: (hidden — pass --include-secrets to reveal)')
+        expect(output).toContain('Test token:         (hidden — pass --include-secrets to reveal)')
+        expect(output).toContain('Distribution token: (hidden — pass --include-secrets to reveal)')
+        // Raw secret values NEVER appear in default output
+        expect(output).not.toContain('secret-def')
+        expect(output).not.toContain('verify-ghi')
+        expect(output).not.toContain('dist-jkl')
+        // No webhook configured
+        expect(output).toContain('Webhook:            (not configured)')
+        consoleSpy.mockRestore()
+    })
+
+    it('reveals every sensitive value with --include-secrets', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--include-secrets'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Client ID:          client-abc')
+        expect(output).toContain('Client secret:      secret-def')
+        expect(output).toContain('Verification token: verify-ghi')
+        expect(output).toContain('Test token:         test-mno')
+        expect(output).toContain('Distribution token: dist-jkl')
+        // No hidden placeholders remain
+        expect(output).not.toContain('pass --include-secrets')
+        consoleSpy.mockRestore()
+    })
+
+    it('renders webhook details when configured', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Webhook:            active — https://example.com/hook')
+        expect(output).toContain('Webhook events:     item:added, item:completed')
+        expect(output).toContain('Webhook version:    1')
+        consoleSpy.mockRestore()
+    })
+
+    it('keeps (not created) for a null test token even with --include-secrets', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getAppTestToken.mockResolvedValue({ accessToken: null })
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--include-secrets'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Test token:         (not created)')
+        consoleSpy.mockRestore()
+    })
+
+    it('omits every sensitive key from --json by default (no placeholder strings)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.clientId).toBe('client-abc')
+        // All four sensitive keys must be absent, not null or '(hidden)'
+        expect(parsed).not.toHaveProperty('clientSecret')
+        expect(parsed).not.toHaveProperty('verificationToken')
+        expect(parsed).not.toHaveProperty('distributionToken')
+        expect(parsed).not.toHaveProperty('testToken')
+        // Non-sensitive enrichment present
+        expect(parsed.webhook).toMatchObject({
+            status: 'active',
+            callbackUrl: 'https://example.com/hook',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('includes every sensitive field in --json --include-secrets', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'view',
+            'id:9909',
+            '--json',
+            '--include-secrets',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.clientId).toBe('client-abc')
+        expect(parsed.clientSecret).toBe('secret-def')
+        expect(parsed.verificationToken).toBe('verify-ghi')
+        expect(parsed.distributionToken).toBe('dist-jkl')
+        expect(parsed.testToken).toEqual({ accessToken: 'test-mno' })
+        consoleSpy.mockRestore()
+    })
+
+    it('emits webhook: null in --json when the app has no webhook configured', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.webhook).toBeNull()
         consoleSpy.mockRestore()
     })
 })

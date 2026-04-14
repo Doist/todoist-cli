@@ -30,6 +30,10 @@ Requires authenticating with the dev:app_console scope:
         .description('View details for a single app (by name, id:N, or raw id)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option(
+            '--include-secrets',
+            'Reveal sensitive values (client secret, verification token, test token, distribution token). Hidden by default.',
+        )
         .action((ref, options) => {
             if (!ref) {
                 apps.help()

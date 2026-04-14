@@ -231,13 +231,17 @@ td apps view "Todoist for VS Code"
 td apps view id:9909
 td apps view 9909
 td apps view id:9909 --json
+td apps view id:9909 --include-secrets
+td apps view id:9909 --json --include-secrets
 ```
 
 The `apps` command surface manages the user's registered Todoist developer apps (integrations). All `apps` subcommands require the `dev:app_console` OAuth scope — re-run `td auth login --app-management` to grant it. Without the scope, calls fail with a `MISSING_SCOPE` error pointing at the same hint.
 
 `td apps list` plain output leads with the display name and follows it with `(id:N)` (self-describing in `--accessible` mode). `--json` / `--ndjson` dump the full app payload (id, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
 
-`td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL) followed by the description. `--json` returns the AppWithUserCount payload (App + `userCount`).
+`td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL, OAuth client ID) followed by the description. Alongside `getApp`, the command also fetches the app's secrets (for the public `client_id`) and webhook configuration. When `--include-secrets` is set, it additionally fetches the verification, test, and distribution tokens.
+
+Sensitive values — client secret, verification token, test access token, distribution token — are **hidden by default**: in plain mode the line renders a `(hidden — pass --include-secrets to reveal)` hint; in `--json` / `--ndjson` the keys are omitted from the payload entirely (no `null` or placeholder sentinel). With `--include-secrets`, the values are rendered / emitted normally — in that mode a non-existent test token reads as `(not created)`. The OAuth `client_id` is always shown because it is the public OAuth identifier, not a secret. Webhook configuration is always included when configured (callback URL, event list, version); a missing webhook renders as `(not configured)` in plain output and `null` in JSON.
 
 ### Settings, Stats, And Utilities
 ```bash
