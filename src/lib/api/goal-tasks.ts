@@ -129,6 +129,11 @@ export interface FetchCompletedTasksForGoalResult {
     // match (i.e. the goal has linked tasks completed further back than we
     // scanned). Callers can use this to warn the user.
     truncated: boolean
+    // True when the caller's `limit` was hit before we could collect every
+    // match reported by `expectedCount`. Separate from `truncated` because
+    // the remedy is different: the caller can raise `--limit` / use `--all`,
+    // vs. lookback exhaustion which requires a server-side fix.
+    limitReached: boolean
 }
 
 export async function fetchCompletedTasksForGoal(
@@ -137,11 +142,12 @@ export async function fetchCompletedTasksForGoal(
     const { goalId, limit, expectedCount, fetchImpl = fetch } = options
 
     if (limit <= 0 || expectedCount === 0) {
-        return { tasks: [], truncated: false }
+        return { tasks: [], truncated: false, limitReached: false }
     }
 
     const token = await getApiToken()
-    const ceiling = expectedCount && expectedCount > 0 ? Math.min(limit, expectedCount) : limit
+    const hasExpected = typeof expectedCount === 'number' && expectedCount > 0
+    const ceiling = hasExpected ? Math.min(limit, expectedCount) : limit
 
     const results: Task[] = []
     let windowUntil = new Date()
@@ -189,6 +195,17 @@ export async function fetchCompletedTasksForGoal(
         windowsRun += 1
     }
 
-    const truncated = results.length < ceiling && windowsRun >= MAX_WINDOWS
-    return { tasks: results, truncated }
+    // The helper can stop for three reasons:
+    //   1. It collected every match the goal's progress claims (`expectedCount`).
+    //   2. It hit the caller's `limit` before finding everything.
+    //   3. It ran out of lookback windows.
+    // (1) is the happy path. (2) sets `limitReached`. (3) sets `truncated`.
+    // When `expectedCount` is unknown we cannot distinguish "done" from
+    // "limit hit", so conservatively mark `limitReached` whenever the caller
+    // supplied a finite limit that we saturated.
+    const limitReached = hasExpected
+        ? results.length >= limit && results.length < expectedCount
+        : false
+    const truncated = hasExpected && results.length < expectedCount && windowsRun >= MAX_WINDOWS
+    return { tasks: results, truncated, limitReached }
 }

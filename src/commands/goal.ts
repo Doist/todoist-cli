@@ -104,16 +104,26 @@ async function viewGoal(ref: string, options: ViewGoalOptions): Promise<void> {
     // the (more expensive) completed-task walk with `--include-completed`.
     let completedTasks: typeof openTasks = []
     let completedTruncated = false
+    let completedLimitReached = false
     if (options.includeCompleted) {
         const remaining = targetLimit - openTasks.length
         if (remaining > 0) {
-            const { tasks: fetched, truncated } = await fetchCompletedTasksForGoal({
+            const {
+                tasks: fetched,
+                truncated,
+                limitReached,
+            } = await fetchCompletedTasksForGoal({
                 goalId: goal.id,
                 limit: remaining,
                 expectedCount: goal.progress?.completedTaskCount,
             })
             completedTasks = fetched
             completedTruncated = truncated
+            completedLimitReached = limitReached
+        } else if ((goal.progress?.completedTaskCount ?? 0) > 0) {
+            // The open-task page already saturated `--limit`, so we never
+            // even asked for completed tasks — surface that gap too.
+            completedLimitReached = true
         }
     }
 
@@ -128,6 +138,7 @@ async function viewGoal(ref: string, options: ViewGoalOptions): Promise<void> {
         if (options.includeCompleted) {
             payload.completedTaskCount = completedTasks.length
             payload.completedTasksTruncated = completedTruncated
+            payload.completedTasksLimitReached = completedLimitReached
         }
         console.log(JSON.stringify(payload, null, 2))
         return
@@ -158,8 +169,26 @@ async function viewGoal(ref: string, options: ViewGoalOptions): Promise<void> {
     }
     console.log('')
 
+    const printCompletedWarnings = () => {
+        if (completedTruncated) {
+            console.log(
+                chalk.yellow(
+                    'Note: some completed tasks are older than the lookback window and were not fetched.',
+                ),
+            )
+        }
+        if (completedLimitReached) {
+            console.log(
+                chalk.yellow(
+                    'Note: results were capped by --limit; additional completed tasks exist. Raise --limit or use --all to see them.',
+                ),
+            )
+        }
+    }
+
     if (tasks.length === 0) {
         console.log('No linked tasks.')
+        printCompletedWarnings()
         console.log(formatNextCursorFooter(nextCursor))
         return
     }
@@ -189,13 +218,7 @@ async function viewGoal(ref: string, options: ViewGoalOptions): Promise<void> {
         )
         console.log('')
     }
-    if (completedTruncated) {
-        console.log(
-            chalk.yellow(
-                'Note: some completed tasks are older than the lookback window and were not fetched.',
-            ),
-        )
-    }
+    printCompletedWarnings()
     console.log(formatNextCursorFooter(nextCursor))
 }
 

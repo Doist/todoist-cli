@@ -157,6 +157,7 @@ describe('goal view', () => {
         mockFetchCompleted.mockResolvedValue({
             tasks: [fixtures.tasks.completed, fixtures.tasks.completed],
             truncated: false,
+            limitReached: false,
         })
 
         await program.parseAsync([
@@ -195,6 +196,7 @@ describe('goal view', () => {
         mockFetchCompleted.mockResolvedValue({
             tasks: [fixtures.tasks.completed],
             truncated: false,
+            limitReached: true,
         })
 
         await program.parseAsync([
@@ -210,6 +212,8 @@ describe('goal view', () => {
         ])
 
         expect(mockFetchCompleted).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }))
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.completedTasksLimitReached).toBe(true)
         consoleSpy.mockRestore()
     })
 
@@ -222,6 +226,7 @@ describe('goal view', () => {
         mockFetchCompleted.mockResolvedValue({
             tasks: [fixtures.tasks.completed],
             truncated: true,
+            limitReached: false,
         })
 
         await program.parseAsync([
@@ -237,6 +242,91 @@ describe('goal view', () => {
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
         expect(parsed.completedTasksTruncated).toBe(true)
+        consoleSpy.mockRestore()
+    })
+
+    it('prints the truncation warning in text mode even when merged task list is empty', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+        mockFetchCompleted.mockResolvedValue({ tasks: [], truncated: true, limitReached: false })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--all',
+            '--include-completed',
+        ])
+
+        const logged = consoleSpy.mock.calls.map((call) => String(call[0])).join('\n')
+        expect(logged).toContain('No linked tasks.')
+        expect(logged).toContain('older than the lookback window')
+        consoleSpy.mockRestore()
+    })
+
+    it('prints the limit-reached warning in text mode', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({
+            results: [fixtures.tasks.basic, fixtures.tasks.withDue, fixtures.tasks.overdue],
+            nextCursor: null,
+        })
+        mockFetchCompleted.mockResolvedValue({
+            tasks: [],
+            truncated: false,
+            limitReached: true,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--limit',
+            '3',
+            '--include-completed',
+        ])
+
+        const logged = consoleSpy.mock.calls.map((call) => String(call[0])).join('\n')
+        expect(logged).toContain('capped by --limit')
+        consoleSpy.mockRestore()
+    })
+
+    it('flags limit-reached when open tasks alone saturate --limit', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        // shipV2 has completedTaskCount=2; open tasks already fill --limit 2.
+        mockApi.getTasks.mockResolvedValue({
+            results: [fixtures.tasks.basic, fixtures.tasks.withDue],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--limit',
+            '2',
+            '--include-completed',
+            '--json',
+        ])
+
+        // fetchCompletedTasksForGoal should not be called — remaining is 0.
+        expect(mockFetchCompleted).not.toHaveBeenCalled()
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.completedTasksLimitReached).toBe(true)
         consoleSpy.mockRestore()
     })
 

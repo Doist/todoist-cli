@@ -112,6 +112,51 @@ describe('fetchCompletedTasksForGoal', () => {
         expect(fetchImpl).toHaveBeenCalledTimes(1)
     })
 
+    it('sets limitReached (not truncated) when caller limit saturates before expectedCount', async () => {
+        const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+            jsonResponse({
+                items: [
+                    rawItem('m1', ['goal-1']),
+                    rawItem('m2', ['goal-1']),
+                    rawItem('m3', ['goal-1']),
+                    rawItem('m4', ['goal-1']),
+                ],
+                next_cursor: null,
+            }),
+        )
+
+        const result = await fetchCompletedTasksForGoal({
+            goalId: 'goal-1',
+            limit: 2,
+            expectedCount: 10,
+            fetchImpl,
+        })
+
+        expect(result.tasks).toHaveLength(2)
+        expect(result.limitReached).toBe(true)
+        expect(result.truncated).toBe(false)
+    })
+
+    it('does not flag limitReached when the goal is fully returned', async () => {
+        const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+            jsonResponse({
+                items: [rawItem('m1', ['goal-1']), rawItem('m2', ['goal-1'])],
+                next_cursor: null,
+            }),
+        )
+
+        const result = await fetchCompletedTasksForGoal({
+            goalId: 'goal-1',
+            limit: 50,
+            expectedCount: 2,
+            fetchImpl,
+        })
+
+        expect(result.tasks).toHaveLength(2)
+        expect(result.limitReached).toBe(false)
+        expect(result.truncated).toBe(false)
+    })
+
     it('stops after collecting expectedCount matches', async () => {
         const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
             jsonResponse({
