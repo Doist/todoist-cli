@@ -5,12 +5,18 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
+vi.mock('../lib/api/goal-tasks.js', () => ({
+    fetchCompletedTasksForGoal: vi.fn(),
+}))
+
 import { registerGoalCommand } from '../commands/goal.js'
 import { getApi } from '../lib/api/core.js'
+import { fetchCompletedTasksForGoal } from '../lib/api/goal-tasks.js'
 import { fixtures } from './helpers/fixtures.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockFetchCompleted = vi.mocked(fetchCompletedTasksForGoal)
 
 function createProgram() {
     const program = new Command()
@@ -115,6 +121,122 @@ describe('goal view', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.goal.description).toBe('Launch the new version')
+        consoleSpy.mockRestore()
+    })
+
+    it('does not fetch completed tasks unless --include-completed is set', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--all',
+            '--json',
+        ])
+
+        expect(mockFetchCompleted).not.toHaveBeenCalled()
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.tasks.results).toHaveLength(1)
+        expect(parsed.completedTaskCount).toBeUndefined()
+        consoleSpy.mockRestore()
+    })
+
+    it('merges completed tasks when --include-completed is set', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
+        mockFetchCompleted.mockResolvedValue({
+            tasks: [fixtures.tasks.completed, fixtures.tasks.completed],
+            truncated: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--all',
+            '--include-completed',
+            '--json',
+        ])
+
+        expect(mockFetchCompleted).toHaveBeenCalledWith(
+            expect.objectContaining({
+                goalId: fixtures.goals.shipV2.id,
+                expectedCount: 2,
+            }),
+        )
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.tasks.results).toHaveLength(3)
+        expect(parsed.completedTaskCount).toBe(2)
+        expect(parsed.completedTasksTruncated).toBe(false)
+        consoleSpy.mockRestore()
+    })
+
+    it('caps merged results at --limit when --include-completed is set', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({
+            results: [fixtures.tasks.basic, fixtures.tasks.withDue],
+            nextCursor: null,
+        })
+        mockFetchCompleted.mockResolvedValue({
+            tasks: [fixtures.tasks.completed],
+            truncated: false,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--limit',
+            '3',
+            '--include-completed',
+            '--json',
+        ])
+
+        expect(mockFetchCompleted).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('flags truncation in JSON output when completed history overflows window', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+        mockFetchCompleted.mockResolvedValue({
+            tasks: [fixtures.tasks.completed],
+            truncated: true,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--all',
+            '--include-completed',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.completedTasksTruncated).toBe(true)
         consoleSpy.mockRestore()
     })
 

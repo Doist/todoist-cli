@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
+import { fetchCompletedTasksForGoal } from '../lib/api/goal-tasks.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { isAccessible } from '../lib/global-args.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
@@ -81,7 +82,9 @@ async function listGoals(options: PaginatedViewOptions & { workspace?: string })
 
 // ── View ──
 
-async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<void> {
+type ViewGoalOptions = PaginatedViewOptions & { includeCompleted?: boolean }
+
+async function viewGoal(ref: string, options: ViewGoalOptions): Promise<void> {
     const api = await getApi()
     const goal = await resolveGoalRef(api, ref)
 
@@ -91,17 +94,42 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
           ? parseInt(options.limit, 10)
           : LIMITS.tasks
 
-    const { results: tasks, nextCursor } = await paginate(
+    const { results: openTasks, nextCursor } = await paginate(
         (cursor, limit) => api.getTasks({ goalId: goal.id, cursor: cursor ?? undefined, limit }),
         { limit: targetLimit },
     )
+
+    // The REST `/tasks?goal_id=…` endpoint only returns *open* tasks, so for
+    // goals with completed work those items are silently missing. Opt in to
+    // the (more expensive) completed-task walk with `--include-completed`.
+    let completedTasks: typeof openTasks = []
+    let completedTruncated = false
+    if (options.includeCompleted) {
+        const remaining = targetLimit - openTasks.length
+        if (remaining > 0) {
+            const { tasks: fetched, truncated } = await fetchCompletedTasksForGoal({
+                goalId: goal.id,
+                limit: remaining,
+                expectedCount: goal.progress?.completedTaskCount,
+            })
+            completedTasks = fetched
+            completedTruncated = truncated
+        }
+    }
+
+    const tasks = [...openTasks, ...completedTasks]
 
     if (options.json) {
         const goalJson = JSON.parse(formatJson(goal, 'goal', options.full))
         const tasksJson = JSON.parse(
             formatPaginatedJson({ results: tasks, nextCursor }, 'task', options.full),
         )
-        console.log(JSON.stringify({ goal: goalJson, tasks: tasksJson }, null, 2))
+        const payload: Record<string, unknown> = { goal: goalJson, tasks: tasksJson }
+        if (options.includeCompleted) {
+            payload.completedTaskCount = completedTasks.length
+            payload.completedTasksTruncated = completedTruncated
+        }
+        console.log(JSON.stringify(payload, null, 2))
         return
     }
 
@@ -160,6 +188,13 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
             }),
         )
         console.log('')
+    }
+    if (completedTruncated) {
+        console.log(
+            chalk.yellow(
+                'Note: some completed tasks are older than the lookback window and were not fetched.',
+            ),
+        )
     }
     console.log(formatNextCursorFooter(nextCursor))
 }
@@ -331,7 +366,11 @@ export function registerGoalCommand(program: Command): void {
     goal.command('view [ref]', { isDefault: true })
         .description('View goal details and linked tasks')
         .option('--limit <n>', 'Limit number of results (default: 300)')
-        .option('--all', 'Fetch all results (no limit)')
+        .option('--all', 'Fetch all open linked tasks (no limit)')
+        .option(
+            '--include-completed',
+            'Also fetch completed linked tasks (slower; makes multiple API calls)',
+        )
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')

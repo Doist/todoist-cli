@@ -154,7 +154,8 @@ Shared labels can appear in \`td label list\` and \`td label view\`, but standar
 \`\`\`bash
 td goal list                                 # List all accessible goals
 td goal list --workspace "Work"              # Filter to workspace goals
-td goal view "Ship v2"                       # View goal details and linked tasks
+td goal view "Ship v2"                       # View goal details and linked (open) tasks
+td goal view "Ship v2" --include-completed   # Also fetch completed linked tasks (slower)
 td goal create --name "Ship v2"              # Create personal goal
 td goal create --name "Ship v2" --workspace "Work"  # Create workspace goal
 td goal create --name "Ship v2" --deadline "2026-04-03"
