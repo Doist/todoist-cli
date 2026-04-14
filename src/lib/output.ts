@@ -218,6 +218,7 @@ const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
 const GOAL_ESSENTIAL_FIELDS = [
     'id',
     'name',
+    'description',
     'ownerType',
     'ownerId',
     'deadline',
