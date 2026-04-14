@@ -96,6 +96,28 @@ describe('goal view', () => {
         consoleSpy.mockRestore()
     })
 
+    it('includes description in JSON output', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'goal',
+            'view',
+            `id:${fixtures.goals.shipV2.id}`,
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.goal.description).toBe('Launch the new version')
+        consoleSpy.mockRestore()
+    })
+
     it('is the default subcommand', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
