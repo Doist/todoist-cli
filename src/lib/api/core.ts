@@ -9,7 +9,9 @@ import {
     WorkspaceProject,
     type DueDate,
 } from '@doist/todoist-sdk'
-import { getApiToken } from '../auth.js'
+import { buildReloginCommand } from '../auth-flags.js'
+import { getApiToken, getAuthMetadata } from '../auth.js'
+import type { AuthFlag } from '../config.js'
 import { CliError } from '../errors.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
@@ -157,7 +159,7 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             (error as Error).message,
                         )
                     }
-                    throw wrapApiError(error, property)
+                    throw await wrapApiError(error, property)
                 }
             }
         },
@@ -178,34 +180,39 @@ function isInsufficientScopeError(error: TodoistRequestError): boolean {
  * gated SDK surface lands.
  *
  * Methods not listed fall back to the `standard` group — appropriate for
- * endpoints gated by scopes that are part of the standard grant.
- * Opt-in scopes (e.g. `dev:app_console`, `backups:read`) get their own group
- * with flag-specific remediation strings.
+ * endpoints gated by scopes that are part of the standard grant. Opt-in
+ * scopes map to an `AuthFlag` that `buildReloginCommand` splices into a
+ * personalised re-login command that preserves whichever flags the user
+ * already has recorded in `auth_flags`.
  */
-type ScopeGroup = 'app-management' | 'backups' | 'standard'
-
-const METHOD_SCOPE_GROUP: Record<string, ScopeGroup> = {
+const METHOD_REQUIRED_FLAG: Record<string, AuthFlag> = {
     getApps: 'app-management',
     getApp: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
 }
 
-const SCOPE_REMEDIATION: Record<ScopeGroup, string> = {
-    'app-management':
-        'This command requires the dev:app_console scope. Re-run `td auth login --additional-scopes=app-management` (combine with --read-only if desired).',
-    backups:
-        'This command requires the backups:read scope. Re-run `td auth login --additional-scopes=backups` (combine with --read-only if desired).',
-    standard:
-        'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.',
+const SCOPE_DESCRIPTIONS: Record<AuthFlag, string> = {
+    'read-only': '',
+    'app-management': 'dev:app_console',
+    backups: 'backups:read',
 }
 
-function getScopeRemediation(methodName: string | undefined): string {
-    const group: ScopeGroup = (methodName && METHOD_SCOPE_GROUP[methodName]) || 'standard'
-    return SCOPE_REMEDIATION[group]
+const STANDARD_REMEDIATION =
+    'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.'
+
+async function getScopeRemediation(methodName: string | undefined): Promise<string> {
+    const requiredFlag = methodName ? METHOD_REQUIRED_FLAG[methodName] : undefined
+    if (!requiredFlag) {
+        return STANDARD_REMEDIATION
+    }
+    const metadata = await getAuthMetadata()
+    const command = buildReloginCommand(metadata, requiredFlag)
+    const scopeString = SCOPE_DESCRIPTIONS[requiredFlag]
+    return `This command requires the ${scopeString} scope. Re-run \`${command}\` to grant it.`
 }
 
-export function wrapApiError(error: unknown, methodName?: string): Error {
+export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode
@@ -213,7 +220,7 @@ export function wrapApiError(error: unknown, methodName?: string): Error {
             return new CliError(
                 'MISSING_SCOPE',
                 'Your token is missing the OAuth scope required for this command.',
-                [getScopeRemediation(methodName)],
+                [await getScopeRemediation(methodName)],
             )
         }
         if (status === 401 || status === 403) {
