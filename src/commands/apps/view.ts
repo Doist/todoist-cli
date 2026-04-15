@@ -17,25 +17,25 @@ function hiddenLine(label: string): string {
 export async function viewApp(ref: string, options: ViewAppOptions = {}): Promise<void> {
     const api = await getApi()
     const app = await resolveAppRef(api, ref)
-    const reveal = Boolean(options.includeSecrets)
+    const revealSecrets = Boolean(options.includeSecrets)
 
     // Webhook config is always shown (callback URL is user-supplied, not a
-    // secret). Everything else is gated on `reveal` so we never transport
+    // secret). Everything else is gated on `revealSecrets` so we never transport
     // secret data onto the user's machine unless they asked for it — this
     // includes `getAppSecrets`, whose payload also carries the `clientId`.
     // The public `client_id` is only available via that endpoint today, so
     // gating the call also gates the visible Client ID line.
     const [webhook, secrets, verification, testToken, distribution] = await Promise.all([
         api.getAppWebhook(app.id),
-        reveal ? api.getAppSecrets(app.id) : Promise.resolve(null),
-        reveal ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
-        reveal ? api.getAppTestToken(app.id) : Promise.resolve(null),
-        reveal ? api.getAppDistributionToken(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppSecrets(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppTestToken(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppDistributionToken(app.id) : Promise.resolve(null),
     ])
 
     if (options.json || options.ndjson) {
         const payload: Record<string, unknown> = { ...app, webhook }
-        if (reveal && secrets) {
+        if (revealSecrets && secrets) {
             payload.clientId = secrets.clientId
             payload.clientSecret = secrets.clientSecret
             payload.verificationToken = verification?.verificationToken ?? null
@@ -68,7 +68,7 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
 
     console.log('')
 
-    if (reveal && secrets) {
+    if (revealSecrets && secrets) {
         console.log(`  Client ID:          ${secrets.clientId}`)
         console.log(`  Client secret:      ${secrets.clientSecret}`)
         console.log(`  Verification token: ${verification?.verificationToken ?? '(none)'}`)
