@@ -1,14 +1,19 @@
 import chalk from 'chalk'
 import open from 'open'
 import { saveApiToken, type AuthFlag } from '../../lib/auth.js'
+import { type AdditionalScopeFlag, parseScopesOption } from '../../lib/oauth-scopes.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken, resolveAuthScope } from '../../lib/oauth.js'
 import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../lib/pkce.js'
 import { logTokenStorageResult } from './helpers.js'
 
 export async function loginWithOAuth(
-    options: { readOnly?: boolean; appManagement?: boolean; backups?: boolean } = {},
+    options: { readOnly?: boolean; additionalScopes?: string } = {},
 ): Promise<void> {
+    const additionalScopes: AdditionalScopeFlag[] = options.additionalScopes
+        ? parseScopesOption(options.additionalScopes)
+        : []
+
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
     const state = generateState()
@@ -18,8 +23,7 @@ export async function loginWithOAuth(
     const { promise: callbackPromise, port, cleanup } = await startCallbackServer(state)
     const authUrl = buildAuthorizationUrl(codeChallenge, state, {
         readOnly: options.readOnly,
-        appManagement: options.appManagement,
-        backups: options.backups,
+        additionalScopes,
         port,
     })
 
@@ -33,11 +37,10 @@ export async function loginWithOAuth(
         const accessToken = await exchangeCodeForToken(code, codeVerifier, port)
         const authFlags: AuthFlag[] = []
         if (options.readOnly) authFlags.push('read-only')
-        if (options.appManagement) authFlags.push('app-management')
-        if (options.backups) authFlags.push('backups')
+        authFlags.push(...additionalScopes)
         const result = await saveApiToken(accessToken, {
             authMode: options.readOnly ? 'read-only' : 'read-write',
-            authScope: resolveAuthScope(options),
+            authScope: resolveAuthScope({ readOnly: options.readOnly, additionalScopes }),
             authFlags,
         })
 

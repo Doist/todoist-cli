@@ -17,5 +17,13 @@ export function buildReloginCommand(metadata: AuthMetadata, requiredFlag: AuthFl
     const existing = metadata.authFlags ?? []
     const merged = new Set<AuthFlag>([...existing, requiredFlag])
     const orderedFlags = AUTH_FLAG_ORDER.filter((flag) => merged.has(flag))
-    return `td auth login ${orderedFlags.map((flag) => `--${flag}`).join(' ')}`
+    const parts = ['td auth login']
+    if (orderedFlags.includes('read-only')) {
+        parts.push('--read-only')
+    }
+    const additional = orderedFlags.filter((flag) => flag !== 'read-only')
+    if (additional.length > 0) {
+        parts.push(`--additional-scopes=${additional.join(',')}`)
+    }
+    return parts.join(' ')
 }

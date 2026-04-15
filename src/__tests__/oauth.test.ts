@@ -23,24 +23,28 @@ describe('buildAuthorizationUrl', () => {
         expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete')
     })
 
-    it('appends backups:read when --backups is set', () => {
-        const url = buildAuthorizationUrl('challenge', 'state', { backups: true })
+    it('appends backups:read when the backups scope is requested', () => {
+        const url = buildAuthorizationUrl('challenge', 'state', {
+            additionalScopes: ['backups'],
+        })
         const params = new URL(url).searchParams
 
         expect(params.get('scope')).toBe('data:read_write,data:delete,project:delete,backups:read')
     })
 
     it('appends backups:read to read-only scope when combined', () => {
-        const url = buildAuthorizationUrl('challenge', 'state', { readOnly: true, backups: true })
+        const url = buildAuthorizationUrl('challenge', 'state', {
+            readOnly: true,
+            additionalScopes: ['backups'],
+        })
         const params = new URL(url).searchParams
 
         expect(params.get('scope')).toBe('data:read,backups:read')
     })
 
-    it('combines --backups with --app-management', () => {
+    it('combines multiple additional scopes', () => {
         const url = buildAuthorizationUrl('challenge', 'state', {
-            appManagement: true,
-            backups: true,
+            additionalScopes: ['app-management', 'backups'],
         })
         const params = new URL(url).searchParams
 

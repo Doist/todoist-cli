@@ -12,24 +12,26 @@ function metadata(overrides: Partial<AuthMetadata> = {}): AuthMetadata {
 
 describe('buildReloginCommand', () => {
     it('returns a bare re-login command when authFlags is undefined', () => {
-        expect(buildReloginCommand(metadata(), 'backups')).toBe('td auth login --backups')
+        expect(buildReloginCommand(metadata(), 'backups')).toBe(
+            'td auth login --additional-scopes=backups',
+        )
     })
 
     it('returns a bare re-login command when authFlags is an empty array', () => {
         expect(buildReloginCommand(metadata({ authFlags: [] }), 'backups')).toBe(
-            'td auth login --backups',
+            'td auth login --additional-scopes=backups',
         )
     })
 
     it('preserves a prior --read-only flag', () => {
         expect(buildReloginCommand(metadata({ authFlags: ['read-only'] }), 'backups')).toBe(
-            'td auth login --read-only --backups',
+            'td auth login --read-only --additional-scopes=backups',
         )
     })
 
     it('does not duplicate the required flag if it is already present', () => {
         expect(buildReloginCommand(metadata({ authFlags: ['backups'] }), 'backups')).toBe(
-            'td auth login --backups',
+            'td auth login --additional-scopes=backups',
         )
     })
 
@@ -39,6 +41,6 @@ describe('buildReloginCommand', () => {
                 metadata({ authFlags: ['app-management', 'read-only'] }),
                 'backups',
             ),
-        ).toBe('td auth login --read-only --app-management --backups')
+        ).toBe('td auth login --read-only --additional-scopes=app-management,backups')
     })
 })

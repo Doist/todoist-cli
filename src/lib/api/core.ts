@@ -9,8 +9,10 @@ import {
     WorkspaceProject,
     type DueDate,
 } from '@doist/todoist-sdk'
-import { getApiToken } from '../auth.js'
+import { buildReloginCommand } from '../auth-flags.js'
+import { getApiToken, getAuthMetadata } from '../auth.js'
 import { CliError } from '../errors.js'
+import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
@@ -157,7 +159,7 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             (error as Error).message,
                         )
                     }
-                    throw wrapApiError(error, property)
+                    throw await wrapApiError(error, property)
                 }
             }
         },
@@ -172,41 +174,38 @@ function isInsufficientScopeError(error: TodoistRequestError): boolean {
 }
 
 /**
- * Group SDK methods by the OAuth scope they require, so a 403
+ * Group SDK methods by the opt-in OAuth scope they require, so a 403
  * `AUTH_INSUFFICIENT_TOKEN_SCOPE` can surface a *command-specific* remediation
  * hint instead of a generic "re-auth" line. Add new methods here as scope-
  * gated SDK surface lands.
  *
- * Methods not listed fall back to the `standard` group — appropriate for
- * endpoints gated by scopes that are part of the standard grant.
- * Opt-in scopes (e.g. `dev:app_console` via `--app-management`,
- * `backups:read` via `--backups`) get their own group with flag-specific
- * remediation strings.
+ * Methods not listed fall back to the standard remediation — appropriate for
+ * endpoints gated by scopes that are part of the standard grant. The raw
+ * OAuth scope string and user-facing flag name both come from the
+ * `ADDITIONAL_SCOPES` registry via `oauthScopeFor`, so this table is the
+ * single place that needs changes when wiring a new scope-gated method.
  */
-type ScopeGroup = 'app-management' | 'backups' | 'standard'
-
-const METHOD_SCOPE_GROUP: Record<string, ScopeGroup> = {
+const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getApps: 'app-management',
     getApp: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
 }
 
-const SCOPE_REMEDIATION: Record<ScopeGroup, string> = {
-    'app-management':
-        'This command requires the dev:app_console scope. Re-run `td auth login --app-management` (combine with --read-only if desired).',
-    backups:
-        'This command requires the backups:read scope. Re-run `td auth login --backups` (combine with --read-only if desired).',
-    standard:
-        'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.',
+const STANDARD_REMEDIATION =
+    'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.'
+
+async function getScopeRemediation(methodName: string | undefined): Promise<string> {
+    const requiredFlag = methodName ? METHOD_REQUIRED_FLAG[methodName] : undefined
+    if (!requiredFlag) {
+        return STANDARD_REMEDIATION
+    }
+    const metadata = await getAuthMetadata()
+    const command = buildReloginCommand(metadata, requiredFlag)
+    return `This command requires the ${oauthScopeFor(requiredFlag)} scope. Re-run \`${command}\` to grant it.`
 }
 
-function getScopeRemediation(methodName: string | undefined): string {
-    const group: ScopeGroup = (methodName && METHOD_SCOPE_GROUP[methodName]) || 'standard'
-    return SCOPE_REMEDIATION[group]
-}
-
-export function wrapApiError(error: unknown, methodName?: string): Error {
+export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode
@@ -214,7 +213,7 @@ export function wrapApiError(error: unknown, methodName?: string): Error {
             return new CliError(
                 'MISSING_SCOPE',
                 'Your token is missing the OAuth scope required for this command.',
-                [getScopeRemediation(methodName)],
+                [await getScopeRemediation(methodName)],
             )
         }
         if (status === 401 || status === 403) {

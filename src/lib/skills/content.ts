@@ -30,18 +30,22 @@ Use this skill when the user wants to interact with their Todoist tasks.
 \`\`\`bash
 td auth login
 td auth login --read-only
-td auth login --app-management
-td auth login --app-management --read-only
-td auth login --backups
-td auth login --read-only --backups
+td auth login --additional-scopes=app-management
+td auth login --read-only --additional-scopes=app-management
+td auth login --additional-scopes=backups
+td auth login --read-only --additional-scopes=backups
+td auth login --additional-scopes=app-management,backups
 td auth token
 td auth status
 td auth logout
 \`\`\`
 
-\`--app-management\` adds the \`dev:app_console\` OAuth scope to the requested grant. Combine with \`--read-only\` to keep data access read-only while still gaining app-management access. Granting this scope is opt-in because it allows the token to manage your registered Todoist apps (rotate secrets, edit webhooks, etc.).
+Opt-in OAuth scopes are requested via \`--additional-scopes=<list>\` (comma-separated). Run \`td auth login --help\` for the full list. Currently supported:
 
-\`--backups\` adds the \`backups:read\` OAuth scope, required by \`td backup list\` and \`td backup download\`. It is opt-in for the same reason as \`--app-management\`: users who never pull backups should not grant access to them. Flags combine freely (e.g. \`td auth login --read-only --backups\`). When a backup command fails for lack of the scope, the error suggests a re-login command that preserves whichever flags were originally used.
+- \`app-management\` — adds the \`dev:app_console\` scope (manage your registered Todoist apps — rotate secrets, edit webhooks, etc.). Required by \`td apps list\` and \`td apps view\`.
+- \`backups\` — adds the \`backups:read\` scope (list and download Todoist backups). Required by \`td backup list\` and \`td backup download\`.
+
+Combine freely with \`--read-only\` to keep data access read-only while still granting an opt-in scope (e.g. \`td auth login --read-only --additional-scopes=backups\`). When a command fails for lack of a scope, the error suggests a re-login command that preserves whichever flags were originally used.
 
 Tokens are stored in the OS credential manager when available, with fallback to \`~/.config/todoist-cli/config.json\`. \`TODOIST_API_TOKEN\` takes precedence over stored credentials.
 
@@ -55,8 +59,8 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
-- Developer apps: \`td apps list/view\` (requires \`td auth login --app-management\`)
-- Backups: \`td backup list/download\` (requires \`td auth login --backups\`)
+- Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
+- Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
 
 ## References
 
@@ -220,7 +224,7 @@ td backup list
 td backup download "2024-01-15_12:00" --output-file backup.zip
 \`\`\`
 
-The \`backup\` command surface requires the \`backups:read\` OAuth scope — re-run \`td auth login --backups\` to grant it. Without the scope, calls fail with an \`AUTH_ERROR\` whose hint preserves any previously used flags (e.g. a read-only user sees \`td auth login --read-only --backups\`).
+The \`backup\` command surface requires the \`backups:read\` OAuth scope — re-run \`td auth login --additional-scopes=backups\` to grant it. Without the scope, calls fail with an \`AUTH_ERROR\` whose hint preserves any previously used flags (e.g. a read-only user sees \`td auth login --read-only --additional-scopes=backups\`).
 
 ### Developer Apps
 \`\`\`bash
@@ -232,7 +236,7 @@ td apps view 9909
 td apps view id:9909 --json
 \`\`\`
 
-The \`apps\` command surface manages the user's registered Todoist developer apps (integrations). All \`apps\` subcommands require the \`dev:app_console\` OAuth scope — re-run \`td auth login --app-management\` to grant it. Without the scope, calls fail with a \`MISSING_SCOPE\` error pointing at the same hint.
+The \`apps\` command surface manages the user's registered Todoist developer apps (integrations). All \`apps\` subcommands require the \`dev:app_console\` OAuth scope — re-run \`td auth login --additional-scopes=app-management\` to grant it. Without the scope, calls fail with a \`MISSING_SCOPE\` error pointing at the same hint.
 
 \`td apps list\` plain output leads with the display name and follows it with \`(id:N)\` (self-describing in \`--accessible\` mode). \`--json\` / \`--ndjson\` dump the full app payload (id, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
 

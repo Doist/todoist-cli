@@ -10,12 +10,22 @@ vi.mock('../lib/api/core.js', async (importOriginal) => {
     }
 })
 
+vi.mock('../lib/auth.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/auth.js')>()
+    return {
+        ...actual,
+        getAuthMetadata: vi.fn(),
+    }
+})
+
 import { registerAppsCommand } from '../commands/apps/index.js'
 import { getApi, wrapApiError } from '../lib/api/core.js'
+import { getAuthMetadata } from '../lib/auth.js'
 import { CliError } from '../lib/errors.js'
 import { createMockApi, type MockApi } from './helpers/mock-api.js'
 
 const mockGetApi = vi.mocked(getApi)
+const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
     const program = new Command()
@@ -365,61 +375,88 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
         })
     }
 
-    it('emits the --app-management hint for app-management methods (getApps, getApp)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            source: 'secure-store',
+        })
+    })
+
+    it('emits the app-management hint for app-management methods (getApps, getApp)', async () => {
         for (const method of ['getApps', 'getApp']) {
-            const wrapped = wrapApiError(scopeError(), method) as CliError
+            const wrapped = (await wrapApiError(scopeError(), method)) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
-            expect(wrapped.hints?.[0]).toContain('--app-management')
+            expect(wrapped.hints?.[0]).toContain('--additional-scopes=app-management')
             expect(wrapped.hints?.[0]).toContain('dev:app_console')
         }
     })
 
-    it('emits the --backups hint for backup methods (getBackups, downloadBackup)', () => {
+    it('emits the backups hint for backup methods (getBackups, downloadBackup)', async () => {
         for (const method of ['getBackups', 'downloadBackup']) {
-            const wrapped = wrapApiError(scopeError(), method) as CliError
+            const wrapped = (await wrapApiError(scopeError(), method)) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
-            expect(wrapped.hints?.[0]).toContain('--backups')
+            expect(wrapped.hints?.[0]).toContain('--additional-scopes=backups')
             expect(wrapped.hints?.[0]).toContain('backups:read')
         }
     })
 
-    it('emits the generic re-auth hint for methods without a scope group (e.g. getTasks)', () => {
-        const wrapped = wrapApiError(scopeError(), 'getTasks') as CliError
+    it('preserves prior --read-only flag in the personalised re-login hint', async () => {
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-only',
+            authFlags: ['read-only'],
+            source: 'secure-store',
+        })
+        const wrapped = (await wrapApiError(scopeError(), 'getApps')) as CliError
+        expect(wrapped.hints?.[0]).toContain('--read-only --additional-scopes=app-management')
+    })
+
+    it('preserves prior opt-in scopes alongside the newly required one', async () => {
+        mockGetAuthMetadata.mockResolvedValue({
+            authMode: 'read-write',
+            authFlags: ['app-management'],
+            source: 'secure-store',
+        })
+        const wrapped = (await wrapApiError(scopeError(), 'getBackups')) as CliError
+        expect(wrapped.hints?.[0]).toContain('--additional-scopes=app-management,backups')
+    })
+
+    it('emits the generic re-auth hint for methods without a scope group (e.g. getTasks)', async () => {
+        const wrapped = (await wrapApiError(scopeError(), 'getTasks')) as CliError
         expect(wrapped.code).toBe('MISSING_SCOPE')
-        expect(wrapped.hints?.[0]).not.toContain('--app-management')
-        expect(wrapped.hints?.[0]).not.toContain('--backups')
+        expect(wrapped.hints?.[0]).not.toContain('--additional-scopes')
         expect(wrapped.hints?.[0]).toContain('td auth login')
     })
 
-    it('falls back to the standard hint when no method name is supplied', () => {
-        const wrapped = wrapApiError(scopeError()) as CliError
+    it('falls back to the standard hint when no method name is supplied', async () => {
+        const wrapped = (await wrapApiError(scopeError())) as CliError
         expect(wrapped.code).toBe('MISSING_SCOPE')
-        expect(wrapped.hints?.[0]).not.toContain('--app-management')
+        expect(wrapped.hints?.[0]).not.toContain('--additional-scopes')
     })
 
-    it('falls through to AUTH_ERROR for a generic 403 without the scope tag', () => {
+    it('falls through to AUTH_ERROR for a generic 403 without the scope tag', async () => {
         const error = new TodoistRequestError('HTTP 403: Forbidden', 403, { error: 'Forbidden' })
 
-        const wrapped = wrapApiError(error, 'getApps')
+        const wrapped = await wrapApiError(error, 'getApps')
 
         expect(wrapped).toBeInstanceOf(CliError)
         expect((wrapped as CliError).code).toBe('AUTH_ERROR')
     })
 
-    it('falls through to AUTH_ERROR for 403 with non-object responseData', () => {
+    it('falls through to AUTH_ERROR for 403 with non-object responseData', async () => {
         const error = new TodoistRequestError('HTTP 403: Forbidden', 403, 'Forbidden')
 
-        const wrapped = wrapApiError(error, 'getApps')
+        const wrapped = await wrapApiError(error, 'getApps')
 
         expect((wrapped as CliError).code).toBe('AUTH_ERROR')
     })
 
-    it('does not match on non-403 statuses even with the scope tag in body', () => {
+    it('does not match on non-403 statuses even with the scope tag in body', async () => {
         const error = new TodoistRequestError('HTTP 500: Internal Server Error', 500, {
             error_tag: 'AUTH_INSUFFICIENT_TOKEN_SCOPE',
         })
 
-        const wrapped = wrapApiError(error, 'getApps')
+        const wrapped = await wrapApiError(error, 'getApps')
 
         expect((wrapped as CliError).code).toBe('API_ERROR')
     })

@@ -118,7 +118,7 @@ describe('backup list', () => {
         )
     })
 
-    it('suggests `td auth login --backups` when no prior flags were recorded', async () => {
+    it('suggests `td auth login --additional-scopes=backups` when no prior flags were recorded', async () => {
         const program = createProgram()
 
         mockGetAuthMetadata.mockResolvedValue({
@@ -128,7 +128,9 @@ describe('backup list', () => {
         })
 
         await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
-            hints: ['Re-authenticate to grant backup access: td auth login --backups'],
+            hints: [
+                'Re-authenticate to grant backup access: td auth login --additional-scopes=backups',
+            ],
         })
     })
 
@@ -143,11 +145,13 @@ describe('backup list', () => {
         })
 
         await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
-            hints: ['Re-authenticate to grant backup access: td auth login --read-only --backups'],
+            hints: [
+                'Re-authenticate to grant backup access: td auth login --read-only --additional-scopes=backups',
+            ],
         })
     })
 
-    it('preserves prior --app-management flag in the suggested re-login command', async () => {
+    it('preserves prior app-management scope in the suggested re-login command', async () => {
         const program = createProgram()
 
         mockGetAuthMetadata.mockResolvedValue({
@@ -159,7 +163,7 @@ describe('backup list', () => {
 
         await expect(program.parseAsync(['node', 'td', 'backup', 'list'])).rejects.toMatchObject({
             hints: [
-                'Re-authenticate to grant backup access: td auth login --app-management --backups',
+                'Re-authenticate to grant backup access: td auth login --additional-scopes=app-management,backups',
             ],
         })
     })
