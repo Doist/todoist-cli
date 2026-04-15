@@ -1,3 +1,9 @@
+## [1.47.0](https://github.com/Doist/todoist-cli/compare/v1.46.0...v1.47.0) (2026-04-15)
+
+### Features
+
+* **auth:** replace per-scope flags with --additional-scopes ([#272](https://github.com/Doist/todoist-cli/issues/272)) ([9ae9a05](https://github.com/Doist/todoist-cli/commit/9ae9a0533dc9fbf9327315166b919dabbcd098b9))
+
 ## [1.46.0](https://github.com/Doist/todoist-cli/compare/v1.45.0...v1.46.0) (2026-04-13)
 
 ### Features
