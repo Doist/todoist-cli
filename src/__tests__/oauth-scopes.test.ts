@@ -47,7 +47,20 @@ describe('parseScopesOption', () => {
     it('throws CliError when given an empty string', () => {
         expect(() => parseScopesOption('')).toThrow(CliError)
         expect(() => parseScopesOption('   ')).toThrow(CliError)
-        expect(() => parseScopesOption(',,,')).toThrow(CliError)
+    })
+
+    it('rejects trailing or stray empty segments rather than silently filtering them', () => {
+        // `app-management,` and `a,,b` are almost always typos — we surface them
+        // as an error instead of quietly accepting them.
+        for (const raw of ['app-management,', ',app-management', 'app-management,,backups', ',,']) {
+            try {
+                parseScopesOption(raw)
+                throw new Error(`expected parseScopesOption(${JSON.stringify(raw)}) to throw`)
+            } catch (error) {
+                expect(error).toBeInstanceOf(CliError)
+                expect((error as CliError).message).toContain('empty entry')
+            }
+        }
     })
 
     it('pluralizes the error message when multiple entries are unknown', () => {

@@ -61,15 +61,23 @@ export function oauthScopeFor(flag: AdditionalScopeFlag): string {
  * or unknown scope names.
  */
 export function parseScopesOption(raw: string): AdditionalScopeFlag[] {
-    const parts = raw
-        .split(',')
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0)
-
-    if (parts.length === 0) {
+    const trimmed = raw.trim()
+    if (trimmed.length === 0) {
         throw new CliError(
             'INVALID_OPTIONS',
             '--additional-scopes requires at least one scope name.',
+            [`Valid scopes: ${ADDITIONAL_SCOPES.map((s) => s.flag).join(', ')}`],
+        )
+    }
+
+    // Reject empty segments (`app-management,` or `a,,b`) explicitly rather
+    // than filtering them out — a stray comma is almost always a typo and
+    // silently ignoring it would mask mistakes.
+    const parts = trimmed.split(',').map((p) => p.trim())
+    if (parts.some((p) => p.length === 0)) {
+        throw new CliError(
+            'INVALID_OPTIONS',
+            '--additional-scopes contains an empty entry (stray or trailing comma).',
             [`Valid scopes: ${ADDITIONAL_SCOPES.map((s) => s.flag).join(', ')}`],
         )
     }

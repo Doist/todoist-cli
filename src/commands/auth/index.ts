@@ -13,7 +13,12 @@ export function registerAuthCommand(program: Command): void {
         .option('--read-only', 'Authenticate with read-only scope (data:read)')
         .option(
             '--additional-scopes <list>',
-            'Comma-separated opt-in OAuth scopes (see list below)',
+            'Comma-separated opt-in OAuth scopes (see list below). The flag may be repeated; every occurrence is merged.',
+            // Commander treats this as a scalar by default, so repeated uses
+            // (`--additional-scopes=a --additional-scopes=b`) would silently
+            // drop earlier values. Concatenate into one comma-separated string
+            // and let parseScopesOption split/dedupe/validate as usual.
+            (value: string, prev: string | undefined) => (prev ? `${prev},${value}` : value),
         )
         .addHelpText('after', formatScopesHelp())
         .action(loginWithOAuth)

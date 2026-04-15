@@ -11,8 +11,8 @@ import {
 } from '@doist/todoist-sdk'
 import { buildReloginCommand } from '../auth-flags.js'
 import { getApiToken, getAuthMetadata } from '../auth.js'
-import type { AuthFlag } from '../config.js'
 import { CliError } from '../errors.js'
+import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
@@ -174,28 +174,22 @@ function isInsufficientScopeError(error: TodoistRequestError): boolean {
 }
 
 /**
- * Group SDK methods by the OAuth scope they require, so a 403
+ * Group SDK methods by the opt-in OAuth scope they require, so a 403
  * `AUTH_INSUFFICIENT_TOKEN_SCOPE` can surface a *command-specific* remediation
  * hint instead of a generic "re-auth" line. Add new methods here as scope-
  * gated SDK surface lands.
  *
- * Methods not listed fall back to the `standard` group — appropriate for
- * endpoints gated by scopes that are part of the standard grant. Opt-in
- * scopes map to an `AuthFlag` that `buildReloginCommand` splices into a
- * personalised re-login command that preserves whichever flags the user
- * already has recorded in `auth_flags`.
+ * Methods not listed fall back to the standard remediation — appropriate for
+ * endpoints gated by scopes that are part of the standard grant. The raw
+ * OAuth scope string and user-facing flag name both come from the
+ * `ADDITIONAL_SCOPES` registry via `oauthScopeFor`, so this table is the
+ * single place that needs changes when wiring a new scope-gated method.
  */
-const METHOD_REQUIRED_FLAG: Record<string, AuthFlag> = {
+const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getApps: 'app-management',
     getApp: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
-}
-
-const SCOPE_DESCRIPTIONS: Record<AuthFlag, string> = {
-    'read-only': '',
-    'app-management': 'dev:app_console',
-    backups: 'backups:read',
 }
 
 const STANDARD_REMEDIATION =
@@ -208,8 +202,7 @@ async function getScopeRemediation(methodName: string | undefined): Promise<stri
     }
     const metadata = await getAuthMetadata()
     const command = buildReloginCommand(metadata, requiredFlag)
-    const scopeString = SCOPE_DESCRIPTIONS[requiredFlag]
-    return `This command requires the ${scopeString} scope. Re-run \`${command}\` to grant it.`
+    return `This command requires the ${oauthScopeFor(requiredFlag)} scope. Re-run \`${command}\` to grant it.`
 }
 
 export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {

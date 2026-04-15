@@ -415,6 +415,37 @@ describe('auth command', () => {
             })
         })
 
+        it('merges repeated --additional-scopes occurrences rather than overwriting', async () => {
+            const program = createProgram()
+            const authCode = 'oauth_auth_code_repeated'
+            const accessToken = 'oauth_access_token_repeated'
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: Promise.resolve(authCode),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+            mockExchangeCodeForToken.mockResolvedValue(accessToken)
+            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'login',
+                '--additional-scopes=app-management',
+                '--additional-scopes=backups',
+            ])
+
+            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+                authMode: 'read-write',
+                authScope:
+                    'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
+                authFlags: ['app-management', 'backups'],
+            })
+        })
+
         it('accepts multiple scopes in one --additional-scopes flag', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_backups_app'
