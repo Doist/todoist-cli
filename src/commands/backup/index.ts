@@ -15,7 +15,7 @@ Examples:
   td backup download "2024-01-15_12:00" --output-file backup.zip
 
 Requires authenticating with the backups:read scope:
-  td auth login --backups`,
+  td auth login --additional-scopes=backups`,
         )
 
     backup

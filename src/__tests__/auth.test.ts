@@ -279,7 +279,7 @@ describe('auth command', () => {
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: true, port: 8765 },
+                { readOnly: true, additionalScopes: [], port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
@@ -288,7 +288,7 @@ describe('auth command', () => {
             })
         })
 
-        it('appends dev:app_console scope when --app-management is set', async () => {
+        it('appends dev:app_console scope when --additional-scopes=app-management is set', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_app'
             const accessToken = 'oauth_access_token_app'
@@ -302,12 +302,18 @@ describe('auth command', () => {
             mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
-            await program.parseAsync(['node', 'td', 'auth', 'login', '--app-management'])
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'login',
+                '--additional-scopes=app-management',
+            ])
 
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: undefined, appManagement: true, backups: undefined, port: 8765 },
+                { readOnly: undefined, additionalScopes: ['app-management'], port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
@@ -316,7 +322,7 @@ describe('auth command', () => {
             })
         })
 
-        it('combines --app-management with --read-only', async () => {
+        it('combines --additional-scopes=app-management with --read-only', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_app_ro'
             const accessToken = 'oauth_access_token_app_ro'
@@ -335,14 +341,14 @@ describe('auth command', () => {
                 'td',
                 'auth',
                 'login',
-                '--app-management',
+                '--additional-scopes=app-management',
                 '--read-only',
             ])
 
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: true, appManagement: true, backups: undefined, port: 8765 },
+                { readOnly: true, additionalScopes: ['app-management'], port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
@@ -351,7 +357,7 @@ describe('auth command', () => {
             })
         })
 
-        it('appends backups:read scope when --backups is set', async () => {
+        it('appends backups:read scope when --additional-scopes=backups is set', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_backups'
             const accessToken = 'oauth_access_token_backups'
@@ -365,12 +371,12 @@ describe('auth command', () => {
             mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
-            await program.parseAsync(['node', 'td', 'auth', 'login', '--backups'])
+            await program.parseAsync(['node', 'td', 'auth', 'login', '--additional-scopes=backups'])
 
             expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
                 'test_code_challenge',
                 'test_state',
-                { readOnly: undefined, appManagement: undefined, backups: true, port: 8765 },
+                { readOnly: undefined, additionalScopes: ['backups'], port: 8765 },
             )
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-write',
@@ -379,7 +385,7 @@ describe('auth command', () => {
             })
         })
 
-        it('combines --backups with --read-only', async () => {
+        it('combines --additional-scopes=backups with --read-only', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_backups_ro'
             const accessToken = 'oauth_access_token_backups_ro'
@@ -393,7 +399,14 @@ describe('auth command', () => {
             mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
 
-            await program.parseAsync(['node', 'td', 'auth', 'login', '--backups', '--read-only'])
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'login',
+                '--additional-scopes=backups',
+                '--read-only',
+            ])
 
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
                 authMode: 'read-only',
@@ -402,7 +415,7 @@ describe('auth command', () => {
             })
         })
 
-        it('combines --backups with --app-management', async () => {
+        it('accepts multiple scopes in one --additional-scopes flag', async () => {
             const program = createProgram()
             const authCode = 'oauth_auth_code_backups_app'
             const accessToken = 'oauth_access_token_backups_app'
@@ -421,8 +434,7 @@ describe('auth command', () => {
                 'td',
                 'auth',
                 'login',
-                '--backups',
-                '--app-management',
+                '--additional-scopes=backups,app-management',
             ])
 
             expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
@@ -431,6 +443,22 @@ describe('auth command', () => {
                     'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
                 authFlags: ['app-management', 'backups'],
             })
+        })
+
+        it('rejects an unknown scope with a friendly error', async () => {
+            const program = createProgram()
+
+            mockStartCallbackServer.mockResolvedValue({
+                promise: new Promise(() => {}),
+                port: 8765,
+                cleanup: vi.fn(),
+            })
+
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'login', '--additional-scopes=nonsense']),
+            ).rejects.toThrow(/Unknown scope/)
+            expect(mockOpen).not.toHaveBeenCalled()
+            expect(mockSaveApiToken).not.toHaveBeenCalled()
         })
 
         it('handles OAuth callback server error', async () => {

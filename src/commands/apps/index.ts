@@ -17,7 +17,7 @@ Examples:
   td apps view 9909
 
 Requires authenticating with the dev:app_console scope:
-  td auth login --app-management`,
+  td auth login --additional-scopes=app-management`,
         )
 
     apps.command('list')

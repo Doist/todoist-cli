@@ -365,20 +365,20 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
         })
     }
 
-    it('emits the --app-management hint for app-management methods (getApps, getApp)', () => {
+    it('emits the app-management hint for app-management methods (getApps, getApp)', () => {
         for (const method of ['getApps', 'getApp']) {
             const wrapped = wrapApiError(scopeError(), method) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
-            expect(wrapped.hints?.[0]).toContain('--app-management')
+            expect(wrapped.hints?.[0]).toContain('--additional-scopes=app-management')
             expect(wrapped.hints?.[0]).toContain('dev:app_console')
         }
     })
 
-    it('emits the --backups hint for backup methods (getBackups, downloadBackup)', () => {
+    it('emits the backups hint for backup methods (getBackups, downloadBackup)', () => {
         for (const method of ['getBackups', 'downloadBackup']) {
             const wrapped = wrapApiError(scopeError(), method) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
-            expect(wrapped.hints?.[0]).toContain('--backups')
+            expect(wrapped.hints?.[0]).toContain('--additional-scopes=backups')
             expect(wrapped.hints?.[0]).toContain('backups:read')
         }
     })
@@ -386,15 +386,14 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
     it('emits the generic re-auth hint for methods without a scope group (e.g. getTasks)', () => {
         const wrapped = wrapApiError(scopeError(), 'getTasks') as CliError
         expect(wrapped.code).toBe('MISSING_SCOPE')
-        expect(wrapped.hints?.[0]).not.toContain('--app-management')
-        expect(wrapped.hints?.[0]).not.toContain('--backups')
+        expect(wrapped.hints?.[0]).not.toContain('--additional-scopes')
         expect(wrapped.hints?.[0]).toContain('td auth login')
     })
 
     it('falls back to the standard hint when no method name is supplied', () => {
         const wrapped = wrapApiError(scopeError()) as CliError
         expect(wrapped.code).toBe('MISSING_SCOPE')
-        expect(wrapped.hints?.[0]).not.toContain('--app-management')
+        expect(wrapped.hints?.[0]).not.toContain('--additional-scopes')
     })
 
     it('falls through to AUTH_ERROR for a generic 403 without the scope tag', () => {

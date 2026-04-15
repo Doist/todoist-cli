@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { formatScopesHelp } from '../../lib/oauth-scopes.js'
 import { loginWithOAuth } from './login.js'
 import { logout } from './logout.js'
 import { showStatus } from './status.js'
@@ -11,13 +12,10 @@ export function registerAuthCommand(program: Command): void {
         .description('Authenticate with Todoist via OAuth')
         .option('--read-only', 'Authenticate with read-only scope (data:read)')
         .option(
-            '--app-management',
-            'Also request the dev:app_console scope (manage your Todoist apps). Combine with --read-only if desired.',
+            '--additional-scopes <list>',
+            'Comma-separated opt-in OAuth scopes (see list below)',
         )
-        .option(
-            '--backups',
-            'Also request the backups:read scope (list/download Todoist backups). Combine with --read-only if desired.',
-        )
+        .addHelpText('after', formatScopesHelp())
         .action(loginWithOAuth)
 
     auth.command('token [token]')
