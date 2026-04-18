@@ -1,3 +1,9 @@
+## [1.48.0](https://github.com/Doist/todoist-cli/compare/v1.47.0...v1.48.0) (2026-04-18)
+
+### Features
+
+* **apps:** enrich td apps view + surface client_id in list/view ([#267](https://github.com/Doist/todoist-cli/issues/267)) ([1a546f8](https://github.com/Doist/todoist-cli/commit/1a546f833de4c7cb9b747b1e3e6bd237fef477c1))
+
 ## [1.47.0](https://github.com/Doist/todoist-cli/compare/v1.46.0...v1.47.0) (2026-04-15)
 
 ### Features
