@@ -67,6 +67,11 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Apps (developer app management — gated by dev:app_console scope)
     'getApps',
     'getApp',
+    'getAppSecrets',
+    'getAppVerificationToken',
+    'getAppTestToken',
+    'getAppDistributionToken',
+    'getAppWebhook',
     // Sync is handled separately via payload inspection
     'sync',
 ])

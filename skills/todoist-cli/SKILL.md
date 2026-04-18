@@ -235,13 +235,17 @@ td apps view "Todoist for VS Code"
 td apps view id:9909
 td apps view 9909
 td apps view id:9909 --json
+td apps view id:9909 --include-secrets
+td apps view id:9909 --json --include-secrets
 ```
 
 The `apps` command surface manages the user's registered Todoist developer apps (integrations). All `apps` subcommands require the `dev:app_console` OAuth scope — re-run `td auth login --additional-scopes=app-management` to grant it. Without the scope, calls fail with a `MISSING_SCOPE` error pointing at the same hint.
 
-`td apps list` plain output leads with the display name and follows it with `(id:N)` (self-describing in `--accessible` mode). `--json` / `--ndjson` dump the full app payload (id, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
+`td apps list` plain output leads with the display name and follows it with `(id:N)` (self-describing in `--accessible` mode), then an indented `Client ID: <client_id>` line, then the description. `--json` / `--ndjson` dump the full app payload (id, clientId, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
 
-`td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL) followed by the description. `--json` returns the AppWithUserCount payload (App + `userCount`).
+`td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL, client id) followed by the description. Webhook configuration is always fetched (`getAppWebhook` — callback URL is user-supplied, not a secret). When `--include-secrets` is set, the command additionally fetches the app's secrets (`client_secret`), verification token, test token, and distribution token.
+
+The OAuth `client_id` is **public** and always shown. The four sensitive credentials — client secret, verification token, test access token, distribution token — are **hidden by default**. In plain mode each of those lines renders a `(hidden — pass --include-secrets to reveal)` hint; in `--json` / `--ndjson` the `clientSecret`, `verificationToken`, `distributionToken`, and `testToken` keys are omitted from the payload entirely. With `--include-secrets`, the values are rendered / emitted normally — in that mode a non-existent test token reads as `(not created)`. Webhook configuration is always included when configured (callback URL, event list, version); a missing webhook renders as `(not configured)` in plain output and `null` in JSON.
 
 ### Settings, Stats, And Utilities
 ```bash
