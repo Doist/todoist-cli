@@ -19,10 +19,8 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     const app = await resolveAppRef(api, ref)
     const revealSecrets = Boolean(options.includeSecrets)
 
-    // clientId is public and now carried on App directly (SDK 9.3.0 /
-    // backend Doist/Todoist#27400). Webhook is non-sensitive. Secret-bearing
-    // endpoints (getAppSecrets for clientSecret, verification / test /
-    // distribution tokens) stay gated on `revealSecrets` so we never transport
+    // Secret-bearing endpoints (getAppSecrets for clientSecret, verification / test /
+    // distribution tokens) are gated on `revealSecrets` so we never transport
     // secret data onto the user's machine unless they asked for it.
     const [webhook, secrets, verification, testToken, distribution] = await Promise.all([
         api.getAppWebhook(app.id),
@@ -33,7 +31,6 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     ])
 
     if (options.json || options.ndjson) {
-        // clientId comes from `app` (always present); reveal-only keys added below.
         const payload: Record<string, unknown> = { ...app, webhook }
         if (revealSecrets && secrets) {
             payload.clientSecret = secrets.clientSecret
@@ -66,7 +63,6 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     }
 
     console.log('')
-    // clientId is public — always shown regardless of --include-secrets.
     console.log(`  Client ID:          ${app.clientId}`)
 
     if (revealSecrets && secrets) {
