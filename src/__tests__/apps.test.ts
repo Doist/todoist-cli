@@ -26,6 +26,7 @@ function createProgram() {
 
 const APP_A = {
     id: '9909',
+    clientId: 'client-abc',
     status: 'public',
     displayName: 'Todoist for VS Code',
     userId: '6080840',
@@ -41,6 +42,7 @@ const APP_A = {
 
 const APP_B = {
     id: '9910',
+    clientId: 'client-xyz',
     status: 'public',
     displayName: 'Zapier Connector',
     userId: '6080840',
@@ -76,7 +78,7 @@ describe('apps list', () => {
         mockGetApi.mockResolvedValue(mockApi)
     })
 
-    it('lists apps with displayName followed by (id:N) and a description line', async () => {
+    it('lists apps with displayName (id:N), Client ID, and a description line', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -85,9 +87,10 @@ describe('apps list', () => {
         await program.parseAsync(['node', 'td', 'apps', 'list'])
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        // Name leads, id follows in the (id:N) form so it's distinguishable in --accessible mode
         expect(output).toContain('Todoist for VS Code (id:9909)')
+        expect(output).toContain('Client ID: client-abc')
         expect(output).toContain('Zapier Connector (id:9910)')
+        expect(output).toContain('Client ID: client-xyz')
         // App B has no description → fallback string
         expect(output).toContain('(no description)')
         consoleSpy.mockRestore()
@@ -386,10 +389,9 @@ describe('apps view — enriched fields', () => {
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
-        // Secret-minimization: none of the endpoints whose payload carries
-        // sensitive data may be hit without the explicit --include-secrets
-        // opt-in. This includes getAppSecrets, whose payload bundles the
-        // (sensitive) clientSecret alongside the (public) clientId.
+        // Secret-minimization: endpoints whose payload carries sensitive data
+        // are never touched without --include-secrets. clientId is no longer
+        // a reason to call getAppSecrets — it's on App directly now.
         expect(mockApi.getAppSecrets).not.toHaveBeenCalled()
         expect(mockApi.getAppVerificationToken).not.toHaveBeenCalled()
         expect(mockApi.getAppTestToken).not.toHaveBeenCalled()
@@ -411,24 +413,21 @@ describe('apps view — enriched fields', () => {
         consoleSpy.mockRestore()
     })
 
-    it('hides every credential line by default (Client ID included)', async () => {
+    it('shows Client ID by default and hides the four sensitive credential lines', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        // Client ID is also gated: its only source endpoint (getAppSecrets)
-        // bundles the secret, so we cannot show the id without transporting
-        // the secret too. Once the backend exposes a client-id-only endpoint
-        // we can lift this.
-        expect(output).toContain('Client ID:          (hidden — pass --include-secrets to reveal)')
+        // Client ID is public (carried on App directly since SDK 9.3.0) —
+        // always shown regardless of --include-secrets.
+        expect(output).toContain('Client ID:          client-abc')
         expect(output).toContain('Client secret:      (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Verification token: (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Test token:         (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Distribution token: (hidden — pass --include-secrets to reveal)')
-        // No raw credential strings anywhere in default output
-        expect(output).not.toContain('client-abc')
+        // Raw secret strings must not appear
         expect(output).not.toContain('secret-def')
         expect(output).not.toContain('verify-ghi')
         expect(output).not.toContain('dist-jkl')
@@ -484,7 +483,7 @@ describe('apps view — enriched fields', () => {
         consoleSpy.mockRestore()
     })
 
-    it('omits every credential key from --json by default (clientId included)', async () => {
+    it('includes clientId but omits sensitive credential keys from --json by default', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -493,14 +492,13 @@ describe('apps view — enriched fields', () => {
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
-        // All five credential keys must be absent — including clientId, which
-        // can only be obtained via getAppSecrets (secret-bundled endpoint).
-        expect(parsed).not.toHaveProperty('clientId')
+        // clientId is public — present by default (from App payload).
+        expect(parsed.clientId).toBe('client-abc')
+        // Sensitive keys must still be absent — not null or placeholder.
         expect(parsed).not.toHaveProperty('clientSecret')
         expect(parsed).not.toHaveProperty('verificationToken')
         expect(parsed).not.toHaveProperty('distributionToken')
         expect(parsed).not.toHaveProperty('testToken')
-        // Non-credential enrichment still present
         expect(parsed.webhook).toMatchObject({
             status: 'active',
             callbackUrl: 'https://example.com/hook',

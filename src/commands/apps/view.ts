@@ -19,12 +19,11 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     const app = await resolveAppRef(api, ref)
     const revealSecrets = Boolean(options.includeSecrets)
 
-    // Webhook config is always shown (callback URL is user-supplied, not a
-    // secret). Everything else is gated on `revealSecrets` so we never transport
-    // secret data onto the user's machine unless they asked for it — this
-    // includes `getAppSecrets`, whose payload also carries the `clientId`.
-    // The public `client_id` is only available via that endpoint today, so
-    // gating the call also gates the visible Client ID line.
+    // clientId is public and now carried on App directly (SDK 9.3.0 /
+    // backend Doist/Todoist#27400). Webhook is non-sensitive. Secret-bearing
+    // endpoints (getAppSecrets for clientSecret, verification / test /
+    // distribution tokens) stay gated on `revealSecrets` so we never transport
+    // secret data onto the user's machine unless they asked for it.
     const [webhook, secrets, verification, testToken, distribution] = await Promise.all([
         api.getAppWebhook(app.id),
         revealSecrets ? api.getAppSecrets(app.id) : Promise.resolve(null),
@@ -34,9 +33,9 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     ])
 
     if (options.json || options.ndjson) {
+        // clientId comes from `app` (always present); reveal-only keys added below.
         const payload: Record<string, unknown> = { ...app, webhook }
         if (revealSecrets && secrets) {
-            payload.clientId = secrets.clientId
             payload.clientSecret = secrets.clientSecret
             payload.verificationToken = verification?.verificationToken ?? null
             payload.distributionToken = distribution?.distributionToken ?? null
@@ -67,9 +66,10 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     }
 
     console.log('')
+    // clientId is public — always shown regardless of --include-secrets.
+    console.log(`  Client ID:          ${app.clientId}`)
 
     if (revealSecrets && secrets) {
-        console.log(`  Client ID:          ${secrets.clientId}`)
         console.log(`  Client secret:      ${secrets.clientSecret}`)
         console.log(`  Verification token: ${verification?.verificationToken ?? '(none)'}`)
         const accessToken = testToken?.accessToken
@@ -78,7 +78,6 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
         )
         console.log(`  Distribution token: ${distribution?.distributionToken ?? '(none)'}`)
     } else {
-        console.log(hiddenLine('Client ID:          '))
         console.log(hiddenLine('Client secret:      '))
         console.log(hiddenLine('Verification token: '))
         console.log(hiddenLine('Test token:         '))
