@@ -72,6 +72,9 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getAppTestToken',
     'getAppDistributionToken',
     'getAppWebhook',
+    // Folders
+    'getFolders',
+    'getFolder',
     // Sync is handled separately via payload inspection
     'sync',
 ])

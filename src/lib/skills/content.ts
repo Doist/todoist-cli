@@ -55,7 +55,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Task lifecycle: \`td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse\` (alias: \`td task qa\` for \`quickadd\`)
 - Projects: \`td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions\`
 - Project analytics: \`td project progress/health/health-context/activity-stats/analyze-health\`
-- Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td workspace ...\`
+- Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td folder ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
@@ -144,6 +144,11 @@ td workspace update "Acme" --description "Acme Inc." --dry-run   # admin-only
 td workspace delete "Old WS" --yes                                # admin-only
 td workspace user-tasks "Acme" --user alice@example.com
 td workspace activity "Acme" --json
+td folder list "Acme"
+td folder view "Engineering"
+td folder create "Acme" --name "Engineering"
+td folder update "Engineering" --name "Platform" --workspace "Acme"
+td folder delete "Engineering" --workspace "Acme" --yes
 \`\`\`
 
 ### Labels, Filters, And Sections
