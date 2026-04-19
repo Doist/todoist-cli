@@ -1,10 +1,10 @@
 export const SKILL_NAME = 'todoist-cli'
 export const SKILL_DESCRIPTION =
-    'Manage Todoist tasks, projects, labels, comments, and more via the td CLI'
+    'Manage Todoist tasks, projects, labels, filters, sections, comments, reminders, and workspaces via the `td` CLI. Use when the user wants to view, create, update, complete, or organize Todoist items, or mentions tasks, inbox, today, upcoming, projects, labels, or filters.'
+export const SKILL_COMPATIBILITY =
+    "Requires the td CLI (@doist/todoist-cli) to be installed and authenticated via 'td auth login'."
 
 export const SKILL_CONTENT = `# Todoist CLI (td)
-
-Use this skill when the user wants to interact with their Todoist tasks.
 
 ## Core Patterns
 
