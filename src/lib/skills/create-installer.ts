@@ -17,7 +17,7 @@ export function generateSkillFile(): string {
 name: ${SKILL_NAME}
 description: ${JSON.stringify(SKILL_DESCRIPTION)}
 compatibility: ${JSON.stringify(SKILL_COMPATIBILITY)}
-license: MIT
+license: ${packageJson.license}
 metadata:
   author: Doist
   version: ${JSON.stringify(packageJson.version)}
