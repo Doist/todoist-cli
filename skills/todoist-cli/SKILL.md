@@ -1,6 +1,10 @@
 ---
 name: todoist-cli
 description: "Manage Todoist tasks, projects, labels, comments, and more via the td CLI"
+license: MIT
+metadata:
+  author: Doist
+  version: "1.48.0"
 ---
 
 # Todoist CLI (td)

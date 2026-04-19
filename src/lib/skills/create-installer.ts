@@ -1,6 +1,7 @@
 import { access, mkdir, readdir, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import packageJson from '../../../package.json' with { type: 'json' }
 import { CliError } from '../errors.js'
 import { SKILL_CONTENT, SKILL_DESCRIPTION, SKILL_NAME } from './content.js'
 import type { SkillInstaller } from './types.js'
@@ -15,6 +16,10 @@ export function generateSkillFile(): string {
     const frontmatter = `---
 name: ${SKILL_NAME}
 description: ${JSON.stringify(SKILL_DESCRIPTION)}
+license: MIT
+metadata:
+  author: Doist
+  version: ${JSON.stringify(packageJson.version)}
 ---
 
 `
