@@ -29,3 +29,13 @@ jobs:
 
             - name: Check SKILL.md is in sync
               run: npm run check:skill-sync
+
+            - name: Validate skill against agentskills.io spec
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  if ! gh skill --help >/dev/null 2>&1; then
+                      echo "::notice::gh skill subcommand not available on this runner (preview feature, gh >= 2.90.0); skipping validation."
+                      exit 0
+                  fi
+                  gh skill publish --dry-run
