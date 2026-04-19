@@ -86,6 +86,11 @@ td inbox --priority p1
 td upcoming 14 --workspace "Work"
 td completed list --since 2024-01-01 --until 2024-01-31
 td completed list --search "meeting notes"
+td completed list --project "Work"        # Filter by project
+td completed list --label "urgent"        # Filter by label name
+td completed list --annotate-notes        # Include comment data
+td completed list --annotate-items        # Include task metadata
+td completed list --offset 30             # Skip first 30 results
 td activity --type task --event completed
 ```
 
