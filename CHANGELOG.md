@@ -1,3 +1,9 @@
+## [1.49.0](https://github.com/Doist/todoist-cli/compare/v1.48.0...v1.49.0) (2026-04-19)
+
+### Features
+
+* **skill:** add author/version metadata and keep in sync on release ([#275](https://github.com/Doist/todoist-cli/issues/275)) ([47b9626](https://github.com/Doist/todoist-cli/commit/47b962681d09212b9514cc23e45bcbf58123021f))
+
 ## [1.48.0](https://github.com/Doist/todoist-cli/compare/v1.47.0...v1.48.0) (2026-04-18)
 
 ### Features
