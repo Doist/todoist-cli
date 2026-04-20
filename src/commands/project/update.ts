@@ -1,14 +1,16 @@
-import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
+import { resolveFolderByRef } from '../folder/helpers.js'
 
 export interface UpdateOptions {
     name?: string
     color?: ColorKey
     favorite?: boolean
+    folder?: string | false
     viewStyle?: string
     json?: boolean
     dryRun?: boolean
@@ -22,6 +24,7 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
         name?: string
         color?: ColorKey
         isFavorite?: boolean
+        folderId?: string | null
         viewStyle?: ProjectViewStyle
     } = {}
     if (options.name) args.name = options.name
@@ -29,6 +32,23 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
     if (options.favorite === true) args.isFavorite = true
     if (options.favorite === false) args.isFavorite = false
     if (options.viewStyle) args.viewStyle = options.viewStyle as ProjectViewStyle
+
+    if (options.folder !== undefined) {
+        if (!isWorkspaceProject(project)) {
+            throw new CliError(
+                'INVALID_OPTIONS',
+                '--folder can only be used on workspace projects.',
+            )
+        }
+        if (options.folder === false) {
+            args.folderId = null
+        } else {
+            const folder = await resolveFolderByRef(options.folder, {
+                workspace: `id:${project.workspaceId}`,
+            })
+            args.folderId = folder.id
+        }
+    }
 
     if (Object.keys(args).length === 0) {
         throw new CliError('NO_CHANGES', 'No changes specified.')
@@ -40,6 +60,12 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
             Name: args.name,
             Color: args.color,
             Favorite: args.isFavorite !== undefined ? String(args.isFavorite) : undefined,
+            Folder:
+                args.folderId === null
+                    ? '(none)'
+                    : args.folderId !== undefined
+                      ? args.folderId
+                      : undefined,
             'View style': args.viewStyle,
         })
         return
