@@ -1,3 +1,9 @@
+## [1.50.0](https://github.com/Doist/todoist-cli/compare/v1.49.0...v1.50.0) (2026-04-20)
+
+### Features
+
+* Add Help Center CLI commands ([#279](https://github.com/Doist/todoist-cli/issues/279)) ([10d836f](https://github.com/Doist/todoist-cli/commit/10d836fa955e89e1c711338af3cce96cd71c67e5))
+
 ## [1.49.0](https://github.com/Doist/todoist-cli/compare/v1.48.0...v1.49.0) (2026-04-19)
 
 ### Features
