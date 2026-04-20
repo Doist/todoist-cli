@@ -124,6 +124,8 @@ Examples:
         .option('--color <color>', 'New color')
         .option('--favorite', 'Mark as favorite')
         .option('--no-favorite', 'Remove from favorites')
+        .option('--folder <ref>', 'Move into a folder by name or id:xxx (workspace projects only)')
+        .option('--no-folder', 'Remove from folder (workspace projects only)')
         .addOption(
             withCaseInsensitiveChoices(
                 new Option('--view-style <style>', 'View style (list, board, or calendar)'),

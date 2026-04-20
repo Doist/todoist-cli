@@ -123,6 +123,8 @@ td project view "Roadmap" --detailed
 td project collaborators "Roadmap"
 td project create --name "New Project" --color blue
 td project update "Roadmap" --favorite
+td project update "Roadmap" --folder "Engineering"
+td project update "Roadmap" --no-folder
 td project archive "Roadmap"
 td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes

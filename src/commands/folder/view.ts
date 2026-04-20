@@ -1,4 +1,3 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { paginate } from '../../lib/pagination.js'
@@ -15,13 +14,11 @@ export async function viewFolder(ref: string, options: ViewFolderOptions): Promi
     const folder = await resolveFolderByRef(ref, options)
     const api = await getApi()
 
-    // Fetch workspace projects and filter to this folder
-    const { results: allProjects } = await paginate(
-        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+    const { results: projects } = await paginate(
+        (cursor, limit) =>
+            api.getProjects({ folderId: folder.id, cursor: cursor ?? undefined, limit }),
         { limit: Number.MAX_SAFE_INTEGER },
     )
-
-    const projects = allProjects.filter((p) => isWorkspaceProject(p) && p.folderId === folder.id)
 
     if (options.json) {
         const output = options.full

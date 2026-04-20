@@ -1145,6 +1145,71 @@ describe('project update', () => {
             program.parseAsync(['node', 'td', 'project', 'update', 'id:proj-1']),
         ).rejects.toHaveProperty('code', 'NO_CHANGES')
     })
+
+    it('moves project into folder by id', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Roadmap',
+            workspaceId: '12345',
+        })
+        mockApi.getFolder.mockResolvedValue({
+            id: 'folder-1',
+            name: 'Engineering',
+            workspaceId: '12345',
+        })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'Roadmap' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--folder',
+            'id:folder-1',
+        ])
+
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', {
+            folderId: 'folder-1',
+        })
+    })
+
+    it('removes project from folder with --no-folder', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Roadmap',
+            workspaceId: '12345',
+        })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'Roadmap' })
+
+        await program.parseAsync(['node', 'td', 'project', 'update', 'id:proj-1', '--no-folder'])
+
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', {
+            folderId: null,
+        })
+    })
+
+    it('rejects --folder on personal projects', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Personal Project' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'update',
+                'id:proj-1',
+                '--folder',
+                'id:folder-1',
+            ]),
+        ).rejects.toThrow('--folder can only be used on workspace projects')
+    })
 })
 
 describe('project create --json', () => {
