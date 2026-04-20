@@ -42,6 +42,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Diagnose common CLI setup and environment issues',
         async () => (await import('./commands/doctor.js')).registerDoctorCommand,
     ],
+    hc: [
+        'Search Todoist Help Center articles',
+        async () => (await import('./commands/hc/index.js')).registerHelpCenterCommand,
+    ],
     today: [
         'Show tasks due today and overdue',
         async () => (await import('./commands/today.js')).registerTodayCommand,

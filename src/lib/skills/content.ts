@@ -58,6 +58,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
+- Help Center: \`td hc locales/search/view\`
 - Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 - Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
 - Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
@@ -208,6 +209,14 @@ td reminder location get id:456
 \`\`\`
 
 \`td attachment view\` prints text attachments directly and encodes binary content as base64. Use \`--json\` for metadata plus content.
+
+### Help Center
+\`\`\`bash
+td hc
+td hc --help
+\`\`\`
+
+\`td hc\` queries the Todoist online Help Center. Run \`td hc --help\` for locale discovery, article search, and article viewing details.
 
 ### Templates
 \`\`\`bash
