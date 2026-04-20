@@ -6,7 +6,7 @@ import { resolveFolderByRef } from './helpers.js'
 
 interface UpdateFolderOptions {
     name?: string
-    defaultOrder?: string
+    defaultOrder?: number
     workspace?: string
     json?: boolean
     dryRun?: boolean
@@ -20,7 +20,7 @@ export async function updateFolder(ref: string, options: UpdateFolderOptions): P
         defaultOrder?: number
     } = {}
     if (options.name) args.name = options.name
-    if (options.defaultOrder) args.defaultOrder = parseInt(options.defaultOrder, 10)
+    if (options.defaultOrder !== undefined) args.defaultOrder = options.defaultOrder
 
     if (Object.keys(args).length === 0) {
         throw new CliError('NO_CHANGES', 'No changes specified.')

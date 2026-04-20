@@ -214,6 +214,42 @@ describe('folder create', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create folder'))
         consoleSpy.mockRestore()
     })
+
+    it('rejects invalid --default-order', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'folder',
+                'create',
+                'Acme',
+                '--name',
+                'Engineering',
+                '--default-order',
+                'abc',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_ORDER')
+    })
+
+    it('rejects negative --child-order', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'folder',
+                'create',
+                'Acme',
+                '--name',
+                'Engineering',
+                '--child-order',
+                '-1',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_ORDER')
+    })
 })
 
 describe('folder update', () => {

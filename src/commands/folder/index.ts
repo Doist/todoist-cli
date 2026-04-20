@@ -8,6 +8,16 @@ import { listFolders } from './list.js'
 import { updateFolder } from './update.js'
 import { viewFolder } from './view.js'
 
+function parseOrderArg(val: string): number {
+    const n = Number(val)
+    if (!Number.isInteger(n) || n < 0) {
+        throw new CliError('INVALID_ORDER', `Invalid order value: "${val}"`, [
+            'Order must be a non-negative integer (e.g., 0 for top of list)',
+        ])
+    }
+    return n
+}
+
 export function registerFolderCommand(program: Command): void {
     const folder = program
         .command('folder')
@@ -70,8 +80,8 @@ Examples:
         .description('Create a folder')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
         .option('--name <name>', 'Folder name (required)')
-        .option('--default-order <n>', 'Default order for projects in the folder')
-        .option('--child-order <n>', 'Order position of the folder')
+        .option('--default-order <n>', 'Default order for projects in the folder', parseOrderArg)
+        .option('--child-order <n>', 'Order position of the folder', parseOrderArg)
         .option('--json', 'Output the created folder as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action(
@@ -80,8 +90,8 @@ Examples:
                 options: {
                     workspace?: string
                     name?: string
-                    defaultOrder?: string
-                    childOrder?: string
+                    defaultOrder?: number
+                    childOrder?: number
                     json?: boolean
                     dryRun?: boolean
                 },
@@ -106,7 +116,7 @@ Examples:
         .description('Update a folder')
         .option('--workspace <ref>', 'Workspace name or id:xxx (for name-based lookup)')
         .option('--name <name>', 'New folder name')
-        .option('--default-order <n>', 'New default order for projects')
+        .option('--default-order <n>', 'New default order for projects', parseOrderArg)
         .option('--json', 'Output the updated folder as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {

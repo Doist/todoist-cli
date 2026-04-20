@@ -43,7 +43,9 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
         if (options.folder === false) {
             args.folderId = null
         } else {
-            const folder = await resolveFolderByRef(options.folder, {})
+            const folder = await resolveFolderByRef(options.folder, {
+                workspace: `id:${project.workspaceId}`,
+            })
             args.folderId = folder.id
         }
     }

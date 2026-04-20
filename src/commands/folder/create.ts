@@ -7,8 +7,8 @@ import { resolveWorkspaceRef } from '../../lib/refs.js'
 interface CreateFolderOptions {
     name: string
     workspace?: string
-    defaultOrder?: string
-    childOrder?: string
+    defaultOrder?: number
+    childOrder?: number
     json?: boolean
     dryRun?: boolean
 }
@@ -21,8 +21,10 @@ export async function createFolder(
         printDryRun('create folder', {
             Name: options.name,
             Workspace: workspaceRef,
-            'Default order': options.defaultOrder,
-            'Child order': options.childOrder,
+            'Default order':
+                options.defaultOrder !== undefined ? String(options.defaultOrder) : undefined,
+            'Child order':
+                options.childOrder !== undefined ? String(options.childOrder) : undefined,
         })
         return
     }
@@ -33,8 +35,8 @@ export async function createFolder(
     const folder = await api.addFolder({
         name: options.name,
         workspaceId: workspace.id,
-        defaultOrder: options.defaultOrder ? parseInt(options.defaultOrder, 10) : undefined,
-        childOrder: options.childOrder ? parseInt(options.childOrder, 10) : undefined,
+        defaultOrder: options.defaultOrder,
+        childOrder: options.childOrder,
     })
 
     if (options.json) {
