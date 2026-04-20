@@ -1,3 +1,9 @@
+## [1.51.0](https://github.com/Doist/todoist-cli/compare/v1.50.0...v1.51.0) (2026-04-20)
+
+### Features
+
+* add folder command group ([#248](https://github.com/Doist/todoist-cli/issues/248)) ([4a17765](https://github.com/Doist/todoist-cli/commit/4a17765e15a45c370fac00810b1a6a7ebabfceb0))
+
 ## [1.50.0](https://github.com/Doist/todoist-cli/compare/v1.49.0...v1.50.0) (2026-04-20)
 
 ### Features
