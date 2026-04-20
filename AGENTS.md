@@ -13,7 +13,7 @@ npm run fix         # auto-fix lint + format
 npm test            # run tests
 ```
 
-**Two-tsconfig setup:** `tsconfig.json` includes both source and test files — used by `type-check` and IDEs. `tsconfig.build.json` extends it but excludes `src/__tests__/` — used by `build` and `dev` to keep test files out of `dist/`.
+**Two-tsconfig setup:** `tsconfig.json` includes both source and test files — used by `type-check` and IDEs. `tsconfig.build.json` extends it but excludes colocated `*.test.ts` files plus `src/test-support/` — used by `build` and `dev` to keep test-only code out of `dist/`.
 
 **Run the CLI directly** (no linking needed):
 
@@ -75,8 +75,8 @@ src/
 
 Tests use vitest with mocked API. Run `npm test` before committing.
 
-- All commands and lib modules have tests in `src/__tests__/`
-- Shared mock factory in `helpers/mock-api.ts`, fixtures in `helpers/fixtures.ts`
+- Tests are colocated next to the command or lib module they cover (for example `src/commands/task/index.test.ts` or `src/lib/refs.test.ts`)
+- Shared test helpers live in `src/test-support/` (`mock-api.ts`, `fixtures.ts`)
 - When adding features, add corresponding tests
 - Pattern: mock `getApi`, use `program.parseAsync()` to test commands
 

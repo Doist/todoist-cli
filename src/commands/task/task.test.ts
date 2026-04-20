@@ -1,0 +1,2687 @@
+import { PassThrough } from 'node:stream'
+import { Command } from 'commander'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../../lib/api/core.js', () => ({
+    getApi: vi.fn(),
+    completeTaskForever: vi.fn(),
+    rescheduleTask: vi.fn(),
+}))
+
+vi.mock('../../lib/browser.js', () => ({
+    openInBrowser: vi.fn(),
+}))
+
+import { completeTaskForever, getApi, rescheduleTask } from '../../lib/api/core.js'
+import { openInBrowser } from '../../lib/browser.js'
+import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { registerTaskCommand } from './index.js'
+
+const mockGetApi = vi.mocked(getApi)
+const mockCompleteTaskForever = vi.mocked(completeTaskForever)
+const mockRescheduleTask = vi.mocked(rescheduleTask)
+const mockOpenInBrowser = vi.mocked(openInBrowser)
+
+function createProgram() {
+    const program = new Command()
+    program.exitOverride()
+    registerTaskCommand(program)
+    return program
+}
+
+describe('task move command', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('throws error when no destination flags provided', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'move', 'Test task']),
+        ).rejects.toThrow(
+            'At least one of --project, --section, --parent, --no-parent, or --no-section is required.',
+        )
+    })
+
+    it('moves task to project', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-2', name: 'Target Project' }],
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Test task',
+            '--project',
+            'Target Project',
+        ])
+
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            projectId: 'proj-2',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Moved: Test task')
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task to section in current project', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.getSections.mockResolvedValue({
+            results: [{ id: 'sec-1', name: 'Planning' }],
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Test task',
+            '--section',
+            'Planning',
+        ])
+
+        expect(mockApi.getSections).toHaveBeenCalledWith({ projectId: 'proj-1' })
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            sectionId: 'sec-1',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task to section in specified project', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-2', name: 'Target Project' }],
+        })
+        mockApi.getSections.mockResolvedValue({
+            results: [{ id: 'sec-2', name: 'Review' }],
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Test task',
+            '--project',
+            'Target Project',
+            '--section',
+            'Review',
+        ])
+
+        expect(mockApi.getSections).toHaveBeenCalledWith({ projectId: 'proj-2' })
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            sectionId: 'sec-2',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task to parent', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Child task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        // resolveParentTaskId uses getTasks to find parent within project
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                { id: 'task-1', content: 'Child task', projectId: 'proj-1' },
+                { id: 'task-2', content: 'Parent task', projectId: 'proj-1' },
+            ],
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Child task',
+            '--parent',
+            'Parent task',
+        ])
+
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            parentId: 'task-2',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task to project root with --no-parent', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Child task',
+                    projectId: 'proj-1',
+                    parentId: 'parent-1',
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync(['node', 'td', 'task', 'move', 'Child task', '--no-parent'])
+
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            projectId: 'proj-1',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task to project root with --no-section', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Task in section',
+                    projectId: 'proj-1',
+                    sectionId: 'section-1',
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync(['node', 'td', 'task', 'move', 'Task in section', '--no-section'])
+
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            projectId: 'proj-1',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('moves task using id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Test task',
+            projectId: 'proj-1',
+        })
+        mockApi.getProject.mockResolvedValue({ id: 'proj-2', name: 'Target' })
+        mockApi.moveTask.mockResolvedValue({})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'id:task-1',
+            '--project',
+            'id:proj-2',
+        ])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        expect(mockApi.getProject).toHaveBeenCalledWith('proj-2')
+        expect(mockApi.moveTask).toHaveBeenCalledWith('task-1', {
+            projectId: 'proj-2',
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task view', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('resolves task by name and shows details', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Buy milk',
+                    priority: 4,
+                    projectId: 'proj-1',
+                    labels: [],
+                    due: null,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Inbox' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'view', 'Buy milk'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Buy milk'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ID:'))
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves task by id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+            due: null,
+        })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'task', 'view', 'id:task-1'])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('implicit view: td task <ref> behaves like td task view <ref>', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+            due: null,
+        })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'task', 'id:task-1'])
+
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows full metadata with --full flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Test',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+            due: null,
+            url: 'https://todoist.com/task/1',
+            addedAt: '2026-01-01T00:00:00Z',
+        })
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'task', 'view', 'id:task-1', '--full'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Metadata'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task complete', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('marks task as complete', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            checked: false,
+        })
+        mockApi.closeTask.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1'])
+
+        expect(mockApi.closeTask).toHaveBeenCalledWith('task-1')
+        expect(consoleSpy).toHaveBeenCalledWith('Completed: Buy milk (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows message for already completed task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Done task',
+            checked: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1'])
+
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Task already completed.')
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves task by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Buy milk', checked: false }],
+            nextCursor: null,
+        })
+        mockApi.closeTask.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'Buy milk'])
+
+        expect(mockApi.closeTask).toHaveBeenCalledWith('task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('blocks completion for uncompletable tasks', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: '* Reference item',
+            checked: false,
+            isUncompletable: true,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1'])
+
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Task is uncompletable (reference item).')
+        consoleSpy.mockRestore()
+    })
+
+    it('completes recurring task forever with --forever flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Recurring task',
+            checked: false,
+            due: { isRecurring: true, date: '2026-01-12', string: 'every day' },
+        })
+        mockCompleteTaskForever.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1', '--forever'])
+
+        expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Recurring task (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('warns when --forever used on non-recurring task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Normal task',
+            checked: false,
+        })
+        mockCompleteTaskForever.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1', '--forever'])
+
+        expect(mockCompleteTaskForever).toHaveBeenCalledWith('task-1')
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Task is not recurring, completing normally.')
+        expect(consoleSpy).toHaveBeenCalledWith('Completed forever: Normal task (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task uncomplete', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reopens completed task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            checked: true,
+        })
+        mockApi.reopenTask.mockResolvedValue(true)
+
+        await program.parseAsync(['node', 'td', 'task', 'uncomplete', 'id:task-1'])
+
+        expect(mockApi.reopenTask).toHaveBeenCalledWith('task-1')
+        expect(consoleSpy).toHaveBeenCalledWith('Reopened: Buy milk (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows message for non-completed task', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Open task',
+            checked: false,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'uncomplete', 'id:task-1'])
+
+        expect(mockApi.reopenTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Task is not completed.')
+        consoleSpy.mockRestore()
+    })
+
+    it('requires id: prefix', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'uncomplete', 'some-task-name']),
+        ).rejects.toHaveProperty('code', 'INVALID_REF')
+    })
+})
+
+describe('task delete', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('shows dry-run without --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'delete', 'id:task-1'])
+
+        expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith('Would delete: Test task')
+        expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
+        consoleSpy.mockRestore()
+    })
+
+    it('deletes task with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
+        mockApi.deleteTask.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'delete', 'id:task-1', '--yes'])
+
+        expect(mockApi.deleteTask).toHaveBeenCalledWith('task-1')
+        expect(consoleSpy).toHaveBeenCalledWith('Deleted: Test task (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with positional content', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'New task',
+            due: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'New task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'New task' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Created: New task')
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --content flag (backward compat)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'New task',
+            due: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'New task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'New task' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Created: New task')
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when both positional and --content are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                'Positional content',
+                '--content',
+                'Flag content',
+            ]),
+        ).rejects.toThrow('Cannot specify content both as argument and --content flag')
+    })
+
+    it('creates task with positional content and --due', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: { date: '2026-01-10', string: 'tomorrow' },
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Task', '--due', 'tomorrow'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ dueString: 'tomorrow' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Due: tomorrow')
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --priority', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--priority',
+            'p1',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(expect.objectContaining({ priority: 4 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --project (resolves name)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ projectId: 'proj-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('requires --project when --section is a name', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--section',
+                'Planning',
+            ]),
+        ).rejects.toHaveProperty('code', 'PROJECT_REQUIRED')
+    })
+
+    it('creates task with --section using id: prefix', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--section',
+            'id:sec-1',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ sectionId: 'sec-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves --section by name with digits when --project is provided', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getSections.mockResolvedValue({
+            results: [{ id: 'sec-q1', name: 'Q1', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--section',
+            'Q1',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ sectionId: 'sec-q1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --labels', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--labels',
+            'urgent,home',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ labels: ['urgent', 'home'] }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with --description', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--description',
+            'Some notes',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Some notes' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('shows task ID after creation', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-xyz',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('ID: task-xyz')
+        consoleSpy.mockRestore()
+    })
+
+    it('adds task with duration', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Meeting',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Meeting',
+            '--duration',
+            '1h30m',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: 'Meeting',
+                duration: 90,
+                durationUnit: 'minute',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('throws error for invalid duration format', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--duration',
+                'invalid',
+            ]),
+        ).rejects.toThrow('Invalid duration format')
+    })
+
+    it('creates subtask with id:xxx parent format', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'child-1',
+            content: 'Child task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Child task',
+            '--parent',
+            'id:parent-1',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'Child task', parentId: 'parent-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('creates subtask with fuzzy parent name match', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        mockApi.getTasks.mockResolvedValue({
+            results: [{ id: 'parent-1', content: 'Parent task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'child-1',
+            content: 'Child task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Child task',
+            '--parent',
+            'Parent task',
+            '--project',
+            'Work',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'Child task', parentId: 'parent-1' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('throws error when using fuzzy parent without project', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Child task',
+                '--parent',
+                'Parent task',
+            ]),
+        ).rejects.toThrow('The --project flag is required when using --parent with a task name.')
+    })
+
+    it('throws error when project is archived', async () => {
+        const program = createProgram()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-archived', name: 'Old Project', isArchived: true }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--project',
+                'Old Project',
+            ]),
+        ).rejects.toThrow('Cannot create task in archived project "Old Project"')
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+    })
+})
+
+describe('task update', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('updates task content', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Old content' })
+        mockApi.updateTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'New content',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--content',
+            'New content',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            content: 'New content',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: New content (id:task-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task due date', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--due',
+            'next week',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            dueString: 'next week',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task priority', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--priority', 'p2'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { priority: 3 })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task labels (replaces existing)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--labels',
+            'work,urgent',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            labels: ['work', 'urgent'],
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves task by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Buy milk' }],
+            nextCursor: null,
+        })
+        mockApi.updateTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy oat milk',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'Buy milk',
+            '--content',
+            'Buy oat milk',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            content: 'Buy oat milk',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task duration', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--duration', '2h'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            duration: 120,
+            durationUnit: 'minute',
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task list --label', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('filters tasks by label', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Work task',
+                    labels: ['work'],
+                    projectId: 'proj-1',
+                },
+                {
+                    id: 'task-3',
+                    content: 'Both',
+                    labels: ['work', 'urgent'],
+                    projectId: 'proj-1',
+                },
+            ],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Inbox' }],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--label', 'work'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Both'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Home task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '@work',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('filters tasks by multiple labels (OR)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Work task',
+                    labels: ['work'],
+                    projectId: 'proj-1',
+                },
+                {
+                    id: 'task-3',
+                    content: 'Urgent task',
+                    labels: ['urgent'],
+                    projectId: 'proj-1',
+                },
+            ],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Inbox' }],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--label', 'work,urgent'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Urgent task'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Home task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(@work | @urgent)',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('label filter is case-insensitive', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Work task',
+                    labels: ['Work'],
+                    projectId: 'proj-1',
+                },
+            ],
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Inbox' }],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--label', 'WORK'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '@WORK',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task list --parent', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('filters subtasks by parent id', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'parent-1',
+            content: 'Parent task',
+            projectId: 'proj-1',
+        })
+        // Mock getTasks to return child tasks when called with parentId
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                {
+                    id: 'child-1',
+                    content: 'Child 1',
+                    parentId: 'parent-1',
+                    projectId: 'proj-1',
+                    labels: [],
+                },
+                {
+                    id: 'child-2',
+                    content: 'Child 2',
+                    parentId: 'parent-1',
+                    projectId: 'proj-1',
+                    labels: [],
+                },
+            ],
+        })
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Test Project',
+        })
+        mockApi.getSections.mockResolvedValue({ results: [] })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--parent', 'id:parent-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Child 1'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Child 2'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Parent task'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Other task'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('resolves parent by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        // First call: resolveTaskRef uses getTasksByFilter to find parent by name
+        mockApi.getTasksByFilter.mockResolvedValueOnce({
+            results: [{ id: 'parent-1', content: 'Parent task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        // Second call: getTasks with parentId to fetch child tasks
+        mockApi.getTasks.mockResolvedValueOnce({
+            results: [
+                {
+                    id: 'child-1',
+                    content: 'Child task',
+                    parentId: 'parent-1',
+                    projectId: 'proj-1',
+                    labels: [],
+                },
+            ],
+        })
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Test Project',
+        })
+        mockApi.getSections.mockResolvedValue({ results: [] })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--parent', 'Parent task'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Child task'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('shows no tasks message when parent has no children', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'parent-1',
+            content: 'Parent task',
+            projectId: 'proj-1',
+        })
+        // Return empty results when querying by parentId (no children)
+        mockApi.getTasks.mockResolvedValue({
+            results: [],
+        })
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Test Project',
+        })
+        mockApi.getSections.mockResolvedValue({ results: [] })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--parent', 'id:parent-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No tasks found'))
+        expect(mockApi.getTasks).toHaveBeenCalledWith(
+            expect.objectContaining({
+                parentId: 'parent-1',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add --assignee', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with assignee using id:', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work', isShared: true }],
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--project',
+            'Work',
+            '--assignee',
+            'id:user-123',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ assigneeId: 'user-123' }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('throws error when --assignee used without --project', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--assignee',
+                'id:user-123',
+            ]),
+        ).rejects.toHaveProperty('code', 'PROJECT_REQUIRED')
+    })
+})
+
+describe('task update --assignee', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('updates task with assignee using id:', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            projectId: 'proj-1',
+        })
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            isShared: true,
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--assignee',
+            'id:user-123',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            assigneeId: 'user-123',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('unassigns task with --unassign flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            projectId: 'proj-1',
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--unassign'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            assigneeId: null,
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add --deadline', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with deadline', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: { date: '2026-06-15', lang: 'en' },
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--deadline',
+            '2026-06-15',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ deadlineDate: '2026-06-15' }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Deadline: 2026-06-15')
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with both due and deadline', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: { date: '2026-06-10', string: 'Jun 10' },
+            deadline: { date: '2026-06-15', lang: 'en' },
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--due',
+            'Jun 10',
+            '--deadline',
+            '2026-06-15',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({
+                dueString: 'Jun 10',
+                deadlineDate: '2026-06-15',
+            }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Due: Jun 10')
+        expect(consoleSpy).toHaveBeenCalledWith('Deadline: 2026-06-15')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task update --deadline', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('updates task with deadline', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--deadline',
+            '2026-12-31',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            deadlineDate: '2026-12-31',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('removes deadline with --no-deadline', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            deadline: { date: '2026-12-31', lang: 'en' },
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--no-deadline'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            deadlineDate: null,
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add/update --uncompletable', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with isUncompletable=true when --uncompletable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Reference Item',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Reference Item',
+            '--uncompletable',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ isUncompletable: true }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set isUncompletable when no flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Normal Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Normal Task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.not.objectContaining({ isUncompletable: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with isUncompletable=true when --uncompletable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--uncompletable'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { isUncompletable: true })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with isUncompletable=false when --completable flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--completable'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { isUncompletable: false })
+        consoleSpy.mockRestore()
+    })
+
+    it('throws when both --uncompletable and --completable are passed together', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'id:task-1',
+                '--uncompletable',
+                '--completable',
+            ]),
+        ).rejects.toThrow('Cannot use --uncompletable and --completable together')
+    })
+})
+
+describe('task add/update --order', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('creates task with order=0 when --order 0 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '0'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(expect.objectContaining({ order: 0 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('creates task with order=5 when --order 5 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '5'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(expect.objectContaining({ order: 5 }))
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set order when no --order flag is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+            deadline: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task'])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.not.objectContaining({ order: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+
+    it('rejects --order -1 with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'add', '--content', 'Task', '--order', '-1']),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('rejects --order first with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                'first',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('rejects --order 1.5 with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                '1.5',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('rejects --order 3abc with invalid order error', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                '--content',
+                'Task',
+                '--order',
+                '3abc',
+            ]),
+        ).rejects.toThrow('Invalid order value')
+    })
+
+    it('updates task with order=0 when --order 0 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--order', '0'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { order: 0 })
+        consoleSpy.mockRestore()
+    })
+
+    it('updates task with order=3 when --order 3 is passed', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--order', '3'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', { order: 3 })
+        consoleSpy.mockRestore()
+    })
+
+    it('does not set order when no --order flag is passed to update', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--content', 'Task'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.not.objectContaining({ order: expect.anything() }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task list --filter', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('uses getTasksByFilter when --filter is provided', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Overdue task',
+                    projectId: 'proj-1',
+                    priority: 4,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Project' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--filter', 'today | overdue'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'today | overdue' }),
+        )
+        expect(mockApi.getTasks).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Overdue task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('does not use getTasksByFilter when --filter is not provided', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Regular task',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Project' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list'])
+
+        expect(mockApi.getTasks).toHaveBeenCalled()
+        expect(mockApi.getTasksByFilter).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --filter and --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'Filtered task',
+                    projectId: 'proj-1',
+                    priority: 1,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'list', '--filter', '@work', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results).toBeDefined()
+        expect(parsed.results[0].content).toBe('Filtered task')
+        consoleSpy.mockRestore()
+    })
+
+    it('can combine --filter with other local filters like --priority', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [
+                {
+                    id: 'task-1',
+                    content: 'High priority',
+                    projectId: 'proj-1',
+                    priority: 4,
+                    labels: [],
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Project' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'list',
+            '--filter',
+            '@work',
+            '--priority',
+            'p1',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('High priority'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Low priority'))
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
+            expect.objectContaining({
+                query: '(@work) & (p1)',
+            }),
+        )
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task browse', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('opens task in browser by name', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Buy milk', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'browse', 'Buy milk'])
+
+        expect(mockOpenInBrowser).toHaveBeenCalledWith('https://app.todoist.com/app/task/task-1')
+        consoleSpy.mockRestore()
+    })
+
+    it('opens task in browser by id:', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-123',
+            content: 'Test task',
+            projectId: 'proj-1',
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'browse', 'id:task-123'])
+
+        expect(mockOpenInBrowser).toHaveBeenCalledWith('https://app.todoist.com/app/task/task-123')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task add with --stdin', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reads description from stdin with --stdin flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'My task',
+            due: null,
+            deadline: null,
+        })
+
+        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
+        mockStdin.write('Description from stdin')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Description from stdin' }),
+        )
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
+    })
+
+    it('errors when both --description and --stdin are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                'My task',
+                '--description',
+                'inline text',
+                '--stdin',
+            ]),
+        ).rejects.toThrow('Cannot use both --description and --stdin')
+    })
+
+    it('works with multiline description from stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'My task',
+            due: null,
+            deadline: null,
+        })
+
+        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
+        mockStdin.write('line1\n')
+        mockStdin.write('line2\n')
+        mockStdin.write('line3')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'line1\nline2\nline3' }),
+        )
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
+    })
+})
+
+describe('task update with --stdin', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reads description from stdin with --stdin flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'My task',
+            '--stdin',
+        ])
+        mockStdin.write('Updated description')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.objectContaining({ description: 'Updated description' }),
+        )
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
+    })
+
+    it('errors when both --description and --stdin are provided', async () => {
+        const program = createProgram()
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'My task',
+                '--description',
+                'inline text',
+                '--stdin',
+            ]),
+        ).rejects.toThrow('Cannot use both --description and --stdin')
+    })
+
+    it('works with multiline description from stdin', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const mockStdin = new PassThrough()
+        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
+
+        const parsePromise = program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'My task',
+            '--stdin',
+        ])
+        mockStdin.write('line1\n')
+        mockStdin.write('line2\n')
+        mockStdin.write('line3')
+        mockStdin.end()
+        await parsePromise
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith(
+            'task-1',
+            expect.objectContaining({ description: 'line1\nline2\nline3' }),
+        )
+        consoleSpy.mockRestore()
+        stdinSpy.mockRestore()
+    })
+})
+
+describe('task add --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs created task as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'inbox',
+            labels: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Buy milk', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-new')
+        expect(parsed.content).toBe('Buy milk')
+        consoleSpy.mockRestore()
+    })
+
+    it('does not print plain-text confirmation with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Buy milk',
+            priority: 1,
+            projectId: 'inbox',
+            labels: [],
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'add', 'Buy milk', '--json'])
+
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task update --json', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('outputs updated task as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Old content',
+            projectId: 'proj-1',
+        })
+        mockApi.updateTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'New content',
+            priority: 1,
+            projectId: 'proj-1',
+            labels: [],
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--content',
+            'New content',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-1')
+        expect(parsed.content).toBe('New content')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task reschedule', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('reschedules a task with a new date', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'My task', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'My task',
+                due: { date: '2026-03-20', string: 'Mar 20', isRecurring: false },
+            })
+
+        await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
+        expect(consoleSpy).toHaveBeenCalledWith('Rescheduled: My task (id:task-1)')
+        expect(consoleSpy).toHaveBeenCalledWith('Due: Mar 20')
+        consoleSpy.mockRestore()
+    })
+
+    it('reschedules a recurring task and shows recurrence info', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = {
+            date: '2026-03-15',
+            string: 'every 3 days',
+            isRecurring: true,
+            timezone: 'America/New_York',
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Recurring', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'Recurring',
+                due: { ...due, date: '2026-03-20' },
+            })
+
+        await program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20'])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20', due)
+        expect(consoleSpy).toHaveBeenCalledWith('Due: Mar 20 (every 3 days)')
+        consoleSpy.mockRestore()
+    })
+
+    it('reschedules with a datetime', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = {
+            date: '2026-03-15',
+            string: 'Mar 15 2pm',
+            isRecurring: false,
+            datetime: '2026-03-15T14:00:00',
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'Task',
+                due: {
+                    ...due,
+                    date: '2026-03-20',
+                    datetime: '2026-03-20T10:00:00',
+                    string: 'Mar 20 10am',
+                },
+            })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20T10:00:00',
+        ])
+
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-03-20T10:00:00', due)
+        consoleSpy.mockRestore()
+    })
+
+    it('errors when task has no due date', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'No due', due: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', '2026-03-20']),
+        ).rejects.toHaveProperty('code', 'NO_DUE_DATE')
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('errors on invalid date format', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'reschedule', 'id:task-1', 'tomorrow']),
+        ).rejects.toHaveProperty('code', 'INVALID_DATE')
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --json flag', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        const updatedTask = {
+            id: 'task-1',
+            content: 'Task',
+            due: { date: '2026-03-20', string: 'Mar 20', isRecurring: false },
+        }
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+            .mockResolvedValueOnce(updatedTask)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20',
+            '--json',
+        ])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('task-1')
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task --dry-run', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('task add --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            'Buy milk',
+            '--due',
+            'tomorrow',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task update --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Old content', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'Old content',
+            '--content',
+            'New content',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task complete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', checked: false }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'Test task', '--dry-run'])
+
+        expect(mockApi.closeTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would complete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task delete --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'task', 'delete', 'Test task', '--dry-run'])
+
+        expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task delete --dry-run --yes still does not execute', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'delete',
+            'Test task',
+            '--dry-run',
+            '--yes',
+        ])
+
+        expect(mockApi.deleteTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task move --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTasksByFilter.mockResolvedValue({
+            results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'move',
+            'Test task',
+            '--project',
+            'Work',
+            '--dry-run',
+        ])
+
+        expect(mockApi.moveTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would move task'))
+        consoleSpy.mockRestore()
+    })
+
+    it('task reschedule --dry-run previews without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
+        mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'reschedule',
+            'id:task-1',
+            '2026-03-20',
+            '--dry-run',
+        ])
+
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would reschedule task'))
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('task (no args)', () => {
+    it('shows parent help with examples', async () => {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        try {
+            await program.parseAsync(['node', 'td', 'task'])
+        } catch (err: unknown) {
+            if ((err as { code?: string }).code !== 'commander.help') throw err
+        }
+
+        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        expect(output).toContain('Examples:')
+        expect(output).toContain('td task add "Buy milk" --due tomorrow')
+        stdoutSpy.mockRestore()
+    })
+})
