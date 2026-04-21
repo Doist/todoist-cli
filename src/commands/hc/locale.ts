@@ -12,7 +12,7 @@ export async function setDefaultHelpCenterLocale(locale: string): Promise<void> 
     const normalized = normalizeHelpCenterLocale(locale)
 
     const { locales } = await withSpinner(
-        { text: 'Loading Help Center locales...', color: 'blue' },
+        { text: 'Checking locale...', color: 'blue' },
         () => getHelpCenterLocales(),
     )
 
