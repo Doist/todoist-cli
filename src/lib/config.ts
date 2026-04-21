@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { HELP_CENTER_LOCALE_PATTERN } from './help-center.js'
+import { normalizeHelpCenterLocale } from './help-center.js'
 
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 
@@ -144,13 +144,16 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
             }
             const defaultLocale = (config.hc as Record<string, unknown>).defaultLocale
             if (defaultLocale !== undefined) {
-                if (
-                    typeof defaultLocale !== 'string' ||
-                    !HELP_CENTER_LOCALE_PATTERN.test(defaultLocale)
-                ) {
-                    issues.push(
-                        'hc.defaultLocale must be a Help Center locale like "en-us", "es", or "pt-br"',
-                    )
+                if (typeof defaultLocale !== 'string') {
+                    issues.push('hc.defaultLocale must be a string')
+                } else {
+                    try {
+                        normalizeHelpCenterLocale(defaultLocale)
+                    } catch {
+                        issues.push(
+                            'hc.defaultLocale must be a Help Center locale like "en-us", "es", or "pt-br"',
+                        )
+                    }
                 }
             }
         }

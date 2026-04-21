@@ -11,9 +11,8 @@ import { withSpinner } from '../../lib/spinner.js'
 export async function setDefaultHelpCenterLocale(locale: string): Promise<void> {
     const normalized = normalizeHelpCenterLocale(locale)
 
-    const { locales } = await withSpinner(
-        { text: 'Checking locale...', color: 'blue' },
-        () => getHelpCenterLocales(),
+    const { locales } = await withSpinner({ text: 'Checking locale...', color: 'blue' }, () =>
+        getHelpCenterLocales(),
     )
 
     const supported = locales.map((entry) => entry.locale)

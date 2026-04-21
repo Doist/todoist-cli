@@ -435,6 +435,33 @@ describe('hc command', () => {
         )
     })
 
+    it('ignores an invalid configured default when the URL carries a locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: {
+                    id: 360000269065,
+                    title: 'Article',
+                    html_url: 'https://get.todoist.help/hc/fr/articles/360000269065',
+                    body: '<p>Body</p>',
+                },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://get.todoist.help/hc/fr/articles/360000269065',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/fr/articles/360000269065',
+        )
+    })
+
     it('uses the configured default locale for hc view when no URL locale and no flag', async () => {
         mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'de' } })
         fetchSpy.mockResolvedValue(

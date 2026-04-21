@@ -4,7 +4,7 @@ const HELP_CENTER_SEARCH_URL = 'https://todoist.zendesk.com/api/v2/help_center/a
 const HELP_CENTER_ARTICLE_URL_BASE = 'https://todoist.zendesk.com/api/v2/help_center'
 const HELP_CENTER_LOCALES_URL = 'https://todoist.zendesk.com/api/v2/help_center/locales'
 const ACCOUNT_LOCALES_URL = 'https://todoist.zendesk.com/api/v2/locales.json'
-export const HELP_CENTER_LOCALE_PATTERN = /^[a-z]{2}(?:-[a-z]{2})?$/
+const HELP_CENTER_LOCALE_PATTERN = /^[a-z]{2}(?:-[a-z]{2})?$/
 
 export const DEFAULT_HELP_CENTER_LOCALE = 'en-us'
 export const DEFAULT_HELP_CENTER_LIMIT = 10
@@ -599,14 +599,15 @@ export function resolveHelpCenterRef(
     }
 
     const explicitLocale = options.locale ? normalizeHelpCenterLocale(options.locale) : undefined
-    const fallbackLocale = options.fallbackLocale
-        ? normalizeHelpCenterLocale(options.fallbackLocale)
-        : undefined
+    const normalizedFallback = (): string =>
+        options.fallbackLocale
+            ? normalizeHelpCenterLocale(options.fallbackLocale)
+            : DEFAULT_HELP_CENTER_LOCALE
     const urlRef = parseHelpCenterArticleUrl(trimmed)
     if (urlRef) {
         return {
             articleId: urlRef.articleId,
-            locale: explicitLocale ?? urlRef.locale ?? fallbackLocale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? urlRef.locale ?? normalizedFallback(),
             htmlUrl: urlRef.htmlUrl,
             source: 'url',
         }
@@ -616,7 +617,7 @@ export function resolveHelpCenterRef(
         const articleId = normalizeArticleId(trimmed.slice(3))
         return {
             articleId,
-            locale: explicitLocale ?? fallbackLocale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
         }
     }
@@ -624,7 +625,7 @@ export function resolveHelpCenterRef(
     if (/^[1-9]\d*$/.test(trimmed)) {
         return {
             articleId: trimmed,
-            locale: explicitLocale ?? fallbackLocale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
         }
     }
