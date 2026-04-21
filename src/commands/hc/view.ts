@@ -1,4 +1,5 @@
 import { openInBrowser } from '../../lib/browser.js'
+import { readConfig } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
 import {
     formatHelpCenterArticleMarkdown,
@@ -28,7 +29,11 @@ export async function viewHelpCenterArticle(
         )
     }
 
-    const resolved = resolveHelpCenterRef(ref, { locale: options.locale })
+    const fallbackLocale = (await readConfig()).hc?.defaultLocale
+    const resolved = resolveHelpCenterRef(ref, {
+        locale: options.locale,
+        fallbackLocale,
+    })
 
     if (options.browser && resolved.htmlUrl && !options.locale) {
         await openInBrowser(resolved.htmlUrl)

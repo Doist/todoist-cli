@@ -1,9 +1,10 @@
 import { Command } from 'commander'
+import { setDefaultHelpCenterLocale } from './locale.js'
 import { listHelpCenterLocales } from './locales.js'
 import { searchHelpCenterArticles } from './search.js'
 import { viewHelpCenterArticle } from './view.js'
 
-const LOCALE_OPTION_DESCRIPTION = 'Help Center locale (default: en-us)'
+const LOCALE_OPTION_DESCRIPTION = 'Help Center locale (overrides configured default)'
 
 export function registerHelpCenterCommand(program: Command): void {
     const hc = program
@@ -15,6 +16,7 @@ export function registerHelpCenterCommand(program: Command): void {
 Examples:
   td hc locales
   td hc locales --json
+  td hc locale --set-default pt-br
   td hc search "notifications"
   td hc search "reminders" --locale pt-br --json
   td hc view id:360000269065
@@ -30,6 +32,18 @@ Notes:
         .description('List supported Help Center locales')
         .option('--json', 'Output as JSON')
         .action(listHelpCenterLocales)
+
+    const localeCmd = hc
+        .command('locale')
+        .description('Manage the default Help Center locale')
+        .option('--set-default <locale>', 'Set the default Help Center locale')
+        .action((options) => {
+            if (!options.setDefault) {
+                localeCmd.help()
+                return
+            }
+            return setDefaultHelpCenterLocale(options.setDefault)
+        })
 
     const searchCmd = hc
         .command('search [query]')

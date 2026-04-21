@@ -232,6 +232,7 @@ describe('doctor command', () => {
                 auth_mode: 'admin',
                 auth_flags: ['read-only', 'not-a-flag'],
                 update_channel: 'beta',
+                hc: { defaultLocale: 'NOT_A_LOCALE', stray: true },
                 extra_setting: true,
             }),
         )
@@ -257,6 +258,8 @@ describe('doctor command', () => {
             'auth_flags must be an array of: read-only, app-management, backups',
         )
         expect(configWarning).toContain('update_channel must be one of: stable, pre-release')
+        expect(configWarning).toContain('hc contains unrecognized key "stray"')
+        expect(configWarning).toContain('hc.defaultLocale must be a Help Center locale')
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('PASS Authenticated as person@example.com via secure-store'),
         )

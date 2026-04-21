@@ -1,11 +1,16 @@
 import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { HELP_CENTER_LOCALE_PATTERN } from './help-center.js'
 
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
+
+export interface HelpCenterConfig {
+    defaultLocale?: string
+}
 
 /**
  * Canonical ordered list of login flags. Acts as the single source of truth —
@@ -24,6 +29,7 @@ export interface Config extends Record<string, unknown> {
     auth_scope?: string
     auth_flags?: AuthFlag[]
     update_channel?: UpdateChannel
+    hc?: HelpCenterConfig
 }
 
 const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
@@ -33,7 +39,10 @@ const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
     'auth_scope',
     'auth_flags',
     'update_channel',
+    'hc',
 ])
+
+const KNOWN_HC_CONFIG_KEYS: ReadonlySet<string> = new Set(['defaultLocale'])
 
 const AUTH_MODES: ReadonlySet<AuthMode> = new Set(['read-only', 'read-write', 'unknown'])
 export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
@@ -122,6 +131,29 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
             !UPDATE_CHANNELS.has(config.update_channel as UpdateChannel))
     ) {
         issues.push('update_channel must be one of: stable, pre-release')
+    }
+
+    if (config.hc !== undefined) {
+        if (!isObject(config.hc)) {
+            issues.push('hc must be an object')
+        } else {
+            for (const key of Object.keys(config.hc)) {
+                if (!KNOWN_HC_CONFIG_KEYS.has(key)) {
+                    issues.push(`hc contains unrecognized key "${key}"`)
+                }
+            }
+            const defaultLocale = (config.hc as Record<string, unknown>).defaultLocale
+            if (defaultLocale !== undefined) {
+                if (
+                    typeof defaultLocale !== 'string' ||
+                    !HELP_CENTER_LOCALE_PATTERN.test(defaultLocale)
+                ) {
+                    issues.push(
+                        'hc.defaultLocale must be a Help Center locale like "en-us", "es", or "pt-br"',
+                    )
+                }
+            }
+        }
     }
 
     return issues
