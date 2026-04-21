@@ -1,5 +1,9 @@
 # Todoist CLI
 
+> For repo structure, where things live, and shared utilities, read
+> [CODEBASE.md](./CODEBASE.md) first. This file covers the **rules**;
+> CODEBASE.md is the **map**.
+
 TypeScript CLI for Todoist. Binary name: `td`.
 
 ## Build & Run
@@ -25,68 +29,21 @@ node dist/index.js <command> ...   # run any command
 
 Use this to verify changes work before committing.
 
-## Architecture
+## Rules when changing code
 
-```
-src/
-  index.ts              # entry point, registers all commands
-  commands/             # command groups (folders for multi-subcommand, flat files for single)
-    add.ts              # td add (quick add)
-    auth/               # td auth (login, token, status, logout)
-    completion/         # td completion (install/uninstall shell completions)
-    today.ts            # td today
-    inbox.ts            # td inbox
-    task/               # td task <action> — 11 subcommands
-    project/            # td project <action> — 19 subcommands
-    label/              # td label <action>
-    filter/             # td filter <action>
-    view.ts             # td view <url> (URL router)
-    comment/            # td comment <action>
-    section/            # td section <action>
-    ...                 # + notification/, workspace/, reminder/, settings/, stats/, skill/
-  lib/
-    api.ts              # API client wrapper, type exports
-    auth.ts             # token loading/saving (env var or config file)
-    completion.ts       # Commander tree-walker for shell completions
-    output.ts           # formatting utilities
-    refs.ts             # id: prefix parsing, URL parsing/classification, ref resolution
-    urls.ts             # Todoist web app URL builders
-    task-list.ts        # shared task listing logic
-  types/
-    pnpm-tabtab.d.ts    # type declarations for @pnpm/tabtab
-```
-
-## Key Patterns
-
-- **Ref resolution** (`src/lib/refs.ts`): Entity references are resolved through three strategies:
-    - **Full name resolution** (`resolveRef` wrappers — `resolveTaskRef`, `resolveProjectRef`): Async, returns the full entity object. Tries URL → `id:` prefix → exact name match → partial substring match → raw ID fallback. Use for entities with user-facing names. Add new wrappers in `refs.ts` — `resolveRef` is private.
-    - **ID-only validation** (`lenientIdRef`): Synchronous, no API calls, returns an ID string. Tries `id:` prefix → URL → raw ID → error. Use for entities without a `fetchAll` endpoint (e.g., comments, reminders).
-    - **Context-scoped resolution** (`resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`): Async, searches within a parent context (e.g., sections within a project). Each has custom logic in `refs.ts`.
-    - **Shared helpers**:
-        - `looksLikeRawId()` decides when a ref is tried as an ID — pure alpha strings (`"Work"`) and strings with spaces are names; mixed alphanumeric without spaces (`"abc123"`) are potential IDs
-        - `parseTodoistUrl()` extracts IDs from web URLs (task, project, label, filter)
-- **Implicit view subcommand**: `td project <ref>` defaults to `td project view <ref>` via Commander's `{ isDefault: true }`. Same for task, workspace, comment, notification. Edge case: if a project/task name matches a subcommand name (e.g., "list"), the subcommand wins — user must use `td project view list`
-- **Named flag aliases**: Where commands accept positional args for context (project, task, workspace), named flags are also accepted (`--project`, `--task`, `--workspace`). Error if both positional and flag are provided
-- **API responses**: Client returns `{ results: T[], nextCursor? }` - always destructure
-- **Priority mapping**: API uses 4=p1 (highest), 1=p4 (lowest)
-- **Command registration**: Each command exports `registerXxxCommand(program: Command)` function from its `index.ts` (folder-based commands) or top-level `.ts` file (flat commands). Folder-based commands split each subcommand into its own file with the index.ts wiring them to Commander.
+- **Named flag aliases:** where commands accept positional args for context (project, task, workspace), named flags (`--project`, `--task`, `--workspace`) are also accepted. Error if both positional and flag are provided.
+- **Implicit `view` subcommand edge case:** `td project <ref>` defaults to `td project view <ref>`. If a project/task name matches a subcommand name (e.g., `"list"`), the subcommand wins — users must use `td project view list`.
+- **API response shape:** client returns `{ results: T[], nextCursor? }` — always destructure.
+- **Priority mapping:** CLI uses `"p1"`–`"p4"` strings; API uses 4=p1 (highest), 1=p4 (lowest). Use `parsePriority` from `src/lib/task-list.ts`, never hand-roll.
+- **Errors:** throw `CliError(code, message, hints?)` from `src/lib/errors.ts` for anything user-facing. The global `parseAsync().catch` in `src/index.ts` renders it correctly in JSON and pretty modes.
 
 ## Testing
 
 Tests use vitest with mocked API. Run `npm test` before committing.
 
-- Tests are colocated next to the command or lib module they cover (for example `src/commands/task/index.test.ts` or `src/lib/refs.test.ts`)
-- Shared test helpers live in `src/test-support/` (`mock-api.ts`, `fixtures.ts`)
-- When adding features, add corresponding tests
-- Pattern: mock `getApi`, use `program.parseAsync()` to test commands
-
-## Auth
-
-Token from `TODOIST_API_TOKEN` env var or `~/.config/todoist-cli/config.json`:
-
-```json
-{ "api_token": "your-api-token" }
-```
+- Co-locate tests next to the command or lib module they cover.
+- When adding features, add corresponding tests.
+- See CODEBASE.md for the mock-api + fixtures setup.
 
 ## Skill Content (Agent Command Reference)
 
@@ -130,3 +87,13 @@ if (options.json) {
 ```
 
 Delete, complete, uncomplete, archive, and unarchive commands do not support `--json` as they return no meaningful entity data.
+
+## Keeping CODEBASE.md accurate
+
+`CODEBASE.md` is a structural map, not a file index. Update it when **structure** changes — not on every new file. Triggers:
+
+- new top-level dir under `src/`, or a new command-group folder
+- a new broadly-reusable helper in `src/lib/` (the "don't reimplement" catalog)
+- changes to command registration, auth/token storage, or build/test/release tooling
+
+Adding a single subcommand to an existing group, or a narrowly-scoped helper used by one caller, does not require an update.
