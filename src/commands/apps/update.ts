@@ -1,7 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveAppRef } from '../../lib/refs.js'
 import {
     parseOAuthRedirectUris,
@@ -15,6 +15,13 @@ export interface UpdateAppOptions {
     yes?: boolean
     dryRun?: boolean
     json?: boolean
+}
+
+function invalidUri(uri: string): CliError {
+    return new CliError('INVALID_URL', `Invalid OAuth redirect URI: ${uri}`, [
+        'Use https://<host>, http(s)://localhost[:port][/path], or a custom scheme (e.g. myapp://callback).',
+        'Custom schemes javascript, data, file, vbscript, ftp are not allowed.',
+    ])
 }
 
 export async function updateApp(ref: string, options: UpdateAppOptions): Promise<void> {
@@ -35,12 +42,11 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         ])
     }
 
-    if (add !== undefined && !validateRedirectUri(add)) {
-        throw new CliError('INVALID_URL', `Invalid OAuth redirect URI: ${add}`, [
-            'Use https://<host>, http(s)://localhost[:port][/path], or a custom scheme (e.g. myapp://callback).',
-            'Schemes javascript, data, file, vbscript, ftp are not allowed.',
-        ])
-    }
+    // Both flags get the same preflight validation — keeps the API call out
+    // of the loop for any URI we'd never accept anyway, including remove
+    // arguments that could otherwise no-op silently.
+    if (add !== undefined && !validateRedirectUri(add)) throw invalidUri(add)
+    if (remove !== undefined && !validateRedirectUri(remove)) throw invalidUri(remove)
 
     const api = await getApi()
     const app = await resolveAppRef(api, ref)
@@ -69,7 +75,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         })
 
         if (options.json) {
-            console.log(JSON.stringify(updated, null, 2))
+            console.log(formatJson(updated, 'app'))
             return
         }
         if (!isQuiet()) {
@@ -82,6 +88,12 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
     const toRemove = remove as string
 
     if (!current.includes(toRemove)) {
+        // Surface the unchanged app for scripts so `--json` stays parseable
+        // even on a no-op.
+        if (options.json) {
+            console.log(formatJson(app, 'app'))
+            return
+        }
         console.log(
             `"${toRemove}" is not an OAuth redirect URI for "${app.displayName}" — nothing to remove.`,
         )
@@ -97,6 +109,15 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
     }
 
     if (!options.yes) {
+        // For programmatic callers, fail loudly rather than silently no-op
+        // with a human-readable preview the caller can't parse.
+        if (options.json) {
+            throw new CliError(
+                'CONFIRMATION_REQUIRED',
+                `Confirmation required to remove OAuth redirect URI from "${app.displayName}".`,
+                ['Pass --yes to confirm.'],
+            )
+        }
         console.log(
             `Would remove OAuth redirect URI from ${app.displayName} (id:${app.id}): ${toRemove}`,
         )
@@ -110,7 +131,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
     })
 
     if (options.json) {
-        console.log(JSON.stringify(updated, null, 2))
+        console.log(formatJson(updated, 'app'))
         return
     }
     if (!isQuiet()) {

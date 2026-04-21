@@ -1,13 +1,16 @@
 // URL validation + serialization for app OAuth redirect URIs.
-//
-// Mirrored from todoist-web so the CLI accepts the same set of URIs the web
-// app editor does. Keep in sync with:
-// src/settings/integrations/app-management/app-editor/helpers.ts in todoist-web.
+// Mirrored from the todoist-web app editor so the CLI accepts the same set
+// of URIs the web UI does.
 
 const urlRegex = /^https:\/\/[^:/]+\.[a-zA-Z]{2,}(\/[^:]+)?$/
 const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/
 const customSchemeRegex = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/.+$/
-const dangerousSchemes = new Set(['javascript', 'data', 'file', 'vbscript', 'http', 'https', 'ftp'])
+// `http` and `https` are listed here as a backstop for the custom-scheme
+// branch: well-formed http/https URLs are accepted earlier via `urlRegex`
+// (https) or `localhostRegex` (http(s)://localhost), so anything reaching
+// `customSchemeRegex` with an http/https scheme is malformed (e.g. multiple
+// URLs concatenated with a comma) and should be rejected, not waved through.
+const dangerousSchemes = new Set(['javascript', 'data', 'file', 'vbscript', 'ftp', 'http', 'https'])
 
 function validateIntegrationUrl(url: string): boolean {
     if (!urlRegex.test(url)) return false
@@ -56,6 +59,13 @@ export function parseOAuthRedirectUris(uri: string | null): string[] {
         }
     }
 
+    // A single valid URL may legitimately contain commas in a query string
+    // (e.g. https://example.com/cb?xs=1,2,3). Treat the whole string as one
+    // URI when it validates as such, instead of shredding it on commas.
+    if (validateRedirectUri(trimmed)) {
+        return [trimmed]
+    }
+
     return trimmed
         .split(',')
         .map((u) => u.trim())
@@ -63,7 +73,7 @@ export function parseOAuthRedirectUris(uri: string | null): string[] {
 }
 
 // Single URL is sent as a plain string; multiple as a JSON array. Matches the
-// serialization todoist-web uses so both writers produce the same shape.
+// serialization the web app uses so both writers produce the same shape.
 export function serializeOAuthRedirectUris(urls: string[]): string {
     if (urls.length <= 1) return urls[0] ?? ''
     return JSON.stringify(urls)
