@@ -105,6 +105,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppTestToken: { text: 'Loading app...', color: 'blue' },
         getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
+        updateApp: { text: 'Updating app...', color: 'yellow' },
         // Folders
         getFolders: { text: 'Loading folders...', color: 'blue' },
         getFolder: { text: 'Loading folder...', color: 'blue' },

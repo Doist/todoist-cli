@@ -256,6 +256,8 @@ td apps view 9909
 td apps view id:9909 --json
 td apps view id:9909 --include-secrets
 td apps view id:9909 --json --include-secrets
+td apps update id:9909 --add-oauth-redirect https://example.com/callback
+td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
 ```
 
 The `apps` command surface manages the user's registered Todoist developer apps (integrations). All `apps` subcommands require the `dev:app_console` OAuth scope — re-run `td auth login --additional-scopes=app-management` to grant it. Without the scope, calls fail with a `MISSING_SCOPE` error pointing at the same hint.
@@ -263,6 +265,8 @@ The `apps` command surface manages the user's registered Todoist developer apps 
 `td apps list` plain output leads with the display name and follows it with `(id:N)` (self-describing in `--accessible` mode), then an indented `Client ID: <client_id>` line, then the description. `--json` / `--ndjson` dump the full app payload (id, clientId, displayName, status, userId, createdAt, serviceUrl, oauthRedirectUri, description, icons, appTokenScopes).
 
 `td apps view <ref>` accepts a name (fuzzy/case-insensitive), `id:N`, or a raw numeric id. Plain output shows display name as a header, then a labelled key/value block (id, status, users, created date, service URL, OAuth redirect, token scopes, icon URL, client id) followed by the description. Webhook configuration is always fetched (`getAppWebhook` — callback URL is user-supplied, not a secret). When `--include-secrets` is set, the command additionally fetches the app's secrets (`client_secret`), verification token, test token, and distribution token.
+
+`td apps update <ref> --add-oauth-redirect <url>` appends an OAuth redirect URI to the app, and `--remove-oauth-redirect <url>` takes one off (requires `--yes` to actually mutate, like `td task delete`). The two flags are mutually exclusive — pass one at a time. The URI is validated before any API call: `https://<host>`, `http(s)://localhost[:port][/path]`, or a custom-scheme URI (e.g. `myapp://callback`) are accepted; `javascript`, `data`, `file`, `vbscript`, and `ftp` schemes are rejected. Adding a URI already set on the app fails with `ALREADY_EXISTS`; removing a URI that isn't on the app exits 0 with a message and makes no API call. Supports `--dry-run` and `--json`.
 
 The OAuth `client_id` is **public** and always shown. The four sensitive credentials — client secret, verification token, test access token, distribution token — are **hidden by default**. In plain mode each of those lines renders a `(hidden — pass --include-secrets to reveal)` hint; in `--json` / `--ndjson` the `clientSecret`, `verificationToken`, `distributionToken`, and `testToken` keys are omitted from the payload entirely. With `--include-secrets`, the values are rendered / emitted normally — in that mode a non-existent test token reads as `(not created)`. Webhook configuration is always included when configured (callback URL, event list, version); a missing webhook renders as `(not configured)` in plain output and `null` in JSON.
 

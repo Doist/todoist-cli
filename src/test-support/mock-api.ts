@@ -188,6 +188,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getAppTestToken: vi.fn().mockResolvedValue({ accessToken: null }),
         getAppDistributionToken: vi.fn().mockResolvedValue({ distributionToken: '' }),
         getAppWebhook: vi.fn().mockResolvedValue(null),
+        updateApp: vi.fn(),
         // Folders
         getFolders: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getFolder: vi.fn(),
