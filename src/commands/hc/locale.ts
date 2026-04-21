@@ -28,7 +28,8 @@ export async function setDefaultHelpCenterLocale(locale: string): Promise<void> 
     }
 
     const config = await readConfig()
-    config.hc = { ...config.hc, defaultLocale: normalized }
+    const existingHc = isPlainObject(config.hc) ? config.hc : {}
+    config.hc = { ...existingHc, defaultLocale: normalized }
     await writeConfig(config)
 
     console.log(chalk.green('✓'), `Default Help Center locale set to ${chalk.cyan(normalized)}`)
@@ -38,6 +39,15 @@ export async function resolveDefaultHelpCenterLocale(explicit?: string): Promise
     if (explicit !== undefined) {
         return normalizeHelpCenterLocale(explicit)
     }
-    const config = await readConfig()
-    return normalizeHelpCenterLocale(config.hc?.defaultLocale ?? DEFAULT_HELP_CENTER_LOCALE)
+    const saved = (await readConfig()).hc?.defaultLocale
+    if (saved === undefined) return DEFAULT_HELP_CENTER_LOCALE
+    try {
+        return normalizeHelpCenterLocale(saved)
+    } catch {
+        return DEFAULT_HELP_CENTER_LOCALE
+    }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

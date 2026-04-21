@@ -599,10 +599,14 @@ export function resolveHelpCenterRef(
     }
 
     const explicitLocale = options.locale ? normalizeHelpCenterLocale(options.locale) : undefined
-    const normalizedFallback = (): string =>
-        options.fallbackLocale
-            ? normalizeHelpCenterLocale(options.fallbackLocale)
-            : DEFAULT_HELP_CENTER_LOCALE
+    const normalizedFallback = (): string => {
+        if (!options.fallbackLocale) return DEFAULT_HELP_CENTER_LOCALE
+        try {
+            return normalizeHelpCenterLocale(options.fallbackLocale)
+        } catch {
+            return DEFAULT_HELP_CENTER_LOCALE
+        }
+    }
     const urlRef = parseHelpCenterArticleUrl(trimmed)
     if (urlRef) {
         return {

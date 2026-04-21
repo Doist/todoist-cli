@@ -350,6 +350,34 @@ describe('hc command', () => {
         expect(output).toContain('pt-br')
     })
 
+    it('replaces a malformed hc config block with a clean object on --set-default', async () => {
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: ['en-us', 'pt-br'],
+                    default_locale: 'en-us',
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: [
+                        { locale: 'en-US', name: 'English', rtl: false },
+                        { locale: 'pt-BR', name: 'Português (Brasil)', rtl: false },
+                    ],
+                }),
+            )
+        mockReadConfig.mockResolvedValue({
+            hc: 'oops' as unknown as { defaultLocale?: string },
+        })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'locale', '--set-default', 'pt-br'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({
+            hc: { defaultLocale: 'pt-br' },
+        })
+    })
+
     it('rejects an unsupported locale with an INVALID_OPTIONS error listing supported codes', async () => {
         fetchSpy
             .mockResolvedValueOnce(
@@ -432,6 +460,32 @@ describe('hc command', () => {
 
         expect(fetchSpy).toHaveBeenCalledWith(
             'https://todoist.zendesk.com/api/v2/help_center/fr/articles/360000269065',
+        )
+    })
+
+    it('falls back to en-us when hc search has an invalid configured default and no --locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'search', 'notifications'])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=en-us')
+    })
+
+    it('falls back to en-us when hc view has an invalid configured default and a bare id', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: { id: 360000269065, title: 'Article', body: '<p>Body</p>' },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'view', '360000269065'])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/en-us/articles/360000269065',
         )
     })
 
