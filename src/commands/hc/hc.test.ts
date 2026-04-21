@@ -5,7 +5,13 @@ vi.mock('../../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
+vi.mock('../../lib/config.js', () => ({
+    readConfig: vi.fn().mockResolvedValue({}),
+    writeConfig: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { openInBrowser } from '../../lib/browser.js'
+import { readConfig, writeConfig } from '../../lib/config.js'
 import { registerHelpCenterCommand } from './index.js'
 
 function createProgram() {
@@ -26,12 +32,16 @@ function createJsonResponse(body: unknown, status = 200, statusText = 'OK'): Res
 describe('hc command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
     let fetchSpy: ReturnType<typeof vi.fn>
+    const mockReadConfig = vi.mocked(readConfig)
+    const mockWriteConfig = vi.mocked(writeConfig)
 
     beforeEach(() => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
+        mockReadConfig.mockResolvedValue({})
+        mockWriteConfig.mockResolvedValue(undefined)
     })
 
     afterEach(() => {
@@ -305,5 +315,224 @@ describe('hc command', () => {
         ).rejects.toMatchObject({
             code: 'CONFLICTING_OPTIONS',
         })
+    })
+
+    it('persists a supported locale as the default via hc locale --set-default', async () => {
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: ['en-us', 'es', 'pt-br'],
+                    default_locale: 'en-us',
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: [
+                        { locale: 'en-US', name: 'English', rtl: false },
+                        { locale: 'es', name: 'Español', rtl: false },
+                        { locale: 'pt-BR', name: 'Português (Brasil)', rtl: false },
+                    ],
+                }),
+            )
+        mockReadConfig.mockResolvedValue({ update_channel: 'stable' })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'locale', '--set-default', 'PT-BR'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({
+            update_channel: 'stable',
+            hc: { defaultLocale: 'pt-br' },
+        })
+        const output = consoleSpy.mock.calls
+            .map((call: unknown[]) => call.map(String).join(' '))
+            .join('\n')
+        expect(output).toContain('Default Help Center locale set to')
+        expect(output).toContain('pt-br')
+    })
+
+    it('replaces a malformed hc config block with a clean object on --set-default', async () => {
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: ['en-us', 'pt-br'],
+                    default_locale: 'en-us',
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: [
+                        { locale: 'en-US', name: 'English', rtl: false },
+                        { locale: 'pt-BR', name: 'Português (Brasil)', rtl: false },
+                    ],
+                }),
+            )
+        mockReadConfig.mockResolvedValue({
+            hc: 'oops' as unknown as { defaultLocale?: string },
+        })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'locale', '--set-default', 'pt-br'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({
+            hc: { defaultLocale: 'pt-br' },
+        })
+    })
+
+    it('rejects an unsupported locale with an INVALID_OPTIONS error listing supported codes', async () => {
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: ['en-us', 'es'],
+                    default_locale: 'en-us',
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    locales: [
+                        { locale: 'en-US', name: 'English', rtl: false },
+                        { locale: 'es', name: 'Español', rtl: false },
+                    ],
+                }),
+            )
+
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'hc', 'locale', '--set-default', 'xx-yy']),
+        ).rejects.toMatchObject({
+            code: 'INVALID_OPTIONS',
+            hints: expect.arrayContaining([expect.stringContaining('en-us')]),
+        })
+        expect(mockWriteConfig).not.toHaveBeenCalled()
+    })
+
+    it('rejects a malformed locale before fetching supported locales', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'hc', 'locale', '--set-default', 'NOT_A_LOCALE']),
+        ).rejects.toMatchObject({
+            code: 'INVALID_OPTIONS',
+        })
+        expect(fetchSpy).not.toHaveBeenCalled()
+        expect(mockWriteConfig).not.toHaveBeenCalled()
+    })
+
+    it('uses the configured default locale for hc search when --locale is omitted', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'de' } })
+        fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'search', 'notifications'])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=de')
+    })
+
+    it('prefers --locale over the configured default for hc search', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'de' } })
+        fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'search', 'notifications', '--locale', 'fr'])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=fr')
+    })
+
+    it('prefers the URL locale over the configured default for hc view', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'de' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: {
+                    id: 360000269065,
+                    title: 'Article',
+                    html_url: 'https://get.todoist.help/hc/fr/articles/360000269065',
+                    body: '<p>Body</p>',
+                },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://get.todoist.help/hc/fr/articles/360000269065',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/fr/articles/360000269065',
+        )
+    })
+
+    it('falls back to en-us when hc search has an invalid configured default and no --locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'search', 'notifications'])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=en-us')
+    })
+
+    it('falls back to en-us when hc view has an invalid configured default and a bare id', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: { id: 360000269065, title: 'Article', body: '<p>Body</p>' },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'view', '360000269065'])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/en-us/articles/360000269065',
+        )
+    })
+
+    it('ignores an invalid configured default when the URL carries a locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'not-a-locale!' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: {
+                    id: 360000269065,
+                    title: 'Article',
+                    html_url: 'https://get.todoist.help/hc/fr/articles/360000269065',
+                    body: '<p>Body</p>',
+                },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://get.todoist.help/hc/fr/articles/360000269065',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/fr/articles/360000269065',
+        )
+    })
+
+    it('uses the configured default locale for hc view when no URL locale and no flag', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'de' } })
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                article: {
+                    id: 360000269065,
+                    title: 'Artikel',
+                    body: '<p>Body</p>',
+                },
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'view', '360000269065'])
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+            'https://todoist.zendesk.com/api/v2/help_center/de/articles/360000269065',
+        )
     })
 })

@@ -221,9 +221,10 @@ td reminder location get id:456
 \`\`\`bash
 td hc
 td hc --help
+td hc locale --set-default pt-br
 \`\`\`
 
-\`td hc\` queries the Todoist online Help Center. Run \`td hc --help\` for locale discovery, article search, and article viewing details.
+\`td hc\` queries the Todoist online Help Center. Run \`td hc --help\` for locale discovery, article search, and article viewing details. \`td hc locale --set-default <locale>\` persists a preferred locale in \`~/.config/todoist-cli/config.json\` under \`hc.defaultLocale\`; the \`--locale\` flag on individual subcommands still overrides it.
 
 ### Templates
 \`\`\`bash

@@ -80,6 +80,7 @@ export interface HelpCenterLocales {
 
 export interface ResolveHelpCenterRefOptions {
     locale?: string
+    fallbackLocale?: string
 }
 
 export interface ResolvedHelpCenterRef {
@@ -598,11 +599,19 @@ export function resolveHelpCenterRef(
     }
 
     const explicitLocale = options.locale ? normalizeHelpCenterLocale(options.locale) : undefined
+    const normalizedFallback = (): string => {
+        if (!options.fallbackLocale) return DEFAULT_HELP_CENTER_LOCALE
+        try {
+            return normalizeHelpCenterLocale(options.fallbackLocale)
+        } catch {
+            return DEFAULT_HELP_CENTER_LOCALE
+        }
+    }
     const urlRef = parseHelpCenterArticleUrl(trimmed)
     if (urlRef) {
         return {
             articleId: urlRef.articleId,
-            locale: explicitLocale ?? urlRef.locale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? urlRef.locale ?? normalizedFallback(),
             htmlUrl: urlRef.htmlUrl,
             source: 'url',
         }
@@ -612,7 +621,7 @@ export function resolveHelpCenterRef(
         const articleId = normalizeArticleId(trimmed.slice(3))
         return {
             articleId,
-            locale: explicitLocale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
         }
     }
@@ -620,7 +629,7 @@ export function resolveHelpCenterRef(
     if (/^[1-9]\d*$/.test(trimmed)) {
         return {
             articleId: trimmed,
-            locale: explicitLocale ?? DEFAULT_HELP_CENTER_LOCALE,
+            locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
         }
     }

@@ -1,6 +1,7 @@
 import chalk from 'chalk'
-import { normalizeHelpCenterLocale, searchHelpCenter } from '../../lib/help-center.js'
+import { searchHelpCenter } from '../../lib/help-center.js'
 import { withSpinner } from '../../lib/spinner.js'
+import { resolveDefaultHelpCenterLocale } from './locale.js'
 
 export interface SearchHelpCenterOptions {
     json?: boolean
@@ -13,7 +14,7 @@ export async function searchHelpCenterArticles(
     options: SearchHelpCenterOptions = {},
 ): Promise<void> {
     const trimmedQuery = query.trim()
-    const locale = normalizeHelpCenterLocale(options.locale)
+    const locale = await resolveDefaultHelpCenterLocale(options.locale)
     const results = await withSpinner({ text: 'Searching Help Center...', color: 'blue' }, () =>
         searchHelpCenter(trimmedQuery, { locale, limit: options.limit }),
     )
