@@ -1,3 +1,9 @@
+## [1.53.0](https://github.com/Doist/todoist-cli/compare/v1.52.0...v1.53.0) (2026-04-21)
+
+### Features
+
+* **apps:** add update subcommand with --add/--remove-oauth-redirect ([#283](https://github.com/Doist/todoist-cli/issues/283)) ([e22da38](https://github.com/Doist/todoist-cli/commit/e22da387f14688cd225b8ca7aef23bdc2986d3d5))
+
 ## [1.52.0](https://github.com/Doist/todoist-cli/compare/v1.51.0...v1.52.0) (2026-04-21)
 
 ### Features
