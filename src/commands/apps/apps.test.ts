@@ -318,6 +318,26 @@ describe('apps view', () => {
         expect(mockApi.getApp).not.toHaveBeenCalled()
     })
 
+    it('renders a multi-URI JSON-array oauthRedirectUri as separate indented lines', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: '["https://a.example/cb","https://b.example/cb"]',
+        })
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('OAuth redirect:     https://a.example/cb')
+        // Continuation line aligns with the value column (22-space indent).
+        expect(output).toContain('                      https://b.example/cb')
+        // Raw JSON-array blob should not leak into the plain renderer.
+        expect(output).not.toContain('["https://a.example/cb"')
+        consoleSpy.mockRestore()
+    })
+
     it('treats empty-string serviceUrl/oauthRedirectUri the same as null', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -549,6 +569,371 @@ describe('apps view — enriched fields', () => {
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.webhook).toBeNull()
+        consoleSpy.mockRestore()
+    })
+})
+
+describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('errors when both --add- and --remove-oauth-redirect are passed', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--add-oauth-redirect',
+                'https://example.com/cb',
+                '--remove-oauth-redirect',
+                'https://example.com/cb',
+            ]),
+        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('errors when neither flag is passed', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909']),
+        ).rejects.toMatchObject({ code: 'NO_CHANGES' })
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('rejects invalid redirect URIs on --add before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--add-oauth-redirect',
+                'javascript://alert(1)',
+            ]),
+        ).rejects.toMatchObject({ code: 'INVALID_URL' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('does not validate the URI on --remove (lets users clean up legacy malformed data)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        // App's stored URI is malformed but we want to let the user remove it.
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: 'javascript://alert(1)',
+        })
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, oauthRedirectUri: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'javascript://alert(1)',
+            '--yes',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
+        consoleSpy.mockRestore()
+    })
+
+    it('adds a new redirect URI to an app that has one (serializes as JSON array)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Added OAuth redirect URI to Todoist for VS Code')
+        expect(output).toContain('https://example.com/cb')
+        consoleSpy.mockRestore()
+    })
+
+    it('adds a first redirect URI to an app that has none (serializes as plain string)', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_B_DETAIL,
+            oauthRedirectUri: 'https://example.com/cb',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9910',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9910', {
+            oauthRedirectUri: 'https://example.com/cb',
+        })
+        consoleSpy.mockRestore()
+    })
+
+    it('rejects adding a URI that is already set', async () => {
+        const program = createProgram()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--add-oauth-redirect',
+                'vscode://doist.todoist-vs-code/auth-complete',
+            ]),
+        ).rejects.toMatchObject({ code: 'ALREADY_EXISTS' })
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('add --dry-run previews without calling updateApp', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toContain('https://example.com/cb')
+        consoleSpy.mockRestore()
+    })
+
+    it('remove exits without error when URI is not present on the app', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'https://not-on-app.example/cb',
+            '--yes',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('is not an OAuth redirect URI')
+        expect(output).toContain('nothing to remove')
+        consoleSpy.mockRestore()
+    })
+
+    it('remove no-op with --json outputs the unchanged app as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'https://not-on-app.example/cb',
+            '--yes',
+            '--json',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls[0][0] as string
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('9909')
+        expect(parsed.oauthRedirectUri).toBe('vscode://doist.todoist-vs-code/auth-complete')
+        consoleSpy.mockRestore()
+    })
+
+    it('remove without --yes and with --json throws CONFIRMATION_REQUIRED instead of printing a preview', async () => {
+        const program = createProgram()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--remove-oauth-redirect',
+                'vscode://doist.todoist-vs-code/auth-complete',
+                '--json',
+            ]),
+        ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' })
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('remove requires --yes; without it prints preview and does not call updateApp', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'vscode://doist.todoist-vs-code/auth-complete',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Would remove OAuth redirect URI')
+        expect(output).toContain('Use --yes to confirm.')
+        consoleSpy.mockRestore()
+    })
+
+    it('remove with --yes clears oauthRedirectUri to null when removing the only URI', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, oauthRedirectUri: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'vscode://doist.todoist-vs-code/auth-complete',
+            '--yes',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Removed OAuth redirect URI from Todoist for VS Code')
+        consoleSpy.mockRestore()
+    })
+
+    it('add with --json outputs only the essential app fields via the shared formatter', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.id).toBe('9909')
+        expect(parsed.clientId).toBe('client-abc')
+        expect(parsed.displayName).toBe('Todoist for VS Code')
+        expect(parsed.oauthRedirectUri).toContain('https://example.com/cb')
+        expect(parsed.userCount).toBe(42)
+        // Essential-fields filter drops noisy/secondary keys.
+        expect(parsed).not.toHaveProperty('iconSm')
+        expect(parsed).not.toHaveProperty('userId')
+        consoleSpy.mockRestore()
+    })
+
+    it('remove with --yes writes the remaining URIs when multiple were set', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: '["https://a.example/cb","https://b.example/cb"]',
+        })
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: 'https://b.example/cb',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'https://a.example/cb',
+            '--yes',
+        ])
+
+        // Single remaining URI is written as a plain string, not a JSON array.
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            oauthRedirectUri: 'https://b.example/cb',
+        })
         consoleSpy.mockRestore()
     })
 })

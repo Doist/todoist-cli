@@ -17,6 +17,7 @@ export type ErrorCode =
     | 'REGISTRY_ERROR'
     | 'UPLOAD_FAILED'
     // Validation
+    | 'CONFIRMATION_REQUIRED'
     | 'CONFLICTING_OPTIONS'
     | 'INVALID_AUTO_REMINDER'
     | 'INVALID_BOOLEAN'

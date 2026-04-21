@@ -217,6 +217,16 @@ const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
 ] as const
 const FILTER_ESSENTIAL_FIELDS = ['id', 'name', 'query', 'color', 'isFavorite'] as const
 const FOLDER_ESSENTIAL_FIELDS = ['id', 'name', 'workspaceId', 'defaultOrder', 'childOrder'] as const
+const APP_ESSENTIAL_FIELDS = [
+    'id',
+    'clientId',
+    'displayName',
+    'status',
+    'serviceUrl',
+    'oauthRedirectUri',
+    'appTokenScopes',
+    'userCount',
+] as const
 const NOTIFICATION_ESSENTIAL_FIELDS = [
     'id',
     'type',
@@ -277,6 +287,9 @@ function addWebUrl<T extends { id: string }>(item: T, type: EntityType): T & { w
         case 'folder':
             url = ''
             break
+        case 'app':
+            url = ''
+            break
     }
     return { ...item, webUrl: url }
 }
@@ -292,6 +305,7 @@ export type EntityType =
     | 'filter'
     | 'folder'
     | 'notification'
+    | 'app'
 
 function getEssentialFields(type: EntityType): readonly string[] {
     switch (type) {
@@ -315,6 +329,8 @@ function getEssentialFields(type: EntityType): readonly string[] {
             return FOLDER_ESSENTIAL_FIELDS
         case 'notification':
             return NOTIFICATION_ESSENTIAL_FIELDS
+        case 'app':
+            return APP_ESSENTIAL_FIELDS
     }
 }
 
