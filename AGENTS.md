@@ -34,8 +34,8 @@ Use this to verify changes work before committing.
 - **Named flag aliases:** where commands accept positional args for context (project, task, workspace), named flags (`--project`, `--task`, `--workspace`) are also accepted. Error if both positional and flag are provided.
 - **Implicit `view` subcommand edge case:** `td project <ref>` defaults to `td project view <ref>`. If a project/task name matches a subcommand name (e.g., `"list"`), the subcommand wins — users must use `td project view list`.
 - **API response shape:** client returns `{ results: T[], nextCursor? }` — always destructure.
-- **Priority mapping:** CLI uses `"p1"`–`"p4"` strings; API uses 4=p1 (highest), 1=p4 (lowest). Use `parsePriority`/`PRIORITY_MAP` from `src/lib/task-list.ts`, never hand-roll.
-- **Errors:** throw `CliError(code, message, suggestions?)` from `src/lib/errors.ts` for anything user-facing. The global `parseAsync().catch` in `src/index.ts` renders it correctly in JSON and pretty modes.
+- **Priority mapping:** CLI uses `"p1"`–`"p4"` strings; API uses 4=p1 (highest), 1=p4 (lowest). Use `parsePriority` from `src/lib/task-list.ts`, never hand-roll.
+- **Errors:** throw `CliError(code, message, hints?)` from `src/lib/errors.ts` for anything user-facing. The global `parseAsync().catch` in `src/index.ts` renders it correctly in JSON and pretty modes.
 
 ## Testing
 

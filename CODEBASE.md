@@ -67,8 +67,9 @@ src/
 2. Placeholder subcommands are registered so `--help` lists everything without
    importing anything.
 3. The invoked command name is extracted from `process.argv`; only its loader
-   runs (`await import('./commands/<name>/index.js')`), then the real
-   `registerXxxCommand(program)` replaces the placeholder.
+   runs (`./commands/<name>.js` for flat commands, `./commands/<name>/index.js`
+   for groups), then the real `registerXxxCommand(program)` replaces the
+   placeholder.
 4. If output will be human-readable, `preloadMarkdown()` runs in parallel with
    the command import. `startEarlySpinner()` covers the import latency.
 5. `program.parseAsync()` runs the command's action handler. Uncaught
@@ -114,12 +115,14 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 ## `src/lib/` catalog — don't reimplement
 
 - **`api/core.ts`** — `getApi()` (SDK client factory), re-exports `Task`,
-  `Project`, `Section`, `{ results, nextCursor }` response shape
+  `Project`, `Section`, `User`. Paginated response shape
+  `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
   `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`
-- **`auth.ts`** — `probeToken()`, `saveApiToken()`, `NoTokenError`,
-  `AuthProbeResult`
-- **`auth-flags.ts`** — parse `--read-only` / `--additional-scopes=...`
+- **`auth.ts`** — `getApiToken()`, `probeApiToken()`, `saveApiToken()`,
+  `clearApiToken()`, `NoTokenError`, `AuthProbeResult`
+- **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
+  with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
   `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`
 - **`secure-store.ts`** — `@napi-rs/keyring` wrapper (OS credential manager)
@@ -128,20 +131,20 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `formatNdjson`, `formatPaginatedJson`, `formatDueDate`, `formatPriority`,
   `formatError`, `formatErrorJson`, `printDryRun`
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
-  `resolveProjectRef`, `resolveSectionId`, `resolveParentTaskId`,
-  `resolveLabelRef`, `resolveWorkspaceRef`, `parseTodoistUrl`,
-  `classifyTodoistUrl`
+  `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
+  `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,
+  `resolveFolderRef`, `resolveAppRef`, `parseTodoistUrl`, `classifyTodoistUrl`
 - **`urls.ts`** — `taskUrl`, `projectUrl`, `labelUrl`, `sectionUrl`,
   `commentUrl`, `filterUrl`
 - **`task-list.ts`** — `fetchProjects`, `filterByWorkspaceOrPersonal`,
-  `parsePriority`, `PRIORITY_MAP` (p1→4, p4→1)
+  `parsePriority`, `PRIORITY_CHOICES` (`"p1"`–`"p4"`; internally p1→4, p4→1)
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)
 - **`spinner.ts`** — `startEarlySpinner`, `LoadingSpinner` class
   (yocto-spinner wrapper)
 - **`markdown.ts`** — `preloadMarkdown`, markdown → terminal renderer
-- **`errors.ts`** — `CliError(code, message, suggestions?)`, `ErrorType` enum
+- **`errors.ts`** — `CliError(code, message, hints?)`, `ErrorType` union
 - **`collaborators.ts`** — `CollaboratorCache`, `formatAssignee`,
   `resolveAssigneeId`
 - **`global-args.ts`** — `isJsonMode`, `isNdjsonMode`, `isRawMode`,
@@ -160,7 +163,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `paginate()` → `formatTaskRow()`. Supports `--json`, `--ndjson`,
   `--workspace`, `--personal`, `--cursor`, `--limit`.
 - **Write with `--json`:** `src/commands/task/add.ts` — resolves
-  project/section/parent/assignee refs via `refs.ts`, calls `api.addTask()`,
+  project/section/parent refs via `refs.ts` and the assignee via
+  `resolveAssigneeId()` from `src/lib/collaborators.ts`, calls `api.addTask()`,
   outputs `formatJson(result, 'task')` when `--json`, else human confirmation.
 - **Grouped command:** `src/commands/project/index.ts` + siblings —
   implicit-default `view`, sibling files per subcommand, `project/helpers.ts`
@@ -170,7 +174,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 
 All live in `src/lib/refs.ts`:
 
-1. **Full name resolution** (`resolveProjectRef`, `resolveLabelRef`, …) —
+1. **Full name resolution** (`resolveProjectRef`, `resolveTaskRef`, …) —
    async, returns the full entity. Tries URL → `id:` prefix → exact name →
    partial substring → raw ID fallback. Use for entities with user-facing names.
    Add new wrappers in `refs.ts`; the internal `resolveRef` is private.
@@ -186,15 +190,17 @@ All live in `src/lib/refs.ts`:
 
 ## Auth & token storage
 
-Token lookup order (see `src/lib/auth.ts`):
+Token lookup order (see `src/lib/auth.ts` — `getApiToken()` / `probeApiToken()`):
 
 1. `TODOIST_API_TOKEN` env var
-2. OS credential manager via `src/lib/secure-store.ts`
-3. `~/.config/todoist-cli/config.json` fallback (`{ "api_token": "..." }`)
+2. `~/.config/todoist-cli/config.json` (`{ "api_token": "..." }`) — migrated
+   into secure-store on first read when present
+3. OS credential manager via `src/lib/secure-store.ts`
 
-`td auth login` runs a full OAuth PKCE flow (`src/lib/oauth-server.ts`, local
-port 8888, browser launch). Scopes are opt-in: `--read-only` for a read-only
-token, `--additional-scopes=app-management,backups` to broaden.
+`td auth login` runs a full OAuth PKCE flow (`src/lib/oauth-server.ts`,
+`DEFAULT_PORT = 8765` with a small fallback range, browser launch). Scopes
+are opt-in: `--read-only` for a read-only token,
+`--additional-scopes=app-management,backups` to broaden.
 
 ## Testing
 
@@ -243,7 +249,8 @@ node dist/index.js today
 node dist/index.js <cmd> ...
 ```
 
-Needs `TODOIST_API_TOKEN` in env or a config file (above).
+Uses the same token lookup as the installed `td` binary — env var, config
+file, or a token stored in the OS credential manager via `td auth login`.
 
 ## Conventions (quick)
 
@@ -253,7 +260,7 @@ Needs `TODOIST_API_TOKEN` in env or a config file (above).
 - API responses: always destructure `{ results, nextCursor }` from the SDK
 - Mutating commands (`add`/`create`/`update`): always support `--json`
   emitting `formatJson(result, entityType)` — see AGENTS.md
-- User-facing errors: throw `CliError(code, message, suggestions?)` from
+- User-facing errors: throw `CliError(code, message, hints?)` from
   `src/lib/errors.ts`; global `parseAsync().catch` in `src/index.ts` renders it
 - Global flags handled in `src/lib/global-args.ts` — check `isJsonMode()` etc.
   before printing
