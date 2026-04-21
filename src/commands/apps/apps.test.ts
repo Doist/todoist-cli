@@ -318,6 +318,26 @@ describe('apps view', () => {
         expect(mockApi.getApp).not.toHaveBeenCalled()
     })
 
+    it('renders a multi-URI JSON-array oauthRedirectUri as separate indented lines', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: '["https://a.example/cb","https://b.example/cb"]',
+        })
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('OAuth redirect:     https://a.example/cb')
+        // Continuation line aligns with the value column (22-space indent).
+        expect(output).toContain('                      https://b.example/cb')
+        // Raw JSON-array blob should not leak into the plain renderer.
+        expect(output).not.toContain('["https://a.example/cb"')
+        consoleSpy.mockRestore()
+    })
+
     it('treats empty-string serviceUrl/oauthRedirectUri the same as null', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -609,23 +629,30 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         expect(mockApi.updateApp).not.toHaveBeenCalled()
     })
 
-    it('rejects invalid redirect URIs on --remove before any API call', async () => {
+    it('does not validate the URI on --remove (lets users clean up legacy malformed data)', async () => {
         const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        await expect(
-            program.parseAsync([
-                'node',
-                'td',
-                'apps',
-                'update',
-                'id:9909',
-                '--remove-oauth-redirect',
-                'javascript://alert(1)',
-                '--yes',
-            ]),
-        ).rejects.toMatchObject({ code: 'INVALID_URL' })
-        expect(mockApi.getApp).not.toHaveBeenCalled()
-        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        // App's stored URI is malformed but we want to let the user remove it.
+        mockApi.getApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri: 'javascript://alert(1)',
+        })
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, oauthRedirectUri: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--remove-oauth-redirect',
+            'javascript://alert(1)',
+            '--yes',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
+        consoleSpy.mockRestore()
     })
 
     it('adds a new redirect URI to an app that has one (serializes as JSON array)', async () => {

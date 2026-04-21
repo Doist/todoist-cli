@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { resolveAppRef } from '../../lib/refs.js'
+import { parseOAuthRedirectUris } from './helpers.js'
 
 export interface ViewAppOptions {
     json?: boolean
@@ -56,7 +57,15 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
     console.log(`  Users:              ${app.userCount}`)
     console.log(`  Created:            ${created}`)
     console.log(`  Service URL:        ${app.serviceUrl || '(none)'}`)
-    console.log(`  OAuth redirect:     ${app.oauthRedirectUri || '(none)'}`)
+    const oauthUris = parseOAuthRedirectUris(app.oauthRedirectUri)
+    if (oauthUris.length === 0) {
+        console.log(`  OAuth redirect:     (none)`)
+    } else {
+        console.log(`  OAuth redirect:     ${oauthUris[0]}`)
+        for (const uri of oauthUris.slice(1)) {
+            console.log(`                      ${uri}`)
+        }
+    }
     console.log(`  Token scopes:       ${scopes}`)
     if (app.iconMd) {
         console.log(`  Icon:               ${chalk.dim(app.iconMd)}`)

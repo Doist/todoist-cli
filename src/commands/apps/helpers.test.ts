@@ -55,13 +55,23 @@ describe('parseOAuthRedirectUris', () => {
     })
 
     it('preserves a single valid URL whose query string contains commas', () => {
-        // Without the validity pre-check, the legacy comma-fallback would
-        // shred this into ['https://example.com/cb?xs=1', '2', '3'].
+        // Without the smart-split, the legacy comma-fallback would shred this
+        // into ['https://example.com/cb?xs=1', '2', '3'].
         const url = 'https://example.com/cb?xs=1,2,3'
         expect(parseOAuthRedirectUris(url)).toEqual([url])
     })
 
-    it('falls back to comma-splitting only when the whole string is not a valid URI', () => {
+    it('splits a legacy comma-separated list of custom-scheme URIs', () => {
+        // Custom-scheme URIs with commas in the body validate as a single URI
+        // by `validateRedirectUri` (the scheme/body regex is permissive), so
+        // the parser must prefer split-and-validate-each before falling back
+        // to the whole-string form. Otherwise `--remove myapp://cb` on an app
+        // whose stored value is 'myapp://cb,otherapp://cb' would no-op.
+        const input = 'myapp://cb,otherapp://cb'
+        expect(parseOAuthRedirectUris(input)).toEqual(['myapp://cb', 'otherapp://cb'])
+    })
+
+    it('splits https comma-separated lists', () => {
         const input = 'https://a.com/cb,https://b.com/cb'
         expect(parseOAuthRedirectUris(input)).toEqual(['https://a.com/cb', 'https://b.com/cb'])
     })

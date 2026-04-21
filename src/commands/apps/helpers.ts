@@ -55,21 +55,31 @@ export function parseOAuthRedirectUris(uri: string | null): string[] {
                 )
             }
         } catch {
-            // Fall through to comma-separated parsing.
+            // Fall through to below.
         }
     }
 
-    // A single valid URL may legitimately contain commas in a query string
-    // (e.g. https://example.com/cb?xs=1,2,3). Treat the whole string as one
-    // URI when it validates as such, instead of shredding it on commas.
-    if (validateRedirectUri(trimmed)) {
-        return [trimmed]
-    }
+    // No commas → unambiguously a single URI.
+    if (!trimmed.includes(',')) return [trimmed]
 
-    return trimmed
+    // With commas it could be either the legacy comma-separated form (e.g.
+    // `myapp://cb,otherapp://cb` — both pieces validate individually and
+    // `validateRedirectUri` on the whole string would accept it too, so we
+    // can't rely on the whole-string validator alone) or a single URL whose
+    // query string contains commas (e.g. `https://example.com/cb?xs=1,2,3`
+    // where the split pieces would not validate). Prefer split when every
+    // piece is valid; fall back to the whole string otherwise.
+    const split = trimmed
         .split(',')
         .map((u) => u.trim())
         .filter((u) => u.length > 0)
+    if (split.length > 1 && split.every(validateRedirectUri)) {
+        return split
+    }
+    if (validateRedirectUri(trimmed)) {
+        return [trimmed]
+    }
+    return split
 }
 
 // Single URL is sent as a plain string; multiple as a JSON array. Matches the

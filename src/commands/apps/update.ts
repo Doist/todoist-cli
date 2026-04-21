@@ -19,7 +19,7 @@ export interface UpdateAppOptions {
 
 function invalidUri(uri: string): CliError {
     return new CliError('INVALID_URL', `Invalid OAuth redirect URI: ${uri}`, [
-        'Use https://<host>, http(s)://localhost[:port][/path], or a custom scheme (e.g. myapp://callback).',
+        'Use https://<host>, http(s)://localhost[:port][/path], http(s)://127.0.0.1[:port][/path], or a custom scheme (e.g. myapp://callback).',
         'Custom schemes javascript, data, file, vbscript, ftp are not allowed.',
     ])
 }
@@ -42,11 +42,10 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         ])
     }
 
-    // Both flags get the same preflight validation — keeps the API call out
-    // of the loop for any URI we'd never accept anyway, including remove
-    // arguments that could otherwise no-op silently.
+    // Validate only the URI we're about to persist. Removals intentionally
+    // skip validation so users can clean up legacy malformed URIs that
+    // predate this validator or were written by older tooling.
     if (add !== undefined && !validateRedirectUri(add)) throw invalidUri(add)
-    if (remove !== undefined && !validateRedirectUri(remove)) throw invalidUri(remove)
 
     const api = await getApi()
     const app = await resolveAppRef(api, ref)
