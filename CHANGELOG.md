@@ -1,3 +1,9 @@
+## [1.52.0](https://github.com/Doist/todoist-cli/compare/v1.51.0...v1.52.0) (2026-04-21)
+
+### Features
+
+* **hc:** persist a default Help Center locale via `hc locale --set-default` ([#284](https://github.com/Doist/todoist-cli/issues/284)) ([a4e9d6d](https://github.com/Doist/todoist-cli/commit/a4e9d6d45bc8e9ba19965751242d8f5932bf1726))
+
 ## [1.51.0](https://github.com/Doist/todoist-cli/compare/v1.50.0...v1.51.0) (2026-04-20)
 
 ### Features
