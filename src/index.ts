@@ -142,6 +142,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage shell completions',
         async () => (await import('./commands/completion/index.js')).registerCompletionCommand,
     ],
+    config: [
+        'View CLI configuration',
+        async () => (await import('./commands/config/index.js')).registerConfigCommand,
+    ],
     view: [
         'View a Todoist entity or page by URL',
         async () => (await import('./commands/view.js')).registerViewCommand,
