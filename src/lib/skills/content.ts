@@ -218,6 +218,8 @@ td reminder location get id:456
 
 \`td attachment view\` prints text attachments directly and encodes binary content as base64. Use \`--json\` for metadata plus content. Prefer this over \`curl\` + \`Read\` on Todoist file URLs — for images in particular, \`Read\` will try to decode the file through the vision pipeline, and if that fails the image stays pinned in conversation context and every retry hits the same error.
 
+\`td comment view\` flags image attachments with a \`Hint\` line pointing at \`td attachment view\`. In \`--json\` mode the hint is written to stderr so stdout stays parseable — watch the tool output, not just the JSON body.
+
 ### Help Center
 \`\`\`bash
 td hc

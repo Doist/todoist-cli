@@ -6,6 +6,25 @@ import { formatFileSize, formatJson } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
 import { commentUrl, projectCommentUrl } from '../../lib/urls.js'
 
+const IMAGE_EXT_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif|tiff?)(?:\?|#|$)/i
+
+type AttachmentLike = {
+    fileName?: string | null
+    fileType?: string | null
+    fileUrl?: string | null
+}
+
+function isImageAttachment(att: AttachmentLike | null | undefined): boolean {
+    if (!att) return false
+    if (att.fileType?.startsWith('image/')) return true
+    if (att.fileName && IMAGE_EXT_PATTERN.test(att.fileName)) return true
+    if (att.fileUrl && IMAGE_EXT_PATTERN.test(att.fileUrl)) return true
+    return false
+}
+
+const IMAGE_HINT =
+    "image attachment — fetch via 'td attachment view <url>' if needed; do not download and Read directly"
+
 export async function viewComment(commentId: string, options: ViewOptions): Promise<void> {
     const api = await getApi()
     const id = lenientIdRef(commentId, 'comment')
@@ -13,6 +32,9 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
 
     if (options.json) {
         console.log(formatJson(comment, 'comment', options.full, true))
+        if (comment.fileAttachment?.fileUrl && isImageAttachment(comment.fileAttachment)) {
+            process.stderr.write(`Hint: ${IMAGE_HINT}\n`)
+        }
         return
     }
 
@@ -40,12 +62,8 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
         if (att.fileSize) console.log(`  Size:  ${formatFileSize(att.fileSize)}`)
         if (att.fileType) console.log(`  Type:  ${att.fileType}`)
         if (att.fileUrl) console.log(`  URL:   ${att.fileUrl}`)
-        if (att.fileType?.startsWith('image/')) {
-            console.log(
-                chalk.dim(
-                    "  Hint:  image attachment — fetch via 'td attachment view <url>' if needed; do not download and Read directly",
-                ),
-            )
+        if (att.fileUrl && isImageAttachment(att)) {
+            console.log(chalk.dim(`  Hint:  ${IMAGE_HINT}`))
         }
     }
 }

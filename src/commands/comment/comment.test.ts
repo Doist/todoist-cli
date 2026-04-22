@@ -622,6 +622,114 @@ describe('comment view', () => {
         consoleSpy.mockRestore()
     })
 
+    it('shows image-attachment hint when only fileName signals the image type', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'See mock',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
+            fileAttachment: {
+                resourceType: 'file',
+                fileName: 'mock.jpg',
+                fileSize: 22974,
+                fileType: null,
+                fileUrl: 'https://files.todoist.com/user_upload/v2/1/mock.jpg',
+            },
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123'])
+
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).toContain('Hint:')
+        expect(output).toContain('image attachment')
+        consoleSpy.mockRestore()
+    })
+
+    it('omits image hint when fileUrl is missing even if fileType is an image type', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'See mock',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
+            fileAttachment: {
+                resourceType: 'file',
+                fileName: 'mock.png',
+                fileSize: 22974,
+                fileType: 'image/png',
+                fileUrl: null,
+            },
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123'])
+
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).not.toContain('Hint:')
+        consoleSpy.mockRestore()
+    })
+
+    it('writes image hint to stderr when --json is used with an image attachment', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'See mock',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
+            fileAttachment: {
+                resourceType: 'file',
+                fileName: 'mock.png',
+                fileSize: 22974,
+                fileType: 'image/png',
+                fileUrl: 'https://files.todoist.com/user_upload/v2/1/file.png',
+            },
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123', '--json'])
+
+        const stdout = consoleSpy.mock.calls[0][0] as string
+        expect(() => JSON.parse(stdout)).not.toThrow()
+        expect(stdout).not.toContain('Hint:')
+
+        const stderr = stderrSpy.mock.calls.map((call) => String(call[0])).join('')
+        expect(stderr).toContain('Hint:')
+        expect(stderr).toContain('image attachment')
+
+        stderrSpy.mockRestore()
+        consoleSpy.mockRestore()
+    })
+
+    it('does not write to stderr when --json is used with a non-image attachment', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'See attached',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
+            fileAttachment: {
+                resourceType: 'file',
+                fileName: 'document.pdf',
+                fileSize: 1024000,
+                fileType: 'application/pdf',
+                fileUrl: 'https://cdn.todoist.com/files/document.pdf',
+            },
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123', '--json'])
+
+        const stderr = stderrSpy.mock.calls.map((call) => String(call[0])).join('')
+        expect(stderr).not.toContain('Hint:')
+
+        stderrSpy.mockRestore()
+        consoleSpy.mockRestore()
+    })
+
     it('outputs JSON with --json', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
