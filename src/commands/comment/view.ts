@@ -40,5 +40,12 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
         if (att.fileSize) console.log(`  Size:  ${formatFileSize(att.fileSize)}`)
         if (att.fileType) console.log(`  Type:  ${att.fileType}`)
         if (att.fileUrl) console.log(`  URL:   ${att.fileUrl}`)
+        if (att.fileType?.startsWith('image/')) {
+            console.log(
+                chalk.dim(
+                    "  Hint:  image attachment — fetch via 'td attachment view <url>' if needed; do not download and Read directly",
+                ),
+            )
+        }
     }
 }

@@ -590,6 +590,35 @@ describe('comment view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             '  URL:   https://cdn.todoist.com/files/document.pdf',
         )
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).not.toContain('Hint:')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows image-attachment hint steering agents away from direct download', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getComment.mockResolvedValue({
+            id: 'comment-123',
+            content: 'See mock',
+            postedAt: new Date('2026-01-08T10:00:00Z'),
+            fileAttachment: {
+                resourceType: 'file',
+                fileName: 'mock.png',
+                fileSize: 22974,
+                fileType: 'image/png',
+                fileUrl: 'https://files.todoist.com/user_upload/v2/1/file.png',
+            },
+        })
+
+        await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-123'])
+
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).toContain(
+            "image attachment — fetch via 'td attachment view <url>' if needed",
+        )
+        expect(output).toContain('do not download and Read directly')
         consoleSpy.mockRestore()
     })
 
