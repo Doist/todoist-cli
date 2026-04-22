@@ -1642,6 +1642,35 @@ describe('task update --deadline', () => {
     })
 })
 
+describe('task update --no-due', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('removes due date with --no-due', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            due: { date: '2026-12-31', string: 'Dec 31' },
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--no-due'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            dueString: null,
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('task add/update --uncompletable', () => {
     let mockApi: MockApi
 
