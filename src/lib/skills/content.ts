@@ -59,7 +59,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Help Center: \`td hc locales/search/view\`
-- Account and tooling: \`td stats\`, \`td settings ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
+- Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 - Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
 - Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
 
@@ -276,6 +276,10 @@ td stats vacation --on
 td settings view
 td settings update --timezone "America/New_York" --time-format 24 --date-format intl
 td settings themes
+
+td config view
+td config view --json
+td config view --show-token
 
 td completion install zsh
 td completion uninstall
