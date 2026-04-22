@@ -1,3 +1,9 @@
+## [1.55.0](https://github.com/Doist/todoist-cli/compare/v1.54.1...v1.55.0) (2026-04-22)
+
+### Features
+
+* **comment:** steer agents away from downloading image attachments ([#288](https://github.com/Doist/todoist-cli/issues/288)) ([d0b16e3](https://github.com/Doist/todoist-cli/commit/d0b16e3ce601f54c86ac97662c60dde377fc161b))
+
 ## [1.54.1](https://github.com/Doist/todoist-cli/compare/v1.54.0...v1.54.1) (2026-04-22)
 
 ### Bug Fixes
