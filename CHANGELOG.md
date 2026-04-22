@@ -1,3 +1,9 @@
+## [1.56.0](https://github.com/Doist/todoist-cli/compare/v1.55.0...v1.56.0) (2026-04-22)
+
+### Features
+
+* **task:** add --no-due flag to clear due date ([#289](https://github.com/Doist/todoist-cli/issues/289)) ([3570b9f](https://github.com/Doist/todoist-cli/commit/3570b9fa603095f2e1c78d50488d1b1be7d7ea73))
+
 ## [1.55.0](https://github.com/Doist/todoist-cli/compare/v1.54.1...v1.55.0) (2026-04-22)
 
 ### Features
