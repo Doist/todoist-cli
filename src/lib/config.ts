@@ -1,6 +1,7 @@
 import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'
 
 export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
@@ -56,6 +57,51 @@ export async function readConfig(): Promise<Config> {
     } catch {
         return {}
     }
+}
+
+export type StrictReadResult = { state: 'missing' } | { state: 'present'; config: Config }
+
+/**
+ * Read and parse the config file strictly — for inspection commands that need
+ * to distinguish "missing" from "present but broken". `readConfig` deliberately
+ * swallows errors for runtime code paths; this one surfaces them.
+ */
+export async function readConfigStrict(): Promise<StrictReadResult> {
+    let content: string
+    try {
+        content = await readFile(CONFIG_PATH, 'utf-8')
+    } catch (error) {
+        if (isMissingFileError(error)) return { state: 'missing' }
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new CliError(
+            'CONFIG_READ_FAILED',
+            `Could not read config file ${CONFIG_PATH}: ${detail}`,
+            ['Check file permissions, or run `td doctor` to diagnose'],
+        )
+    }
+
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(content)
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new CliError(
+            'CONFIG_INVALID_JSON',
+            `Config file at ${CONFIG_PATH} is not valid JSON: ${detail}`,
+            ['Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`'],
+        )
+    }
+
+    if (!isObject(parsed)) {
+        const actual = Array.isArray(parsed) ? 'array' : typeof parsed
+        throw new CliError(
+            'CONFIG_INVALID_SHAPE',
+            `Config file at ${CONFIG_PATH} must contain a JSON object (got ${actual})`,
+            ['Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`'],
+        )
+    }
+
+    return { state: 'present', config: parsed as Config }
 }
 
 export async function writeConfig(config: Config): Promise<void> {

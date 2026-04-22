@@ -143,7 +143,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         async () => (await import('./commands/completion/index.js')).registerCompletionCommand,
     ],
     config: [
-        'View CLI configuration',
+        'Manage CLI configuration',
         async () => (await import('./commands/config/index.js')).registerConfigCommand,
     ],
     view: [

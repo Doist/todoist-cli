@@ -46,7 +46,7 @@ src/
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
 │  │  backup/, apps/, stats/, completed/, auth/, settings/,
-│  │  skill/, hc/, completion/, update/
+│  │  config/, skill/, hc/, completion/, update/
 │  └─ *.test.ts           # Co-located tests
 ├─ lib/                   # Shared utilities. See catalog — don't reimplement.
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,

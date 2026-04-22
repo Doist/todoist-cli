@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/config.js', () => ({
     CONFIG_PATH: '/tmp/fake-todoist-cli/config.json',
-    readConfig: vi.fn(),
+    readConfigStrict: vi.fn(),
 }))
 
 vi.mock('../../lib/auth.js', async () => {
@@ -17,10 +17,12 @@ vi.mock('../../lib/auth.js', async () => {
 vi.mock('chalk')
 
 import { NoTokenError, probeApiToken } from '../../lib/auth.js'
-import { type Config, readConfig } from '../../lib/config.js'
+import { type Config, readConfigStrict } from '../../lib/config.js'
+import { CliError } from '../../lib/errors.js'
+import { SecureStoreUnavailableError } from '../../lib/secure-store.js'
 import { registerConfigCommand } from './index.js'
 
-const mockReadConfig = vi.mocked(readConfig)
+const mockReadConfigStrict = vi.mocked(readConfigStrict)
 const mockProbeApiToken = vi.mocked(probeApiToken)
 
 function createProgram() {
@@ -39,10 +41,31 @@ const fullConfig: Config = {
     hc: { defaultLocale: 'en-us' },
 }
 
-function mockToken(source: 'env' | 'secure-store' | 'config-file', token = fullConfig.api_token!) {
+function presentConfig(config: Config = fullConfig) {
+    mockReadConfigStrict.mockResolvedValue({ state: 'present', config })
+}
+
+function missingConfig() {
+    mockReadConfigStrict.mockResolvedValue({ state: 'missing' })
+}
+
+function mockToken(
+    source: 'env' | 'secure-store' | 'config-file',
+    overrides: Partial<{
+        token: string
+        authMode: 'read-only' | 'read-write' | 'unknown'
+        authScope?: string
+        authFlags?: ('read-only' | 'app-management' | 'backups')[]
+    }> = {},
+) {
     mockProbeApiToken.mockResolvedValue({
-        token,
-        metadata: { authMode: 'read-write', source },
+        token: overrides.token ?? fullConfig.api_token!,
+        metadata: {
+            authMode: overrides.authMode ?? 'read-write',
+            authScope: overrides.authScope,
+            authFlags: overrides.authFlags,
+            source,
+        },
     })
 }
 
@@ -52,8 +75,11 @@ describe('config view', () => {
     })
 
     it('prints a pretty layout with the token masked by default', async () => {
-        mockReadConfig.mockResolvedValue(fullConfig)
-        mockToken('config-file')
+        presentConfig()
+        mockToken('config-file', {
+            authScope: 'data:read,data:delete',
+            authFlags: ['app-management'],
+        })
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
@@ -73,8 +99,8 @@ describe('config view', () => {
     })
 
     it('labels tokens stored in the system credential manager', async () => {
-        mockReadConfig.mockResolvedValue({ auth_mode: 'read-write' })
-        mockToken('secure-store', 'tdo_keychainXXXXXXXX1234')
+        presentConfig({ auth_mode: 'read-write' })
+        mockToken('secure-store', { token: 'tdo_keychainXXXXXXXX1234' })
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
@@ -87,9 +113,15 @@ describe('config view', () => {
         consoleSpy.mockRestore()
     })
 
-    it('labels tokens coming from the environment variable', async () => {
-        mockReadConfig.mockResolvedValue({})
-        mockToken('env', 'tdo_envXXXXXXXX5678')
+    it('labels env-sourced tokens and shows active mode, not stale config values', async () => {
+        // Config has a stale read-only entry from a previous `td auth login`,
+        // but TODOIST_API_TOKEN is now driving auth with an unknown scope.
+        presentConfig({
+            auth_mode: 'read-only',
+            auth_scope: 'data:read',
+            auth_flags: ['read-only'],
+        })
+        mockToken('env', { token: 'tdo_envXXXXXXXX5678', authMode: 'unknown' })
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
@@ -97,13 +129,31 @@ describe('config view', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('****…5678')
         expect(output).toContain('TODOIST_API_TOKEN')
+        // Active mode is unknown (env scope isn't introspectable), not read-only.
+        expect(output).toContain('Mode:          unknown')
+        expect(output).not.toContain('data:read')
+        expect(output).not.toMatch(/Flags:\s+read-only/)
+
+        consoleSpy.mockRestore()
+    })
+
+    it('degrades gracefully when the credential manager is unavailable', async () => {
+        presentConfig({ auth_mode: 'read-write', update_channel: 'stable' })
+        mockProbeApiToken.mockRejectedValue(new SecureStoreUnavailableError('macOS Keychain error'))
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await createProgram().parseAsync(['node', 'td', 'config', 'view'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('unknown')
+        expect(output).toContain('system credential manager unavailable')
+        expect(output).toContain('stable')
 
         consoleSpy.mockRestore()
     })
 
     it('--json emits the raw config with api_token masked', async () => {
-        mockReadConfig.mockResolvedValue(fullConfig)
-        mockToken('config-file')
+        presentConfig()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
@@ -117,7 +167,7 @@ describe('config view', () => {
     })
 
     it('--show-token reveals the full token in both views', async () => {
-        mockReadConfig.mockResolvedValue(fullConfig)
+        presentConfig()
         mockToken('config-file')
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -133,8 +183,8 @@ describe('config view', () => {
         consoleSpy.mockRestore()
     })
 
-    it('handles a missing / empty config gracefully', async () => {
-        mockReadConfig.mockResolvedValue({})
+    it('handles a missing config file gracefully', async () => {
+        missingConfig()
         mockProbeApiToken.mockRejectedValue(new NoTokenError())
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -148,8 +198,23 @@ describe('config view', () => {
         consoleSpy.mockRestore()
     })
 
+    it('surfaces malformed-config errors instead of silently pretending it is empty', async () => {
+        mockReadConfigStrict.mockRejectedValue(
+            new CliError(
+                'CONFIG_INVALID_JSON',
+                'Config file at /tmp/fake-todoist-cli/config.json is not valid JSON: Unexpected token',
+                ['Fix the JSON'],
+            ),
+        )
+        mockProbeApiToken.mockRejectedValue(new NoTokenError())
+
+        await expect(
+            createProgram().parseAsync(['node', 'td', 'config', 'view']),
+        ).rejects.toMatchObject({ code: 'CONFIG_INVALID_JSON' })
+    })
+
     it('shows "not set" when no token can be found anywhere', async () => {
-        mockReadConfig.mockResolvedValue({ update_channel: 'stable' })
+        presentConfig({ update_channel: 'stable' })
         mockProbeApiToken.mockRejectedValue(new NoTokenError())
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -162,7 +227,7 @@ describe('config view', () => {
     })
 
     it('masks very short tokens without exposing characters', async () => {
-        mockReadConfig.mockResolvedValue({ api_token: 'abcd' })
+        presentConfig({ api_token: 'abcd' })
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
