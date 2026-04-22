@@ -1,3 +1,9 @@
+## [1.54.0](https://github.com/Doist/todoist-cli/compare/v1.53.0...v1.54.0) (2026-04-22)
+
+### Features
+
+* **config:** add `td config view` to inspect the CLI config file ([#285](https://github.com/Doist/todoist-cli/issues/285)) ([9ab14ba](https://github.com/Doist/todoist-cli/commit/9ab14bace7ac7f5b6055885e309de8b32d54c6cc))
+
 ## [1.53.0](https://github.com/Doist/todoist-cli/compare/v1.52.0...v1.53.0) (2026-04-21)
 
 ### Features
