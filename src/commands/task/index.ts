@@ -180,6 +180,7 @@ Examples:
         .description('Update a task')
         .option('--content <text>', 'New content')
         .option('--due <date>', 'New due date')
+        .option('--no-due', 'Remove due date')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--no-deadline', 'Remove deadline')
         .addOption(

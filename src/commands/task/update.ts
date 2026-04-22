@@ -10,7 +10,7 @@ import { applyDuration, type DurationArgs } from './helpers.js'
 
 export interface UpdateOptions {
     content?: string
-    due?: string
+    due?: string | false
     deadline?: string | false
     priority?: string
     labels?: string
@@ -33,7 +33,11 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
     const args: Parameters<typeof api.updateTask>[1] = {}
 
     if (options.content) args.content = options.content
-    if (options.due) args.dueString = options.due
+    if (options.due === false) {
+        args.dueString = null
+    } else if (options.due) {
+        args.dueString = options.due
+    }
     if (options.deadline === false) {
         args.deadlineDate = null
     } else if (options.deadline) {
