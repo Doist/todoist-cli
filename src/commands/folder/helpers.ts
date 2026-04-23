@@ -1,19 +1,15 @@
 import type { Folder } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
-import { readConfig } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
-import { resolveFolderRef, resolveWorkspaceRef } from '../../lib/refs.js'
+import { readDefaultWorkspaceRef, resolveFolderRef, resolveWorkspaceRef } from '../../lib/refs.js'
 
 export async function resolveWorkspaceForFolder(options: {
     workspace?: string
 }): Promise<Workspace> {
-    if (options.workspace) {
-        return resolveWorkspaceRef(options.workspace)
-    }
-    const savedId = (await readConfig()).workspace?.defaultWorkspace
-    if (savedId) {
-        return resolveWorkspaceRef(`id:${savedId}`)
+    const ref = options.workspace ?? (await readDefaultWorkspaceRef())
+    if (ref) {
+        return resolveWorkspaceRef(ref)
     }
     const workspaces = await fetchWorkspaces()
     if (workspaces.length === 0) {

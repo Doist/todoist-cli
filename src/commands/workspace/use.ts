@@ -11,6 +11,14 @@ export async function useWorkspace(
     ref: string | undefined,
     options: UseWorkspaceOptions = {},
 ): Promise<void> {
+    if (options.clear && ref) {
+        throw new CliError(
+            'CONFLICTING_OPTIONS',
+            'Cannot pass a workspace ref together with --clear.',
+            ['Use one or the other: `td workspace use <ref>` OR `td workspace use --clear`.'],
+        )
+    }
+
     if (options.clear) {
         await clearDefaultWorkspace()
         return

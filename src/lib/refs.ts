@@ -398,7 +398,14 @@ export async function resolveWorkspaceRef(ref?: string): Promise<Workspace> {
     return resolveFromList(effectiveRef, workspaces, (w) => w.name, 'workspace')
 }
 
-async function readDefaultWorkspaceRef(): Promise<string | undefined> {
+/**
+ * Return the stored default workspace as a ref string (`id:xxx`) if one is
+ * configured, else undefined. Shared by callers that need to distinguish
+ * "default available" from "no default" instead of letting
+ * `resolveWorkspaceRef` throw — e.g. folder commands with their own
+ * single-workspace fallback.
+ */
+export async function readDefaultWorkspaceRef(): Promise<string | undefined> {
     const savedId = (await readConfig()).workspace?.defaultWorkspace
     return savedId ? `id:${savedId}` : undefined
 }

@@ -1316,6 +1316,14 @@ describe('workspace use (default workspace)', () => {
         expect(mockWriteConfig).toHaveBeenCalledWith({ update_channel: 'stable' })
     })
 
+    it('rejects passing a ref together with --clear', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'use', 'Doist', '--clear']),
+        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+        expect(mockWriteConfig).not.toHaveBeenCalled()
+    })
+
     it('--clear is a no-op and does not write when no default was set', async () => {
         mockReadConfig.mockResolvedValue({ update_channel: 'stable' })
 

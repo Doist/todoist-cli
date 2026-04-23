@@ -219,17 +219,13 @@ export function registerWorkspaceCommand(program: Command): void {
             },
         )
 
-    const useCmd = workspace
+    workspace
         .command('use [ref]')
         .description('Set the default workspace used when [ref] is omitted from other commands')
         .option('--clear', 'Remove the saved default workspace')
-        .action((ref: string | undefined, options: UseWorkspaceOptions) => {
-            if (!ref && !options.clear) {
-                useCmd.help()
-                return
-            }
-            return useWorkspace(ref, options)
-        })
+        .action((ref: string | undefined, options: UseWorkspaceOptions) =>
+            useWorkspace(ref, options),
+        )
 
     workspace.addHelpText(
         'after',
