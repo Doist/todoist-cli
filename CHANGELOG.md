@@ -1,3 +1,9 @@
+## [1.57.0](https://github.com/Doist/todoist-cli/compare/v1.56.1...v1.57.0) (2026-04-23)
+
+### Features
+
+* **workspace:** add `td workspace use <ref>` to persist a default workspace ([#294](https://github.com/Doist/todoist-cli/issues/294)) ([579a4c8](https://github.com/Doist/todoist-cli/commit/579a4c8cb17009012ac7b9d28d76f6f3601c4cc2))
+
 ## [1.56.1](https://github.com/Doist/todoist-cli/compare/v1.56.0...v1.56.1) (2026-04-23)
 
 ### Bug Fixes
