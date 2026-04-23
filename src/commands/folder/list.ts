@@ -5,7 +5,10 @@ import { formatNextCursorFooter } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 
-export async function listFolders(ref: string, options: PaginatedViewOptions): Promise<void> {
+export async function listFolders(
+    ref: string | undefined,
+    options: PaginatedViewOptions,
+): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 

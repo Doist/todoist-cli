@@ -11,6 +11,7 @@ import { showWorkspaceInsights } from './insights.js'
 import { listWorkspaces } from './list.js'
 import { listWorkspaceProjects } from './projects.js'
 import { updateWorkspaceCommand, type UpdateWorkspaceOptions } from './update.js'
+import { useWorkspace, type UseWorkspaceOptions } from './use.js'
 import { listWorkspaceUserTasks, type WorkspaceUserTasksOptions } from './user-tasks.js'
 import { listWorkspaceUsers } from './users.js'
 import { viewWorkspace } from './view.js'
@@ -28,16 +29,10 @@ export function registerWorkspaceCommand(program: Command): void {
 
     workspace
         .command('view [ref]', { isDefault: true })
-        .description('View workspace details')
+        .description('View workspace details (uses the default workspace when [ref] is omitted)')
         .option('--json', 'Output as JSON')
         .option('--full', 'Include all fields in JSON output')
-        .action((ref, options) => {
-            if (!ref) {
-                workspace.help()
-                return
-            }
-            return viewWorkspace(ref, options)
-        })
+        .action((ref: string | undefined, options) => viewWorkspace(ref, options))
 
     const createCmd = workspace
         .command('create')
@@ -64,7 +59,7 @@ export function registerWorkspaceCommand(program: Command): void {
             return createWorkspace(options)
         })
 
-    const updateCmd = workspace
+    workspace
         .command('update [ref]')
         .description('Update a workspace (admin only)')
         .option('--name <name>', 'New workspace name')
@@ -83,28 +78,20 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--dry-run', 'Preview what would happen without executing')
-        .action((ref: string | undefined, options: UpdateWorkspaceOptions) => {
-            if (!ref) {
-                updateCmd.help()
-                return
-            }
-            return updateWorkspaceCommand(ref, options)
-        })
+        .action((ref: string | undefined, options: UpdateWorkspaceOptions) =>
+            updateWorkspaceCommand(ref, options),
+        )
 
-    const deleteCmd = workspace
+    workspace
         .command('delete [ref]')
         .description('Delete a workspace (admin only)')
         .option('--yes', 'Skip confirmation prompt')
         .option('--dry-run', 'Preview what would happen without executing')
-        .action((ref: string | undefined, options: { yes?: boolean; dryRun?: boolean }) => {
-            if (!ref) {
-                deleteCmd.help()
-                return
-            }
-            return deleteWorkspaceCommand(ref, options)
-        })
+        .action((ref: string | undefined, options: { yes?: boolean; dryRun?: boolean }) =>
+            deleteWorkspaceCommand(ref, options),
+        )
 
-    const projectsCmd = workspace
+    workspace
         .command('projects [ref]')
         .description('List projects in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -125,16 +112,11 @@ export function registerWorkspaceCommand(program: Command): void {
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    projectsCmd.help()
-                    return
-                }
-                return listWorkspaceProjects(ref, options)
+                return listWorkspaceProjects(refArg || options.workspace, options)
             },
         )
 
-    const usersCmd = workspace
+    workspace
         .command('users [ref]')
         .description('List users in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -164,16 +146,11 @@ export function registerWorkspaceCommand(program: Command): void {
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    usersCmd.help()
-                    return
-                }
-                return listWorkspaceUsers(ref, options)
+                return listWorkspaceUsers(refArg || options.workspace, options)
             },
         )
 
-    const userTasksCmd = workspace
+    workspace
         .command('user-tasks [ref]')
         .description('List tasks assigned to a user in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -193,16 +170,11 @@ export function registerWorkspaceCommand(program: Command): void {
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    userTasksCmd.help()
-                    return
-                }
-                return listWorkspaceUserTasks(ref, options)
+                return listWorkspaceUserTasks(refArg || options.workspace, options)
             },
         )
 
-    const activityCmd = workspace
+    workspace
         .command('activity [ref]')
         .description('Show workspace members activity (tasks assigned/overdue)')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -222,16 +194,11 @@ export function registerWorkspaceCommand(program: Command): void {
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    activityCmd.help()
-                    return
-                }
-                return showWorkspaceActivity(ref, options)
+                return showWorkspaceActivity(refArg || options.workspace, options)
             },
         )
 
-    const insightsCmd = workspace
+    workspace
         .command('insights [ref]')
         .description('Show health and progress insights for workspace projects')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -248,14 +215,21 @@ export function registerWorkspaceCommand(program: Command): void {
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    insightsCmd.help()
-                    return
-                }
-                return showWorkspaceInsights(ref, options)
+                return showWorkspaceInsights(refArg || options.workspace, options)
             },
         )
+
+    const useCmd = workspace
+        .command('use [ref]')
+        .description('Set the default workspace used when [ref] is omitted from other commands')
+        .option('--clear', 'Remove the saved default workspace')
+        .action((ref: string | undefined, options: UseWorkspaceOptions) => {
+            if (!ref && !options.clear) {
+                useCmd.help()
+                return
+            }
+            return useWorkspace(ref, options)
+        })
 
     workspace.addHelpText(
         'after',
@@ -265,6 +239,9 @@ Examples:
   $ td workspace update "Acme" --description "Acme Inc." --dry-run
   $ td workspace delete "Old WS" --yes
   $ td workspace user-tasks "Acme" --user alice@example.com
-  $ td workspace activity "Acme" --json`,
+  $ td workspace activity "Acme" --json
+  $ td workspace use "Acme"          # set default, used by subsequent commands
+  $ td workspace projects            # uses the default workspace
+  $ td workspace use --clear         # forget the default`,
     )
 }

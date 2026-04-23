@@ -13,7 +13,7 @@ export interface WorkspaceUserTasksOptions {
 }
 
 export async function listWorkspaceUserTasks(
-    ref: string,
+    ref: string | undefined,
     options: WorkspaceUserTasksOptions,
 ): Promise<void> {
     if (!options.user) {

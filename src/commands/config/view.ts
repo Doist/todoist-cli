@@ -94,6 +94,16 @@ function formatConfigView(config: Config, token: TokenStatus, showToken: boolean
 
     lines.push(chalk.bold('Help Center'))
     lines.push(`  Default locale: ${formatValue(config.hc?.defaultLocale)}`)
+    lines.push('')
+
+    lines.push(chalk.bold('Workspace'))
+    lines.push(
+        `  Default workspace: ${
+            config.workspace?.defaultWorkspace
+                ? `id:${config.workspace.defaultWorkspace}`
+                : formatValue(undefined)
+        }`,
+    )
 
     return lines.join('\n')
 }

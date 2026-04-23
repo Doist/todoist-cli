@@ -5,7 +5,7 @@ import { paginate } from '../../lib/pagination.js'
 import { lenientIdRef, resolveWorkspaceRef } from '../../lib/refs.js'
 
 export async function showWorkspaceInsights(
-    ref: string,
+    ref: string | undefined,
     options: { json?: boolean; projectIds?: string },
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

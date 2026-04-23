@@ -32,7 +32,7 @@ Examples:
   td folder delete "Engineering" --workspace "Acme" --yes`,
         )
 
-    const listCmd = folder
+    folder
         .command('list [workspace]')
         .description('List folders in a workspace')
         .option('--workspace <ref>', 'Workspace name or id:xxx')
@@ -52,12 +52,7 @@ Examples:
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref) {
-                    listCmd.help()
-                    return
-                }
-                return listFolders(ref, options)
+                return listFolders(refArg || options.workspace, options)
             },
         )
 
@@ -102,12 +97,14 @@ Examples:
                         'Cannot specify workspace both as argument and --workspace flag',
                     )
                 }
-                const ref = refArg || options.workspace
-                if (!ref || !options.name) {
+                if (!options.name) {
                     createCmd.help()
                     return
                 }
-                return createFolder(ref, options as { name: string } & typeof options)
+                return createFolder(
+                    refArg || options.workspace,
+                    options as { name: string } & typeof options,
+                )
             },
         )
 

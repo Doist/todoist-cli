@@ -14,13 +14,17 @@ interface CreateFolderOptions {
 }
 
 export async function createFolder(
-    workspaceRef: string,
+    workspaceRef: string | undefined,
     options: CreateFolderOptions,
 ): Promise<void> {
+    // Resolve up front so --dry-run previews the workspace by its real name
+    // and still fails fast on an unknown ref or missing default.
+    const workspace = await resolveWorkspaceRef(workspaceRef)
+
     if (options.dryRun) {
         printDryRun('create folder', {
             Name: options.name,
-            Workspace: workspaceRef,
+            Workspace: workspace.name,
             'Default order':
                 options.defaultOrder !== undefined ? String(options.defaultOrder) : undefined,
             'Child order':
@@ -29,7 +33,6 @@ export async function createFolder(
         return
     }
 
-    const workspace = await resolveWorkspaceRef(workspaceRef)
     const api = await getApi()
 
     const folder = await api.addFolder({

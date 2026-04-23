@@ -148,6 +148,8 @@ td workspace update "Acme" --description "Acme Inc." --dry-run   # admin-only
 td workspace delete "Old WS" --yes                                # admin-only
 td workspace user-tasks "Acme" --user alice@example.com
 td workspace activity "Acme" --json
+td workspace use "Acme"              # persist a default; omitted refs on other workspace commands fall back to it
+td workspace use --clear             # forget the stored default
 td folder list "Acme"
 td folder view "Engineering"
 td folder create "Acme" --name "Engineering"
