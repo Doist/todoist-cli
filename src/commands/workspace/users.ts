@@ -7,7 +7,7 @@ import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 
 export async function listWorkspaceUsers(
-    ref: string,
+    ref: string | undefined,
     options: PaginatedViewOptions & { role?: string },
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

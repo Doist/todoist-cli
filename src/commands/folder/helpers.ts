@@ -2,13 +2,14 @@ import type { Folder } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'
-import { resolveFolderRef, resolveWorkspaceRef } from '../../lib/refs.js'
+import { readDefaultWorkspaceRef, resolveFolderRef, resolveWorkspaceRef } from '../../lib/refs.js'
 
 export async function resolveWorkspaceForFolder(options: {
     workspace?: string
 }): Promise<Workspace> {
-    if (options.workspace) {
-        return resolveWorkspaceRef(options.workspace)
+    const ref = options.workspace ?? (await readDefaultWorkspaceRef())
+    if (ref) {
+        return resolveWorkspaceRef(ref)
     }
     const workspaces = await fetchWorkspaces()
     if (workspaces.length === 0) {
@@ -23,6 +24,7 @@ export async function resolveWorkspaceForFolder(options: {
     throw new CliError('WORKSPACE_NOT_FOUND', 'Multiple workspaces found. Specify --workspace.', [
         'Available workspaces:',
         ...workspaces.map((w) => `  "${w.name}" (id:${w.id})`),
+        'Or set a default with `td workspace use <ref>`.',
     ])
 }
 

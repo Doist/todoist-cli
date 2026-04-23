@@ -13,6 +13,10 @@ export interface HelpCenterConfig {
     defaultLocale?: string
 }
 
+export interface WorkspaceConfig {
+    defaultWorkspace?: string
+}
+
 /**
  * Canonical ordered list of login flags. Acts as the single source of truth —
  * `AuthFlag`, `AUTH_FLAGS` (validation), and the display order of re-login
@@ -31,6 +35,7 @@ export interface Config extends Record<string, unknown> {
     auth_flags?: AuthFlag[]
     update_channel?: UpdateChannel
     hc?: HelpCenterConfig
+    workspace?: WorkspaceConfig
 }
 
 const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
@@ -41,9 +46,11 @@ const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
     'auth_flags',
     'update_channel',
     'hc',
+    'workspace',
 ])
 
 const KNOWN_HC_CONFIG_KEYS: ReadonlySet<string> = new Set(['defaultLocale'])
+const KNOWN_WORKSPACE_CONFIG_KEYS: ReadonlySet<string> = new Set(['defaultWorkspace'])
 
 const AUTH_MODES: ReadonlySet<AuthMode> = new Set(['read-only', 'read-write', 'unknown'])
 export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
@@ -201,6 +208,22 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
                         )
                     }
                 }
+            }
+        }
+    }
+
+    if (config.workspace !== undefined) {
+        if (!isObject(config.workspace)) {
+            issues.push('workspace must be an object')
+        } else {
+            for (const key of Object.keys(config.workspace)) {
+                if (!KNOWN_WORKSPACE_CONFIG_KEYS.has(key)) {
+                    issues.push(`workspace contains unrecognized key "${key}"`)
+                }
+            }
+            const defaultWorkspace = (config.workspace as Record<string, unknown>).defaultWorkspace
+            if (defaultWorkspace !== undefined && typeof defaultWorkspace !== 'string') {
+                issues.push('workspace.defaultWorkspace must be a string')
             }
         }
     }

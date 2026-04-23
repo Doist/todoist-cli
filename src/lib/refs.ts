@@ -6,6 +6,7 @@ import {
     type Workspace,
     type WorkspaceFolder,
 } from './api/workspaces.js'
+import { readConfig } from './config.js'
 import { CliError } from './errors.js'
 import { paginate } from './pagination.js'
 
@@ -376,9 +377,37 @@ export async function resolveParentTaskId(
     throw new CliError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`)
 }
 
-export async function resolveWorkspaceRef(ref: string): Promise<Workspace> {
+/**
+ * Resolve a workspace ref, falling back to the default configured via
+ * `td workspace use` when the caller doesn't pass one. Throws
+ * WORKSPACE_REQUIRED with actionable hints if neither is available.
+ */
+export async function resolveWorkspaceRef(ref?: string): Promise<Workspace> {
+    const effectiveRef = ref ?? (await readDefaultWorkspaceRef())
+    if (!effectiveRef) {
+        throw new CliError(
+            'WORKSPACE_REQUIRED',
+            'No workspace specified and no default workspace is set.',
+            [
+                'Pass a workspace ref, e.g. `td workspace view "My WS"`',
+                'Or set a default with `td workspace use <ref>`',
+            ],
+        )
+    }
     const workspaces = await fetchWorkspaces()
-    return resolveFromList(ref, workspaces, (w) => w.name, 'workspace')
+    return resolveFromList(effectiveRef, workspaces, (w) => w.name, 'workspace')
+}
+
+/**
+ * Return the stored default workspace as a ref string (`id:xxx`) if one is
+ * configured, else undefined. Shared by callers that need to distinguish
+ * "default available" from "no default" instead of letting
+ * `resolveWorkspaceRef` throw — e.g. folder commands with their own
+ * single-workspace fallback.
+ */
+export async function readDefaultWorkspaceRef(): Promise<string | undefined> {
+    const savedId = (await readConfig()).workspace?.defaultWorkspace
+    return savedId ? `id:${savedId}` : undefined
 }
 
 export async function resolveFolderRef(ref: string, workspaceId: string): Promise<WorkspaceFolder> {

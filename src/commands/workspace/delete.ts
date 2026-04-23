@@ -6,7 +6,7 @@ import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { assertWorkspaceAdmin } from './helpers.js'
 
 export async function deleteWorkspaceCommand(
-    ref: string,
+    ref: string | undefined,
     options: { yes?: boolean; dryRun?: boolean },
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 
 export async function viewWorkspace(
-    ref: string,
+    ref: string | undefined,
     options: { json?: boolean; full?: boolean } = {},
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

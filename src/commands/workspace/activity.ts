@@ -12,7 +12,7 @@ export interface WorkspaceActivityOptions {
 }
 
 export async function showWorkspaceActivity(
-    ref: string,
+    ref: string | undefined,
     options: WorkspaceActivityOptions,
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

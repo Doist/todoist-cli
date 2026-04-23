@@ -22,7 +22,7 @@ export interface UpdateWorkspaceOptions {
 }
 
 export async function updateWorkspaceCommand(
-    ref: string,
+    ref: string | undefined,
     options: UpdateWorkspaceOptions,
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

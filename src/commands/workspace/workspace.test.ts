@@ -11,14 +11,22 @@ vi.mock('../../lib/api/workspaces.js', () => ({
     clearWorkspaceCache: vi.fn(),
 }))
 
+vi.mock('../../lib/config.js', () => ({
+    readConfig: vi.fn().mockResolvedValue({}),
+    writeConfig: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
+import { readConfig, writeConfig } from '../../lib/config.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerWorkspaceCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
+const mockReadConfig = vi.mocked(readConfig)
+const mockWriteConfig = vi.mocked(writeConfig)
 
 function createProgram() {
     const program = new Command()
@@ -1248,5 +1256,118 @@ describe('workspace activity', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results[0]).toMatchObject({ userId: 'u-1', tasksAssigned: 5 })
         expect(parsed.nextCursor).toBeNull()
+    })
+})
+
+describe('workspace use (default workspace)', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
+        mockFetchWorkspaceFolders.mockResolvedValue([])
+        mockReadConfig.mockResolvedValue({})
+        mockWriteConfig.mockResolvedValue(undefined)
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('stores the resolved workspace id under workspace.defaultWorkspace', async () => {
+        mockReadConfig.mockResolvedValue({ update_channel: 'stable' })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'use', 'Doist'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({
+            update_channel: 'stable',
+            workspace: { defaultWorkspace: 'ws-1' },
+        })
+        const output = consoleSpy.mock.calls
+            .map((c: unknown[]) => c.map(String).join(' '))
+            .join('\n')
+        expect(output).toContain('Default workspace set to')
+        expect(output).toContain('Doist')
+    })
+
+    it('accepts id: prefix refs and stores the raw id', async () => {
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'use', 'id:ws-2'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({
+            workspace: { defaultWorkspace: 'ws-2' },
+        })
+    })
+
+    it('--clear removes the stored default and drops the workspace object when empty', async () => {
+        mockReadConfig.mockResolvedValue({
+            update_channel: 'stable',
+            workspace: { defaultWorkspace: 'ws-1' },
+        })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'use', '--clear'])
+
+        expect(mockWriteConfig).toHaveBeenCalledWith({ update_channel: 'stable' })
+    })
+
+    it('rejects passing a ref together with --clear', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'use', 'Doist', '--clear']),
+        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+        expect(mockWriteConfig).not.toHaveBeenCalled()
+    })
+
+    it('--clear is a no-op and does not write when no default was set', async () => {
+        mockReadConfig.mockResolvedValue({ update_channel: 'stable' })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'use', '--clear'])
+
+        expect(mockWriteConfig).not.toHaveBeenCalled()
+    })
+
+    it('uses the configured default when ref is omitted on a workspace subcommand', async () => {
+        mockReadConfig.mockResolvedValue({
+            workspace: { defaultWorkspace: 'ws-2' },
+        })
+        mockApi.getWorkspaceMembersActivity.mockResolvedValue({ members: [] })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'activity', '--json'])
+
+        expect(mockApi.getWorkspaceMembersActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ workspaceId: 'ws-2' }),
+        )
+    })
+
+    it('prefers an explicit ref over the configured default', async () => {
+        mockReadConfig.mockResolvedValue({
+            workspace: { defaultWorkspace: 'ws-2' },
+        })
+        mockApi.getWorkspaceMembersActivity.mockResolvedValue({ members: [] })
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'workspace', 'activity', 'Doist', '--json'])
+
+        expect(mockApi.getWorkspaceMembersActivity).toHaveBeenCalledWith(
+            expect.objectContaining({ workspaceId: 'ws-1' }),
+        )
+    })
+
+    it('throws WORKSPACE_REQUIRED when no ref and no default are set', async () => {
+        const program = createProgram()
+        await expect(
+            program.parseAsync(['node', 'td', 'workspace', 'projects']),
+        ).rejects.toMatchObject({
+            code: 'WORKSPACE_REQUIRED',
+            hints: expect.arrayContaining([expect.stringContaining('td workspace use')]),
+        })
     })
 })
