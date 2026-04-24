@@ -40,12 +40,14 @@ describe('skill command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
     let originalStdinIsTTY: PropertyDescriptor | undefined
     let originalStdoutIsTTY: PropertyDescriptor | undefined
+    let originalHome: string | undefined
 
     beforeEach(() => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         originalStdinIsTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')
         originalStdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY')
+        originalHome = process.env.HOME
     })
 
     afterEach(() => {
@@ -55,6 +57,11 @@ describe('skill command', () => {
         }
         if (originalStdoutIsTTY) {
             Object.defineProperty(process.stdout, 'isTTY', originalStdoutIsTTY)
+        }
+        if (originalHome === undefined) {
+            delete process.env.HOME
+        } else {
+            process.env.HOME = originalHome
         }
     })
 
@@ -178,6 +185,36 @@ describe('skill command', () => {
             }
         })
 
+        it('omits unavailable non-universal options in global mode', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-global-'))
+            const mockRl = {
+                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+                    cb('')
+                }),
+                close: vi.fn(),
+                on: vi.fn(),
+            }
+
+            process.env.HOME = testDir
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install'])
+
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith('  1. universal (default)')
+                expect(consoleSpy).not.toHaveBeenCalledWith('  2. claude-code')
+                expect(consoleSpy).not.toHaveBeenCalledWith('  2. codex')
+            } finally {
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
         it('installs the selected numbered option', async () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-choice-'))
@@ -202,6 +239,37 @@ describe('skill command', () => {
                     access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).resolves.toBeUndefined()
                 expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed claude-code skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('rejects partial numeric input instead of truncating it', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-invalid-'))
+            const originalCwd = process.cwd()
+            const mockRl = {
+                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+                    cb('2abc')
+                }),
+                close: vi.fn(),
+                on: vi.fn(),
+            }
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            process.chdir(testDir)
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'skill', 'install', '--local']),
+                ).rejects.toThrow('Invalid selection: 2abc')
+
+                await expect(
+                    access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).rejects.toThrow()
             } finally {
                 process.chdir(originalCwd)
                 await rm(testDir, { recursive: true, force: true })

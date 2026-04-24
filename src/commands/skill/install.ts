@@ -53,17 +53,18 @@ async function getInstallChoices(local: boolean): Promise<InstallChoice[]> {
     const undetectedUniversal = choices.filter(
         (choice) => !choice.detected && choice.agent === 'universal',
     )
+    const unavailableNonUniversal = local ? undetectedNonUniversal : []
 
     if (detectedNonUniversal.length > 0) {
         return [
             ...detectedNonUniversal,
             ...detectedUniversal,
-            ...undetectedNonUniversal,
             ...undetectedUniversal,
+            ...unavailableNonUniversal,
         ]
     }
 
-    return [...detectedUniversal, ...undetectedUniversal, ...undetectedNonUniversal]
+    return [...detectedUniversal, ...undetectedUniversal, ...unavailableNonUniversal]
 }
 
 async function promptForAgent(options: InstallOptions): Promise<string> {
@@ -116,8 +117,17 @@ async function promptForAgent(options: InstallOptions): Promise<string> {
                 return
             }
 
-            const selection = Number.parseInt(input, 10)
-            if (Number.isNaN(selection) || selection < 1 || selection > choices.length) {
+            if (!/^\d+$/.test(input)) {
+                reject(
+                    new CliError('INVALID_SELECTION', `Invalid selection: ${input}`, [
+                        `Enter a number from 1 to ${choices.length}, or press Enter for ${defaultChoice.agent}. Press Ctrl+C to cancel.`,
+                    ]),
+                )
+                return
+            }
+
+            const selection = Number(input)
+            if (!Number.isInteger(selection) || selection < 1 || selection > choices.length) {
                 reject(
                     new CliError('INVALID_SELECTION', `Invalid selection: ${input}`, [
                         `Enter a number from 1 to ${choices.length}, or press Enter for ${defaultChoice.agent}. Press Ctrl+C to cancel.`,
