@@ -17,6 +17,7 @@ A command-line interface for Todoist.
 Install skills for your coding agent:
 
 ```bash
+td skill install
 td skill install claude-code
 td skill install codex
 td skill install cursor

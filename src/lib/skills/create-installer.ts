@@ -28,14 +28,20 @@ metadata:
 }
 
 export function createInstaller(config: InstallerConfig): SkillInstaller {
-    function getInstallPath(local: boolean): string {
+    function getAgentRootPath(local: boolean): string {
         const base = local ? process.cwd() : homedir()
-        return join(base, config.dirName, 'skills', SKILL_NAME, 'SKILL.md')
+        return join(base, config.dirName)
+    }
+
+    function getInstallPath(local: boolean): string {
+        return join(getAgentRootPath(local), 'skills', SKILL_NAME, 'SKILL.md')
     }
 
     return {
         name: config.name,
         description: config.description,
+
+        getAgentRootPath,
 
         getInstallPath,
 

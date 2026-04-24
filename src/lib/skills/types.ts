@@ -1,6 +1,7 @@
 export interface SkillInstaller {
     name: string
     description: string
+    getAgentRootPath(local: boolean): string
     getInstallPath(local: boolean): string
     generateContent(): string
     isInstalled(local: boolean): Promise<boolean>

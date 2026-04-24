@@ -6,14 +6,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')
 
+vi.mock('node:readline', () => ({
+    createInterface: vi.fn(() => {
+        const rl = {
+            question: vi.fn(),
+            close: vi.fn(),
+            on: vi.fn(),
+        }
+        return rl
+    }),
+}))
+
 vi.mock('../../lib/skills/update-installed.js', () => ({
     updateAllInstalledSkills: vi.fn(),
 }))
 
+import { createInterface, type Interface } from 'node:readline'
 import { createInstaller } from '../../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../../lib/skills/update-installed.js'
 import { registerSkillCommand } from './index.js'
+
+const mockCreateInterface = vi.mocked(createInterface)
 
 function createProgram() {
     const program = new Command()
@@ -24,14 +38,24 @@ function createProgram() {
 
 describe('skill command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
+    let originalStdinIsTTY: PropertyDescriptor | undefined
+    let originalStdoutIsTTY: PropertyDescriptor | undefined
 
     beforeEach(() => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        originalStdinIsTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')
+        originalStdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY')
     })
 
     afterEach(() => {
         consoleSpy.mockRestore()
+        if (originalStdinIsTTY) {
+            Object.defineProperty(process.stdin, 'isTTY', originalStdinIsTTY)
+        }
+        if (originalStdoutIsTTY) {
+            Object.defineProperty(process.stdout, 'isTTY', originalStdoutIsTTY)
+        }
     })
 
     describe('list subcommand', () => {
@@ -50,8 +74,28 @@ describe('skill command', () => {
     })
 
     describe('install subcommand', () => {
-        it('shows help when no agent provided', async () => {
+        it('includes supported agent names in install help', async () => {
             const program = createProgram()
+            let output = ''
+            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+                output += String(chunk)
+                return true
+            })
+
+            await expect(
+                program.parseAsync(['node', 'td', 'skill', 'install', '--help']),
+            ).rejects.toThrow()
+            writeSpy.mockRestore()
+            expect(output).toContain('Supported agents:')
+            expect(output).toContain('claude-code, codex, cursor, gemini, pi, universal')
+            expect(output).toContain('Press Enter for the default, or Ctrl+C to cancel.')
+        })
+
+        it('shows help when no agent provided in a non-interactive environment', async () => {
+            const program = createProgram()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true })
 
             await expect(program.parseAsync(['node', 'td', 'skill', 'install'])).rejects.toThrow()
         })
@@ -62,6 +106,141 @@ describe('skill command', () => {
             await expect(
                 program.parseAsync(['node', 'td', 'skill', 'install', 'unknown-agent']),
             ).rejects.toThrow('Unknown agent: unknown-agent')
+        })
+
+        it('prompts interactively and defaults to the first detected agent root', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-local-'))
+            const originalCwd = process.cwd()
+            const mockRl = {
+                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+                    cb('')
+                }),
+                close: vi.fn(),
+                on: vi.fn(),
+            }
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            process.chdir(testDir)
+            try {
+                await mkdir(join(testDir, '.codex'), { recursive: true })
+
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith(
+                    'Checking agent roots in the current project; detected locations are shown first.',
+                )
+                expect(consoleSpy).toHaveBeenCalledWith('  1. codex (default, detected)')
+                expect(consoleSpy).toHaveBeenCalledWith(
+                    'Press Ctrl+C to cancel without installing.',
+                )
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed codex skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('puts universal first when no agent-specific roots exist', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-universal-'))
+            const originalCwd = process.cwd()
+            const mockRl = {
+                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+                    cb('')
+                }),
+                close: vi.fn(),
+                on: vi.fn(),
+            }
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith('  1. universal (default)')
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed universal skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('installs the selected numbered option', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-choice-'))
+            const originalCwd = process.cwd()
+            const mockRl = {
+                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+                    cb('2')
+                }),
+                close: vi.fn(),
+                on: vi.fn(),
+            }
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed claude-code skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('allows cancelling the interactive chooser without installing anything', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-cancel-'))
+            const originalCwd = process.cwd()
+            let handleSigint: (() => void) | undefined
+            const mockRl = {
+                question: vi.fn(() => {
+                    handleSigint?.()
+                }),
+                close: vi.fn(),
+                on: vi.fn((event: string, handler: () => void) => {
+                    if (event === 'SIGINT') {
+                        handleSigint = handler
+                    }
+                }),
+            }
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).rejects.toThrow()
+                expect(consoleSpy).toHaveBeenCalledWith('Cancelled.')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
         })
     })
 
@@ -206,6 +385,12 @@ describe('installer paths', () => {
                 expect(globalPath).toContain('skills')
                 expect(globalPath).toContain('todoist-cli')
                 expect(globalPath).toContain('SKILL.md')
+            })
+
+            it(`returns global root path containing ${dir}`, () => {
+                const globalRootPath = installer.getAgentRootPath(false)
+                expect(globalRootPath).toContain(dir)
+                expect(globalRootPath.endsWith(dir)).toBe(true)
             })
 
             it('returns local path containing cwd', () => {

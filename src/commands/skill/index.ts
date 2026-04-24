@@ -1,21 +1,52 @@
 import { Command } from 'commander'
-import { installSkill } from './install.js'
+import { listAgents } from '../../lib/skills/index.js'
+import { canPromptForSkillInstall, installSkill, promptAndInstallSkill } from './install.js'
 import { listSkills } from './list.js'
 import { uninstallSkill } from './uninstall.js'
 import { updateAllSkills, updateSkill } from './update.js'
 
 export function registerSkillCommand(program: Command): void {
-    const skill = program.command('skill').description('Manage coding agent skills/integrations')
+    const skill = program
+        .command('skill')
+        .description('Manage coding agent skills/integrations')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  $ td skill install
+  $ td skill install codex
+  $ td skill update all
+`,
+        )
 
     const installCmd = skill
         .command('install [agent]')
         .description('Install skill for a coding agent')
         .option('--local', 'Install in current project instead of global')
         .option('--force', 'Overwrite existing skill file')
+        .addHelpText(
+            'after',
+            `
+Supported agents:
+  ${listAgents().join(', ')}
+
+Interactive prompt:
+  Run without an agent to choose from a numbered list.
+  Press Enter for the default, or Ctrl+C to cancel.
+
+Examples:
+  $ td skill install
+  $ td skill install codex
+  $ td skill install claude-code --local
+`,
+        )
         .action((agent, options) => {
             if (!agent) {
-                installCmd.help()
-                return
+                if (!canPromptForSkillInstall()) {
+                    installCmd.help()
+                    return
+                }
+                return promptAndInstallSkill(options)
             }
             return installSkill(agent, options)
         })
