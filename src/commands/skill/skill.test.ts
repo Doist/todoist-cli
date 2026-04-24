@@ -1,39 +1,55 @@
 import { access, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import checkbox from '@inquirer/checkbox'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')
 
-vi.mock('node:readline', () => ({
-    createInterface: vi.fn(() => {
-        const rl = {
-            question: vi.fn(),
-            close: vi.fn(),
-            on: vi.fn(),
+vi.mock('@inquirer/checkbox', () => ({
+    default: vi.fn(),
+    Separator: class Separator {
+        separator: string
+
+        constructor(separator = '') {
+            this.separator = separator
         }
-        return rl
-    }),
+    },
 }))
 
 vi.mock('../../lib/skills/update-installed.js', () => ({
     updateAllInstalledSkills: vi.fn(),
 }))
 
-import { createInterface, type Interface } from 'node:readline'
 import { createInstaller } from '../../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../../lib/skills/update-installed.js'
 import { registerSkillCommand } from './index.js'
-
-const mockCreateInterface = vi.mocked(createInterface)
 
 function createProgram() {
     const program = new Command()
     program.exitOverride()
     registerSkillCommand(program)
     return program
+}
+
+const mockCheckbox = vi.mocked(checkbox)
+
+function getPromptEntries() {
+    const [config] = mockCheckbox.mock.calls.at(-1) ?? []
+    if (!config || !('choices' in config)) {
+        throw new Error('Expected checkbox prompt to be called with choices.')
+    }
+
+    return config.choices
+}
+
+function getPromptChoices() {
+    return getPromptEntries().filter(
+        (choice): choice is { value: string; name: string; checked?: boolean } =>
+            typeof choice === 'object' && choice !== null && 'value' in choice,
+    )
 }
 
 describe('skill command', () => {
@@ -95,7 +111,10 @@ describe('skill command', () => {
             writeSpy.mockRestore()
             expect(output).toContain('Supported agents:')
             expect(output).toContain('claude-code, codex, cursor, gemini, pi, universal')
-            expect(output).toContain('Press Enter for the default, or Ctrl+C to cancel.')
+            expect(output).toContain(
+                'Use arrow keys to navigate, Space to toggle, Enter to install, or Ctrl+C to cancel.',
+            )
+            expect(output).toContain('The first viable target is preselected by default.')
         })
 
         it('shows help when no agent provided in a non-interactive environment', async () => {
@@ -119,17 +138,10 @@ describe('skill command', () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-local-'))
             const originalCwd = process.cwd()
-            const mockRl = {
-                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
-                    cb('')
-                }),
-                close: vi.fn(),
-                on: vi.fn(),
-            }
 
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            mockCheckbox.mockResolvedValue(['codex'])
 
             process.chdir(testDir)
             try {
@@ -137,16 +149,15 @@ describe('skill command', () => {
 
                 await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
 
+                const choices = getPromptChoices()
                 await expect(
                     access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).resolves.toBeUndefined()
-                expect(consoleSpy).toHaveBeenCalledWith(
-                    'Checking agent roots in the current project; detected locations are shown first.',
-                )
-                expect(consoleSpy).toHaveBeenCalledWith('  1. codex (default, detected)')
-                expect(consoleSpy).toHaveBeenCalledWith(
-                    'Press Ctrl+C to cancel without installing.',
-                )
+                expect(choices[0]).toMatchObject({
+                    value: 'codex',
+                    name: 'codex (detected)',
+                    checked: true,
+                })
                 expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed codex skill')
             } finally {
                 process.chdir(originalCwd)
@@ -158,26 +169,24 @@ describe('skill command', () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-universal-'))
             const originalCwd = process.cwd()
-            const mockRl = {
-                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
-                    cb('')
-                }),
-                close: vi.fn(),
-                on: vi.fn(),
-            }
 
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            mockCheckbox.mockResolvedValue(['universal'])
 
             process.chdir(testDir)
             try {
                 await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
 
+                const choices = getPromptChoices()
                 await expect(
                     access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).resolves.toBeUndefined()
-                expect(consoleSpy).toHaveBeenCalledWith('  1. universal (default)')
+                expect(choices[0]).toMatchObject({
+                    value: 'universal',
+                    name: 'universal (available)',
+                    checked: true,
+                })
                 expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed universal skill')
             } finally {
                 process.chdir(originalCwd)
@@ -188,56 +197,50 @@ describe('skill command', () => {
         it('omits unavailable non-universal options in global mode', async () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-global-'))
-            const mockRl = {
-                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
-                    cb('')
-                }),
-                close: vi.fn(),
-                on: vi.fn(),
-            }
 
             process.env.HOME = testDir
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            mockCheckbox.mockResolvedValue(['universal'])
 
             try {
                 await program.parseAsync(['node', 'td', 'skill', 'install'])
 
+                const choices = getPromptChoices()
                 await expect(
                     access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).resolves.toBeUndefined()
-                expect(consoleSpy).toHaveBeenCalledWith('  1. universal (default)')
-                expect(consoleSpy).not.toHaveBeenCalledWith('  2. claude-code')
-                expect(consoleSpy).not.toHaveBeenCalledWith('  2. codex')
+                expect(choices).toHaveLength(1)
+                expect(choices[0]).toMatchObject({
+                    value: 'universal',
+                    name: 'universal (available)',
+                    checked: true,
+                })
             } finally {
                 await rm(testDir, { recursive: true, force: true })
             }
         })
 
-        it('installs the selected numbered option', async () => {
+        it('installs every selected option from the checklist', async () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-choice-'))
             const originalCwd = process.cwd()
-            const mockRl = {
-                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
-                    cb('2')
-                }),
-                close: vi.fn(),
-                on: vi.fn(),
-            }
 
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            mockCheckbox.mockResolvedValue(['codex', 'claude-code'])
 
             process.chdir(testDir)
             try {
                 await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
 
                 await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                await expect(
                     access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed codex skill')
                 expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed claude-code skill')
             } finally {
                 process.chdir(originalCwd)
@@ -245,30 +248,35 @@ describe('skill command', () => {
             }
         })
 
-        it('rejects partial numeric input instead of truncating it', async () => {
+        it('validates the full multi-select before writing any files', async () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-invalid-'))
             const originalCwd = process.cwd()
-            const mockRl = {
-                question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
-                    cb('2abc')
-                }),
-                close: vi.fn(),
-                on: vi.fn(),
-            }
 
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            mockCheckbox.mockResolvedValue(['codex', 'claude-code'])
 
             process.chdir(testDir)
             try {
-                await expect(
-                    program.parseAsync(['node', 'td', 'skill', 'install', '--local']),
-                ).rejects.toThrow('Invalid selection: 2abc')
+                const existingSkillPath = join(
+                    testDir,
+                    '.claude',
+                    'skills',
+                    'todoist-cli',
+                    'SKILL.md',
+                )
+                await mkdir(join(testDir, '.claude', 'skills', 'todoist-cli'), { recursive: true })
+                await writeFile(existingSkillPath, 'existing skill', 'utf-8')
 
                 await expect(
-                    access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
+                    program.parseAsync(['node', 'td', 'skill', 'install', '--local']),
+                ).rejects.toThrow(
+                    /Skill file already exists at .*\.claude\/skills\/todoist-cli\/SKILL\.md\. Use --force to overwrite\./,
+                )
+
+                await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
                 ).rejects.toThrow()
             } finally {
                 process.chdir(originalCwd)
@@ -280,22 +288,12 @@ describe('skill command', () => {
             const program = createProgram()
             const testDir = await mkdtemp(join(tmpdir(), 'skill-install-cancel-'))
             const originalCwd = process.cwd()
-            let handleSigint: (() => void) | undefined
-            const mockRl = {
-                question: vi.fn(() => {
-                    handleSigint?.()
-                }),
-                close: vi.fn(),
-                on: vi.fn((event: string, handler: () => void) => {
-                    if (event === 'SIGINT') {
-                        handleSigint = handler
-                    }
-                }),
-            }
 
             Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
             Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
-            mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
+            const promptError = new Error('Prompt cancelled')
+            promptError.name = 'ExitPromptError'
+            mockCheckbox.mockRejectedValue(promptError)
 
             process.chdir(testDir)
             try {

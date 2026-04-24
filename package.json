@@ -52,6 +52,7 @@
   ],
   "dependencies": {
     "@doist/todoist-sdk": "9.8.0",
+    "@inquirer/checkbox": "5.1.4",
     "@napi-rs/keyring": "1.2.0",
     "@pnpm/tabtab": "0.5.4",
     "chalk": "5.6.2",

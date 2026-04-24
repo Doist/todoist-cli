@@ -31,8 +31,9 @@ Supported agents:
   ${listAgents().join(', ')}
 
 Interactive prompt:
-  Run without an agent to choose from a numbered list.
-  Press Enter for the default, or Ctrl+C to cancel.
+  Run without an agent to choose one or more from an interactive checklist.
+  Use arrow keys to navigate, Space to toggle, Enter to install, or Ctrl+C to cancel.
+  The first viable target is preselected by default.
 
 Examples:
   $ td skill install

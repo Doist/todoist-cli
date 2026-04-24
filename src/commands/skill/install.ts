@@ -1,5 +1,5 @@
 import { access } from 'node:fs/promises'
-import { createInterface } from 'node:readline'
+import checkbox, { Separator } from '@inquirer/checkbox'
 import chalk from 'chalk'
 import { CliError } from '../../lib/errors.js'
 import { getInstaller, listAgents, skillInstallers } from '../../lib/skills/index.js'
@@ -14,6 +14,13 @@ interface InstallChoice {
     agent: string
     detected: boolean
     installer: SkillInstaller
+}
+
+interface PromptChoice {
+    value: string
+    name: string
+    checked: boolean
+    description: string
 }
 
 export function canPromptForSkillInstall(): boolean {
@@ -67,7 +74,49 @@ async function getInstallChoices(local: boolean): Promise<InstallChoice[]> {
     return [...detectedUniversal, ...undetectedUniversal, ...unavailableNonUniversal]
 }
 
-async function promptForAgent(options: InstallOptions): Promise<string> {
+function getPromptChoices(
+    choices: InstallChoice[],
+    local: boolean,
+): Array<PromptChoice | Separator> {
+    const [defaultChoice] = choices
+    if (!defaultChoice) {
+        return []
+    }
+
+    const detectedChoices = choices.filter((choice) => choice.detected)
+    const undetectedChoices = choices.filter((choice) => !choice.detected)
+    const groups: Array<PromptChoice | Separator> = []
+
+    const mapChoices = (entries: InstallChoice[]): PromptChoice[] =>
+        entries.map((choice) => {
+            const status = choice.detected ? 'detected' : 'available'
+            return {
+                value: choice.agent,
+                name: `${choice.agent} (${status})`,
+                checked: choice.agent === defaultChoice.agent,
+                description: choice.installer.getInstallPath(local),
+            }
+        })
+
+    if (detectedChoices.length > 0 && undetectedChoices.length > 0) {
+        groups.push(new Separator('Detected locations'))
+        groups.push(...mapChoices(detectedChoices))
+        groups.push(new Separator('Other supported agents'))
+        groups.push(...mapChoices(undetectedChoices))
+        return groups
+    }
+
+    return mapChoices(choices)
+}
+
+function isPromptCancelError(error: unknown): boolean {
+    return (
+        error instanceof Error &&
+        ['AbortPromptError', 'CancelPromptError', 'ExitPromptError'].includes(error.name)
+    )
+}
+
+async function promptForAgents(options: InstallOptions): Promise<string[]> {
     const local = options.local ?? false
     const choices = await getInstallChoices(local)
     const [defaultChoice] = choices
@@ -76,84 +125,74 @@ async function promptForAgent(options: InstallOptions): Promise<string> {
     }
     const scopeLabel = local ? 'current project' : 'home directory'
 
-    console.log('Select where to install the Todoist CLI skill:')
-    console.log(`Checking agent roots in the ${scopeLabel}; detected locations are shown first.`)
-    console.log('')
-
-    for (const [index, choice] of choices.entries()) {
-        const annotations: string[] = []
-        if (index === 0) {
-            annotations.push('default')
+    try {
+        return await checkbox({
+            message: `Select install targets. Detected locations in the ${scopeLabel} are shown first. Press Enter to install the current selection or Ctrl+C to cancel.`,
+            choices: getPromptChoices(choices, local),
+            loop: false,
+            pageSize: Math.max(choices.length + 2, 6),
+            shortcuts: {
+                all: null,
+                invert: null,
+            },
+            validate: (selectedChoices) => {
+                return (
+                    selectedChoices.length > 0 ||
+                    `Select at least one agent, or press Ctrl+C to cancel. Press Enter to install ${defaultChoice.agent}.`
+                )
+            },
+        })
+    } catch (error) {
+        if (isPromptCancelError(error)) {
+            return []
         }
-        if (choice.detected) {
-            annotations.push('detected')
-        }
-        const annotation = annotations.length > 0 ? ` (${annotations.join(', ')})` : ''
-        console.log(`  ${index + 1}. ${choice.agent}${annotation}`)
-        console.log(`     ${chalk.dim(choice.installer.getInstallPath(local))}`)
+        throw error
     }
-
-    console.log('Press Ctrl+C to cancel without installing.')
-    console.log('')
-
-    const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    })
-
-    return new Promise((resolve, reject) => {
-        rl.on('SIGINT', () => {
-            rl.close()
-            process.stdout.write('\n')
-            resolve('')
-        })
-
-        rl.question(`Enter a number [1]: `, (answer) => {
-            rl.close()
-            const input = answer.trim()
-
-            if (!input) {
-                resolve(defaultChoice.agent)
-                return
-            }
-
-            if (!/^\d+$/.test(input)) {
-                reject(
-                    new CliError('INVALID_SELECTION', `Invalid selection: ${input}`, [
-                        `Enter a number from 1 to ${choices.length}, or press Enter for ${defaultChoice.agent}. Press Ctrl+C to cancel.`,
-                    ]),
-                )
-                return
-            }
-
-            const selection = Number(input)
-            if (!Number.isInteger(selection) || selection < 1 || selection > choices.length) {
-                reject(
-                    new CliError('INVALID_SELECTION', `Invalid selection: ${input}`, [
-                        `Enter a number from 1 to ${choices.length}, or press Enter for ${defaultChoice.agent}. Press Ctrl+C to cancel.`,
-                    ]),
-                )
-                return
-            }
-
-            const selectedChoice = choices[selection - 1]
-            if (!selectedChoice) {
-                reject(new CliError('INVALID_SELECTION', `Invalid selection: ${input}`))
-                return
-            }
-
-            resolve(selectedChoice.agent)
-        })
-    })
 }
 
 export async function promptAndInstallSkill(options: InstallOptions): Promise<void> {
-    const agent = await promptForAgent(options)
-    if (!agent) {
+    const agents = await promptForAgents(options)
+    if (agents.length === 0) {
         console.log(chalk.dim('Cancelled.'))
         return
     }
-    await installSkill(agent, options)
+
+    await validateInstallTargets(agents, options)
+
+    for (const agent of agents) {
+        await installSkill(agent, options)
+    }
+}
+
+async function validateInstallTargets(agents: string[], options: InstallOptions): Promise<void> {
+    const local = options.local ?? false
+    const force = options.force ?? false
+
+    await Promise.all(
+        agents.map(async (agent) => {
+            const installer = getInstaller(agent)
+            if (!installer) {
+                const available = listAgents().join(', ')
+                throw new CliError('UNKNOWN_AGENT', `Unknown agent: ${agent}`, [
+                    `Available agents: ${available}`,
+                ])
+            }
+
+            if (!local && agent !== 'universal' && !(await rootExists(installer, false))) {
+                throw new CliError(
+                    'NOT_INSTALLED',
+                    `${agent} does not appear to be installed (${installer.getAgentRootPath(false)} not found)`,
+                )
+            }
+
+            if (!force && (await installer.isInstalled(local))) {
+                throw new CliError(
+                    'ALREADY_EXISTS',
+                    `Skill file already exists at ${installer.getInstallPath(local)}. Use --force to overwrite.`,
+                )
+            }
+        }),
+    )
 }
 
 export async function installSkill(agent: string, options: InstallOptions): Promise<void> {
