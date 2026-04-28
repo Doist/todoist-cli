@@ -113,10 +113,17 @@ function formatConfigView(
         )
     } else if (token.state === 'present' && token.metadata.source === 'env') {
         lines.push(`  Active:        ${chalk.dim('(TODOIST_API_TOKEN)')}`)
+    } else if (token.state === 'present') {
+        // Token is resolvable but we don't know which Todoist account it
+        // belongs to — i.e. legacy v1 single-user credentials before
+        // postinstall migration runs.
+        lines.push(`  Active:        ${chalk.dim('(legacy single-user credentials)')}`)
     } else if (token.state === 'ambiguous') {
         lines.push(`  Active:        ${chalk.dim('(none — multiple accounts, no default)')}`)
     } else if (token.state === 'missing') {
         lines.push(`  Active:        ${chalk.dim('(none)')}`)
+    } else {
+        lines.push(`  Active:        ${chalk.dim('(unknown)')}`)
     }
     // When a token is present, its metadata is the ground truth for the active
     // mode/scope/flags — this matters most for env-sourced tokens, whose scope

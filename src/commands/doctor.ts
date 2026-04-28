@@ -292,18 +292,32 @@ async function checkStoredUsers(): Promise<DoctorCheck | null> {
 
     const config = await readConfig()
     const defaultId = getDefaultUserId(config)
+    // Mirror `resolveActiveUser`: a `defaultUser` pointer only counts when
+    // it actually resolves to a stored user. An orphaned pointer means
+    // commands without `--user` would still throw NoUserSelectedError, so
+    // we should warn the same way.
+    const defaultResolved = defaultId ? users.find((u) => u.id === defaultId)?.email : undefined
+    const hasUsableDefault = Boolean(defaultResolved)
+    // TODOIST_API_TOKEN bypasses the resolver entirely — multi-user state
+    // can't break commands while it's set, so don't raise the warning.
+    const envTokenSet = Boolean(process.env[TOKEN_ENV_VAR])
     const plaintext = users.filter((u) => u.api_token).map((u) => u.email)
     const details: Record<string, unknown> = {
         count: users.length,
         defaultUserId: defaultId,
+        defaultUserResolved: hasUsableDefault,
+        envTokenSet,
         plaintextFallbackEmails: plaintext,
     }
 
-    if (users.length > 1 && !defaultId) {
+    if (users.length > 1 && !hasUsableDefault && !envTokenSet) {
+        const reason = defaultId
+            ? `default points at unknown user "${defaultId}"`
+            : 'no default selected'
         return {
             name: 'users',
             status: 'warn',
-            message: `${users.length} stored accounts but no default selected; commands without --user will error`,
+            message: `${users.length} stored accounts; ${reason}. Commands without --user will error`,
             details,
         }
     }
@@ -317,14 +331,15 @@ async function checkStoredUsers(): Promise<DoctorCheck | null> {
         }
     }
 
-    const defaultEmail = users.find((u) => u.id === defaultId)?.email
     return {
         name: 'users',
         status: 'pass',
         message:
             users.length === 1
                 ? `1 stored account (${users[0].email})`
-                : `${users.length} stored accounts; default is ${defaultEmail ?? '(none)'}`,
+                : `${users.length} stored accounts; default is ${
+                      defaultResolved ?? (envTokenSet ? '(TODOIST_API_TOKEN)' : '(none)')
+                  }`,
         details,
     }
 }

@@ -25,8 +25,11 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
                 chalk.dim('Cleared default account. Set a new one with `td user use <id|email>`.'),
             )
         }
-        if (result.warning) {
-            console.error(chalk.yellow('Warning:'), result.warning)
-        }
+    }
+
+    // Always surface partial-cleanup warnings, even with --quiet — the user
+    // needs to know if the keyring or config wasn't fully cleared.
+    if (result.warning) {
+        console.error(chalk.yellow('Warning:'), result.warning)
     }
 }
