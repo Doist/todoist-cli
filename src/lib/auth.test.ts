@@ -217,6 +217,57 @@ describe('lib/auth', () => {
         ])
     })
 
+    it('upsertUser sets the new account as default even when an orphaned defaultUser is in config', async () => {
+        // Pointer to a user that no longer exists (manual edit, mid-failed
+        // logout, etc.) should not block first-login from claiming default.
+        setConfig({
+            config_version: 2,
+            user: { defaultUser: 'orphan-id' },
+            users: [],
+        })
+
+        const { upsertUser } = await import('./auth.js')
+        await upsertUser({
+            id: '111',
+            email: 'a@b.c',
+            token: 'first-token-1234567',
+        })
+
+        expect((readConfig() as { user: { defaultUser: string } }).user.defaultUser).toBe('111')
+    })
+
+    it('upsertUser rolls back the keyring write when the config write fails', async () => {
+        configWriteError = new Error('EACCES')
+
+        const { upsertUser } = await import('./auth.js')
+
+        await expect(
+            upsertUser({ id: '111', email: 'a@b.c', token: 'rollback-me-1234567' }),
+        ).rejects.toMatchObject({ code: 'CONFIG_WRITE_FAILED' })
+
+        // No leftover credential for an account that isn't actually stored.
+        expect(entryFor(keyring, 'user-111').token).toBeNull()
+    })
+
+    it('removeUserById fails hard when the config write fails — keyring is untouched', async () => {
+        setConfig({
+            config_version: 2,
+            user: { defaultUser: '111' },
+            users: [{ id: '111', email: 'a@b.c' }],
+        })
+        entryFor(keyring, 'user-111').token = 'preserved'
+        configWriteError = new Error('EACCES')
+
+        const { removeUserById } = await import('./auth.js')
+
+        await expect(removeUserById('111')).rejects.toMatchObject({
+            code: 'CONFIG_WRITE_FAILED',
+        })
+
+        // Account remains intact and resolvable on retry.
+        expect(entryFor(keyring, 'user-111').token).toBe('preserved')
+    })
+
     it('upsertUser falls back to plaintext per-user config when keyring unavailable', async () => {
         keyring.setError = new Error('Keychain unavailable')
 
@@ -360,6 +411,19 @@ describe('lib/auth', () => {
         const { resolveActiveUser, NoTokenError } = await import('./auth.js')
 
         await expect(resolveActiveUser()).rejects.toBeInstanceOf(NoTokenError)
+    })
+
+    it('does not reauth from legacy keyring when v2 users[] is explicitly empty', async () => {
+        // Logged-out v2 install. A leftover `api-token` keyring entry must
+        // NOT be picked up — that would silently sign the user back in.
+        setConfig({ config_version: 2, users: [] })
+        entryFor(keyring, 'api-token').token = 'leftover-from-v1'
+
+        const { resolveActiveUser, NoTokenError } = await import('./auth.js')
+
+        await expect(resolveActiveUser()).rejects.toBeInstanceOf(NoTokenError)
+        // legacy slot wasn't even consulted
+        expect(entryFor(keyring, 'api-token').getCalls).toBe(0)
     })
 
     // --- removeUserById / clearApiToken --------------------------------------

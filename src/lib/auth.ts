@@ -120,16 +120,21 @@ export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<Re
     const users = getStoredUsers(config)
     const requestedRef = opts.ref ?? getRequestedUserRef()
 
-    // If the user is on a v1 (legacy) config and we have no v2 users yet, fall
-    // through to the legacy-token path so existing installs keep working until
-    // postinstall (or a later `td auth login`) migrates them.
+    // Gate the legacy fallback on the *absence* of `config.users` rather than
+    // an empty array. A v2 config that has been logged out (`users: []`) must
+    // not silently fall back to a stale `api-token` keyring entry — that
+    // would let a forgotten v1 credential reauthenticate the next command.
+    const isLegacyShape = !Array.isArray(config.users)
     if (users.length === 0) {
         if (requestedRef) {
-            // Asked for a specific user, but the store is empty — same error as
-            // missing user, scoped to the request.
+            // Asked for a specific user, but the store is empty — same error
+            // as missing user, scoped to the request.
             throw new UserNotFoundError(requestedRef)
         }
-        return resolveLegacyToken(config)
+        if (isLegacyShape) {
+            return resolveLegacyToken(config)
+        }
+        throw new NoTokenError()
     }
 
     let target: StoredUser
@@ -222,7 +227,10 @@ export async function upsertUser(
     const trimmedToken = input.token.trim()
     const config = await readConfig()
     const previouslyExisted = getStoredUsers(config).some((u) => u.id === input.id)
-    const shouldSetDefault = getStoredUsers(config).length === 0 && !config.user?.defaultUser
+    // Always set the first user as the default — even if `config.user.defaultUser`
+    // points at a stale/orphaned id, that pointer would otherwise wedge multi-user
+    // resolution on subsequent logins.
+    const shouldSetDefault = getStoredUsers(config).length === 0
 
     const baseRecord: StoredUser = {
         id: input.id,
@@ -252,18 +260,31 @@ export async function upsertUser(
     }
     next = stripLegacyAuthFields(next)
 
-    let warning: string | undefined
     try {
         await writeConfig(next)
     } catch (error) {
-        warning = buildConfigCleanupWarning('Token was stored,', error)
+        // Config write is the source of truth — without it, later commands
+        // can't resolve the user even though the keyring holds the secret.
+        // Roll the keyring back so we don't leak credentials for a non-stored
+        // account, then surface the failure.
+        if (storedSecurely) {
+            try {
+                await secureStore.deleteSecret()
+            } catch {
+                // best effort — the original error is what the user needs
+            }
+        }
+        const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
+        throw new CliError(
+            'CONFIG_WRITE_FAILED',
+            `Could not persist account record to ${CONFIG_PATH}${detail}`,
+            ['Check file permissions on ~/.config/todoist-cli/, then re-run the command'],
+        )
     }
 
     return {
         storage: storedSecurely ? 'secure-store' : 'config-file',
-        warning:
-            warning ??
-            (storedSecurely ? undefined : buildFallbackWarning('token saved as plaintext in')),
+        warning: storedSecurely ? undefined : buildFallbackWarning('token saved as plaintext in'),
         replaced: previouslyExisted,
     }
 }
@@ -277,10 +298,17 @@ export async function clearApiToken(opts: { ref?: string } = {}): Promise<TokenS
     const users = getStoredUsers(config)
     const requestedRef = opts.ref ?? getRequestedUserRef()
 
-    // No users stored yet — fall through to legacy logout path so v1 installs
-    // can still cleanly `td auth logout`.
+    // No users stored yet — fall through to legacy logout only on a v1-shaped
+    // config (no `users` key at all). Empty `users: []` is an already-clean
+    // v2 install; treat it as a no-op rather than poking the legacy keyring.
     if (users.length === 0) {
-        return clearLegacyToken(config)
+        if (!Array.isArray(config.users)) {
+            return clearLegacyToken(config)
+        }
+        if (requestedRef) {
+            throw new UserNotFoundError(requestedRef)
+        }
+        throw new NoTokenError()
     }
 
     let target: StoredUser
@@ -305,32 +333,39 @@ export async function clearApiToken(opts: { ref?: string } = {}): Promise<TokenS
 /**
  * Remove a specific user by id. Used by `td user remove` and as the underlying
  * primitive for `clearApiToken`.
+ *
+ * Order matters: write the new config first (the source of truth) and only
+ * then delete the secret. If the config update fails the keyring is untouched,
+ * so the user remains fully functional and a retry will simply re-attempt
+ * the same operation. A keyring delete failure after a successful config
+ * update leaves an orphan secret that the keyring's own service can clean up
+ * later — the CLI no longer references it.
  */
 export async function removeUserById(id: string): Promise<TokenStorageResult> {
     const config = await readConfig()
-    const secureStore = createSecureStore(accountForUser(id))
-
-    let location: TokenStorageLocation = 'secure-store'
-    let storeWarning: string | undefined
-
-    try {
-        await secureStore.deleteSecret()
-    } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) throw error
-        location = 'config-file'
-        storeWarning = buildFallbackWarning('local auth state cleared in')
-    }
-
     const next = stripLegacyAuthFields(removeStoredUser(ensureV2Shape(config), id))
 
     try {
         await writeConfig(next)
     } catch (error) {
-        const cleanupWarning = buildConfigCleanupWarning('Token was removed,', error)
-        return { storage: location, warning: storeWarning ?? cleanupWarning }
+        const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
+        throw new CliError('CONFIG_WRITE_FAILED', `Could not update ${CONFIG_PATH}${detail}`, [
+            'Check file permissions on ~/.config/todoist-cli/, then re-run the command',
+        ])
     }
 
-    return storeWarning ? { storage: location, warning: storeWarning } : { storage: location }
+    const secureStore = createSecureStore(accountForUser(id))
+    try {
+        await secureStore.deleteSecret()
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
+        return {
+            storage: 'config-file',
+            warning: buildFallbackWarning('local auth state cleared in'),
+        }
+    }
+
+    return { storage: 'secure-store' }
 }
 
 export async function setDefaultUserId(id: string): Promise<void> {

@@ -47,11 +47,14 @@ export async function showStatus(options: { json?: boolean }): Promise<void> {
         return
     }
 
+    // env source wins over default: when running with TODOIST_API_TOKEN,
+    // showing `(default)` would hide the more important "this is an env
+    // override, not your stored credential" signal.
     const defaultMarker =
-        defaultUserId === user.id
-            ? ' (default)'
-            : metadata.source === 'env'
-              ? ' (TODOIST_API_TOKEN)'
+        metadata.source === 'env'
+            ? ' (TODOIST_API_TOKEN)'
+            : defaultUserId === user.id
+              ? ' (default)'
               : ''
     console.log(chalk.green('✓'), `Authenticated${defaultMarker}`)
     console.log(`  Email: ${user.email}`)

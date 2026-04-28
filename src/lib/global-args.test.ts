@@ -72,6 +72,17 @@ describe('parseGlobalArgs', () => {
             expect(result.user).toBe('a@b.c')
             expect(result.json).toBe(true)
         })
+        it('does not consume the next arg as a value when it looks like a flag', () => {
+            // `td --user --json auth status` should leave user undefined and
+            // keep --json intact, so commander surfaces a usage error rather
+            // than us silently swallowing --json as the user ref.
+            const result = parseGlobalArgs(['--user', '--json', 'auth', 'status'])
+            expect(result.user).toBeUndefined()
+            expect(result.json).toBe(true)
+        })
+        it('leaves --user at end of argv as undefined', () => {
+            expect(parseGlobalArgs(['task', 'list', '--user']).user).toBeUndefined()
+        })
     })
 
     describe('stripUserFlag', () => {
@@ -84,6 +95,15 @@ describe('parseGlobalArgs', () => {
         })
         it('removes --user=<value>', () => {
             expect(stripUserFlag(['--user=12345', 'today'])).toEqual(['today'])
+        })
+        it('does not strip the next arg when it looks like a flag', () => {
+            // Mirrors parseGlobalArgs: keep --json intact so commander can
+            // surface a usage error on the bare --user.
+            expect(stripUserFlag(['--user', '--json', 'auth', 'status'])).toEqual([
+                '--json',
+                'auth',
+                'status',
+            ])
         })
         it('preserves args after --', () => {
             expect(stripUserFlag(['task', 'list', '--', '--user', 'x'])).toEqual([

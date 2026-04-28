@@ -71,7 +71,11 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
         } else if (arg === '--user' || arg.startsWith('--user=')) {
             if (arg.includes('=')) {
                 result.user = arg.slice(arg.indexOf('=') + 1)
-            } else if (i + 1 < args.length) {
+            } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                // Only consume the next arg as the value when it doesn't look
+                // like another flag — `td --user --json ...` should leave
+                // `result.user` undefined so commander surfaces a usage error
+                // rather than silently swallowing `--json` as the user ref.
                 i++
                 result.user = args[i]
             }
@@ -181,8 +185,10 @@ export function stripUserFlag(argv: string[]): string[] {
             continue
         }
         if (arg === '--user') {
-            // consume the value too (if present and not another flag)
-            if (i + 1 < argv.length) i++
+            // Consume the value too only when it doesn't look like another
+            // flag — keeps `td --user --json ...` from also stripping `--json`.
+            // Stays in lockstep with `parseGlobalArgs` above.
+            if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) i++
             continue
         }
         if (arg.startsWith('--user=')) {
