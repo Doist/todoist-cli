@@ -1,3 +1,9 @@
+## [1.58.0](https://github.com/Doist/todoist-cli/compare/v1.57.0...v1.58.0) (2026-04-28)
+
+### Features
+
+* **auth:** support multiple authenticated Todoist accounts ([#300](https://github.com/Doist/todoist-cli/issues/300)) ([934ffcc](https://github.com/Doist/todoist-cli/commit/934ffccdc31c8627c2e82e2ef9db52ff0b838486))
+
 ## [1.57.0](https://github.com/Doist/todoist-cli/compare/v1.56.1...v1.57.0) (2026-04-23)
 
 ### Features
