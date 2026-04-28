@@ -1,3 +1,9 @@
+## [1.59.0](https://github.com/Doist/todoist-cli/compare/v1.58.0...v1.59.0) (2026-04-28)
+
+### Features
+
+* **user,config,doctor:** polish multi-user surface ([#301](https://github.com/Doist/todoist-cli/issues/301)) ([d36d4aa](https://github.com/Doist/todoist-cli/commit/d36d4aaf2c923a03a09a0dfb1d1c7d1e242e0458))
+
 ## [1.58.0](https://github.com/Doist/todoist-cli/compare/v1.57.0...v1.58.0) (2026-04-28)
 
 ### Features
