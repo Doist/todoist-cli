@@ -3,7 +3,14 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
 import { createApiForToken } from '../lib/api/core.js'
-import { CONFIG_PATH, NoTokenError, TOKEN_ENV_VAR, probeApiToken } from '../lib/auth.js'
+import {
+    CONFIG_PATH,
+    listStoredUsers,
+    NoTokenError,
+    readConfig,
+    TOKEN_ENV_VAR,
+    probeApiToken,
+} from '../lib/auth.js'
 import { validateConfigForDoctor } from '../lib/config.js'
 import { LoadingSpinner } from '../lib/spinner.js'
 import {
@@ -12,6 +19,7 @@ import {
     getConfiguredUpdateChannel,
     isNewer,
 } from '../lib/update.js'
+import { getDefaultUserId, NoUserSelectedError } from '../lib/users.js'
 
 type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
 
@@ -161,6 +169,15 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
             }
         }
 
+        if (error instanceof NoUserSelectedError) {
+            return {
+                name: 'auth',
+                status: 'warn',
+                message:
+                    'Multiple stored Todoist accounts but no default. Set one with `td user use <id|email>` or pass --user.',
+            }
+        }
+
         const message = error instanceof Error ? error.message : String(error)
         return {
             name: 'auth',
@@ -269,10 +286,54 @@ async function checkForUpdates(offline: boolean): Promise<DoctorCheck> {
     }
 }
 
+async function checkStoredUsers(): Promise<DoctorCheck | null> {
+    const users = await listStoredUsers()
+    if (users.length === 0) return null
+
+    const config = await readConfig()
+    const defaultId = getDefaultUserId(config)
+    const plaintext = users.filter((u) => u.api_token).map((u) => u.email)
+    const details: Record<string, unknown> = {
+        count: users.length,
+        defaultUserId: defaultId,
+        plaintextFallbackEmails: plaintext,
+    }
+
+    if (users.length > 1 && !defaultId) {
+        return {
+            name: 'users',
+            status: 'warn',
+            message: `${users.length} stored accounts but no default selected; commands without --user will error`,
+            details,
+        }
+    }
+
+    if (plaintext.length > 0) {
+        return {
+            name: 'users',
+            status: 'warn',
+            message: `${plaintext.length} account(s) using plaintext fallback storage: ${plaintext.join(', ')}`,
+            details,
+        }
+    }
+
+    const defaultEmail = users.find((u) => u.id === defaultId)?.email
+    return {
+        name: 'users',
+        status: 'pass',
+        message:
+            users.length === 1
+                ? `1 stored account (${users[0].email})`
+                : `${users.length} stored accounts; default is ${defaultEmail ?? '(none)'}`,
+        details,
+    }
+}
+
 async function runDoctorChecks(options: DoctorOptions): Promise<DoctorCheck[]> {
     return [
         checkNodeVersion(),
         await checkConfigFile(),
+        await checkStoredUsers(),
         await checkAuthentication(Boolean(options.offline)),
         await checkForUpdates(Boolean(options.offline)),
     ].filter((check): check is DoctorCheck => check !== null)

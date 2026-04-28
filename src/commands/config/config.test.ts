@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../../lib/config.js', () => ({
     CONFIG_PATH: '/tmp/fake-todoist-cli/config.json',
     readConfigStrict: vi.fn(),
+    readConfig: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('../../lib/auth.js', async () => {
@@ -11,12 +12,13 @@ vi.mock('../../lib/auth.js', async () => {
     return {
         ...actual,
         probeApiToken: vi.fn(),
+        listStoredUsers: vi.fn().mockResolvedValue([]),
     }
 })
 
 vi.mock('chalk')
 
-import { NoTokenError, probeApiToken } from '../../lib/auth.js'
+import { listStoredUsers, NoTokenError, probeApiToken } from '../../lib/auth.js'
 import { type Config, readConfigStrict } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
 import { SecureStoreUnavailableError } from '../../lib/secure-store.js'
@@ -24,6 +26,7 @@ import { registerConfigCommand } from './index.js'
 
 const mockReadConfigStrict = vi.mocked(readConfigStrict)
 const mockProbeApiToken = vi.mocked(probeApiToken)
+const mockListStoredUsers = vi.mocked(listStoredUsers)
 
 function createProgram() {
     const program = new Command()
@@ -234,6 +237,100 @@ describe('config view', () => {
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.api_token).toBe('****')
         expect(parsed.api_token).not.toContain('abcd')
+
+        consoleSpy.mockRestore()
+    })
+
+    it('lists stored accounts and marks the default in pretty mode', async () => {
+        presentConfig({
+            config_version: 2,
+            user: { defaultUser: '111' },
+            users: [
+                { id: '111', email: 'first@example.com', auth_mode: 'read-write' },
+                {
+                    id: '222',
+                    email: 'second@example.com',
+                    auth_mode: 'read-only',
+                    auth_scope: 'data:read',
+                },
+            ],
+        })
+        mockListStoredUsers.mockResolvedValue([
+            { id: '111', email: 'first@example.com', auth_mode: 'read-write' },
+            {
+                id: '222',
+                email: 'second@example.com',
+                auth_mode: 'read-only',
+                auth_scope: 'data:read',
+            },
+        ])
+        mockProbeApiToken.mockResolvedValue({
+            token: 'tdo_first_token_xxxx1111',
+            metadata: {
+                authMode: 'read-write',
+                source: 'secure-store',
+                userId: '111',
+                email: 'first@example.com',
+            },
+        })
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await createProgram().parseAsync(['node', 'td', 'config', 'view'])
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+
+        expect(output).toContain('Stored accounts (2)')
+        expect(output).toContain('first@example.com')
+        expect(output).toContain('second@example.com')
+        expect(output).toContain('(default)')
+        expect(output).toContain('Active:        first@example.com')
+        expect(output).toContain('read-only (data:read)')
+
+        consoleSpy.mockRestore()
+    })
+
+    it('flags ambiguous resolution when multiple users with no default', async () => {
+        presentConfig({
+            config_version: 2,
+            users: [
+                { id: '111', email: 'a@b.c' },
+                { id: '222', email: 'd@e.f' },
+            ],
+        })
+        mockListStoredUsers.mockResolvedValue([
+            { id: '111', email: 'a@b.c' },
+            { id: '222', email: 'd@e.f' },
+        ])
+        const { NoUserSelectedError } = await import('../../lib/users.js')
+        mockProbeApiToken.mockRejectedValue(new NoUserSelectedError())
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await createProgram().parseAsync(['node', 'td', 'config', 'view'])
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+
+        expect(output).toContain('multiple stored accounts')
+        expect(output).toContain('--user')
+        expect(output).toContain('Stored accounts (2)')
+
+        consoleSpy.mockRestore()
+    })
+
+    it('--json masks per-user api_token entries', async () => {
+        presentConfig({
+            config_version: 2,
+            users: [
+                {
+                    id: '111',
+                    email: 'a@b.c',
+                    api_token: 'tdo_plaintext_user_token_xxxx',
+                },
+            ],
+        })
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.users[0].api_token).toBe('****…xxxx')
+        expect(parsed.users[0].api_token).not.toContain('plaintext')
 
         consoleSpy.mockRestore()
     })
