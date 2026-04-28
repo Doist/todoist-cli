@@ -8,17 +8,27 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
         setDefaultUserId: vi.fn(),
+        removeUserById: vi.fn(),
+        resolveActiveUser: vi.fn(),
     }
 })
 
 vi.mock('chalk')
 
-import { listStoredUsers, readConfig, setDefaultUserId } from '../../lib/auth.js'
+import {
+    listStoredUsers,
+    readConfig,
+    removeUserById,
+    resolveActiveUser,
+    setDefaultUserId,
+} from '../../lib/auth.js'
 import { registerUserCommand } from './index.js'
 
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
 const mockSetDefaultUserId = vi.mocked(setDefaultUserId)
+const mockRemoveUserById = vi.mocked(removeUserById)
+const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 
 function createProgram() {
     const program = new Command()
@@ -118,6 +128,83 @@ describe('user command', () => {
             await expect(
                 createProgram().parseAsync(['node', 'td', 'user', 'use', 'nope']),
             ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+        })
+
+        it('default subcommand is an alias of use', async () => {
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'default', '111'])
+
+            expect(mockSetDefaultUserId).toHaveBeenCalledWith('111')
+        })
+    })
+
+    describe('current', () => {
+        it('prints the active user', async () => {
+            mockResolveActiveUser.mockResolvedValue({
+                id: '111',
+                email: 'a@b.c',
+                token: 't',
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '111' },
+                users: [],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'current'])
+
+            const out = consoleSpy.mock.calls.flat().join('\n')
+            expect(out).toContain('a@b.c')
+            expect(out).toContain('default')
+        })
+
+        it('says env when running on TODOIST_API_TOKEN', async () => {
+            mockResolveActiveUser.mockResolvedValue({
+                id: 'env',
+                email: '',
+                token: 'envtoken',
+                authMode: 'unknown',
+                source: 'env',
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'current'])
+
+            const out = consoleSpy.mock.calls.flat().join('\n')
+            expect(out).toContain('TODOIST_API_TOKEN')
+        })
+    })
+
+    describe('remove', () => {
+        it('removes the user by id and clears default', async () => {
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '111' },
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+            mockRemoveUserById.mockResolvedValue({ storage: 'secure-store' })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'remove', '111'])
+
+            expect(mockRemoveUserById).toHaveBeenCalledWith('111')
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('Cleared default')
+        })
+
+        it('rejects an unknown ref', async () => {
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await expect(
+                createProgram().parseAsync(['node', 'td', 'user', 'remove', 'nope']),
+            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            expect(mockRemoveUserById).not.toHaveBeenCalled()
         })
     })
 })

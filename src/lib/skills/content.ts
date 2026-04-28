@@ -57,7 +57,9 @@ The CLI can hold credentials for multiple Todoist accounts at once.
 \`\`\`bash
 td auth login                       # adds the account; first one becomes default
 td user list                        # all stored accounts (with default marker)
-td user use <id|email>              # set the default account
+td user use <id|email>              # set the default account (alias: td user default)
+td user current                     # show the active account
+td user remove <id|email>           # delete an account (and its token)
 td --user <id|email> task list      # one-off override for any command
 td auth logout --user <id|email>    # log out a specific account
 \`\`\`

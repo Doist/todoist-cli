@@ -3,7 +3,14 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
 import { createApiForToken } from '../lib/api/core.js'
-import { CONFIG_PATH, NoTokenError, TOKEN_ENV_VAR, probeApiToken } from '../lib/auth.js'
+import {
+    CONFIG_PATH,
+    listStoredUsers,
+    NoTokenError,
+    readConfig,
+    TOKEN_ENV_VAR,
+    probeApiToken,
+} from '../lib/auth.js'
 import { validateConfigForDoctor } from '../lib/config.js'
 import { LoadingSpinner } from '../lib/spinner.js'
 import {
@@ -12,6 +19,7 @@ import {
     getConfiguredUpdateChannel,
     isNewer,
 } from '../lib/update.js'
+import { getDefaultUserId, NoUserSelectedError } from '../lib/users.js'
 
 type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
 
@@ -161,6 +169,15 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
             }
         }
 
+        if (error instanceof NoUserSelectedError) {
+            return {
+                name: 'auth',
+                status: 'warn',
+                message:
+                    'Multiple stored Todoist accounts but no default. Set one with `td user use <id|email>` or pass --user.',
+            }
+        }
+
         const message = error instanceof Error ? error.message : String(error)
         return {
             name: 'auth',
@@ -269,10 +286,79 @@ async function checkForUpdates(offline: boolean): Promise<DoctorCheck> {
     }
 }
 
+/**
+ * Returns 0–3 `users` checks: a summary of stored accounts plus optional
+ * warnings for missing/orphaned defaults and plaintext-fallback storage. Both
+ * warnings can fire on the same install, so we emit them as separate checks
+ * rather than collapsing into one.
+ */
+async function checkStoredUsers(): Promise<DoctorCheck[]> {
+    const users = await listStoredUsers()
+    if (users.length === 0) return []
+
+    const config = await readConfig()
+    const defaultId = getDefaultUserId(config)
+    // Mirror `resolveActiveUser`: a `defaultUser` pointer only counts when
+    // it actually resolves to a stored user.
+    const defaultResolved = defaultId ? users.find((u) => u.id === defaultId)?.email : undefined
+    const hasUsableDefault = Boolean(defaultResolved)
+    // TODOIST_API_TOKEN bypasses the resolver entirely — multi-user state
+    // can't break commands while it's set, so don't raise the default warning.
+    const envTokenSet = Boolean(process.env[TOKEN_ENV_VAR])
+    const plaintext = users.filter((u) => u.api_token).map((u) => u.email)
+    const baseDetails: Record<string, unknown> = {
+        count: users.length,
+        defaultUserId: defaultId,
+        defaultUserResolved: hasUsableDefault,
+        envTokenSet,
+        plaintextFallbackEmails: plaintext,
+    }
+
+    const checks: DoctorCheck[] = []
+
+    // Always emit the summary first so output reads top-down: state, then
+    // any warnings about that state.
+    checks.push({
+        name: 'users',
+        status: 'pass',
+        message:
+            users.length === 1
+                ? `1 stored account (${users[0].email})`
+                : `${users.length} stored accounts; default is ${
+                      defaultResolved ?? (envTokenSet ? '(TODOIST_API_TOKEN)' : '(none)')
+                  }`,
+        details: baseDetails,
+    })
+
+    if (users.length > 1 && !hasUsableDefault && !envTokenSet) {
+        const reason = defaultId
+            ? `default points at unknown user "${defaultId}"`
+            : 'no default selected'
+        checks.push({
+            name: 'users',
+            status: 'warn',
+            message: `${reason}. Commands without --user will error`,
+            details: baseDetails,
+        })
+    }
+
+    if (plaintext.length > 0) {
+        checks.push({
+            name: 'users',
+            status: 'warn',
+            message: `${plaintext.length} account(s) using plaintext fallback storage: ${plaintext.join(', ')}`,
+            details: baseDetails,
+        })
+    }
+
+    return checks
+}
+
 async function runDoctorChecks(options: DoctorOptions): Promise<DoctorCheck[]> {
     return [
         checkNodeVersion(),
         await checkConfigFile(),
+        ...(await checkStoredUsers()),
         await checkAuthentication(Boolean(options.offline)),
         await checkForUpdates(Boolean(options.offline)),
     ].filter((check): check is DoctorCheck => check !== null)
