@@ -199,7 +199,12 @@ export async function getAuthMetadata(): Promise<AuthMetadata> {
         const resolved = await resolveActiveUser()
         return resolvedToMetadata(resolved)
     } catch (error) {
-        if (error instanceof NoTokenError) {
+        // Metadata callers (e.g. `ensureWriteAllowed`, scope-error
+        // remediation) need a sensible default rather than a hard failure
+        // when credentials are missing or the keyring is offline. Diagnostic
+        // commands use `probeApiToken` for that — it intentionally lets
+        // `SecureStoreUnavailableError` propagate so it can be reported.
+        if (error instanceof NoTokenError || error instanceof SecureStoreUnavailableError) {
             return { authMode: 'unknown', source: 'secure-store' }
         }
         throw error
@@ -391,13 +396,15 @@ async function loadTokenForStoredUser(
         return { token: user.api_token.trim(), source: 'config-file' }
     }
     const secureStore = createSecureStore(accountForUser(user.id))
-    try {
-        const stored = await secureStore.getSecret()
-        if (stored?.trim()) {
-            return { token: stored.trim(), source: 'secure-store' }
-        }
-    } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) throw error
+    // Re-throw `SecureStoreUnavailableError` rather than collapsing it into
+    // `NoTokenError`. A stored v2 user with the keyring offline is *not* the
+    // same situation as no credentials at all — `td doctor` and `td config
+    // view` both have dedicated handling for the unavailable-store case and
+    // should report the keyring failure rather than misleadingly say the user
+    // has no saved credentials.
+    const stored = await secureStore.getSecret()
+    if (stored?.trim()) {
+        return { token: stored.trim(), source: 'secure-store' }
     }
     throw new NoTokenError()
 }

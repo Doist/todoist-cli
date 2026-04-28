@@ -15,14 +15,6 @@ import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 
-// Seed the global-args cache from the *original* argv (so `--user <ref>` is
-// captured) before stripping the flag from process.argv. Commander has no
-// global-option attachment, so leaving `--user` in argv would make every
-// subcommand error on it. Stripping here lets every command transparently
-// honor `--user` without per-command wiring.
-getRequestedUserRef()
-process.argv = [process.argv[0], process.argv[1], ...stripUserFlag(process.argv.slice(2))]
-
 program
     .name('td')
     .description('Todoist CLI')
@@ -182,6 +174,38 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
 // Register placeholders so --help lists all commands
 for (const [name, [description]] of Object.entries(commands)) {
     program.command(name).description(description)
+}
+
+// Validate `--user` and strip it from argv before commander parses.
+//
+// Commander has no global-option attachment, so leaving `--user` in argv
+// would make every subcommand error on it. We capture the value via
+// `parseGlobalArgs` first and remove it here. Before stripping we surface
+// usage errors that the parser can detect now but commander never will
+// because it never sees the flag — bare `--user`, `--user=` (empty), and
+// `--user <known-subcommand>` (almost always a forgotten value).
+{
+    const originalArgs = process.argv.slice(2)
+    const sawUserFlag = originalArgs.some((a) => a === '--user' || a.startsWith('--user='))
+    if (sawUserFlag) {
+        const ref = getRequestedUserRef()
+        const reportUserFlagError = (message: string, hints: string[]): never => {
+            const err = new CliError('USER_FLAG_INVALID', message, hints)
+            console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
+            process.exit(1)
+        }
+        if (!ref) {
+            reportUserFlagError('--user requires a value: <id|email>.', [
+                'Example: td --user scott@doist.com task list',
+            ])
+        } else if (Object.hasOwn(commands, ref)) {
+            reportUserFlagError(
+                `--user requires a value: <id|email>. Got "${ref}", which looks like a subcommand — did you forget the value?`,
+                [`Example: td --user scott@doist.com ${ref}`],
+            )
+        }
+    }
+    process.argv = [process.argv[0], process.argv[1], ...stripUserFlag(originalArgs)]
 }
 
 // completion-server needs the command tree to walk for completions.

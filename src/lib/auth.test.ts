@@ -426,6 +426,40 @@ describe('lib/auth', () => {
         expect(entryFor(keyring, 'api-token').getCalls).toBe(0)
     })
 
+    it('probeApiToken surfaces SecureStoreUnavailableError instead of NoTokenError', async () => {
+        // Stored v2 user, no plaintext fallback; keyring is offline. The
+        // diagnostic surface needs to tell "credentials missing" apart from
+        // "credential manager broken".
+        setConfig({
+            config_version: 2,
+            users: [{ id: '111', email: 'a@b.c' }],
+        })
+        keyring.getError = new Error('keychain locked')
+
+        const { probeApiToken } = await import('./auth.js')
+        const { SecureStoreUnavailableError } = await import('./secure-store.js')
+
+        await expect(probeApiToken()).rejects.toBeInstanceOf(SecureStoreUnavailableError)
+    })
+
+    it('getAuthMetadata degrades to unknown when the keyring is offline', async () => {
+        // Permission/scope checks must not hard-fail when the credential
+        // store is unavailable — they fall through to the same "unknown"
+        // default they use when no token exists.
+        setConfig({
+            config_version: 2,
+            users: [{ id: '111', email: 'a@b.c' }],
+        })
+        keyring.getError = new Error('keychain locked')
+
+        const { getAuthMetadata } = await import('./auth.js')
+
+        await expect(getAuthMetadata()).resolves.toEqual({
+            authMode: 'unknown',
+            source: 'secure-store',
+        })
+    })
+
     // --- removeUserById / clearApiToken --------------------------------------
 
     it('removeUserById deletes keyring slot, removes user record, and clears default if matched', async () => {
