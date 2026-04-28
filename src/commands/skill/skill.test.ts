@@ -1,10 +1,22 @@
 import { access, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import checkbox from '@inquirer/checkbox'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')
+
+vi.mock('@inquirer/checkbox', () => ({
+    default: vi.fn(),
+    Separator: class Separator {
+        separator: string
+
+        constructor(separator = '') {
+            this.separator = separator
+        }
+    },
+}))
 
 vi.mock('../../lib/skills/update-installed.js', () => ({
     updateAllInstalledSkills: vi.fn(),
@@ -22,16 +34,51 @@ function createProgram() {
     return program
 }
 
+const mockCheckbox = vi.mocked(checkbox)
+
+function getPromptEntries() {
+    const [config] = mockCheckbox.mock.calls.at(-1) ?? []
+    if (!config || !('choices' in config)) {
+        throw new Error('Expected checkbox prompt to be called with choices.')
+    }
+
+    return config.choices
+}
+
+function getPromptChoices() {
+    return getPromptEntries().filter(
+        (choice): choice is { value: string; name: string; checked?: boolean } =>
+            typeof choice === 'object' && choice !== null && 'value' in choice,
+    )
+}
+
 describe('skill command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
+    let originalStdinIsTTY: PropertyDescriptor | undefined
+    let originalStdoutIsTTY: PropertyDescriptor | undefined
+    let originalHome: string | undefined
 
     beforeEach(() => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        originalStdinIsTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')
+        originalStdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY')
+        originalHome = process.env.HOME
     })
 
     afterEach(() => {
         consoleSpy.mockRestore()
+        if (originalStdinIsTTY) {
+            Object.defineProperty(process.stdin, 'isTTY', originalStdinIsTTY)
+        }
+        if (originalStdoutIsTTY) {
+            Object.defineProperty(process.stdout, 'isTTY', originalStdoutIsTTY)
+        }
+        if (originalHome === undefined) {
+            delete process.env.HOME
+        } else {
+            process.env.HOME = originalHome
+        }
     })
 
     describe('list subcommand', () => {
@@ -50,8 +97,31 @@ describe('skill command', () => {
     })
 
     describe('install subcommand', () => {
-        it('shows help when no agent provided', async () => {
+        it('includes supported agent names in install help', async () => {
             const program = createProgram()
+            let output = ''
+            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+                output += String(chunk)
+                return true
+            })
+
+            await expect(
+                program.parseAsync(['node', 'td', 'skill', 'install', '--help']),
+            ).rejects.toThrow()
+            writeSpy.mockRestore()
+            expect(output).toContain('Supported agents:')
+            expect(output).toContain('claude-code, codex, cursor, gemini, pi, universal')
+            expect(output).toContain(
+                'Use arrow keys to navigate, Space to toggle, Enter to install, or Ctrl+C to cancel.',
+            )
+            expect(output).toContain('The first viable target is preselected by default.')
+        })
+
+        it('shows help when no agent provided in a non-interactive environment', async () => {
+            const program = createProgram()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true })
 
             await expect(program.parseAsync(['node', 'td', 'skill', 'install'])).rejects.toThrow()
         })
@@ -62,6 +132,181 @@ describe('skill command', () => {
             await expect(
                 program.parseAsync(['node', 'td', 'skill', 'install', 'unknown-agent']),
             ).rejects.toThrow('Unknown agent: unknown-agent')
+        })
+
+        it('prompts interactively and defaults to the first detected agent root', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-local-'))
+            const originalCwd = process.cwd()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCheckbox.mockResolvedValue(['codex'])
+
+            process.chdir(testDir)
+            try {
+                await mkdir(join(testDir, '.codex'), { recursive: true })
+
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                const choices = getPromptChoices()
+                await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(choices[0]).toMatchObject({
+                    value: 'codex',
+                    name: 'codex (detected)',
+                    checked: true,
+                })
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed codex skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('puts universal first when no agent-specific roots exist', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-universal-'))
+            const originalCwd = process.cwd()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCheckbox.mockResolvedValue(['universal'])
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                const choices = getPromptChoices()
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(choices[0]).toMatchObject({
+                    value: 'universal',
+                    name: 'universal (available)',
+                    checked: true,
+                })
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed universal skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('omits unavailable non-universal options in global mode', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-global-'))
+
+            process.env.HOME = testDir
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCheckbox.mockResolvedValue(['universal'])
+
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install'])
+
+                const choices = getPromptChoices()
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(choices).toHaveLength(1)
+                expect(choices[0]).toMatchObject({
+                    value: 'universal',
+                    name: 'universal (available)',
+                    checked: true,
+                })
+            } finally {
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('installs every selected option from the checklist', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-choice-'))
+            const originalCwd = process.cwd()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCheckbox.mockResolvedValue(['codex', 'claude-code'])
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                await expect(
+                    access(join(testDir, '.claude', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).resolves.toBeUndefined()
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed codex skill')
+                expect(consoleSpy).toHaveBeenCalledWith('✓', 'Installed claude-code skill')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('validates the full multi-select before writing any files', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-invalid-'))
+            const originalCwd = process.cwd()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            mockCheckbox.mockResolvedValue(['codex', 'claude-code'])
+
+            process.chdir(testDir)
+            try {
+                const existingSkillPath = join(
+                    testDir,
+                    '.claude',
+                    'skills',
+                    'todoist-cli',
+                    'SKILL.md',
+                )
+                await mkdir(join(testDir, '.claude', 'skills', 'todoist-cli'), { recursive: true })
+                await writeFile(existingSkillPath, 'existing skill', 'utf-8')
+
+                await expect(
+                    program.parseAsync(['node', 'td', 'skill', 'install', '--local']),
+                ).rejects.toThrow(
+                    /Skill file already exists at .*\.claude\/skills\/todoist-cli\/SKILL\.md\. Use --force to overwrite\./,
+                )
+
+                await expect(
+                    access(join(testDir, '.codex', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).rejects.toThrow()
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
+        })
+
+        it('allows cancelling the interactive chooser without installing anything', async () => {
+            const program = createProgram()
+            const testDir = await mkdtemp(join(tmpdir(), 'skill-install-cancel-'))
+            const originalCwd = process.cwd()
+
+            Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
+            Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true })
+            const promptError = new Error('Prompt cancelled')
+            promptError.name = 'ExitPromptError'
+            mockCheckbox.mockRejectedValue(promptError)
+
+            process.chdir(testDir)
+            try {
+                await program.parseAsync(['node', 'td', 'skill', 'install', '--local'])
+
+                await expect(
+                    access(join(testDir, '.agents', 'skills', 'todoist-cli', 'SKILL.md')),
+                ).rejects.toThrow()
+                expect(consoleSpy).toHaveBeenCalledWith('Cancelled.')
+            } finally {
+                process.chdir(originalCwd)
+                await rm(testDir, { recursive: true, force: true })
+            }
         })
     })
 
@@ -206,6 +451,12 @@ describe('installer paths', () => {
                 expect(globalPath).toContain('skills')
                 expect(globalPath).toContain('todoist-cli')
                 expect(globalPath).toContain('SKILL.md')
+            })
+
+            it(`returns global root path containing ${dir}`, () => {
+                const globalRootPath = installer.getAgentRootPath(false)
+                expect(globalRootPath).toContain(dir)
+                expect(globalRootPath.endsWith(dir)).toBe(true)
             })
 
             it('returns local path containing cwd', () => {

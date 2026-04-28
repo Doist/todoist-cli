@@ -12,6 +12,7 @@ function mockInstaller(overrides: Partial<SkillInstaller> = {}): SkillInstaller 
     return {
         name: 'test',
         description: 'test',
+        getAgentRootPath: vi.fn(() => '/test'),
         getInstallPath: vi.fn(() => '/test/path'),
         generateContent: vi.fn(() => 'content'),
         isInstalled: vi.fn(async () => false),
