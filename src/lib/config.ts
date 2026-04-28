@@ -17,6 +17,10 @@ export interface WorkspaceConfig {
     defaultWorkspace?: string
 }
 
+export interface UserConfig {
+    defaultUser?: string
+}
+
 /**
  * Canonical ordered list of login flags. Acts as the single source of truth —
  * `AuthFlag`, `AUTH_FLAGS` (validation), and the display order of re-login
@@ -27,26 +31,63 @@ export interface WorkspaceConfig {
 export const AUTH_FLAG_ORDER = ['read-only', 'app-management', 'backups'] as const
 export type AuthFlag = (typeof AUTH_FLAG_ORDER)[number]
 
+/**
+ * Per-user record stored in `config.users`. The token itself lives in the OS
+ * credential manager under account `user-<id>`; `api_token` only appears here
+ * when the credential manager was unavailable at save time (plaintext fallback).
+ */
+export interface StoredUser {
+    id: string
+    email: string
+    auth_mode?: AuthMode
+    auth_scope?: string
+    auth_flags?: AuthFlag[]
+    api_token?: string
+    pendingSecureStoreClear?: boolean
+}
+
+export const CONFIG_VERSION = 2 as const
+
 export interface Config extends Record<string, unknown> {
+    config_version?: number
+    user?: UserConfig
+    users?: StoredUser[]
+    update_channel?: UpdateChannel
+    hc?: HelpCenterConfig
+    workspace?: WorkspaceConfig
+
+    // Legacy v1 fields — read for one-time migration, never written by current code.
     api_token?: string
     pendingSecureStoreClear?: boolean
     auth_mode?: AuthMode
     auth_scope?: string
     auth_flags?: AuthFlag[]
-    update_channel?: UpdateChannel
-    hc?: HelpCenterConfig
-    workspace?: WorkspaceConfig
 }
 
 const KNOWN_CONFIG_KEYS: ReadonlySet<string> = new Set([
+    'config_version',
+    'user',
+    'users',
+    'update_channel',
+    'hc',
+    'workspace',
+    // legacy v1 keys (tolerated until migration runs)
     'api_token',
     'pendingSecureStoreClear',
     'auth_mode',
     'auth_scope',
     'auth_flags',
-    'update_channel',
-    'hc',
-    'workspace',
+])
+
+const KNOWN_USER_CONFIG_KEYS: ReadonlySet<string> = new Set(['defaultUser'])
+const KNOWN_STORED_USER_KEYS: ReadonlySet<string> = new Set([
+    'id',
+    'email',
+    'auth_mode',
+    'auth_scope',
+    'auth_flags',
+    'api_token',
+    'pendingSecureStoreClear',
 ])
 
 const KNOWN_HC_CONFIG_KEYS: ReadonlySet<string> = new Set(['defaultLocale'])
@@ -142,6 +183,86 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
     for (const key of Object.keys(config)) {
         if (!KNOWN_CONFIG_KEYS.has(key)) {
             issues.push(`contains unrecognized key "${key}"`)
+        }
+    }
+
+    if (
+        config.config_version !== undefined &&
+        (typeof config.config_version !== 'number' || config.config_version < 1)
+    ) {
+        issues.push('config_version must be a positive number')
+    }
+
+    if (config.user !== undefined) {
+        if (!isObject(config.user)) {
+            issues.push('user must be an object')
+        } else {
+            for (const key of Object.keys(config.user)) {
+                if (!KNOWN_USER_CONFIG_KEYS.has(key)) {
+                    issues.push(`user contains unrecognized key "${key}"`)
+                }
+            }
+            const defaultUser = (config.user as Record<string, unknown>).defaultUser
+            if (defaultUser !== undefined && typeof defaultUser !== 'string') {
+                issues.push('user.defaultUser must be a string')
+            }
+        }
+    }
+
+    if (config.users !== undefined) {
+        if (!Array.isArray(config.users)) {
+            issues.push('users must be an array')
+        } else {
+            for (const [i, entry] of config.users.entries()) {
+                if (!isObject(entry)) {
+                    issues.push(`users[${i}] must be an object`)
+                    continue
+                }
+                for (const key of Object.keys(entry)) {
+                    if (!KNOWN_STORED_USER_KEYS.has(key)) {
+                        issues.push(`users[${i}] contains unrecognized key "${key}"`)
+                    }
+                }
+                if (typeof entry.id !== 'string' || !entry.id) {
+                    issues.push(`users[${i}].id must be a non-empty string`)
+                }
+                if (typeof entry.email !== 'string' || !entry.email) {
+                    issues.push(`users[${i}].email must be a non-empty string`)
+                }
+                if (
+                    entry.auth_mode !== undefined &&
+                    (typeof entry.auth_mode !== 'string' ||
+                        !AUTH_MODES.has(entry.auth_mode as AuthMode))
+                ) {
+                    issues.push(
+                        `users[${i}].auth_mode must be one of: read-only, read-write, unknown`,
+                    )
+                }
+                if (entry.auth_scope !== undefined && typeof entry.auth_scope !== 'string') {
+                    issues.push(`users[${i}].auth_scope must be a string`)
+                }
+                if (entry.auth_flags !== undefined) {
+                    if (
+                        !Array.isArray(entry.auth_flags) ||
+                        !entry.auth_flags.every(
+                            (flag) => typeof flag === 'string' && AUTH_FLAGS.has(flag as AuthFlag),
+                        )
+                    ) {
+                        issues.push(
+                            `users[${i}].auth_flags must be an array of: ${AUTH_FLAG_ORDER.join(', ')}`,
+                        )
+                    }
+                }
+                if (entry.api_token !== undefined && typeof entry.api_token !== 'string') {
+                    issues.push(`users[${i}].api_token must be a string`)
+                }
+                if (
+                    entry.pendingSecureStoreClear !== undefined &&
+                    typeof entry.pendingSecureStoreClear !== 'boolean'
+                ) {
+                    issues.push(`users[${i}].pendingSecureStoreClear must be a boolean`)
+                }
+            }
         }
     }
 

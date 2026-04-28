@@ -1,6 +1,7 @@
 import chalk from 'chalk'
 import open from 'open'
-import { saveApiToken, type AuthFlag } from '../../lib/auth.js'
+import { createApiForToken } from '../../lib/api/core.js'
+import { type AuthFlag, upsertUser } from '../../lib/auth.js'
 import { type AdditionalScopeFlag, parseScopesOption } from '../../lib/oauth-scopes.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken, resolveAuthScope } from '../../lib/oauth.js'
@@ -38,13 +39,22 @@ export async function loginWithOAuth(
         const authFlags: AuthFlag[] = []
         if (options.readOnly) authFlags.push('read-only')
         authFlags.push(...additionalScopes)
-        const result = await saveApiToken(accessToken, {
+
+        // Identify the user behind the new token before persisting.
+        const probeApi = createApiForToken(accessToken)
+        const user = await probeApi.getUser()
+
+        const result = await upsertUser({
+            id: user.id,
+            email: user.email,
+            token: accessToken,
             authMode: options.readOnly ? 'read-only' : 'read-write',
             authScope: resolveAuthScope({ readOnly: options.readOnly, additionalScopes }),
             authFlags,
         })
 
-        console.log(chalk.green('✓'), 'Successfully logged in!')
+        const verb = result.replaced ? 'Updated credentials for' : 'Logged in as'
+        console.log(chalk.green('✓'), `${verb} ${user.email}`)
         logTokenStorageResult(result, 'Token stored securely in the system credential manager')
     } catch (error) {
         cleanup()

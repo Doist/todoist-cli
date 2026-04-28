@@ -3,11 +3,25 @@
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { CliError } from './lib/errors.js'
-import { isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
+import {
+    getRequestedUserRef,
+    isJsonMode,
+    isNdjsonMode,
+    isRawMode,
+    stripUserFlag,
+} from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
+
+// Seed the global-args cache from the *original* argv (so `--user <ref>` is
+// captured) before stripping the flag from process.argv. Commander has no
+// global-option attachment, so leaving `--user` in argv would make every
+// subcommand error on it. Stripping here lets every command transparently
+// honor `--user` without per-command wiring.
+getRequestedUserRef()
+process.argv = [process.argv[0], process.argv[1], ...stripUserFlag(process.argv.slice(2))]
 
 program
     .name('td')
@@ -18,6 +32,10 @@ program
     .option('-v, --verbose', 'Increase output verbosity (repeat up to 4x: -v, -vv, -vvv, -vvvv)')
     .option('--accessible', 'Add text labels to color-coded output (also: TD_ACCESSIBLE=1)')
     .option('-q, --quiet', 'Suppress success messages (create commands still print the ID)')
+    .option(
+        '--user <ref>',
+        'Run as a specific stored Todoist account (id or email). See `td user list`.',
+    )
     .addHelpText(
         'after',
         `
@@ -25,7 +43,8 @@ Note for AI/LLM agents:
   Use "td task add" (not "td add") to create tasks with structured flags.
   Use --json or --ndjson flags for unambiguous, parseable output.
   Default JSON shows essential fields; use --full for all fields.
-  Use --quiet to suppress success messages (create commands still print the ID).`,
+  Use --quiet to suppress success messages (create commands still print the ID).
+  Use --user <id|email> on any command to act as a specific stored account.`,
     )
 
 // Lazy command registry: [description, loader]
@@ -105,6 +124,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     auth: [
         'Manage authentication',
         async () => (await import('./commands/auth/index.js')).registerAuthCommand,
+    ],
+    user: [
+        'Manage stored Todoist accounts (multi-user)',
+        async () => (await import('./commands/user/index.js')).registerUserCommand,
     ],
     apps: [
         'Manage your registered Todoist developer apps',

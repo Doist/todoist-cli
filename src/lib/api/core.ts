@@ -10,7 +10,7 @@ import {
     type DueDate,
 } from '@doist/todoist-sdk'
 import { buildReloginCommand } from '../auth-flags.js'
-import { getApiToken, getAuthMetadata } from '../auth.js'
+import { getAuthMetadata, resolveActiveUser } from '../auth.js'
 import { CliError } from '../errors.js'
 import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
@@ -293,8 +293,13 @@ export function createApiForToken(token: string): TodoistApi {
 
 export async function getApi(): Promise<TodoistApi> {
     if (!apiClient) {
-        const token = await getApiToken()
-        apiClient = createApiForToken(token)
+        const resolved = await resolveActiveUser()
+        apiClient = createApiForToken(resolved.token)
+        // Seed the user-id cache from config when known so callers like
+        // `getCurrentUserId` don't pay an extra `api.getUser()` round trip.
+        if (resolved.id && resolved.id !== 'env' && resolved.id !== 'legacy') {
+            currentUserIdCache = resolved.id
+        }
     }
     return apiClient
 }

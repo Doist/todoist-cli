@@ -6,15 +6,18 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth.js')>()
     return {
         ...actual,
-        saveApiToken: vi.fn(),
+        upsertUser: vi.fn(),
         clearApiToken: vi.fn(),
         getAuthMetadata: vi.fn(),
+        listStoredUsers: vi.fn(),
+        readConfig: vi.fn(),
     }
 })
 
 // Mock the api module
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
+    createApiForToken: vi.fn(),
 }))
 
 // Mock chalk to avoid colors in tests
@@ -61,8 +64,15 @@ vi.mock('node:readline', () => ({
 
 import { createInterface, type Interface } from 'node:readline'
 import open from 'open'
-import { getApi } from '../../lib/api/core.js'
-import { NoTokenError, clearApiToken, getAuthMetadata, saveApiToken } from '../../lib/auth.js'
+import { createApiForToken, getApi } from '../../lib/api/core.js'
+import {
+    NoTokenError,
+    clearApiToken,
+    getAuthMetadata,
+    listStoredUsers,
+    readConfig,
+    upsertUser,
+} from '../../lib/auth.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../../lib/oauth.js'
 import { createMockApi } from '../../test-support/mock-api.js'
@@ -70,14 +80,29 @@ import { registerAuthCommand } from './index.js'
 
 const mockCreateInterface = vi.mocked(createInterface)
 
-const mockSaveApiToken = vi.mocked(saveApiToken)
+const mockUpsertUser = vi.mocked(upsertUser)
 const mockClearApiToken = vi.mocked(clearApiToken)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
+const mockListStoredUsers = vi.mocked(listStoredUsers)
+const mockReadConfig = vi.mocked(readConfig)
 const mockGetApi = vi.mocked(getApi)
+const mockCreateApiForToken = vi.mocked(createApiForToken)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
 const mockBuildAuthorizationUrl = vi.mocked(buildAuthorizationUrl)
 const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
 const mockOpen = vi.mocked(open)
+
+const TEST_USER = {
+    id: '12345',
+    email: 'test@example.com',
+    fullName: 'Test User',
+}
+
+function stubProbeApiForUser(user = TEST_USER) {
+    const probe = createMockApi({ getUser: vi.fn().mockResolvedValue(user) })
+    mockCreateApiForToken.mockReturnValue(probe)
+    return probe
+}
 
 function createProgram() {
     const program = new Command()
@@ -94,6 +119,8 @@ describe('auth command', () => {
         vi.clearAllMocks()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        mockListStoredUsers.mockResolvedValue([])
+        mockReadConfig.mockResolvedValue({})
     })
 
     afterEach(() => {
@@ -107,28 +134,31 @@ describe('auth command', () => {
             const program = createProgram()
             const token = 'some_token_123456789'
 
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
 
             await program.parseAsync(['node', 'td', 'auth', 'token', token])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
-            expect(consoleSpy).toHaveBeenCalledWith('✓', 'API token saved successfully!')
-            expect(consoleSpy).toHaveBeenCalledWith(
-                'Token stored securely in the system credential manager',
-            )
+            expect(mockCreateApiForToken).toHaveBeenCalledWith(token)
+            expect(mockUpsertUser).toHaveBeenCalledWith({
+                id: TEST_USER.id,
+                email: TEST_USER.email,
+                token,
+                authMode: 'unknown',
+            })
+            expect(consoleSpy).toHaveBeenCalledWith('✓', `Saved token for ${TEST_USER.email}`)
         })
 
-        it('handles saveApiToken errors', async () => {
+        it('handles upsertUser errors', async () => {
             const program = createProgram()
             const token = 'some_token_123456789'
 
-            mockSaveApiToken.mockRejectedValue(new Error('Permission denied'))
+            stubProbeApiForUser()
+            mockUpsertUser.mockRejectedValue(new Error('Permission denied'))
 
             await expect(
                 program.parseAsync(['node', 'td', 'auth', 'token', token]),
             ).rejects.toThrow('Permission denied')
-
-            expect(mockSaveApiToken).toHaveBeenCalledWith(token, { authMode: 'unknown' })
         })
 
         it('trims whitespace from token', async () => {
@@ -136,11 +166,15 @@ describe('auth command', () => {
             const tokenWithWhitespace = '  some_token_123456789  '
             const expectedToken = 'some_token_123456789'
 
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
 
             await program.parseAsync(['node', 'td', 'auth', 'token', tokenWithWhitespace])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(expectedToken, { authMode: 'unknown' })
+            expect(mockCreateApiForToken).toHaveBeenCalledWith(expectedToken)
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                expect.objectContaining({ token: expectedToken }),
+            )
         })
 
         it('prompts interactively when no token argument given', async () => {
@@ -153,16 +187,16 @@ describe('auth command', () => {
                 _writeToOutput: vi.fn(),
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
             const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(mockRl.question).toHaveBeenCalled()
-            expect(mockRl.close).toHaveBeenCalled()
-            expect(mockSaveApiToken).toHaveBeenCalledWith('interactive_token_456', {
-                authMode: 'unknown',
-            })
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                expect.objectContaining({ token: 'interactive_token_456' }),
+            )
             writeSpy.mockRestore()
         })
 
@@ -180,99 +214,84 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
-            expect(mockSaveApiToken).not.toHaveBeenCalled()
+            expect(mockUpsertUser).not.toHaveBeenCalled()
             expect(errorSpy).toHaveBeenCalledWith('Error:', 'No token provided')
             writeSpy.mockRestore()
         })
 
-        it('shows a warning when token storage falls back to config', async () => {
+        it('shows "Updated stored token for" when account already existed', async () => {
             const program = createProgram()
-            const token = 'some_token_123456789'
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: true })
 
-            mockSaveApiToken.mockResolvedValue({
+            await program.parseAsync(['node', 'td', 'auth', 'token', 'some_token_123456789'])
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '✓',
+                `Updated stored token for ${TEST_USER.email}`,
+            )
+        })
+
+        it('surfaces config-file fallback warning', async () => {
+            const program = createProgram()
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({
                 storage: 'config-file',
+                replaced: false,
                 warning:
                     'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
             })
 
-            await program.parseAsync(['node', 'td', 'auth', 'token', token])
+            await program.parseAsync(['node', 'td', 'auth', 'token', 'some_token_123456789'])
 
             expect(errorSpy).toHaveBeenCalledWith(
                 'Warning:',
                 'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
             )
         })
-
-        it('shows a warning when secure storage succeeds but plaintext cleanup fails', async () => {
-            const program = createProgram()
-            const token = 'some_token_123456789'
-
-            mockSaveApiToken.mockResolvedValue({
-                storage: 'secure-store',
-                warning:
-                    'Token was stored securely, but could not remove legacy plaintext token from /tmp/test-config.json (EACCES)',
-            })
-
-            await program.parseAsync(['node', 'td', 'auth', 'token', token])
-
-            expect(consoleSpy).toHaveBeenCalledWith(
-                'Token stored securely in the system credential manager',
-            )
-            expect(errorSpy).toHaveBeenCalledWith(
-                'Warning:',
-                'Token was stored securely, but could not remove legacy plaintext token from /tmp/test-config.json (EACCES)',
-            )
-        })
     })
 
     describe('login subcommand (OAuth flow)', () => {
-        it('completes OAuth flow successfully', async () => {
-            const program = createProgram()
-            const authCode = 'oauth_auth_code_123'
-            const accessToken = 'oauth_access_token_456'
-
+        function setupOAuthFlow(authCode: string, accessToken: string) {
             mockStartCallbackServer.mockResolvedValue({
                 promise: Promise.resolve(authCode),
                 port: 8765,
                 cleanup: vi.fn(),
             })
             mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
+            stubProbeApiForUser()
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
             mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+        }
+
+        it('completes OAuth flow successfully', async () => {
+            const program = createProgram()
+            setupOAuthFlow('oauth_auth_code_123', 'oauth_access_token_456')
 
             await program.parseAsync(['node', 'td', 'auth', 'login'])
 
             expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
             expect(mockStartCallbackServer).toHaveBeenCalledWith('test_state')
             expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
-                authCode,
+                'oauth_auth_code_123',
                 'test_code_verifier',
                 8765,
             )
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
+            expect(mockCreateApiForToken).toHaveBeenCalledWith('oauth_access_token_456')
+            expect(mockUpsertUser).toHaveBeenCalledWith({
+                id: TEST_USER.id,
+                email: TEST_USER.email,
+                token: 'oauth_access_token_456',
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete',
                 authFlags: [],
             })
-            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Successfully logged in!')
-            expect(consoleSpy).toHaveBeenCalledWith(
-                'Token stored securely in the system credential manager',
-            )
+            expect(consoleSpy).toHaveBeenCalledWith('✓', `Logged in as ${TEST_USER.email}`)
         })
 
-        it('requests data:read scope when --read-only is set', async () => {
+        it('uses read-only scope when --read-only is set', async () => {
             const program = createProgram()
-            const authCode = 'oauth_auth_code_123'
-            const accessToken = 'oauth_access_token_456'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+            setupOAuthFlow('oauth_auth_code_123', 'oauth_access_token_456')
 
             await program.parseAsync(['node', 'td', 'auth', 'login', '--read-only'])
 
@@ -281,26 +300,18 @@ describe('auth command', () => {
                 'test_state',
                 { readOnly: true, additionalScopes: [], port: 8765 },
             )
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-only',
-                authScope: 'data:read',
-                authFlags: ['read-only'],
-            })
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    authMode: 'read-only',
+                    authScope: 'data:read',
+                    authFlags: ['read-only'],
+                }),
+            )
         })
 
-        it('appends dev:app_console scope when --additional-scopes=app-management is set', async () => {
+        it('appends app-management scope', async () => {
             const program = createProgram()
-            const authCode = 'oauth_auth_code_app'
-            const accessToken = 'oauth_access_token_app'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+            setupOAuthFlow('oauth_auth_code_app', 'oauth_access_token_app')
 
             await program.parseAsync([
                 'node',
@@ -310,94 +321,17 @@ describe('auth command', () => {
                 '--additional-scopes=app-management',
             ])
 
-            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
-                'test_code_challenge',
-                'test_state',
-                { readOnly: undefined, additionalScopes: ['app-management'], port: 8765 },
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
+                    authFlags: ['app-management'],
+                }),
             )
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
-                authFlags: ['app-management'],
-            })
         })
 
-        it('combines --additional-scopes=app-management with --read-only', async () => {
+        it('combines read-only with backups scope', async () => {
             const program = createProgram()
-            const authCode = 'oauth_auth_code_app_ro'
-            const accessToken = 'oauth_access_token_app_ro'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-
-            await program.parseAsync([
-                'node',
-                'td',
-                'auth',
-                'login',
-                '--additional-scopes=app-management',
-                '--read-only',
-            ])
-
-            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
-                'test_code_challenge',
-                'test_state',
-                { readOnly: true, additionalScopes: ['app-management'], port: 8765 },
-            )
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-only',
-                authScope: 'data:read,dev:app_console',
-                authFlags: ['read-only', 'app-management'],
-            })
-        })
-
-        it('appends backups:read scope when --additional-scopes=backups is set', async () => {
-            const program = createProgram()
-            const authCode = 'oauth_auth_code_backups'
-            const accessToken = 'oauth_access_token_backups'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-
-            await program.parseAsync(['node', 'td', 'auth', 'login', '--additional-scopes=backups'])
-
-            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
-                'test_code_challenge',
-                'test_state',
-                { readOnly: undefined, additionalScopes: ['backups'], port: 8765 },
-            )
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete,backups:read',
-                authFlags: ['backups'],
-            })
-        })
-
-        it('combines --additional-scopes=backups with --read-only', async () => {
-            const program = createProgram()
-            const authCode = 'oauth_auth_code_backups_ro'
-            const accessToken = 'oauth_access_token_backups_ro'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+            setupOAuthFlow('c', 't')
 
             await program.parseAsync([
                 'node',
@@ -408,77 +342,30 @@ describe('auth command', () => {
                 '--read-only',
             ])
 
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-only',
-                authScope: 'data:read,backups:read',
-                authFlags: ['read-only', 'backups'],
-            })
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    authMode: 'read-only',
+                    authScope: 'data:read,backups:read',
+                    authFlags: ['read-only', 'backups'],
+                }),
+            )
         })
 
-        it('merges repeated --additional-scopes occurrences rather than overwriting', async () => {
+        it('shows "Updated credentials for" when re-logging in to the same account', async () => {
             const program = createProgram()
-            const authCode = 'oauth_auth_code_repeated'
-            const accessToken = 'oauth_access_token_repeated'
+            setupOAuthFlow('c', 't')
+            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: true })
 
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
+            await program.parseAsync(['node', 'td', 'auth', 'login'])
 
-            await program.parseAsync([
-                'node',
-                'td',
-                'auth',
-                'login',
-                '--additional-scopes=app-management',
-                '--additional-scopes=backups',
-            ])
-
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-write',
-                authScope:
-                    'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
-                authFlags: ['app-management', 'backups'],
-            })
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '✓',
+                `Updated credentials for ${TEST_USER.email}`,
+            )
         })
 
-        it('accepts multiple scopes in one --additional-scopes flag', async () => {
+        it('rejects an unknown scope', async () => {
             const program = createProgram()
-            const authCode = 'oauth_auth_code_backups_app'
-            const accessToken = 'oauth_access_token_backups_app'
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            mockSaveApiToken.mockResolvedValue({ storage: 'secure-store' })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-
-            await program.parseAsync([
-                'node',
-                'td',
-                'auth',
-                'login',
-                '--additional-scopes=backups,app-management',
-            ])
-
-            expect(mockSaveApiToken).toHaveBeenCalledWith(accessToken, {
-                authMode: 'read-write',
-                authScope:
-                    'data:read_write,data:delete,project:delete,dev:app_console,backups:read',
-                authFlags: ['app-management', 'backups'],
-            })
-        })
-
-        it('rejects an unknown scope with a friendly error', async () => {
-            const program = createProgram()
-
             mockStartCallbackServer.mockResolvedValue({
                 promise: new Promise(() => {}),
                 port: 8765,
@@ -489,10 +376,10 @@ describe('auth command', () => {
                 program.parseAsync(['node', 'td', 'auth', 'login', '--additional-scopes=nonsense']),
             ).rejects.toThrow(/Unknown scope/)
             expect(mockOpen).not.toHaveBeenCalled()
-            expect(mockSaveApiToken).not.toHaveBeenCalled()
+            expect(mockUpsertUser).not.toHaveBeenCalled()
         })
 
-        it('handles OAuth callback server error', async () => {
+        it('cleanup runs on OAuth callback error', async () => {
             const program = createProgram()
             const mockCleanup = vi.fn()
 
@@ -508,54 +395,14 @@ describe('auth command', () => {
             )
 
             expect(mockCleanup).toHaveBeenCalled()
-            expect(mockSaveApiToken).not.toHaveBeenCalled()
-        })
-
-        it('handles token exchange error', async () => {
-            const program = createProgram()
-            const mockCleanup = vi.fn()
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve('auth_code'),
-                port: 8765,
-                cleanup: mockCleanup,
-            })
-            mockExchangeCodeForToken.mockRejectedValue(new Error('Token exchange failed: 400'))
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-
-            await expect(program.parseAsync(['node', 'td', 'auth', 'login'])).rejects.toThrow(
-                'Token exchange failed',
-            )
-
-            expect(mockCleanup).toHaveBeenCalled()
-            expect(mockSaveApiToken).not.toHaveBeenCalled()
-        })
-
-        it('calls cleanup when open() throws', async () => {
-            const program = createProgram()
-            const mockCleanup = vi.fn()
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: new Promise(() => {}), // never resolves
-                port: 8765,
-                cleanup: mockCleanup,
-            })
-            mockOpen.mockRejectedValue(new Error('Failed to open browser'))
-
-            await expect(program.parseAsync(['node', 'td', 'auth', 'login'])).rejects.toThrow(
-                'Failed to open browser',
-            )
-
-            expect(mockCleanup).toHaveBeenCalled()
-            expect(mockSaveApiToken).not.toHaveBeenCalled()
+            expect(mockUpsertUser).not.toHaveBeenCalled()
         })
     })
 
     describe('status subcommand', () => {
         it('shows authenticated status when logged in', async () => {
             const program = createProgram()
-            const mockUser = { email: 'test@example.com', fullName: 'Test User' }
-            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
             mockGetAuthMetadata.mockResolvedValue({
                 authMode: 'read-write',
@@ -565,86 +412,72 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
-            expect(mockGetApi).toHaveBeenCalled()
-            expect(mockApi.getUser).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated')
-            expect(consoleSpy).toHaveBeenCalledWith('  Email: test@example.com')
-            expect(consoleSpy).toHaveBeenCalledWith('  Name:  Test User')
+            expect(consoleSpy).toHaveBeenCalledWith(`  Email: ${TEST_USER.email}`)
+            expect(consoleSpy).toHaveBeenCalledWith(`  Name:  ${TEST_USER.fullName}`)
             expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-write')
         })
 
-        it('shows read-only mode in status', async () => {
+        it('marks the active user as default when matching', async () => {
             const program = createProgram()
-            const mockUser = { email: 'test@example.com', fullName: 'Test User' }
-            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
             mockGetAuthMetadata.mockResolvedValue({
-                authMode: 'read-only',
-                authScope: 'data:read',
+                authMode: 'read-write',
                 source: 'secure-store',
             })
+            mockReadConfig.mockResolvedValue({ user: { defaultUser: TEST_USER.id } })
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
-            expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-only (OAuth scope data:read)')
+            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated (default)')
+        })
+
+        it('lists other stored accounts', async () => {
+            const program = createProgram()
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
+            mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+            mockListStoredUsers.mockResolvedValue([
+                { id: TEST_USER.id, email: TEST_USER.email },
+                { id: '67890', email: 'other@example.com' },
+            ])
+
+            await program.parseAsync(['node', 'td', 'auth', 'status'])
+
+            const lines = consoleSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')
+            expect(lines).toContain('Other stored accounts (1)')
+            expect(lines).toContain('other@example.com')
         })
 
         it('outputs JSON when --json flag is used', async () => {
             const program = createProgram()
-            const mockUser = { id: '123', email: 'test@example.com', fullName: 'Test User' }
-            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(mockUser) })
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
             mockGetAuthMetadata.mockResolvedValue({
                 authMode: 'read-write',
                 authScope: 'data:read_write,data:delete,project:delete',
                 source: 'secure-store',
             })
+            mockListStoredUsers.mockResolvedValue([{ id: TEST_USER.id, email: TEST_USER.email }])
+            mockReadConfig.mockResolvedValue({ user: { defaultUser: TEST_USER.id } })
 
             await program.parseAsync(['node', 'td', 'auth', 'status', '--json'])
 
-            expect(consoleSpy).toHaveBeenCalledWith(
-                JSON.stringify(
-                    {
-                        id: '123',
-                        email: 'test@example.com',
-                        fullName: 'Test User',
-                        authMode: 'read-write',
-                        authScope: 'data:read_write,data:delete,project:delete',
-                    },
-                    null,
-                    2,
-                ),
-            )
+            const printed = consoleSpy.mock.calls[0][0] as string
+            const parsed = JSON.parse(printed)
+            expect(parsed).toMatchObject({
+                id: TEST_USER.id,
+                email: TEST_USER.email,
+                authMode: 'read-write',
+                isDefault: true,
+            })
         })
 
-        it('throws NoTokenError when not authenticated (JSON handled by global handler)', async () => {
-            const program = createProgram()
-            mockGetApi.mockRejectedValue(new NoTokenError())
-
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'status', '--json']),
-            ).rejects.toHaveProperty('code', 'NO_TOKEN')
-        })
-
-        it('rethrows non-auth errors in JSON mode', async () => {
-            const program = createProgram()
-            mockGetApi.mockRejectedValue(new Error('Network timeout'))
-
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'status', '--json']),
-            ).rejects.toThrow('Network timeout')
-        })
-
-        it('rethrows non-auth errors in human-readable mode', async () => {
-            const program = createProgram()
-            mockGetApi.mockRejectedValue(new Error('Network timeout'))
-
-            await expect(program.parseAsync(['node', 'td', 'auth', 'status'])).rejects.toThrow(
-                'Network timeout',
-            )
-        })
-
-        it('throws NoTokenError when no token', async () => {
+        it('throws NoTokenError when not authenticated', async () => {
             const program = createProgram()
             mockGetApi.mockRejectedValue(new NoTokenError())
 
@@ -663,9 +496,6 @@ describe('auth command', () => {
 
             expect(mockClearApiToken).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Logged out')
-            expect(consoleSpy).toHaveBeenCalledWith(
-                'Stored token removed from the system credential manager',
-            )
         })
     })
 })

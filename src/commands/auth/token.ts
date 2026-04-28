@@ -1,5 +1,6 @@
 import chalk from 'chalk'
-import { saveApiToken } from '../../lib/auth.js'
+import { createApiForToken } from '../../lib/api/core.js'
+import { upsertUser } from '../../lib/auth.js'
 import { logTokenStorageResult, promptHiddenInput } from './helpers.js'
 
 export async function loginWithToken(token?: string): Promise<void> {
@@ -11,7 +12,20 @@ export async function loginWithToken(token?: string): Promise<void> {
             return
         }
     }
-    const result = await saveApiToken(token.trim(), { authMode: 'unknown' })
-    console.log(chalk.green('✓'), 'API token saved successfully!')
+    const trimmed = token.trim()
+
+    // Identify the account behind the token so it lands in the right user slot.
+    const probeApi = createApiForToken(trimmed)
+    const user = await probeApi.getUser()
+
+    const result = await upsertUser({
+        id: user.id,
+        email: user.email,
+        token: trimmed,
+        authMode: 'unknown',
+    })
+
+    const verb = result.replaced ? 'Updated stored token for' : 'Saved token for'
+    console.log(chalk.green('✓'), `${verb} ${user.email}`)
     logTokenStorageResult(result, 'Token stored securely in the system credential manager')
 }

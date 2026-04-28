@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
     getProgressJsonlPath,
+    getRequestedUserRef,
     getVerboseLevel,
     isAccessible,
     isJsonMode,
@@ -10,6 +11,7 @@ import {
     parseGlobalArgs,
     resetGlobalArgs,
     shouldDisableSpinner,
+    stripUserFlag,
 } from './global-args.js'
 
 describe('parseGlobalArgs', () => {
@@ -53,7 +55,44 @@ describe('parseGlobalArgs', () => {
                 noSpinner: false,
                 raw: false,
                 progressJsonl: false,
+                user: undefined,
             })
+        })
+    })
+
+    describe('--user', () => {
+        it('parses --user <ref>', () => {
+            expect(parseGlobalArgs(['--user', 'scott@doist.com']).user).toBe('scott@doist.com')
+        })
+        it('parses --user=<ref>', () => {
+            expect(parseGlobalArgs(['--user=12345']).user).toBe('12345')
+        })
+        it('handles --user mid-argv with subcommands around it', () => {
+            const result = parseGlobalArgs(['task', 'list', '--user', 'a@b.c', '--json'])
+            expect(result.user).toBe('a@b.c')
+            expect(result.json).toBe(true)
+        })
+    })
+
+    describe('stripUserFlag', () => {
+        it('removes --user <value>', () => {
+            expect(stripUserFlag(['task', 'list', '--user', 'a@b.c', '--json'])).toEqual([
+                'task',
+                'list',
+                '--json',
+            ])
+        })
+        it('removes --user=<value>', () => {
+            expect(stripUserFlag(['--user=12345', 'today'])).toEqual(['today'])
+        })
+        it('preserves args after --', () => {
+            expect(stripUserFlag(['task', 'list', '--', '--user', 'x'])).toEqual([
+                'task',
+                'list',
+                '--',
+                '--user',
+                'x',
+            ])
         })
     })
 
@@ -215,6 +254,11 @@ describe('query functions', () => {
     it('getProgressJsonlPath returns path', () => {
         process.argv = ['node', 'td', '--progress-jsonl=/tmp/out', 'today']
         expect(getProgressJsonlPath()).toBe('/tmp/out')
+    })
+
+    it('getRequestedUserRef returns the parsed --user value', () => {
+        process.argv = ['node', 'td', 'task', 'list', '--user', 'scott@doist.com']
+        expect(getRequestedUserRef()).toBe('scott@doist.com')
     })
 })
 
