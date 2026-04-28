@@ -119,7 +119,15 @@ function formatConfigView(
         // postinstall migration runs.
         lines.push(`  Active:        ${chalk.dim('(legacy single-user credentials)')}`)
     } else if (token.state === 'ambiguous') {
-        lines.push(`  Active:        ${chalk.dim('(none — multiple accounts, no default)')}`)
+        // `NoUserSelectedError` covers two distinct states — distinguish
+        // them so the user knows whether to set a default or fix a stale
+        // pointer.
+        const orphanedDefault =
+            defaultUserId !== undefined && !users.some((u) => u.id === defaultUserId)
+        const reason = orphanedDefault
+            ? `default points at unknown user "${defaultUserId}"`
+            : 'multiple accounts, no default'
+        lines.push(`  Active:        ${chalk.dim(`(none — ${reason})`)}`)
     } else if (token.state === 'missing') {
         lines.push(`  Active:        ${chalk.dim('(none)')}`)
     } else {

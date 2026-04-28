@@ -286,23 +286,27 @@ async function checkForUpdates(offline: boolean): Promise<DoctorCheck> {
     }
 }
 
-async function checkStoredUsers(): Promise<DoctorCheck | null> {
+/**
+ * Returns 0–3 `users` checks: a summary of stored accounts plus optional
+ * warnings for missing/orphaned defaults and plaintext-fallback storage. Both
+ * warnings can fire on the same install, so we emit them as separate checks
+ * rather than collapsing into one.
+ */
+async function checkStoredUsers(): Promise<DoctorCheck[]> {
     const users = await listStoredUsers()
-    if (users.length === 0) return null
+    if (users.length === 0) return []
 
     const config = await readConfig()
     const defaultId = getDefaultUserId(config)
     // Mirror `resolveActiveUser`: a `defaultUser` pointer only counts when
-    // it actually resolves to a stored user. An orphaned pointer means
-    // commands without `--user` would still throw NoUserSelectedError, so
-    // we should warn the same way.
+    // it actually resolves to a stored user.
     const defaultResolved = defaultId ? users.find((u) => u.id === defaultId)?.email : undefined
     const hasUsableDefault = Boolean(defaultResolved)
     // TODOIST_API_TOKEN bypasses the resolver entirely — multi-user state
-    // can't break commands while it's set, so don't raise the warning.
+    // can't break commands while it's set, so don't raise the default warning.
     const envTokenSet = Boolean(process.env[TOKEN_ENV_VAR])
     const plaintext = users.filter((u) => u.api_token).map((u) => u.email)
-    const details: Record<string, unknown> = {
+    const baseDetails: Record<string, unknown> = {
         count: users.length,
         defaultUserId: defaultId,
         defaultUserResolved: hasUsableDefault,
@@ -310,28 +314,11 @@ async function checkStoredUsers(): Promise<DoctorCheck | null> {
         plaintextFallbackEmails: plaintext,
     }
 
-    if (users.length > 1 && !hasUsableDefault && !envTokenSet) {
-        const reason = defaultId
-            ? `default points at unknown user "${defaultId}"`
-            : 'no default selected'
-        return {
-            name: 'users',
-            status: 'warn',
-            message: `${users.length} stored accounts; ${reason}. Commands without --user will error`,
-            details,
-        }
-    }
+    const checks: DoctorCheck[] = []
 
-    if (plaintext.length > 0) {
-        return {
-            name: 'users',
-            status: 'warn',
-            message: `${plaintext.length} account(s) using plaintext fallback storage: ${plaintext.join(', ')}`,
-            details,
-        }
-    }
-
-    return {
+    // Always emit the summary first so output reads top-down: state, then
+    // any warnings about that state.
+    checks.push({
         name: 'users',
         status: 'pass',
         message:
@@ -340,15 +327,38 @@ async function checkStoredUsers(): Promise<DoctorCheck | null> {
                 : `${users.length} stored accounts; default is ${
                       defaultResolved ?? (envTokenSet ? '(TODOIST_API_TOKEN)' : '(none)')
                   }`,
-        details,
+        details: baseDetails,
+    })
+
+    if (users.length > 1 && !hasUsableDefault && !envTokenSet) {
+        const reason = defaultId
+            ? `default points at unknown user "${defaultId}"`
+            : 'no default selected'
+        checks.push({
+            name: 'users',
+            status: 'warn',
+            message: `${reason}. Commands without --user will error`,
+            details: baseDetails,
+        })
     }
+
+    if (plaintext.length > 0) {
+        checks.push({
+            name: 'users',
+            status: 'warn',
+            message: `${plaintext.length} account(s) using plaintext fallback storage: ${plaintext.join(', ')}`,
+            details: baseDetails,
+        })
+    }
+
+    return checks
 }
 
 async function runDoctorChecks(options: DoctorOptions): Promise<DoctorCheck[]> {
     return [
         checkNodeVersion(),
         await checkConfigFile(),
-        await checkStoredUsers(),
+        ...(await checkStoredUsers()),
         await checkAuthentication(Boolean(options.offline)),
         await checkForUpdates(Boolean(options.offline)),
     ].filter((check): check is DoctorCheck => check !== null)
