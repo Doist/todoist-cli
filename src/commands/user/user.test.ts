@@ -1,0 +1,123 @@
+import { Command } from 'commander'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../../lib/auth.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../lib/auth.js')>()
+    return {
+        ...actual,
+        listStoredUsers: vi.fn(),
+        readConfig: vi.fn(),
+        setDefaultUserId: vi.fn(),
+    }
+})
+
+vi.mock('chalk')
+
+import { listStoredUsers, readConfig, setDefaultUserId } from '../../lib/auth.js'
+import { registerUserCommand } from './index.js'
+
+const mockListStoredUsers = vi.mocked(listStoredUsers)
+const mockReadConfig = vi.mocked(readConfig)
+const mockSetDefaultUserId = vi.mocked(setDefaultUserId)
+
+function createProgram() {
+    const program = new Command()
+    program.exitOverride()
+    registerUserCommand(program)
+    return program
+}
+
+describe('user command', () => {
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+    let errorSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        mockReadConfig.mockResolvedValue({})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+        errorSpy.mockRestore()
+    })
+
+    describe('list', () => {
+        it('prints a hint when no users are stored', async () => {
+            mockListStoredUsers.mockResolvedValue([])
+            await createProgram().parseAsync(['node', 'td', 'user', 'list'])
+
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('No stored Todoist accounts')
+        })
+
+        it('marks the default user', async () => {
+            mockListStoredUsers.mockResolvedValue([
+                { id: '1', email: 'a@b.c' },
+                { id: '2', email: 'd@e.f' },
+            ])
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '2' },
+                users: [],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'list'])
+
+            const lines = consoleSpy.mock.calls.flat().join('\n')
+            expect(lines).toContain('a@b.c')
+            expect(lines).toContain('d@e.f')
+            expect(lines).toContain('default')
+        })
+
+        it('outputs JSON when --json given', async () => {
+            mockListStoredUsers.mockResolvedValue([
+                { id: '1', email: 'a@b.c', auth_mode: 'read-write' },
+            ])
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '1' },
+                users: [],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'list', '--json'])
+
+            const payload = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+            expect(payload).toEqual([
+                {
+                    id: '1',
+                    email: 'a@b.c',
+                    isDefault: true,
+                    authMode: 'read-write',
+                    authScope: undefined,
+                    authFlags: undefined,
+                    storage: 'secure-store',
+                },
+            ])
+        })
+    })
+
+    describe('use', () => {
+        it('sets the default user by id', async () => {
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'use', '111'])
+
+            expect(mockSetDefaultUserId).toHaveBeenCalledWith('111')
+        })
+
+        it('rejects an unknown ref', async () => {
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await expect(
+                createProgram().parseAsync(['node', 'td', 'user', 'use', 'nope']),
+            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+        })
+    })
+})

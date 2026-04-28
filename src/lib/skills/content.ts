@@ -24,7 +24,7 @@ export const SKILL_CONTENT = `# Todoist CLI (td)
 - Mutating commands support \`--dry-run\` to preview actions without executing them.
 - Destructive commands typically require \`--yes\`.
 - \`--quiet\` / \`-q\` suppresses success messages. Create commands still print the bare ID for scripting (e.g. \`id=$(td task add "Buy milk" --quiet)\`).
-- Global flags: \`--no-spinner\`, \`--progress-jsonl\`, \`-v/--verbose\`, \`--accessible\`, \`--quiet\`.
+- Global flags: \`--no-spinner\`, \`--progress-jsonl\`, \`-v/--verbose\`, \`--accessible\`, \`--quiet\`, \`--user <id|email>\`.
 
 ## Authentication
 
@@ -50,6 +50,20 @@ Combine freely with \`--read-only\` to keep data access read-only while still gr
 
 Tokens are stored in the OS credential manager when available, with fallback to \`~/.config/todoist-cli/config.json\`. \`TODOIST_API_TOKEN\` takes precedence over stored credentials.
 
+## Multi-user
+
+The CLI can hold credentials for multiple Todoist accounts at once.
+
+\`\`\`bash
+td auth login                       # adds the account; first one becomes default
+td user list                        # all stored accounts (with default marker)
+td user use <id|email>              # set the default account
+td --user <id|email> task list      # one-off override for any command
+td auth logout --user <id|email>    # log out a specific account
+\`\`\`
+
+Resolution order: \`--user <ref>\` > \`user.defaultUser\` from config > the only stored account. With multiple accounts and no default, commands error and ask for \`--user\` (or \`td user use\`). \`<ref>\` matches an exact id or email (case-insensitive on email). \`TODOIST_API_TOKEN\` still bypasses the resolver entirely.
+
 ## Quick Reference
 
 - Daily views: \`td today\`, \`td inbox\`, \`td upcoming\`, \`td completed\`, \`td activity\`
@@ -60,7 +74,7 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Help Center: \`td hc locales/search/view\`
-- Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
+- Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td user ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 - Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
 - Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
 

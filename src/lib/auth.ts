@@ -1,28 +1,45 @@
 import {
+    accountForUser,
     createSecureStore,
-    SecureStoreUnavailableError,
+    LEGACY_ACCOUNT_NAME,
     SECURE_STORE_DESCRIPTION,
+    SecureStoreUnavailableError,
 } from './secure-store.js'
 export {
     AUTH_FLAG_ORDER,
     CONFIG_PATH,
+    CONFIG_VERSION,
     readConfig,
     writeConfig,
     type AuthFlag,
     type AuthMode,
     type Config,
+    type StoredUser,
     type UpdateChannel,
 } from './config.js'
 
 import {
     CONFIG_PATH,
+    CONFIG_VERSION,
     readConfig,
     writeConfig,
     type AuthFlag,
     type AuthMode,
     type Config,
+    type StoredUser,
 } from './config.js'
 import { CliError } from './errors.js'
+import { getRequestedUserRef } from './global-args.js'
+import {
+    findUserByRef,
+    getDefaultUser,
+    getStoredUsers,
+    NoUserSelectedError,
+    removeStoredUser,
+    setDefaultUser as setDefaultUserInConfig,
+    upsertStoredUser,
+    UserNotFoundError,
+} from './users.js'
 
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 
@@ -31,17 +48,27 @@ export interface AuthMetadata {
     authScope?: string
     authFlags?: AuthFlag[]
     source: 'env' | 'secure-store' | 'config-file'
+    userId?: string
+    email?: string
 }
 
-export interface SaveApiTokenOptions {
+export interface ResolvedUser {
+    id: string
+    email: string
+    token: string
+    authMode: AuthMode
+    authScope?: string
+    authFlags?: AuthFlag[]
+    source: AuthMetadata['source']
+}
+
+export interface UpsertUserInput {
+    id: string
+    email: string
+    token: string
     authMode?: AuthMode
     authScope?: string
     authFlags?: AuthFlag[]
-}
-
-export interface AuthProbeResult {
-    token: string
-    metadata: AuthMetadata
 }
 
 export class NoTokenError extends CliError {
@@ -63,251 +90,434 @@ export interface TokenStorageResult {
     warning?: string
 }
 
-export async function getApiToken(): Promise<string> {
-    // Priority 1: Environment variable
+// ---------------------------------------------------------------------------
+// Public API — used by api/core, uploads, stats, doctor, auth subcommands
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve which stored user this invocation should act as, and load their
+ * token. Honors `--user <ref>`, then `user.defaultUser`, then a single stored
+ * user. Throws `NoUserSelectedError` when multiple users are stored without a
+ * default and no `--user` was passed; `UserNotFoundError` when `--user` does
+ * not match; `NoTokenError` when no users are stored.
+ *
+ * `TODOIST_API_TOKEN` short-circuits the resolver entirely — env tokens act as
+ * an anonymous identity for the duration of the command.
+ */
+export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<ResolvedUser> {
     const envToken = process.env[TOKEN_ENV_VAR]
     if (envToken) {
-        return envToken
+        return {
+            id: 'env',
+            email: '',
+            token: envToken,
+            authMode: 'unknown',
+            source: 'env',
+        }
     }
 
     const config = await readConfig()
-    const configToken = getConfigToken(config)
-    const secureStore = createSecureStore()
+    const users = getStoredUsers(config)
+    const requestedRef = opts.ref ?? getRequestedUserRef()
 
-    if (configToken) {
-        try {
-            await secureStore.setSecret(configToken)
-            const cleanupWarning = await cleanupAuthFallbackState(
-                config,
-                'Token was migrated to secure storage,',
-            )
-            if (cleanupWarning) {
-                warn(cleanupWarning)
-            }
-        } catch (error) {
-            if (!(error instanceof SecureStoreUnavailableError)) {
-                throw error
-            }
+    // Gate the legacy fallback on the *absence* of `config.users` rather than
+    // an empty array. A v2 config that has been logged out (`users: []`) must
+    // not silently fall back to a stale `api-token` keyring entry — that
+    // would let a forgotten v1 credential reauthenticate the next command.
+    const isLegacyShape = !Array.isArray(config.users)
+    if (users.length === 0) {
+        if (requestedRef) {
+            // Asked for a specific user, but the store is empty — same error
+            // as missing user, scoped to the request.
+            throw new UserNotFoundError(requestedRef)
         }
-
-        return configToken
-    }
-
-    if (config.pendingSecureStoreClear) {
-        try {
-            await secureStore.deleteSecret()
-            const cleanupWarning = await cleanupAuthFallbackState(
-                config,
-                'Secure-store token was removed,',
-            )
-            if (cleanupWarning) {
-                warn(cleanupWarning)
-            }
-        } catch (error) {
-            if (!(error instanceof SecureStoreUnavailableError)) {
-                throw error
-            }
+        if (isLegacyShape) {
+            return resolveLegacyToken(config)
         }
-
         throw new NoTokenError()
     }
 
-    try {
-        const storedToken = await secureStore.getSecret()
-        if (storedToken?.trim()) {
-            return storedToken
+    let target: StoredUser
+    if (requestedRef) {
+        const found = findUserByRef(config, requestedRef)
+        if (!found) throw new UserNotFoundError(requestedRef)
+        target = found.user
+    } else if (config.user?.defaultUser) {
+        const found = findUserByRef(config, config.user.defaultUser)
+        if (!found) {
+            // Default points at a missing user — treat like no default.
+            if (users.length === 1) {
+                target = users[0]
+            } else {
+                throw new NoUserSelectedError()
+            }
+        } else {
+            target = found.user
         }
-    } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) {
-            throw error
-        }
+    } else if (users.length === 1) {
+        target = users[0]
+    } else {
+        throw new NoUserSelectedError()
     }
 
-    throw new NoTokenError()
+    const { token, source } = await loadTokenForStoredUser(target)
+    return {
+        id: target.id,
+        email: target.email,
+        token,
+        authMode: target.auth_mode ?? 'unknown',
+        authScope: target.auth_scope,
+        authFlags: target.auth_flags,
+        source,
+    }
 }
 
-export async function probeApiToken(): Promise<AuthProbeResult> {
-    const envToken = process.env[TOKEN_ENV_VAR]
-    if (envToken) {
-        return {
-            token: envToken,
-            metadata: { authMode: 'unknown', source: 'env' },
-        }
+/**
+ * Backwards-compatible no-arg accessor for the active user's token. Most call
+ * sites (uploads, stats, api/core) only need the bearer string.
+ */
+export async function getApiToken(): Promise<string> {
+    const resolved = await resolveActiveUser()
+    return resolved.token
+}
+
+/**
+ * Like `resolveActiveUser` but returns whichever credentials are at hand
+ * without mutating storage. Useful for `td doctor` / `td config view` where
+ * we want to inspect (and report on) what would be used.
+ */
+export async function probeApiToken(): Promise<{ token: string; metadata: AuthMetadata }> {
+    const resolved = await resolveActiveUser()
+    return {
+        token: resolved.token,
+        metadata: resolvedToMetadata(resolved),
     }
+}
 
-    const config = await readConfig()
-    const configToken = getConfigToken(config)
-
-    if (configToken) {
-        return {
-            token: configToken,
-            metadata: {
-                authMode: config.auth_mode ?? 'unknown',
-                authScope: config.auth_scope,
-                authFlags: config.auth_flags,
-                source: 'config-file',
-            },
-        }
-    }
-
-    if (config.pendingSecureStoreClear) {
-        throw new NoTokenError()
-    }
-
-    const secureStore = createSecureStore()
+export async function getAuthMetadata(): Promise<AuthMetadata> {
     try {
-        const storedToken = await secureStore.getSecret()
-        if (storedToken?.trim()) {
-            return {
-                token: storedToken.trim(),
-                metadata: {
-                    authMode: config.auth_mode ?? 'unknown',
-                    authScope: config.auth_scope,
-                    authFlags: config.auth_flags,
-                    source: 'secure-store',
-                },
-            }
-        }
+        const resolved = await resolveActiveUser()
+        return resolvedToMetadata(resolved)
     } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) {
-            throw error
+        // Metadata callers (e.g. `ensureWriteAllowed`, scope-error
+        // remediation) need a sensible default rather than a hard failure
+        // when credentials are missing or the keyring is offline. Diagnostic
+        // commands use `probeApiToken` for that — it intentionally lets
+        // `SecureStoreUnavailableError` propagate so it can be reported.
+        if (error instanceof NoTokenError || error instanceof SecureStoreUnavailableError) {
+            return { authMode: 'unknown', source: 'secure-store' }
         }
         throw error
     }
+}
+
+/**
+ * Add or update a user record. Stores the token in the OS credential manager
+ * under `user-<id>` when available, falls back to per-user plaintext in config.
+ * Sets `defaultUser` automatically if this is the first user being stored.
+ */
+export async function upsertUser(
+    input: UpsertUserInput,
+): Promise<TokenStorageResult & { replaced: boolean }> {
+    if (!input.token || input.token.trim().length < 10) {
+        throw new CliError('INVALID_TOKEN', 'Invalid token: Token must be at least 10 characters')
+    }
+    if (!input.id) {
+        throw new CliError('INVALID_USER', 'Cannot store user record: missing id')
+    }
+    if (!input.email) {
+        throw new CliError('INVALID_USER', 'Cannot store user record: missing email')
+    }
+
+    const trimmedToken = input.token.trim()
+    const config = await readConfig()
+    const previouslyExisted = getStoredUsers(config).some((u) => u.id === input.id)
+    // Always set the first user as the default — even if `config.user.defaultUser`
+    // points at a stale/orphaned id, that pointer would otherwise wedge multi-user
+    // resolution on subsequent logins.
+    const shouldSetDefault = getStoredUsers(config).length === 0
+
+    const baseRecord: StoredUser = {
+        id: input.id,
+        email: input.email,
+        auth_mode: input.authMode,
+        auth_scope: input.authScope,
+        auth_flags: input.authFlags,
+    }
+
+    const secureStore = createSecureStore(accountForUser(input.id))
+    let storedSecurely = false
+    try {
+        await secureStore.setSecret(trimmedToken)
+        storedSecurely = true
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
+    }
+
+    const userRecord: StoredUser = storedSecurely
+        ? baseRecord
+        : { ...baseRecord, api_token: trimmedToken }
+
+    let next = ensureV2Shape(config)
+    next = upsertStoredUser(next, userRecord).config
+    if (shouldSetDefault) {
+        next = setDefaultUserInConfig(next, input.id)
+    }
+    next = stripLegacyAuthFields(next)
+
+    try {
+        await writeConfig(next)
+    } catch (error) {
+        // Config write is the source of truth — without it, later commands
+        // can't resolve the user even though the keyring holds the secret.
+        // Roll the keyring back so we don't leak credentials for a non-stored
+        // account, then surface the failure.
+        if (storedSecurely) {
+            try {
+                await secureStore.deleteSecret()
+            } catch {
+                // best effort — the original error is what the user needs
+            }
+        }
+        const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
+        throw new CliError(
+            'CONFIG_WRITE_FAILED',
+            `Could not persist account record to ${CONFIG_PATH}${detail}`,
+            ['Check file permissions on ~/.config/todoist-cli/, then re-run the command'],
+        )
+    }
+
+    return {
+        storage: storedSecurely ? 'secure-store' : 'config-file',
+        warning: storedSecurely ? undefined : buildFallbackWarning('token saved as plaintext in'),
+        replaced: previouslyExisted,
+    }
+}
+
+/**
+ * Remove the active user (resolved via `--user` or default). For multi-user
+ * installs without a default, callers must pass `--user <ref>` to disambiguate.
+ */
+export async function clearApiToken(opts: { ref?: string } = {}): Promise<TokenStorageResult> {
+    const config = await readConfig()
+    const users = getStoredUsers(config)
+    const requestedRef = opts.ref ?? getRequestedUserRef()
+
+    // No users stored yet — fall through to legacy logout only on a v1-shaped
+    // config (no `users` key at all). Empty `users: []` is an already-clean
+    // v2 install; treat it as a no-op rather than poking the legacy keyring.
+    if (users.length === 0) {
+        if (!Array.isArray(config.users)) {
+            return clearLegacyToken(config)
+        }
+        if (requestedRef) {
+            throw new UserNotFoundError(requestedRef)
+        }
+        throw new NoTokenError()
+    }
+
+    let target: StoredUser
+    if (requestedRef) {
+        const found = findUserByRef(config, requestedRef)
+        if (!found) throw new UserNotFoundError(requestedRef)
+        target = found.user
+    } else {
+        const def = getDefaultUser(config)
+        if (def) {
+            target = def
+        } else if (users.length === 1) {
+            target = users[0]
+        } else {
+            throw new NoUserSelectedError()
+        }
+    }
+
+    return removeUserById(target.id)
+}
+
+/**
+ * Remove a specific user by id. Used by `td user remove` and as the underlying
+ * primitive for `clearApiToken`.
+ *
+ * Order matters: write the new config first (the source of truth) and only
+ * then delete the secret. If the config update fails the keyring is untouched,
+ * so the user remains fully functional and a retry will simply re-attempt
+ * the same operation. A keyring delete failure after a successful config
+ * update leaves an orphan secret that the keyring's own service can clean up
+ * later — the CLI no longer references it.
+ */
+export async function removeUserById(id: string): Promise<TokenStorageResult> {
+    const config = await readConfig()
+    const next = stripLegacyAuthFields(removeStoredUser(ensureV2Shape(config), id))
+
+    try {
+        await writeConfig(next)
+    } catch (error) {
+        const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
+        throw new CliError('CONFIG_WRITE_FAILED', `Could not update ${CONFIG_PATH}${detail}`, [
+            'Check file permissions on ~/.config/todoist-cli/, then re-run the command',
+        ])
+    }
+
+    const secureStore = createSecureStore(accountForUser(id))
+    try {
+        await secureStore.deleteSecret()
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
+        return {
+            storage: 'config-file',
+            warning: buildFallbackWarning('local auth state cleared in'),
+        }
+    }
+
+    return { storage: 'secure-store' }
+}
+
+export async function setDefaultUserId(id: string): Promise<void> {
+    const config = ensureV2Shape(await readConfig())
+    const found = findUserByRef(config, id)
+    if (!found) throw new UserNotFoundError(id)
+    await writeConfig(stripLegacyAuthFields(setDefaultUserInConfig(config, found.user.id)))
+}
+
+export async function listStoredUsers(): Promise<StoredUser[]> {
+    const config = await readConfig()
+    return getStoredUsers(config)
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+async function loadTokenForStoredUser(
+    user: StoredUser,
+): Promise<{ token: string; source: 'secure-store' | 'config-file' }> {
+    if (user.api_token?.trim()) {
+        return { token: user.api_token.trim(), source: 'config-file' }
+    }
+    const secureStore = createSecureStore(accountForUser(user.id))
+    // Re-throw `SecureStoreUnavailableError` rather than collapsing it into
+    // `NoTokenError`. A stored v2 user with the keyring offline is *not* the
+    // same situation as no credentials at all — `td doctor` and `td config
+    // view` both have dedicated handling for the unavailable-store case and
+    // should report the keyring failure rather than misleadingly say the user
+    // has no saved credentials.
+    const stored = await secureStore.getSecret()
+    if (stored?.trim()) {
+        return { token: stored.trim(), source: 'secure-store' }
+    }
+    throw new NoTokenError()
+}
+
+/**
+ * v1 fallback: when there are no v2 users in the config, see if a legacy
+ * single-user token is present (config plaintext or legacy `api-token`
+ * keyring entry). Returns it as a synthetic ResolvedUser so the CLI keeps
+ * working until postinstall (or `td auth login`) migrates the install.
+ */
+async function resolveLegacyToken(config: Config): Promise<ResolvedUser> {
+    const legacyToken = typeof config.api_token === 'string' ? config.api_token.trim() : ''
+    if (legacyToken) {
+        return {
+            id: 'legacy',
+            email: '',
+            token: legacyToken,
+            authMode: config.auth_mode ?? 'unknown',
+            authScope: config.auth_scope,
+            authFlags: config.auth_flags,
+            source: 'config-file',
+        }
+    }
+
+    if (config.pendingSecureStoreClear) {
+        // v1 logout state: nothing to restore. Surface as the same NoTokenError
+        // the v1 path used to throw.
+        throw new NoTokenError()
+    }
+
+    const secureStore = createSecureStore(LEGACY_ACCOUNT_NAME)
+    try {
+        const stored = await secureStore.getSecret()
+        if (stored?.trim()) {
+            return {
+                id: 'legacy',
+                email: '',
+                token: stored.trim(),
+                authMode: config.auth_mode ?? 'unknown',
+                authScope: config.auth_scope,
+                authFlags: config.auth_flags,
+                source: 'secure-store',
+            }
+        }
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
+    }
 
     throw new NoTokenError()
 }
 
-export async function saveApiToken(
-    token: string,
-    options: SaveApiTokenOptions = {},
-): Promise<TokenStorageResult> {
-    // Validate token (non-empty, reasonable length)
-    if (!token || token.trim().length < 10) {
-        throw new CliError('INVALID_TOKEN', 'Invalid token: Token must be at least 10 characters')
-    }
-
-    const trimmedToken = token.trim()
-    const secureStore = createSecureStore()
-
-    try {
-        await secureStore.setSecret(trimmedToken)
-        const existingConfig = await readConfig()
-        const configWithMeta = withAuthMetadata(existingConfig, options)
-        const warning = await cleanupAuthFallbackState(configWithMeta, 'Token was stored securely,')
-        return warning ? { storage: 'secure-store', warning } : { storage: 'secure-store' }
-    } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) {
-            throw error
-        }
-    }
-
-    const config = await readConfig()
-    config.api_token = trimmedToken
-    delete config.pendingSecureStoreClear
-    config.auth_mode = options.authMode
-    config.auth_scope = options.authScope
-    config.auth_flags = options.authFlags
-    await writeConfig(config)
-    return {
-        storage: 'config-file',
-        warning: buildFallbackWarning('token saved as plaintext in'),
-    }
-}
-
-export async function clearApiToken(): Promise<TokenStorageResult> {
-    const config = await readConfig()
-    const secureStore = createSecureStore()
+async function clearLegacyToken(config: Config): Promise<TokenStorageResult> {
+    const secureStore = createSecureStore(LEGACY_ACCOUNT_NAME)
 
     try {
         await secureStore.deleteSecret()
-        const warning = await cleanupAllAuthState(config, 'Secure-store token was removed,')
-        return warning ? { storage: 'secure-store', warning } : { storage: 'secure-store' }
-    } catch (error) {
-        if (!(error instanceof SecureStoreUnavailableError)) {
-            throw error
+        const cleaned = stripLegacyAuthFields(config)
+        try {
+            await writeConfig(cleaned)
+        } catch (error) {
+            return {
+                storage: 'secure-store',
+                warning: buildConfigCleanupWarning('Secure-store token was removed,', error),
+            }
         }
+        return { storage: 'secure-store' }
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
     }
 
-    await writeConfig(withPendingSecureStoreClear(withoutAuthMetadata(config)))
+    const cleared: Config = {
+        ...stripLegacyAuthFields(config),
+        pendingSecureStoreClear: true,
+    }
+    try {
+        await writeConfig(cleared)
+    } catch {
+        // best-effort
+    }
     return {
         storage: 'config-file',
         warning: buildFallbackWarning('local auth state cleared in'),
     }
 }
 
-export async function getAuthMetadata(): Promise<AuthMetadata> {
-    if (process.env[TOKEN_ENV_VAR]) {
-        return { authMode: 'unknown', source: 'env' }
+function ensureV2Shape(config: Config): Config {
+    const next: Config = { ...config, config_version: CONFIG_VERSION }
+    if (!Array.isArray(next.users)) {
+        next.users = []
     }
-
-    const config = await readConfig()
-
-    if (config.auth_mode) {
-        return {
-            authMode: config.auth_mode,
-            authScope: config.auth_scope,
-            authFlags: config.auth_flags,
-            source: getConfigToken(config) ? 'config-file' : 'secure-store',
-        }
-    }
-
-    return {
-        authMode: 'unknown',
-        source: getConfigToken(config) ? 'config-file' : 'secure-store',
-    }
+    return next
 }
 
-async function cleanupAuthFallbackState(
-    config: Config,
-    warningPrefix: string,
-): Promise<string | undefined> {
-    try {
-        await writeConfig(withoutAuthFallbackState(config))
-        return undefined
-    } catch (error) {
-        return buildConfigCleanupWarning(warningPrefix, error)
-    }
-}
-
-function getConfigToken(config: Config): string | null {
-    return typeof config.api_token === 'string' && config.api_token.trim()
-        ? config.api_token.trim()
-        : null
-}
-
-function withoutAuthFallbackState(config: Config): Config {
-    const { api_token: _token, pendingSecureStoreClear: _pending, ...rest } = config
+function stripLegacyAuthFields(config: Config): Config {
+    const {
+        api_token: _t,
+        auth_mode: _m,
+        auth_scope: _s,
+        auth_flags: _f,
+        pendingSecureStoreClear: _p,
+        ...rest
+    } = config
     return rest
 }
 
-function withPendingSecureStoreClear(config: Config): Config {
-    return { ...withoutAuthFallbackState(config), pendingSecureStoreClear: true }
-}
-
-function withAuthMetadata(config: Config, options: SaveApiTokenOptions): Config {
+function resolvedToMetadata(resolved: ResolvedUser): AuthMetadata {
     return {
-        ...config,
-        auth_mode: options.authMode,
-        auth_scope: options.authScope,
-        auth_flags: options.authFlags,
-    }
-}
-
-function withoutAuthMetadata(config: Config): Config {
-    const { auth_mode: _mode, auth_scope: _scope, auth_flags: _flags, ...rest } = config
-    return rest
-}
-
-async function cleanupAllAuthState(
-    config: Config,
-    warningPrefix: string,
-): Promise<string | undefined> {
-    try {
-        await writeConfig(withoutAuthFallbackState(withoutAuthMetadata(config)))
-        return undefined
-    } catch (error) {
-        return buildConfigCleanupWarning(warningPrefix, error)
+        authMode: resolved.authMode,
+        authScope: resolved.authScope,
+        authFlags: resolved.authFlags,
+        source: resolved.source,
+        userId: resolved.id === 'env' || resolved.id === 'legacy' ? undefined : resolved.id,
+        email: resolved.email || undefined,
     }
 }
 
@@ -317,9 +527,5 @@ function buildFallbackWarning(action: string): string {
 
 function buildConfigCleanupWarning(prefix: string, error: unknown): string {
     const detail = error instanceof Error && error.message ? ` (${error.message})` : ''
-    return `${prefix} but could not remove legacy plaintext token from ${CONFIG_PATH}${detail}`
-}
-
-function warn(message: string): void {
-    console.error(`Warning: ${message}`)
+    return `${prefix} but could not update ${CONFIG_PATH}${detail}`
 }

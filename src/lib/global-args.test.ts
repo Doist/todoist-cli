@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
     getProgressJsonlPath,
+    getRequestedUserRef,
     getVerboseLevel,
     isAccessible,
     isJsonMode,
@@ -10,6 +11,7 @@ import {
     parseGlobalArgs,
     resetGlobalArgs,
     shouldDisableSpinner,
+    stripUserFlag,
 } from './global-args.js'
 
 describe('parseGlobalArgs', () => {
@@ -53,7 +55,64 @@ describe('parseGlobalArgs', () => {
                 noSpinner: false,
                 raw: false,
                 progressJsonl: false,
+                user: undefined,
             })
+        })
+    })
+
+    describe('--user', () => {
+        it('parses --user <ref>', () => {
+            expect(parseGlobalArgs(['--user', 'scott@doist.com']).user).toBe('scott@doist.com')
+        })
+        it('parses --user=<ref>', () => {
+            expect(parseGlobalArgs(['--user=12345']).user).toBe('12345')
+        })
+        it('handles --user mid-argv with subcommands around it', () => {
+            const result = parseGlobalArgs(['task', 'list', '--user', 'a@b.c', '--json'])
+            expect(result.user).toBe('a@b.c')
+            expect(result.json).toBe(true)
+        })
+        it('does not consume the next arg as a value when it looks like a flag', () => {
+            // `td --user --json auth status` should leave user undefined and
+            // keep --json intact, so commander surfaces a usage error rather
+            // than us silently swallowing --json as the user ref.
+            const result = parseGlobalArgs(['--user', '--json', 'auth', 'status'])
+            expect(result.user).toBeUndefined()
+            expect(result.json).toBe(true)
+        })
+        it('leaves --user at end of argv as undefined', () => {
+            expect(parseGlobalArgs(['task', 'list', '--user']).user).toBeUndefined()
+        })
+    })
+
+    describe('stripUserFlag', () => {
+        it('removes --user <value>', () => {
+            expect(stripUserFlag(['task', 'list', '--user', 'a@b.c', '--json'])).toEqual([
+                'task',
+                'list',
+                '--json',
+            ])
+        })
+        it('removes --user=<value>', () => {
+            expect(stripUserFlag(['--user=12345', 'today'])).toEqual(['today'])
+        })
+        it('does not strip the next arg when it looks like a flag', () => {
+            // Mirrors parseGlobalArgs: keep --json intact so commander can
+            // surface a usage error on the bare --user.
+            expect(stripUserFlag(['--user', '--json', 'auth', 'status'])).toEqual([
+                '--json',
+                'auth',
+                'status',
+            ])
+        })
+        it('preserves args after --', () => {
+            expect(stripUserFlag(['task', 'list', '--', '--user', 'x'])).toEqual([
+                'task',
+                'list',
+                '--',
+                '--user',
+                'x',
+            ])
         })
     })
 
@@ -215,6 +274,11 @@ describe('query functions', () => {
     it('getProgressJsonlPath returns path', () => {
         process.argv = ['node', 'td', '--progress-jsonl=/tmp/out', 'today']
         expect(getProgressJsonlPath()).toBe('/tmp/out')
+    })
+
+    it('getRequestedUserRef returns the parsed --user value', () => {
+        process.argv = ['node', 'td', 'task', 'list', '--user', 'scott@doist.com']
+        expect(getRequestedUserRef()).toBe('scott@doist.com')
     })
 })
 
