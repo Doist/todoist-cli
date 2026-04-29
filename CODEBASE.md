@@ -154,6 +154,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`permissions.ts`** — collaborator permission parsing
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
+- **`usage-tracking.ts`** — request markers (`User-Agent`,
+  `X-Todoist-CLI-*`), invocation ID, command path, AI-agent detection
 - **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
 

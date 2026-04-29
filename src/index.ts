@@ -14,6 +14,19 @@ import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
+import { setActiveCommandPath } from './lib/usage-tracking.js'
+
+function getActionCommandPath(command: Command): string {
+    const segments: string[] = []
+    let current: Command | null = command
+
+    while (current?.parent) {
+        segments.push(current.name())
+        current = current.parent
+    }
+
+    return `td ${segments.reverse().join(' ')}`
+}
 
 program
     .name('td')
@@ -175,6 +188,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
 for (const [name, [description]] of Object.entries(commands)) {
     program.command(name).description(description)
 }
+
+program.hook('preAction', (_thisCommand, actionCommand) => {
+    setActiveCommandPath(getActionCommandPath(actionCommand))
+})
 
 // Validate `--user` and strip it from argv before commander parses.
 //
