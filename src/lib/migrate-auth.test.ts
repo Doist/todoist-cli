@@ -138,6 +138,19 @@ describe('migrateLegacyAuth', () => {
                 },
             ],
         })
+        expect(fetchImpl).toHaveBeenCalledWith(
+            'https://api.todoist.com/api/v1/user',
+            expect.objectContaining({
+                headers: expect.objectContaining({
+                    authorization: 'Bearer legacy-1234567',
+                    'doist-platform': 'cli',
+                    'doist-version': expect.stringMatching(/^\d+\.\d+\.\d+$/),
+                    'x-td-request-id': expect.any(String),
+                    'x-td-session-id': expect.any(String),
+                    'x-todoist-cli-command': 'postinstall:auth-migrate',
+                }),
+            }),
+        )
     })
 
     it('migrates a legacy keyring token (api-token account)', async () => {

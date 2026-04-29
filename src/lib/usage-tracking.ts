@@ -17,46 +17,35 @@ type CustomFetch = (
 
 const CLI_NAME = 'todoist-cli'
 const CLI_VERSION = packageJson.version
-const INVOCATION_ID = randomUUID()
+const SESSION_ID = randomUUID()
 
 let activeCommandPath: string | undefined
 
-export function detectAiAgent(env: NodeJS.ProcessEnv = process.env): string | undefined {
-    // Best-effort analytics only. There is no cross-vendor standard for
-    // "which agent launched this process", and most of these environment
-    // variables are observable implementation details rather than documented
-    // public contracts. This list mirrors Stripe CLI's upstream detector:
-    // https://github.com/stripe/stripe-cli/blob/master/pkg/useragent/useragent.go
-    //
-    // When adding new entries, prefer a public upstream source that shows the
-    // variable being set or consumed.
-    if (env.ANTIGRAVITY_CLI_ALIAS) return 'antigravity'
-    if (env.CLAUDECODE) return 'claude_code'
-    if (env.CLINE_ACTIVE) return 'cline'
-    if (
-        env.CODEX_SANDBOX ||
-        env.CODEX_THREAD_ID ||
-        env.CODEX_SANDBOX_NETWORK_DISABLED ||
-        env.CODEX_CI
-    ) {
-        return 'codex_cli'
-    }
-    if (env.CURSOR_AGENT) return 'cursor'
-    if (env.GEMINI_CLI) return 'gemini_cli'
-    if (env.OPENCODE) return 'open_code'
-    if (env.OPENCLAW_SHELL) return 'openclaw'
-    return undefined
-}
-
 function getUserAgent(): string {
     return `${CLI_NAME}/${CLI_VERSION}`
+}
+
+function getDoistOs(
+    platform: NodeJS.Platform = process.platform,
+): 'macos' | 'linux' | 'windows' | 'unknown' {
+    switch (platform) {
+        case 'darwin':
+            return 'macos'
+        case 'linux':
+            return 'linux'
+        case 'win32':
+            return 'windows'
+        default:
+            return 'unknown'
+    }
 }
 
 export function normalizeCommandPath(commandPath: string): string {
     return commandPath
         .replace(/^td\s+/, '')
         .trim()
-        .replace(/\s+/g, '.')
+        .toLowerCase()
+        .replace(/\s+/g, ':')
 }
 
 export function setActiveCommandPath(commandPath: string | undefined): void {
@@ -67,24 +56,33 @@ export function getActiveCommandPath(): string | undefined {
     return activeCommandPath
 }
 
-export function buildUsageTrackingHeaders(): Record<string, string> {
+export function buildUsageTrackingHeaders(commandPath?: string): Record<string, string> {
+    const normalizedCommandPath = commandPath
+        ? normalizeCommandPath(commandPath)
+        : activeCommandPath
+
     const headers: Record<string, string> = {
         'User-Agent': getUserAgent(),
-        'X-Todoist-Client': CLI_NAME,
-        'X-Todoist-CLI-Version': CLI_VERSION,
-        'X-Todoist-CLI-Invocation-Id': INVOCATION_ID,
-    }
-
-    if (activeCommandPath) {
-        headers['X-Todoist-CLI-Command'] = activeCommandPath
-    }
-
-    const aiAgent = detectAiAgent()
-    if (aiAgent) {
-        headers['X-Todoist-CLI-AI-Agent'] = aiAgent
+        'doist-platform': 'cli',
+        'doist-version': CLI_VERSION,
+        'doist-os': getDoistOs(),
+        'X-TD-Request-Id': randomUUID(),
+        'X-TD-Session-Id': SESSION_ID,
+        'X-Todoist-CLI-Command': normalizedCommandPath ?? 'unknown',
     }
 
     return headers
+}
+
+function mergeTodoistHeaders(
+    headersInit?: HeadersInit,
+    commandPath?: string,
+): Record<string, string> {
+    const mergedHeaders = new Headers(headersInit)
+    for (const [key, value] of Object.entries(buildUsageTrackingHeaders(commandPath))) {
+        mergedHeaders.set(key, value)
+    }
+    return Object.fromEntries(mergedHeaders.entries())
 }
 
 function toCustomFetchResponse(response: Response): CustomFetchResponse {
@@ -101,16 +99,25 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
     return async (url, options = {}) => {
         const { timeout: _timeout, headers, ...rest } = options
-        const mergedHeaders = new Headers(headers)
-        for (const [key, value] of Object.entries(buildUsageTrackingHeaders())) {
-            mergedHeaders.set(key, value)
-        }
         const response = await baseFetch(url, {
             ...rest,
-            headers: Object.fromEntries(mergedHeaders.entries()),
+            headers: mergeTodoistHeaders(headers),
         })
         return toCustomFetchResponse(response)
     }
+}
+
+export function fetchTodoist(
+    url: string | URL,
+    options: RequestInit = {},
+    fetchImpl: typeof fetch = globalThis.fetch,
+    commandPath?: string,
+): Promise<Response> {
+    const { headers, ...rest } = options
+    return fetchImpl(url, {
+        ...rest,
+        headers: mergeTodoistHeaders(headers, commandPath),
+    })
 }
 
 export function resetUsageTrackingForTests(): void {

@@ -45,7 +45,7 @@ async function runRoutedCommand(
     register(proxy)
     // `src/index.ts` already recorded the top-level `view` command on the main
     // program. Override it here so downstream API requests are attributed to
-    // the routed target command (`task.view`, `today`, etc.) instead.
+    // the routed target command (`task:view`, `today`, etc.) instead.
     setActiveCommandPath(commandPath)
     await proxy.parseAsync(['node', 'td', ...argv])
 }
@@ -101,25 +101,25 @@ Examples:
                     return runRoutedCommand(
                         async () => (await import('./task/index.js')).registerTaskCommand,
                         ['task', 'view', ref, ...invocation.passthroughArgs],
-                        'task.view',
+                        'task:view',
                     )
                 case 'project':
                     return runRoutedCommand(
                         async () => (await import('./project/index.js')).registerProjectCommand,
                         ['project', 'view', ref, ...invocation.passthroughArgs],
-                        'project.view',
+                        'project:view',
                     )
                 case 'label':
                     return runRoutedCommand(
                         async () => (await import('./label/index.js')).registerLabelCommand,
                         ['label', 'view', ref, ...invocation.passthroughArgs],
-                        'label.view',
+                        'label:view',
                     )
                 case 'filter':
                     return runRoutedCommand(
                         async () => (await import('./filter/index.js')).registerFilterCommand,
                         ['filter', 'show', ref, ...invocation.passthroughArgs],
-                        'filter.show',
+                        'filter:show',
                     )
             }
         })
