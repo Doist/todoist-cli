@@ -63,6 +63,56 @@ describe('usage tracking', () => {
         expect(response.ok).toBe(true)
     })
 
+    it('maps sdk timeouts to abort signals', async () => {
+        let captured: RequestInit | undefined
+        const trackedFetch = createTrackedFetch(async (_url, options) => {
+            captured = options
+            return new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+        })
+
+        await trackedFetch('https://api.todoist.com/api/v1/tasks', {
+            method: 'GET',
+            timeout: 250,
+        })
+
+        expect(captured?.signal).toBeInstanceOf(AbortSignal)
+        expect(captured?.signal?.aborted).toBe(false)
+
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        expect(captured?.signal?.aborted).toBe(true)
+    })
+
+    it('combines sdk timeouts with existing abort signals', async () => {
+        const abortController = new AbortController()
+
+        let captured: RequestInit | undefined
+        const trackedFetch = createTrackedFetch(async (_url, options) => {
+            captured = options
+            return new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+        })
+
+        await trackedFetch('https://api.todoist.com/api/v1/tasks', {
+            method: 'GET',
+            signal: abortController.signal,
+            timeout: 250,
+        })
+
+        expect(captured?.signal).toBeInstanceOf(AbortSignal)
+        expect(captured?.signal).not.toBe(abortController.signal)
+        expect(captured?.signal?.aborted).toBe(false)
+
+        abortController.abort()
+
+        expect(captured?.signal?.aborted).toBe(true)
+    })
+
     it('supports explicit command overrides for non-command direct fetches', async () => {
         let captured: RequestInit | undefined
         const fetchImpl: typeof fetch = async (

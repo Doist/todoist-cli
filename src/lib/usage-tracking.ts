@@ -98,9 +98,17 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
 
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
     return async (url, options = {}) => {
-        const { timeout: _timeout, headers, ...rest } = options
+        const { timeout: timeoutMs, headers, signal, ...rest } = options
+
+        let abortSignal = signal
+        if (timeoutMs) {
+            const timeoutSignal = AbortSignal.timeout(timeoutMs)
+            abortSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
+        }
+
         const response = await baseFetch(url, {
             ...rest,
+            signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
         })
         return toCustomFetchResponse(response)
