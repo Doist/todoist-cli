@@ -1,5 +1,7 @@
+import { DAY_OF_WEEK_TO_API, type ProductivityStats } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import type { ProductivityStats, Streak } from '../../lib/api/stats.js'
+
+type Streak = ProductivityStats['goals']['currentDailyStreak']
 
 export function formatTrend(trend: string): string {
     switch (trend) {
@@ -95,7 +97,7 @@ export function formatStatsJson(stats: ProductivityStats, full: boolean): object
         goals: {
             ...base.goals,
             karmaDisabled: stats.goals.karmaDisabled,
-            ignoreDays: stats.goals.ignoreDays,
+            ignoreDays: stats.goals.ignoreDays.map((d) => DAY_OF_WEEK_TO_API[d]),
         },
         daysItems: stats.daysItems,
         weekItems: stats.weekItems,

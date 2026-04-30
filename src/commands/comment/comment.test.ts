@@ -6,24 +6,11 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-vi.mock('../../lib/api/uploads.js', () => ({
-    uploadFile: vi.fn().mockResolvedValue({
-        resourceType: 'file',
-        fileName: 'test.pdf',
-        fileSize: 1024,
-        fileType: 'application/pdf',
-        fileUrl: 'https://cdn.todoist.com/files/test.pdf',
-        uploadState: 'completed',
-    }),
-}))
-
 import { getApi } from '../../lib/api/core.js'
-import { uploadFile } from '../../lib/api/uploads.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
-const mockUploadFile = vi.mocked(uploadFile)
 
 function createProgram() {
     const program = new Command()
@@ -348,7 +335,7 @@ describe('comment add with attachment', () => {
             '/path/to/file.pdf',
         ])
 
-        expect(mockUploadFile).toHaveBeenCalledWith('/path/to/file.pdf')
+        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',
             content: 'See attached',
@@ -383,7 +370,7 @@ describe('comment add with attachment', () => {
             'Just text',
         ])
 
-        expect(mockUploadFile).not.toHaveBeenCalled()
+        expect(mockApi.uploadFile).not.toHaveBeenCalled()
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',
             content: 'Just text',
@@ -1105,7 +1092,7 @@ describe('project comment add', () => {
             '/path/to/file.pdf',
         ])
 
-        expect(mockUploadFile).toHaveBeenCalledWith('/path/to/file.pdf')
+        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
         expect(mockApi.addComment).toHaveBeenCalledWith({
             projectId: 'proj-1',
             content: 'See attached',
