@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { buildAuthorizationUrl } from './oauth.js'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { buildAuthorizationUrl, exchangeCodeForToken } from './oauth.js'
+import { resetUsageTrackingForTests, setActiveCommandPath } from './usage-tracking.js'
 
 describe('buildAuthorizationUrl', () => {
     it('uses read-write scope by default', () => {
@@ -65,5 +66,36 @@ describe('buildAuthorizationUrl', () => {
         const params = new URL(url).searchParams
 
         expect(params.get('redirect_uri')).toBe('http://localhost:8765/callback')
+    })
+
+    afterEach(() => {
+        resetUsageTrackingForTests()
+        vi.unstubAllGlobals()
+    })
+
+    it('sends tracking headers during token exchange', async () => {
+        setActiveCommandPath('td auth login')
+        const fetchMock = vi.fn(async (_url: string | URL, options?: RequestInit) => {
+            const headers = options?.headers as Record<string, string>
+            expect(headers['content-type']).toBe('application/x-www-form-urlencoded')
+            expect(headers['user-agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+$/)
+            expect(headers['doist-platform']).toBe('cli')
+            expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
+            expect(headers['x-td-request-id']).toBeTruthy()
+            expect(headers['x-td-session-id']).toBeTruthy()
+            expect(headers['x-td-cli-command']).toBe('auth:login')
+            return new Response(
+                JSON.stringify({ access_token: 'token-123', token_type: 'bearer' }),
+                {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                },
+            )
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(exchangeCodeForToken('code-123', 'verifier-456', 8765)).resolves.toBe(
+            'token-123',
+        )
     })
 })

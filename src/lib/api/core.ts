@@ -16,6 +16,7 @@ import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
+import { createTrackedFetch } from '../usage-tracking.js'
 
 let apiClient: TodoistApi | null = null
 
@@ -289,7 +290,7 @@ function analyzeAndEmitApiResponse(
 }
 
 export function createApiForToken(token: string): TodoistApi {
-    const rawApi = new TodoistApi(token)
+    const rawApi = new TodoistApi(token, { customFetch: createTrackedFetch() })
     return createSpinnerWrappedApi(rawApi)
 }
 

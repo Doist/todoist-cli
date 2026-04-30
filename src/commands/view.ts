@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { CliError } from '../lib/errors.js'
 import { classifyTodoistUrl } from '../lib/refs.js'
+import { setActiveCommandPath } from '../lib/usage-tracking.js'
 
 function looksLikeTodoistAppUrl(token: string): boolean {
     return /^https?:\/\/app\.todoist\.com\/app\/\S+/.test(token)
@@ -36,11 +37,16 @@ function extractViewInvocation(
 async function runRoutedCommand(
     loadRegister: () => Promise<(program: Command) => void>,
     argv: string[],
+    commandPath: string,
 ): Promise<void> {
     const proxy = new Command()
     proxy.exitOverride()
     const register = await loadRegister()
     register(proxy)
+    // `src/index.ts` already recorded the top-level `view` command on the main
+    // program. Override it here so downstream API requests are attributed to
+    // the routed target command (`task:view`, `today`, etc.) instead.
+    setActiveCommandPath(commandPath)
     await proxy.parseAsync(['node', 'td', ...argv])
 }
 
@@ -78,11 +84,13 @@ Examples:
                         return runRoutedCommand(
                             async () => (await import('./today.js')).registerTodayCommand,
                             ['today', ...invocation.passthroughArgs],
+                            'today',
                         )
                     case 'upcoming':
                         return runRoutedCommand(
                             async () => (await import('./upcoming.js')).registerUpcomingCommand,
                             ['upcoming', ...invocation.passthroughArgs],
+                            'upcoming',
                         )
                 }
             }
@@ -93,21 +101,25 @@ Examples:
                     return runRoutedCommand(
                         async () => (await import('./task/index.js')).registerTaskCommand,
                         ['task', 'view', ref, ...invocation.passthroughArgs],
+                        'task:view',
                     )
                 case 'project':
                     return runRoutedCommand(
                         async () => (await import('./project/index.js')).registerProjectCommand,
                         ['project', 'view', ref, ...invocation.passthroughArgs],
+                        'project:view',
                     )
                 case 'label':
                     return runRoutedCommand(
                         async () => (await import('./label/index.js')).registerLabelCommand,
                         ['label', 'view', ref, ...invocation.passthroughArgs],
+                        'label:view',
                     )
                 case 'filter':
                     return runRoutedCommand(
                         async () => (await import('./filter/index.js')).registerFilterCommand,
                         ['filter', 'show', ref, ...invocation.passthroughArgs],
+                        'filter:show',
                     )
             }
         })

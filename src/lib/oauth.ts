@@ -1,6 +1,7 @@
 import { CliError } from './errors.js'
 import { type AdditionalScopeFlag, oauthScopeFor } from './oauth-scopes.js'
 import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
+import { fetchTodoist } from './usage-tracking.js'
 
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
@@ -56,7 +57,7 @@ export async function exchangeCodeForToken(
         redirect_uri: getRedirectUri(port),
     })
 
-    const response = await fetch(OAUTH_TOKEN_URL, {
+    const response = await fetchTodoist(OAUTH_TOKEN_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

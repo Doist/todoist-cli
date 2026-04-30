@@ -14,6 +14,7 @@ import {
     LEGACY_ACCOUNT_NAME,
     SecureStoreUnavailableError,
 } from './secure-store.js'
+import { fetchTodoist } from './usage-tracking.js'
 
 export interface MigrateAuthResult {
     status: 'already-migrated' | 'no-legacy-state' | 'migrated' | 'skipped'
@@ -142,9 +143,14 @@ async function loadLegacyToken(config: Config): Promise<string | null> {
 }
 
 async function fetchUser(token: string, fetchImpl: typeof fetch): Promise<TodoistUser> {
-    const response = await fetchImpl(USER_ENDPOINT, {
-        headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await fetchTodoist(
+        USER_ENDPOINT,
+        {
+            headers: { Authorization: `Bearer ${token}` },
+        },
+        fetchImpl,
+        'postinstall:auth-migrate',
+    )
     if (!response.ok) {
         throw new Error(`HTTP ${response.status} ${response.statusText}`)
     }
