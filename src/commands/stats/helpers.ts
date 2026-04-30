@@ -1,4 +1,4 @@
-import type { ProductivityStats } from '@doist/todoist-sdk'
+import { DAY_OF_WEEK_TO_API, type ProductivityStats } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 
 type Streak = ProductivityStats['goals']['currentDailyStreak']
@@ -97,7 +97,7 @@ export function formatStatsJson(stats: ProductivityStats, full: boolean): object
         goals: {
             ...base.goals,
             karmaDisabled: stats.goals.karmaDisabled,
-            ignoreDays: stats.goals.ignoreDays,
+            ignoreDays: stats.goals.ignoreDays.map((d) => DAY_OF_WEEK_TO_API[d]),
         },
         daysItems: stats.daysItems,
         weekItems: stats.weekItems,

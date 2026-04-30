@@ -1,3 +1,4 @@
+import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
@@ -72,7 +73,7 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         }
         attachment = {
             fileUrl: uploadResult.fileUrl,
-            fileName: uploadResult.fileName ?? undefined,
+            fileName: uploadResult.fileName ?? basename(options.file),
             fileType: uploadResult.fileType ?? undefined,
             resourceType: uploadResult.resourceType,
         }
