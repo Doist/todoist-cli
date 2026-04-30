@@ -1,3 +1,9 @@
+## [1.60.0](https://github.com/Doist/todoist-cli/compare/v1.59.0...v1.60.0) (2026-04-30)
+
+### Features
+
+* track cli usage in request headers ([#302](https://github.com/Doist/todoist-cli/issues/302)) ([5c692f8](https://github.com/Doist/todoist-cli/commit/5c692f864c1bb680d171aa30a63db2cbf117f575))
+
 ## [1.59.0](https://github.com/Doist/todoist-cli/compare/v1.58.0...v1.59.0) (2026-04-28)
 
 ### Features
