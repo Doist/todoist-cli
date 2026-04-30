@@ -1,5 +1,7 @@
+import type { ProductivityStats } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import type { ProductivityStats, Streak } from '../../lib/api/stats.js'
+
+type Streak = ProductivityStats['goals']['currentDailyStreak']
 
 export function formatTrend(trend: string): string {
     switch (trend) {

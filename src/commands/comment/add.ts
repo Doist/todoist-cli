@@ -1,6 +1,5 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { uploadFile } from '../../lib/api/uploads.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
@@ -67,11 +66,14 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         | undefined
 
     if (options.file) {
-        const uploadResult = await uploadFile(options.file)
+        const uploadResult = await api.uploadFile({ file: options.file })
+        if (!uploadResult.fileUrl) {
+            throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')
+        }
         attachment = {
             fileUrl: uploadResult.fileUrl,
-            fileName: uploadResult.fileName,
-            fileType: uploadResult.fileType,
+            fileName: uploadResult.fileName ?? undefined,
+            fileType: uploadResult.fileType ?? undefined,
             resourceType: uploadResult.resourceType,
         }
     }
