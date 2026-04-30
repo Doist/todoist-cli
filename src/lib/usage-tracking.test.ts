@@ -26,7 +26,7 @@ describe('usage tracking', () => {
         expect(headers['doist-os']).toMatch(/^(macos|linux|windows|unknown)$/)
         expect(headers['X-TD-Request-Id']).toBeTruthy()
         expect(headers['X-TD-Session-Id']).toBeTruthy()
-        expect(headers['X-Todoist-CLI-Command']).toBe('task:view')
+        expect(headers['X-TD-CLI-Command']).toBe('task:view')
     })
 
     it('injects tracking headers into sdk custom fetch requests', async () => {
@@ -57,7 +57,7 @@ describe('usage tracking', () => {
         expect(firstHeaders.authorization).toBe('Bearer token')
         expect(firstHeaders['doist-platform']).toBe('cli')
         expect(firstHeaders['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
-        expect(firstHeaders['x-todoist-cli-command']).toBe('today')
+        expect(firstHeaders['x-td-cli-command']).toBe('today')
         expect(firstHeaders['x-td-session-id']).toBe(secondHeaders['x-td-session-id'])
         expect(firstHeaders['x-td-request-id']).not.toBe(secondHeaders['x-td-request-id'])
         expect(response.ok).toBe(true)
@@ -137,6 +137,6 @@ describe('usage tracking', () => {
         if (!captured) throw new Error('direct fetch did not capture request options')
         const headers = captured.headers as Record<string, string>
         expect(headers.authorization).toBe('Bearer token')
-        expect(headers['x-todoist-cli-command']).toBe('postinstall:auth-migrate')
+        expect(headers['x-td-cli-command']).toBe('postinstall:auth-migrate')
     })
 })

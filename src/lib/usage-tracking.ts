@@ -55,7 +55,7 @@ export function buildUsageTrackingHeaders(commandPath?: string): Record<string, 
         'doist-os': getDoistOs(),
         'X-TD-Request-Id': randomUUID(),
         'X-TD-Session-Id': SESSION_ID,
-        'X-Todoist-CLI-Command': normalizedCommandPath ?? 'unknown',
+        'X-TD-CLI-Command': normalizedCommandPath ?? 'unknown',
     }
 
     return headers

@@ -83,7 +83,7 @@ describe('buildAuthorizationUrl', () => {
             expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
             expect(headers['x-td-request-id']).toBeTruthy()
             expect(headers['x-td-session-id']).toBeTruthy()
-            expect(headers['x-todoist-cli-command']).toBe('auth:login')
+            expect(headers['x-td-cli-command']).toBe('auth:login')
             return new Response(
                 JSON.stringify({ access_token: 'token-123', token_type: 'bearer' }),
                 {

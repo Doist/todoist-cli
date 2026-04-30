@@ -147,7 +147,7 @@ describe('migrateLegacyAuth', () => {
                     'doist-version': expect.stringMatching(/^\d+\.\d+\.\d+$/),
                     'x-td-request-id': expect.any(String),
                     'x-td-session-id': expect.any(String),
-                    'x-todoist-cli-command': 'postinstall:auth-migrate',
+                    'x-td-cli-command': 'postinstall:auth-migrate',
                 }),
             }),
         )
