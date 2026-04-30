@@ -1,19 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import type { CustomFetch, CustomFetchResponse } from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
-
-type CustomFetchResponse = {
-    ok: boolean
-    status: number
-    statusText: string
-    headers: Record<string, string>
-    text(): Promise<string>
-    json(): Promise<unknown>
-}
-
-type CustomFetch = (
-    url: string,
-    options?: RequestInit & { timeout?: number },
-) => Promise<CustomFetchResponse>
 
 const CLI_NAME = 'todoist-cli'
 const CLI_VERSION = packageJson.version
