@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import type { CustomFetch, CustomFetchResponse } from '@doist/todoist-sdk'
+import {
+    type CustomFetch,
+    type CustomFetchResponse,
+    getDefaultDispatcher,
+} from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
 
 const CLI_NAME = 'todoist-cli'
@@ -72,6 +76,23 @@ function mergeTodoistHeaders(
     return Object.fromEntries(mergedHeaders.entries())
 }
 
+async function attachDispatcherIfNative(
+    fetchImpl: typeof fetch,
+    options: RequestInit,
+): Promise<void> {
+    // Test stubs pass their own `fetchImpl`; they don't need (or understand)
+    // the dispatcher option. Only the real native fetch path needs it for
+    // HTTP_PROXY / HTTPS_PROXY / NO_PROXY support.
+    if (fetchImpl !== globalThis.fetch) return
+    // Don't clobber a dispatcher the caller already chose.
+    if ('dispatcher' in options) return
+    const dispatcher = await getDefaultDispatcher()
+    if (dispatcher !== undefined) {
+        // @ts-expect-error - dispatcher is a valid option for Node's fetch but not in the TS types
+        options.dispatcher = dispatcher
+    }
+}
+
 function toCustomFetchResponse(response: Response): CustomFetchResponse {
     return {
         ok: response.ok,
@@ -93,26 +114,31 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             abortSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
         }
 
-        const response = await baseFetch(url, {
+        const fetchOptions: RequestInit = {
             ...rest,
             signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
-        })
+        }
+        await attachDispatcherIfNative(baseFetch, fetchOptions)
+
+        const response = await baseFetch(url, fetchOptions)
         return toCustomFetchResponse(response)
     }
 }
 
-export function fetchTodoist(
+export async function fetchTodoist(
     url: string | URL,
     options: RequestInit = {},
     fetchImpl: typeof fetch = globalThis.fetch,
     commandPath?: string,
 ): Promise<Response> {
     const { headers, ...rest } = options
-    return fetchImpl(url, {
+    const fetchOptions: RequestInit = {
         ...rest,
         headers: mergeTodoistHeaders(headers, commandPath),
-    })
+    }
+    await attachDispatcherIfNative(fetchImpl, fetchOptions)
+    return fetchImpl(url, fetchOptions)
 }
 
 export function resetUsageTrackingForTests(): void {
