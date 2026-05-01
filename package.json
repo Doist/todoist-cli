@@ -51,7 +51,7 @@
     "CHANGELOG.md"
   ],
   "dependencies": {
-    "@doist/todoist-sdk": "10.0.0",
+    "@doist/todoist-sdk": "10.1.0",
     "@napi-rs/keyring": "1.2.0",
     "@pnpm/tabtab": "0.5.4",
     "chalk": "5.6.2",

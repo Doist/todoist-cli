@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { getDefaultDispatcher } from '@doist/todoist-sdk'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
     buildUsageTrackingHeaders,
     createTrackedFetch,
@@ -7,6 +8,16 @@ import {
     resetUsageTrackingForTests,
     setActiveCommandPath,
 } from './usage-tracking.js'
+
+vi.mock('@doist/todoist-sdk', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@doist/todoist-sdk')>()
+    return {
+        ...actual,
+        getDefaultDispatcher: vi.fn(() => Promise.resolve(undefined)),
+    }
+})
+
+const getDefaultDispatcherMock = vi.mocked(getDefaultDispatcher)
 
 describe('usage tracking', () => {
     it('normalizes commander command paths into header-friendly values', () => {
@@ -111,6 +122,111 @@ describe('usage tracking', () => {
         abortController.abort()
 
         expect(captured?.signal?.aborted).toBe(true)
+    })
+
+    describe('proxy dispatcher injection', () => {
+        afterEach(() => {
+            getDefaultDispatcherMock.mockReset()
+            getDefaultDispatcherMock.mockResolvedValue(undefined)
+        })
+
+        it('attaches the env proxy dispatcher when createTrackedFetch uses native fetch', async () => {
+            const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
+                Awaited<ReturnType<typeof getDefaultDispatcher>>
+            >
+            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
+
+            let captured: RequestInit | undefined
+            const originalFetch = globalThis.fetch
+            globalThis.fetch = (async (_url: RequestInfo | URL, options?: RequestInit) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            }) as typeof fetch
+
+            try {
+                const trackedFetch = createTrackedFetch()
+                await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
+            } finally {
+                globalThis.fetch = originalFetch
+            }
+
+            expect(getDefaultDispatcherMock).toHaveBeenCalled()
+            expect(captured).toBeTruthy()
+            // dispatcher is a Node fetch extension not present in RequestInit types
+            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+                fakeDispatcher,
+            )
+        })
+
+        it('does not attach a dispatcher when createTrackedFetch is given a stub', async () => {
+            let captured: RequestInit | undefined
+            const trackedFetch = createTrackedFetch(async (_url, options) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            })
+
+            await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
+
+            expect(getDefaultDispatcherMock).not.toHaveBeenCalled()
+            expect(captured).toBeTruthy()
+            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBeUndefined()
+        })
+
+        it('attaches the env proxy dispatcher when fetchTodoist uses native fetch', async () => {
+            const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
+                Awaited<ReturnType<typeof getDefaultDispatcher>>
+            >
+            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
+
+            let captured: RequestInit | undefined
+            const originalFetch = globalThis.fetch
+            globalThis.fetch = (async (_url: RequestInfo | URL, options?: RequestInit) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            }) as typeof fetch
+
+            try {
+                await fetchTodoist('https://api.todoist.com/api/v1/user', {
+                    headers: { Authorization: 'Bearer token' },
+                })
+            } finally {
+                globalThis.fetch = originalFetch
+            }
+
+            expect(getDefaultDispatcherMock).toHaveBeenCalled()
+            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+                fakeDispatcher,
+            )
+        })
+
+        it('does not attach a dispatcher when fetchTodoist is given a stub', async () => {
+            let captured: RequestInit | undefined
+            const fetchImpl: typeof fetch = async (_url, options) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            }
+
+            await fetchTodoist(
+                'https://api.todoist.com/api/v1/user',
+                { headers: { Authorization: 'Bearer token' } },
+                fetchImpl,
+            )
+
+            expect(getDefaultDispatcherMock).not.toHaveBeenCalled()
+            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBeUndefined()
+        })
     })
 
     it('supports explicit command overrides for non-command direct fetches', async () => {
