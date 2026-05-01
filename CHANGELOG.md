@@ -1,3 +1,9 @@
+## [1.60.1](https://github.com/Doist/todoist-cli/compare/v1.60.0...v1.60.1) (2026-05-01)
+
+### Bug Fixes
+
+* honour HTTP_PROXY on the customFetch path ([#305](https://github.com/Doist/todoist-cli/issues/305)) ([e1fc71a](https://github.com/Doist/todoist-cli/commit/e1fc71abfc3c3ad16f1311363368adb06b06c8d7))
+
 ## [1.60.0](https://github.com/Doist/todoist-cli/compare/v1.59.0...v1.60.0) (2026-04-30)
 
 ### Features
