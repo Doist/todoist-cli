@@ -76,7 +76,16 @@ function mergeTodoistHeaders(
     return Object.fromEntries(mergedHeaders.entries())
 }
 
-async function attachDispatcher(options: RequestInit): Promise<void> {
+async function attachDispatcherIfNative(
+    fetchImpl: typeof fetch,
+    options: RequestInit,
+): Promise<void> {
+    // Test stubs pass their own `fetchImpl`; they don't need (or understand)
+    // the dispatcher option. Only the real native fetch path needs it for
+    // HTTP_PROXY / HTTPS_PROXY / NO_PROXY support.
+    if (fetchImpl !== globalThis.fetch) return
+    // Don't clobber a dispatcher the caller already chose.
+    if ('dispatcher' in options) return
     const dispatcher = await getDefaultDispatcher()
     if (dispatcher !== undefined) {
         // @ts-expect-error - dispatcher is a valid option for Node's fetch but not in the TS types
@@ -96,10 +105,6 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
 }
 
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
-    // Only attach the EnvHttpProxyAgent dispatcher when running through the
-    // real native fetch. Test stubs pass an explicit `baseFetch` and don't
-    // need (or understand) the dispatcher option.
-    const useDispatcher = baseFetch === globalThis.fetch
     return async (url, options = {}) => {
         const { timeout: timeoutMs, headers, signal, ...rest } = options
 
@@ -114,9 +119,7 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
         }
-        if (useDispatcher) {
-            await attachDispatcher(fetchOptions)
-        }
+        await attachDispatcherIfNative(baseFetch, fetchOptions)
 
         const response = await baseFetch(url, fetchOptions)
         return toCustomFetchResponse(response)
@@ -134,9 +137,7 @@ export async function fetchTodoist(
         ...rest,
         headers: mergeTodoistHeaders(headers, commandPath),
     }
-    if (fetchImpl === globalThis.fetch) {
-        await attachDispatcher(fetchOptions)
-    }
+    await attachDispatcherIfNative(fetchImpl, fetchOptions)
     return fetchImpl(url, fetchOptions)
 }
 

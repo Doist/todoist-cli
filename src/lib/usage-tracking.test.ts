@@ -125,38 +125,41 @@ describe('usage tracking', () => {
     })
 
     describe('proxy dispatcher injection', () => {
+        const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
+            Awaited<ReturnType<typeof getDefaultDispatcher>>
+        >
+
         afterEach(() => {
+            vi.restoreAllMocks()
             getDefaultDispatcherMock.mockReset()
             getDefaultDispatcherMock.mockResolvedValue(undefined)
         })
 
-        it('attaches the env proxy dispatcher when createTrackedFetch uses native fetch', async () => {
-            const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
-                Awaited<ReturnType<typeof getDefaultDispatcher>>
-            >
-            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
-
+        function spyOnNativeFetch(): () => RequestInit | undefined {
             let captured: RequestInit | undefined
-            const originalFetch = globalThis.fetch
-            globalThis.fetch = (async (_url: RequestInfo | URL, options?: RequestInit) => {
+            vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+                _url: RequestInfo | URL,
+                options?: RequestInit,
+            ) => {
                 captured = options
                 return new Response('{}', {
                     status: 200,
                     headers: { 'content-type': 'application/json' },
                 })
-            }) as typeof fetch
+            }) as typeof fetch)
+            return () => captured
+        }
 
-            try {
-                const trackedFetch = createTrackedFetch()
-                await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
-            } finally {
-                globalThis.fetch = originalFetch
-            }
+        it('attaches the env proxy dispatcher when createTrackedFetch uses native fetch', async () => {
+            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
+            const getCaptured = spyOnNativeFetch()
+
+            const trackedFetch = createTrackedFetch()
+            await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
 
             expect(getDefaultDispatcherMock).toHaveBeenCalled()
-            expect(captured).toBeTruthy()
             // dispatcher is a Node fetch extension not present in RequestInit types
-            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+            expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
                 fakeDispatcher,
             )
         })
@@ -179,31 +182,15 @@ describe('usage tracking', () => {
         })
 
         it('attaches the env proxy dispatcher when fetchTodoist uses native fetch', async () => {
-            const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
-                Awaited<ReturnType<typeof getDefaultDispatcher>>
-            >
             getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
+            const getCaptured = spyOnNativeFetch()
 
-            let captured: RequestInit | undefined
-            const originalFetch = globalThis.fetch
-            globalThis.fetch = (async (_url: RequestInfo | URL, options?: RequestInit) => {
-                captured = options
-                return new Response('{}', {
-                    status: 200,
-                    headers: { 'content-type': 'application/json' },
-                })
-            }) as typeof fetch
-
-            try {
-                await fetchTodoist('https://api.todoist.com/api/v1/user', {
-                    headers: { Authorization: 'Bearer token' },
-                })
-            } finally {
-                globalThis.fetch = originalFetch
-            }
+            await fetchTodoist('https://api.todoist.com/api/v1/user', {
+                headers: { Authorization: 'Bearer token' },
+            })
 
             expect(getDefaultDispatcherMock).toHaveBeenCalled()
-            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+            expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
                 fakeDispatcher,
             )
         })
