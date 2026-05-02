@@ -1,3 +1,9 @@
+## [1.60.3](https://github.com/Doist/todoist-cli/compare/v1.60.2...v1.60.3) (2026-05-02)
+
+### Bug Fixes
+
+* **deps:** bump @doist/todoist-sdk to 10.1.1 ([#312](https://github.com/Doist/todoist-cli/issues/312)) ([308e961](https://github.com/Doist/todoist-cli/commit/308e96116014121ea0df3e70d641e54c91ace4e2))
+
 ## [1.60.2](https://github.com/Doist/todoist-cli/compare/v1.60.1...v1.60.2) (2026-05-02)
 
 ### Bug Fixes
