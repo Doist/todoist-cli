@@ -1,3 +1,9 @@
+## [1.60.2](https://github.com/Doist/todoist-cli/compare/v1.60.1...v1.60.2) (2026-05-02)
+
+### Bug Fixes
+
+* **hc:** resolve www.todoist.com marketing article URLs ([#310](https://github.com/Doist/todoist-cli/issues/310)) ([268d315](https://github.com/Doist/todoist-cli/commit/268d315e34b00b8e5768e7dc5c2033d30b02f157))
+
 ## [1.60.1](https://github.com/Doist/todoist-cli/compare/v1.60.0...v1.60.1) (2026-05-01)
 
 ### Bug Fixes
