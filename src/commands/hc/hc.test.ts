@@ -331,6 +331,82 @@ describe('hc command', () => {
         expect(output).toContain('Filters help you')
     })
 
+    it('searches in en-us when an English marketing URL is pasted with a non-English default locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'pt-br' } })
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    count: 1,
+                    results: [
+                        {
+                            id: 205248842,
+                            title: 'Introduction to filters',
+                            html_url:
+                                'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                        },
+                    ],
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    article: {
+                        id: 205248842,
+                        title: 'Introdução aos filtros',
+                        html_url:
+                            'https://get.todoist.help/hc/pt-br/articles/205248842-Introducao-aos-filtros',
+                        body: '<p>Filtros</p>',
+                    },
+                }),
+            )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+        ])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=en-us')
+        expect(fetchSpy.mock.calls[1][0]).toBe(
+            'https://todoist.zendesk.com/api/v2/help_center/pt-br/articles/205248842',
+        )
+    })
+
+    it('opens the resolved zendesk URL once when --browser is combined with --locale on a marketing URL', async () => {
+        fetchSpy.mockResolvedValueOnce(
+            createJsonResponse({
+                count: 1,
+                results: [
+                    {
+                        id: 205248842,
+                        title: 'Introduction to filters',
+                        html_url:
+                            'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                    },
+                ],
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            '--browser',
+            '--locale',
+            'fr',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(openInBrowser).toHaveBeenCalledWith(
+            'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+        )
+    })
+
     it('errors when the marketing URL slug cannot be matched', async () => {
         fetchSpy.mockResolvedValueOnce(
             createJsonResponse({

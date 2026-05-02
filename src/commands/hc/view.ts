@@ -41,20 +41,21 @@ export async function viewHelpCenterArticle(
         return
     }
 
-    let articleId = resolved.articleId
-    if (!articleId) {
-        if (!resolved.marketingSlug) {
-            throw new CliError(
-                'INVALID_REF',
-                'Help Center reference could not be resolved to an article ID.',
-            )
-        }
-        const marketingSlug = resolved.marketingSlug
+    let articleId: string
+    if (resolved.kind === 'marketing') {
+        const { marketingSlug, urlLocale } = resolved
         const resolvedMarketing = await withSpinner(
             { text: 'Resolving Help Center article...', color: 'blue' },
-            () => resolveMarketingArticleId(marketingSlug, resolved.locale),
+            () => resolveMarketingArticleId(marketingSlug, urlLocale),
         )
         articleId = resolvedMarketing.articleId
+
+        if (options.browser) {
+            await openInBrowser(resolvedMarketing.htmlUrl)
+            return
+        }
+    } else {
+        articleId = resolved.articleId
     }
 
     const article = await withSpinner(

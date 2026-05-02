@@ -83,13 +83,22 @@ export interface ResolveHelpCenterRefOptions {
     fallbackLocale?: string
 }
 
-export interface ResolvedHelpCenterRef {
-    articleId?: string
-    marketingSlug?: string
-    locale: string
-    htmlUrl?: string
-    source: 'id' | 'url'
-}
+export type ResolvedHelpCenterRef =
+    | {
+          kind: 'article'
+          articleId: string
+          locale: string
+          htmlUrl?: string
+          source: 'id' | 'url'
+      }
+    | {
+          kind: 'marketing'
+          marketingSlug: string
+          urlLocale: string
+          locale: string
+          htmlUrl: string
+          source: 'url'
+      }
 
 const NAMED_HTML_ENTITIES: Record<string, string> = {
     amp: '&',
@@ -479,7 +488,9 @@ export function parseHelpCenterArticleUrl(
     return null
 }
 
-export function parseMarketingHelpCenterUrl(ref: string): { slug: string; htmlUrl: string } | null {
+export function parseMarketingHelpCenterUrl(
+    ref: string,
+): { slug: string; locale: string; htmlUrl: string } | null {
     let url: URL
     try {
         url = new URL(ref)
@@ -492,50 +503,52 @@ export function parseMarketingHelpCenterUrl(ref: string): { slug: string; htmlUr
         return null
     }
 
-    const match = url.pathname.match(/^\/help\/articles\/([A-Za-z0-9][A-Za-z0-9-]*)\/?$/)
+    const match = url.pathname.match(
+        /^(?:\/([a-z]{2}(?:-[a-z]{2})?))?\/help\/articles\/([A-Za-z0-9][A-Za-z0-9-]*)\/?$/i,
+    )
     if (!match) {
         return null
     }
 
-    return { slug: match[1], htmlUrl: url.toString() }
+    return {
+        slug: match[2],
+        locale: match[1] ? match[1].toLowerCase() : DEFAULT_HELP_CENTER_LOCALE,
+        htmlUrl: url.toString(),
+    }
 }
 
-function stripMarketingShortId(slug: string): string {
-    // Marketing slugs have the form `title-slug-{shortId}`, where shortId is a
-    // 6–12 char alphanumeric token containing at least one uppercase letter
-    // (title slugs themselves are all-lowercase, so the case requirement
-    // distinguishes the short ID from genuine slug words).
-    return slug.replace(/-(?=[A-Za-z0-9]*[A-Z])[A-Za-z0-9]{6,12}$/, '').toLowerCase()
+function stripMarketingShortId(slug: string): string | null {
+    // Marketing slugs have the form `title-slug-{shortId}` where shortId is a
+    // 6–12 char alphanumeric token. Returns the title-slug with the trailing
+    // short ID removed, or null if the slug doesn't end with a strippable token.
+    const match = slug.match(/^(.+)-([A-Za-z0-9]{6,12})$/)
+    return match ? match[1].toLowerCase() : null
+}
+
+function findArticleBySlug(
+    results: HelpCenterSearchResult[],
+    targetSlug: string,
+): HelpCenterSearchResult | undefined {
+    return results.find((result) => {
+        const slugMatch = result.htmlUrl.match(/\/articles\/\d+-(.+?)\/?$/)
+        return slugMatch ? slugMatch[1].toLowerCase() === targetSlug : false
+    })
 }
 
 export async function resolveMarketingArticleId(
     slug: string,
     locale: string,
 ): Promise<{ articleId: string; htmlUrl: string }> {
+    const results = await searchHelpCenter(slug, { locale, limit: 10 })
+
     const titleSlug = stripMarketingShortId(slug)
-    const url = new URL(HELP_CENTER_SEARCH_URL)
-    url.searchParams.set('query', slug)
-    url.searchParams.set('locale', locale)
-    url.searchParams.set('per_page', '10')
-
-    const { response, data } = await fetchHelpCenterJson<RawHelpCenterSearchResponse>(
-        url.toString(),
-    )
-    if (!response.ok) {
-        throw new CliError(
-            'FETCH_FAILED',
-            `Failed to resolve Help Center URL: ${response.status} ${response.statusText}`,
-        )
+    if (titleSlug) {
+        const match = findArticleBySlug(results, titleSlug)
+        if (match) return { articleId: match.id, htmlUrl: match.htmlUrl }
     }
 
-    for (const result of data.results ?? []) {
-        if (result.id === undefined || result.id === null || !result.html_url) continue
-        const slugMatch = result.html_url.match(/\/articles\/\d+-(.+?)\/?$/)
-        if (!slugMatch) continue
-        if (slugMatch[1].toLowerCase() === titleSlug) {
-            return { articleId: String(result.id), htmlUrl: result.html_url }
-        }
-    }
+    const fullMatch = findArticleBySlug(results, slug.toLowerCase())
+    if (fullMatch) return { articleId: fullMatch.id, htmlUrl: fullMatch.htmlUrl }
 
     throw new CliError('NOT_FOUND', `Could not resolve Help Center URL slug "${slug}".`, [
         'Open the article on get.todoist.help and pass that URL or the numeric article ID instead.',
@@ -674,6 +687,7 @@ export function resolveHelpCenterRef(
     const urlRef = parseHelpCenterArticleUrl(trimmed)
     if (urlRef) {
         return {
+            kind: 'article',
             articleId: urlRef.articleId,
             locale: explicitLocale ?? urlRef.locale ?? normalizedFallback(),
             htmlUrl: urlRef.htmlUrl,
@@ -684,7 +698,9 @@ export function resolveHelpCenterRef(
     const marketingRef = parseMarketingHelpCenterUrl(trimmed)
     if (marketingRef) {
         return {
+            kind: 'marketing',
             marketingSlug: marketingRef.slug,
+            urlLocale: marketingRef.locale,
             locale: explicitLocale ?? normalizedFallback(),
             htmlUrl: marketingRef.htmlUrl,
             source: 'url',
@@ -694,6 +710,7 @@ export function resolveHelpCenterRef(
     if (trimmed.startsWith('id:')) {
         const articleId = normalizeArticleId(trimmed.slice(3))
         return {
+            kind: 'article',
             articleId,
             locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
@@ -702,6 +719,7 @@ export function resolveHelpCenterRef(
 
     if (/^[1-9]\d*$/.test(trimmed)) {
         return {
+            kind: 'article',
             articleId: trimmed,
             locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
