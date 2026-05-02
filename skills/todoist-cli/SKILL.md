@@ -42,6 +42,8 @@ td auth login --read-only --additional-scopes=backups
 td auth login --additional-scopes=app-management,backups
 td auth token
 td auth status
+td auth print-token
+td auth print-token --user scott@doist.com
 td auth logout
 ```
 
@@ -53,6 +55,8 @@ Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separa
 Combine freely with `--read-only` to keep data access read-only while still granting an opt-in scope (e.g. `td auth login --read-only --additional-scopes=backups`). When a command fails for lack of a scope, the error suggests a re-login command that preserves whichever flags were originally used.
 
 Tokens are stored in the OS credential manager when available, with fallback to `~/.config/todoist-cli/config.json`. `TODOIST_API_TOKEN` takes precedence over stored credentials.
+
+`td auth print-token` writes the stored token to stdout for use in scripts (e.g. `TOKEN=$(td auth print-token)`). Honors `--user <id|email>` for multi-account installs and refuses when `TODOIST_API_TOKEN` is set in the environment (the token is already available there).
 
 ## Multi-user
 
