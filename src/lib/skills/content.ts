@@ -243,9 +243,10 @@ td reminder location get id:456
 td hc
 td hc --help
 td hc locale --set-default pt-br
+td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 \`\`\`
 
-\`td hc\` queries the Todoist online Help Center. Run \`td hc --help\` for locale discovery, article search, and article viewing details. \`td hc locale --set-default <locale>\` persists a preferred locale in \`~/.config/todoist-cli/config.json\` under \`hc.defaultLocale\`; the \`--locale\` flag on individual subcommands still overrides it.
+\`td hc\` queries the Todoist online Help Center. Run \`td hc --help\` for locale discovery, article search, and article viewing details. \`td hc locale --set-default <locale>\` persists a preferred locale in \`~/.config/todoist-cli/config.json\` under \`hc.defaultLocale\`; the \`--locale\` flag on individual subcommands still overrides it. \`td hc view\` accepts \`id:N\`, raw numeric article IDs, \`get.todoist.help\` URLs, and public \`www.todoist.com/help/articles/...\` marketing URLs (resolved to the underlying Zendesk article via slug search).
 
 ### Templates
 \`\`\`bash

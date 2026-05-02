@@ -22,10 +22,11 @@ Examples:
   td hc view id:360000269065
   td hc view 360000269065
   td hc view https://get.todoist.help/hc/en-us/articles/360000269065
+  td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 
 Notes:
   search prints real Help Center article IDs
-  view accepts id:N, raw article IDs, and Help Center URLs`,
+  view accepts id:N, raw article IDs, get.todoist.help URLs, and www.todoist.com/help/articles/... URLs`,
         )
 
     hc.command('locales')

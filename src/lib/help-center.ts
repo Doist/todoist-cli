@@ -83,12 +83,22 @@ export interface ResolveHelpCenterRefOptions {
     fallbackLocale?: string
 }
 
-export interface ResolvedHelpCenterRef {
-    articleId: string
-    locale: string
-    htmlUrl?: string
-    source: 'id' | 'url'
-}
+export type ResolvedHelpCenterRef =
+    | {
+          kind: 'article'
+          articleId: string
+          locale: string
+          htmlUrl?: string
+          source: 'id' | 'url'
+      }
+    | {
+          kind: 'marketing'
+          marketingSlug: string
+          urlLocale: string
+          locale: string
+          htmlUrl: string
+          source: 'url'
+      }
 
 const NAMED_HTML_ENTITIES: Record<string, string> = {
     amp: '&',
@@ -478,6 +488,73 @@ export function parseHelpCenterArticleUrl(
     return null
 }
 
+export function parseMarketingHelpCenterUrl(
+    ref: string,
+): { slug: string; locale: string; htmlUrl: string } | null {
+    let url: URL
+    try {
+        url = new URL(ref)
+    } catch {
+        return null
+    }
+
+    const hostname = url.hostname.toLowerCase()
+    if (hostname !== 'www.todoist.com' && hostname !== 'todoist.com') {
+        return null
+    }
+
+    const match = url.pathname.match(
+        /^(?:\/([a-z]{2}(?:-[a-z]{2})?))?\/help\/articles\/([A-Za-z0-9][A-Za-z0-9-]*)\/?$/i,
+    )
+    if (!match) {
+        return null
+    }
+
+    return {
+        slug: match[2],
+        locale: match[1] ? match[1].toLowerCase() : DEFAULT_HELP_CENTER_LOCALE,
+        htmlUrl: url.toString(),
+    }
+}
+
+function stripMarketingShortId(slug: string): string | null {
+    // Marketing slugs have the form `title-slug-{shortId}` where shortId is a
+    // 6–12 char alphanumeric token. Returns the title-slug with the trailing
+    // short ID removed, or null if the slug doesn't end with a strippable token.
+    const match = slug.match(/^(.+)-([A-Za-z0-9]{6,12})$/)
+    return match ? match[1].toLowerCase() : null
+}
+
+function findArticleBySlug(
+    results: HelpCenterSearchResult[],
+    targetSlug: string,
+): HelpCenterSearchResult | undefined {
+    return results.find((result) => {
+        const slugMatch = result.htmlUrl.match(/\/articles\/\d+-(.+?)\/?$/)
+        return slugMatch ? slugMatch[1].toLowerCase() === targetSlug : false
+    })
+}
+
+export async function resolveMarketingArticleId(
+    slug: string,
+    locale: string,
+): Promise<{ articleId: string; htmlUrl: string }> {
+    const results = await searchHelpCenter(slug, { locale, limit: 10 })
+
+    const titleSlug = stripMarketingShortId(slug)
+    if (titleSlug) {
+        const match = findArticleBySlug(results, titleSlug)
+        if (match) return { articleId: match.id, htmlUrl: match.htmlUrl }
+    }
+
+    const fullMatch = findArticleBySlug(results, slug.toLowerCase())
+    if (fullMatch) return { articleId: fullMatch.id, htmlUrl: fullMatch.htmlUrl }
+
+    throw new CliError('NOT_FOUND', `Could not resolve Help Center URL slug "${slug}".`, [
+        'Open the article on get.todoist.help and pass that URL or the numeric article ID instead.',
+    ])
+}
+
 export async function searchHelpCenter(
     query: string,
     options: { locale?: string; limit?: number | string } = {},
@@ -610,6 +687,7 @@ export function resolveHelpCenterRef(
     const urlRef = parseHelpCenterArticleUrl(trimmed)
     if (urlRef) {
         return {
+            kind: 'article',
             articleId: urlRef.articleId,
             locale: explicitLocale ?? urlRef.locale ?? normalizedFallback(),
             htmlUrl: urlRef.htmlUrl,
@@ -617,9 +695,22 @@ export function resolveHelpCenterRef(
         }
     }
 
+    const marketingRef = parseMarketingHelpCenterUrl(trimmed)
+    if (marketingRef) {
+        return {
+            kind: 'marketing',
+            marketingSlug: marketingRef.slug,
+            urlLocale: marketingRef.locale,
+            locale: explicitLocale ?? normalizedFallback(),
+            htmlUrl: marketingRef.htmlUrl,
+            source: 'url',
+        }
+    }
+
     if (trimmed.startsWith('id:')) {
         const articleId = normalizeArticleId(trimmed.slice(3))
         return {
+            kind: 'article',
             articleId,
             locale: explicitLocale ?? normalizedFallback(),
             source: 'id',
@@ -628,6 +719,7 @@ export function resolveHelpCenterRef(
 
     if (/^[1-9]\d*$/.test(trimmed)) {
         return {
+            kind: 'article',
             articleId: trimmed,
             locale: explicitLocale ?? normalizedFallback(),
             source: 'id',

@@ -33,6 +33,7 @@ describe('help center helpers', () => {
 
     it('resolves an explicit id: ref', () => {
         expect(resolveHelpCenterRef('id:360000269065')).toEqual({
+            kind: 'article',
             articleId: '360000269065',
             locale: 'en-us',
             source: 'id',
@@ -41,6 +42,7 @@ describe('help center helpers', () => {
 
     it('resolves a raw numeric article id', () => {
         expect(resolveHelpCenterRef('205348301')).toEqual({
+            kind: 'article',
             articleId: '205348301',
             locale: 'en-us',
             source: 'id',
@@ -53,6 +55,7 @@ describe('help center helpers', () => {
                 'https://get.todoist.help/hc/en-us/articles/360000269065-manage-your-notifications',
             ),
         ).toEqual({
+            kind: 'article',
             articleId: '360000269065',
             htmlUrl:
                 'https://get.todoist.help/hc/en-us/articles/360000269065-manage-your-notifications',
@@ -65,5 +68,46 @@ describe('help center helpers', () => {
         expect(() => resolveHelpCenterRef('notifications')).toThrow(
             'Invalid Help Center reference "notifications".',
         )
+    })
+
+    it('flags a www.todoist.com marketing URL for slug resolution', () => {
+        expect(
+            resolveHelpCenterRef(
+                'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            ),
+        ).toEqual({
+            kind: 'marketing',
+            marketingSlug: 'introduction-to-filters-V98wIH',
+            urlLocale: 'en-us',
+            locale: 'en-us',
+            htmlUrl: 'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            source: 'url',
+        })
+    })
+
+    it('extracts the URL locale from a localized marketing URL', () => {
+        expect(
+            resolveHelpCenterRef(
+                'https://www.todoist.com/de/help/articles/einfuehrung-in-filter-V98wIH',
+            ),
+        ).toMatchObject({
+            kind: 'marketing',
+            urlLocale: 'de',
+            locale: 'en-us',
+        })
+    })
+
+    it('honours an explicit locale on a marketing URL while preserving the URL locale', () => {
+        expect(
+            resolveHelpCenterRef(
+                'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+                { locale: 'pt-br' },
+            ),
+        ).toMatchObject({
+            kind: 'marketing',
+            marketingSlug: 'introduction-to-filters-V98wIH',
+            urlLocale: 'en-us',
+            locale: 'pt-br',
+        })
     })
 })

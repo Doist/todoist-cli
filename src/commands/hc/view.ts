@@ -5,6 +5,7 @@ import {
     formatHelpCenterArticleMarkdown,
     getHelpCenterArticle,
     resolveHelpCenterRef,
+    resolveMarketingArticleId,
 } from '../../lib/help-center.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import { withSpinner } from '../../lib/spinner.js'
@@ -40,9 +41,26 @@ export async function viewHelpCenterArticle(
         return
     }
 
+    let articleId: string
+    if (resolved.kind === 'marketing') {
+        const { marketingSlug, urlLocale } = resolved
+        const resolvedMarketing = await withSpinner(
+            { text: 'Resolving Help Center article...', color: 'blue' },
+            () => resolveMarketingArticleId(marketingSlug, urlLocale),
+        )
+        articleId = resolvedMarketing.articleId
+
+        if (options.browser) {
+            await openInBrowser(resolvedMarketing.htmlUrl)
+            return
+        }
+    } else {
+        articleId = resolved.articleId
+    }
+
     const article = await withSpinner(
         { text: 'Loading Help Center article...', color: 'blue' },
-        () => getHelpCenterArticle(resolved.articleId, { locale: resolved.locale }),
+        () => getHelpCenterArticle(articleId, { locale: resolved.locale }),
     )
 
     if (options.browser) {

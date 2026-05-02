@@ -259,6 +259,180 @@ describe('hc command', () => {
         expect(fetchSpy).not.toHaveBeenCalled()
     })
 
+    it('opens the marketing URL directly in --browser mode without resolving', async () => {
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            '--browser',
+        ])
+
+        expect(openInBrowser).toHaveBeenCalledWith(
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+        )
+        expect(fetchSpy).not.toHaveBeenCalled()
+    })
+
+    it('resolves a www.todoist.com marketing URL via search and fetches the article', async () => {
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    count: 2,
+                    results: [
+                        {
+                            id: 26646901023644,
+                            title: 'Todoist glossary',
+                            html_url:
+                                'https://get.todoist.help/hc/en-us/articles/26646901023644-Todoist-glossary',
+                        },
+                        {
+                            id: 205248842,
+                            title: 'Introduction to filters',
+                            html_url:
+                                'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                        },
+                    ],
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    article: {
+                        id: 205248842,
+                        title: 'Introduction to filters',
+                        html_url:
+                            'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                        body: '<p>Filters help you...</p>',
+                    },
+                }),
+            )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledTimes(2)
+        expect(String(fetchSpy.mock.calls[0][0])).toContain(
+            '/api/v2/help_center/articles/search?query=introduction-to-filters-V98wIH&locale=en-us&per_page=10',
+        )
+        expect(fetchSpy.mock.calls[1][0]).toBe(
+            'https://todoist.zendesk.com/api/v2/help_center/en-us/articles/205248842',
+        )
+
+        const output = consoleSpy.mock.calls[0][0] as string
+        expect(output).toContain('# Introduction to filters')
+        expect(output).toContain('Filters help you')
+    })
+
+    it('searches in en-us when an English marketing URL is pasted with a non-English default locale', async () => {
+        mockReadConfig.mockResolvedValue({ hc: { defaultLocale: 'pt-br' } })
+        fetchSpy
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    count: 1,
+                    results: [
+                        {
+                            id: 205248842,
+                            title: 'Introduction to filters',
+                            html_url:
+                                'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                        },
+                    ],
+                }),
+            )
+            .mockResolvedValueOnce(
+                createJsonResponse({
+                    article: {
+                        id: 205248842,
+                        title: 'Introdução aos filtros',
+                        html_url:
+                            'https://get.todoist.help/hc/pt-br/articles/205248842-Introducao-aos-filtros',
+                        body: '<p>Filtros</p>',
+                    },
+                }),
+            )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+        ])
+
+        expect(String(fetchSpy.mock.calls[0][0])).toContain('locale=en-us')
+        expect(fetchSpy.mock.calls[1][0]).toBe(
+            'https://todoist.zendesk.com/api/v2/help_center/pt-br/articles/205248842',
+        )
+    })
+
+    it('opens the resolved zendesk URL once when --browser is combined with --locale on a marketing URL', async () => {
+        fetchSpy.mockResolvedValueOnce(
+            createJsonResponse({
+                count: 1,
+                results: [
+                    {
+                        id: 205248842,
+                        title: 'Introduction to filters',
+                        html_url:
+                            'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+                    },
+                ],
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'hc',
+            'view',
+            'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            '--browser',
+            '--locale',
+            'fr',
+        ])
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(openInBrowser).toHaveBeenCalledWith(
+            'https://get.todoist.help/hc/en-us/articles/205248842-Introduction-to-filters',
+        )
+    })
+
+    it('errors when the marketing URL slug cannot be matched', async () => {
+        fetchSpy.mockResolvedValueOnce(
+            createJsonResponse({
+                count: 1,
+                results: [
+                    {
+                        id: 999,
+                        title: 'Something else',
+                        html_url: 'https://get.todoist.help/hc/en-us/articles/999-Something-else',
+                    },
+                ],
+            }),
+        )
+
+        const program = createProgram()
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'hc',
+                'view',
+                'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            ]),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    })
+
     it('outputs the raw HTML body with --html', async () => {
         const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
         fetchSpy.mockResolvedValue(
