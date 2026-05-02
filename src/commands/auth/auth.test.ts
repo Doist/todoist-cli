@@ -76,6 +76,7 @@ import {
     resolveActiveUser,
     upsertUser,
 } from '../../lib/auth.js'
+import { resetGlobalArgs } from '../../lib/global-args.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../../lib/oauth.js'
 import { UserNotFoundError } from '../../lib/users.js'
@@ -562,9 +563,21 @@ describe('auth command', () => {
             const program = createProgram()
             mockResolveActiveUser.mockRejectedValue(new UserNotFoundError('missing@example.com'))
 
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'print-token']),
-            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            // `--user <ref>` is parsed from process.argv by the global-args
+            // layer (not commander) and stripped before commander sees the
+            // argv. Stub process.argv to mirror production wiring so the
+            // test exercises the same code path as a real invocation.
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', 'auth', 'print-token', '--user', 'missing@example.com']
+            resetGlobalArgs()
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'print-token']),
+                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
             expect(consoleSpy).not.toHaveBeenCalled()
         })
     })
