@@ -10,6 +10,7 @@ export type ErrorCode =
     | 'INVALID_TOKEN'
     | 'NO_TOKEN'
     | 'READ_ONLY'
+    | 'TOKEN_FROM_ENV'
     // API & network
     | 'API_ERROR'
     | 'INTERNAL_ERROR'

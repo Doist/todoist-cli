@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import { formatScopesHelp } from '../../lib/oauth-scopes.js'
 import { loginWithOAuth } from './login.js'
 import { logout } from './logout.js'
+import { printToken } from './print-token.js'
 import { showStatus } from './status.js'
 import { loginWithToken } from './token.js'
 
@@ -31,6 +32,12 @@ export function registerAuthCommand(program: Command): void {
         .description('Show current authentication status')
         .option('--json', 'Output as JSON')
         .action(showStatus)
+
+    auth.command('print-token')
+        .description(
+            'Print the stored API token for the active user (or --user <ref>) to stdout for use in scripts',
+        )
+        .action(printToken)
 
     auth.command('logout').description('Remove saved authentication token').action(logout)
 }

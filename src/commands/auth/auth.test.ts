@@ -11,6 +11,7 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         getAuthMetadata: vi.fn(),
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
+        resolveActiveUser: vi.fn(),
     }
 })
 
@@ -67,14 +68,18 @@ import open from 'open'
 import { createApiForToken, getApi } from '../../lib/api/core.js'
 import {
     NoTokenError,
+    TOKEN_ENV_VAR,
     clearApiToken,
     getAuthMetadata,
     listStoredUsers,
     readConfig,
+    resolveActiveUser,
     upsertUser,
 } from '../../lib/auth.js'
+import { resetGlobalArgs } from '../../lib/global-args.js'
 import { startCallbackServer } from '../../lib/oauth-server.js'
 import { buildAuthorizationUrl, exchangeCodeForToken } from '../../lib/oauth.js'
+import { UserNotFoundError } from '../../lib/users.js'
 import { createMockApi } from '../../test-support/mock-api.js'
 import { registerAuthCommand } from './index.js'
 
@@ -85,6 +90,7 @@ const mockClearApiToken = vi.mocked(clearApiToken)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
+const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 const mockGetApi = vi.mocked(getApi)
 const mockCreateApiForToken = vi.mocked(createApiForToken)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
@@ -496,6 +502,83 @@ describe('auth command', () => {
 
             expect(mockClearApiToken).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Logged out')
+        })
+    })
+
+    describe('print-token subcommand', () => {
+        let originalEnvToken: string | undefined
+
+        beforeEach(() => {
+            originalEnvToken = process.env[TOKEN_ENV_VAR]
+            delete process.env[TOKEN_ENV_VAR]
+        })
+
+        afterEach(() => {
+            if (originalEnvToken === undefined) {
+                delete process.env[TOKEN_ENV_VAR]
+            } else {
+                process.env[TOKEN_ENV_VAR] = originalEnvToken
+            }
+        })
+
+        it('prints the bare token to stdout', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockResolvedValue({
+                id: TEST_USER.id,
+                email: TEST_USER.email,
+                token: 'stored_token_abc123456',
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'print-token'])
+
+            expect(mockResolveActiveUser).toHaveBeenCalled()
+            expect(consoleSpy).toHaveBeenCalledTimes(1)
+            expect(consoleSpy).toHaveBeenCalledWith('stored_token_abc123456')
+        })
+
+        it('refuses when TODOIST_API_TOKEN is set', async () => {
+            const program = createProgram()
+            process.env[TOKEN_ENV_VAR] = 'env_token_value'
+
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'print-token']),
+            ).rejects.toHaveProperty('code', 'TOKEN_FROM_ENV')
+            expect(mockResolveActiveUser).not.toHaveBeenCalled()
+            expect(consoleSpy).not.toHaveBeenCalled()
+        })
+
+        it('propagates NoTokenError when no users are stored', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockRejectedValue(new NoTokenError())
+
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'print-token']),
+            ).rejects.toHaveProperty('code', 'NO_TOKEN')
+            expect(consoleSpy).not.toHaveBeenCalled()
+        })
+
+        it('propagates UserNotFoundError when --user ref does not match', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockRejectedValue(new UserNotFoundError('missing@example.com'))
+
+            // `--user <ref>` is parsed from process.argv by the global-args
+            // layer (not commander) and stripped before commander sees the
+            // argv. Stub process.argv to mirror production wiring so the
+            // test exercises the same code path as a real invocation.
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', 'auth', 'print-token', '--user', 'missing@example.com']
+            resetGlobalArgs()
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'print-token']),
+                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+            expect(consoleSpy).not.toHaveBeenCalled()
         })
     })
 })
