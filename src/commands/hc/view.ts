@@ -5,6 +5,7 @@ import {
     formatHelpCenterArticleMarkdown,
     getHelpCenterArticle,
     resolveHelpCenterRef,
+    resolveMarketingArticleId,
 } from '../../lib/help-center.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import { withSpinner } from '../../lib/spinner.js'
@@ -40,9 +41,25 @@ export async function viewHelpCenterArticle(
         return
     }
 
+    let articleId = resolved.articleId
+    if (!articleId) {
+        if (!resolved.marketingSlug) {
+            throw new CliError(
+                'INVALID_REF',
+                'Help Center reference could not be resolved to an article ID.',
+            )
+        }
+        const marketingSlug = resolved.marketingSlug
+        const resolvedMarketing = await withSpinner(
+            { text: 'Resolving Help Center article...', color: 'blue' },
+            () => resolveMarketingArticleId(marketingSlug, resolved.locale),
+        )
+        articleId = resolvedMarketing.articleId
+    }
+
     const article = await withSpinner(
         { text: 'Loading Help Center article...', color: 'blue' },
-        () => getHelpCenterArticle(resolved.articleId, { locale: resolved.locale }),
+        () => getHelpCenterArticle(articleId, { locale: resolved.locale }),
     )
 
     if (options.browser) {

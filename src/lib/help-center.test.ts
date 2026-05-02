@@ -66,4 +66,30 @@ describe('help center helpers', () => {
             'Invalid Help Center reference "notifications".',
         )
     })
+
+    it('flags a www.todoist.com marketing URL for slug resolution', () => {
+        expect(
+            resolveHelpCenterRef(
+                'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            ),
+        ).toEqual({
+            marketingSlug: 'introduction-to-filters-V98wIH',
+            locale: 'en-us',
+            htmlUrl: 'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+            source: 'url',
+        })
+    })
+
+    it('honours an explicit locale on a marketing URL', () => {
+        expect(
+            resolveHelpCenterRef(
+                'https://www.todoist.com/help/articles/introduction-to-filters-V98wIH',
+                { locale: 'pt-br' },
+            ),
+        ).toMatchObject({
+            marketingSlug: 'introduction-to-filters-V98wIH',
+            locale: 'pt-br',
+            source: 'url',
+        })
+    })
 })

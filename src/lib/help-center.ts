@@ -84,7 +84,8 @@ export interface ResolveHelpCenterRefOptions {
 }
 
 export interface ResolvedHelpCenterRef {
-    articleId: string
+    articleId?: string
+    marketingSlug?: string
     locale: string
     htmlUrl?: string
     source: 'id' | 'url'
@@ -478,6 +479,69 @@ export function parseHelpCenterArticleUrl(
     return null
 }
 
+export function parseMarketingHelpCenterUrl(ref: string): { slug: string; htmlUrl: string } | null {
+    let url: URL
+    try {
+        url = new URL(ref)
+    } catch {
+        return null
+    }
+
+    const hostname = url.hostname.toLowerCase()
+    if (hostname !== 'www.todoist.com' && hostname !== 'todoist.com') {
+        return null
+    }
+
+    const match = url.pathname.match(/^\/help\/articles\/([A-Za-z0-9][A-Za-z0-9-]*)\/?$/)
+    if (!match) {
+        return null
+    }
+
+    return { slug: match[1], htmlUrl: url.toString() }
+}
+
+function stripMarketingShortId(slug: string): string {
+    // Marketing slugs have the form `title-slug-{shortId}`, where shortId is a
+    // 6–12 char alphanumeric token containing at least one uppercase letter
+    // (title slugs themselves are all-lowercase, so the case requirement
+    // distinguishes the short ID from genuine slug words).
+    return slug.replace(/-(?=[A-Za-z0-9]*[A-Z])[A-Za-z0-9]{6,12}$/, '').toLowerCase()
+}
+
+export async function resolveMarketingArticleId(
+    slug: string,
+    locale: string,
+): Promise<{ articleId: string; htmlUrl: string }> {
+    const titleSlug = stripMarketingShortId(slug)
+    const url = new URL(HELP_CENTER_SEARCH_URL)
+    url.searchParams.set('query', slug)
+    url.searchParams.set('locale', locale)
+    url.searchParams.set('per_page', '10')
+
+    const { response, data } = await fetchHelpCenterJson<RawHelpCenterSearchResponse>(
+        url.toString(),
+    )
+    if (!response.ok) {
+        throw new CliError(
+            'FETCH_FAILED',
+            `Failed to resolve Help Center URL: ${response.status} ${response.statusText}`,
+        )
+    }
+
+    for (const result of data.results ?? []) {
+        if (result.id === undefined || result.id === null || !result.html_url) continue
+        const slugMatch = result.html_url.match(/\/articles\/\d+-(.+?)\/?$/)
+        if (!slugMatch) continue
+        if (slugMatch[1].toLowerCase() === titleSlug) {
+            return { articleId: String(result.id), htmlUrl: result.html_url }
+        }
+    }
+
+    throw new CliError('NOT_FOUND', `Could not resolve Help Center URL slug "${slug}".`, [
+        'Open the article on get.todoist.help and pass that URL or the numeric article ID instead.',
+    ])
+}
+
 export async function searchHelpCenter(
     query: string,
     options: { locale?: string; limit?: number | string } = {},
@@ -613,6 +677,16 @@ export function resolveHelpCenterRef(
             articleId: urlRef.articleId,
             locale: explicitLocale ?? urlRef.locale ?? normalizedFallback(),
             htmlUrl: urlRef.htmlUrl,
+            source: 'url',
+        }
+    }
+
+    const marketingRef = parseMarketingHelpCenterUrl(trimmed)
+    if (marketingRef) {
+        return {
+            marketingSlug: marketingRef.slug,
+            locale: explicitLocale ?? normalizedFallback(),
+            htmlUrl: marketingRef.htmlUrl,
             source: 'url',
         }
     }
