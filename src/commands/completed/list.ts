@@ -163,7 +163,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
     for (const task of tasks) {
         const projectName = projects.get(task.projectId)?.name
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName,
                 assignee: getAssigneeName(task) ?? undefined,

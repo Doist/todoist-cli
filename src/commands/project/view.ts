@@ -96,7 +96,7 @@ export async function viewProject(
             console.log('')
             console.log(chalk.dim(`--- Tasks (${fullData.tasks.length}) ---`))
             for (const task of fullData.tasks) {
-                console.log(formatTaskRow({ task, showUrl: options.showUrls }))
+                console.log(await formatTaskRow({ task, showUrl: options.showUrls }))
                 console.log('')
             }
         }
@@ -176,7 +176,7 @@ export async function viewProject(
         console.log('')
         console.log(chalk.dim(`--- Tasks (${tasks.length}) ---`))
         for (const task of tasks) {
-            console.log(formatTaskRow({ task, showUrl: options.showUrls }))
+            console.log(await formatTaskRow({ task, showUrl: options.showUrls }))
             console.log('')
         }
     }

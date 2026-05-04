@@ -9,11 +9,14 @@ import {
     WorkspaceProject,
     type DueDate,
 } from '@doist/todoist-sdk'
-import { getApiToken } from '../auth.js'
+import { buildReloginCommand } from '../auth-flags.js'
+import { getAuthMetadata, resolveActiveUser } from '../auth.js'
 import { CliError } from '../errors.js'
+import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
+import { createTrackedFetch } from '../usage-tracking.js'
 
 let apiClient: TodoistApi | null = null
 
@@ -58,7 +61,9 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         archiveSection: { text: 'Archiving section...', color: 'yellow' },
         unarchiveSection: { text: 'Unarchiving section...', color: 'yellow' },
         sync: { text: 'Syncing...', color: 'blue' },
+        uploadFile: { text: 'Uploading file...', color: 'blue' },
         viewAttachment: { text: 'Fetching attachment...', color: 'blue' },
+        getProductivityStats: { text: 'Loading stats...', color: 'blue' },
         getWorkspace: { text: 'Loading workspace...', color: 'blue' },
         getWorkspaceActiveProjects: { text: 'Loading workspace projects...', color: 'blue' },
         getWorkspaceArchivedProjects: { text: 'Loading archived projects...', color: 'blue' },
@@ -67,6 +72,14 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getProjectHealthContext: { text: 'Loading health context...', color: 'blue' },
         getProjectProgress: { text: 'Loading project progress...', color: 'blue' },
         getWorkspaceInsights: { text: 'Loading workspace insights...', color: 'blue' },
+        getWorkspaceUserTasks: { text: 'Loading workspace user tasks...', color: 'blue' },
+        getWorkspaceMembersActivity: {
+            text: 'Loading workspace members activity...',
+            color: 'blue',
+        },
+        addWorkspace: { text: 'Creating workspace...', color: 'green' },
+        updateWorkspace: { text: 'Updating workspace...', color: 'yellow' },
+        deleteWorkspace: { text: 'Deleting workspace...', color: 'yellow' },
         analyzeProjectHealth: { text: 'Analyzing project health...', color: 'green' },
         exportTemplateAsFile: { text: 'Exporting template...', color: 'blue' },
         exportTemplateAsUrl: { text: 'Exporting template URL...', color: 'blue' },
@@ -76,10 +89,32 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getCompletedTasksByCompletionDate: { text: 'Loading completed tasks...', color: 'blue' },
         searchCompletedTasks: { text: 'Searching completed tasks...', color: 'blue' },
         getReminders: { text: 'Loading reminders...', color: 'blue' },
+        getReminder: { text: 'Loading reminder...', color: 'blue' },
         getLocationReminders: { text: 'Loading location reminders...', color: 'blue' },
+        getLocationReminder: { text: 'Loading location reminder...', color: 'blue' },
+        addLocationReminder: { text: 'Creating location reminder...', color: 'green' },
+        updateLocationReminder: { text: 'Updating location reminder...', color: 'yellow' },
+        deleteLocationReminder: { text: 'Deleting location reminder...', color: 'yellow' },
         // Backups
         getBackups: { text: 'Loading backups...', color: 'blue' },
         downloadBackup: { text: 'Downloading backup...', color: 'blue' },
+        // Apps — all the per-app detail methods share the same 'Loading app...'
+        // label so the concurrent enrichment batch in `td apps view` reads as a
+        // single spinner rather than several labels flashing past.
+        getApps: { text: 'Loading apps...', color: 'blue' },
+        getApp: { text: 'Loading app...', color: 'blue' },
+        getAppSecrets: { text: 'Loading app...', color: 'blue' },
+        getAppVerificationToken: { text: 'Loading app...', color: 'blue' },
+        getAppTestToken: { text: 'Loading app...', color: 'blue' },
+        getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
+        getAppWebhook: { text: 'Loading app...', color: 'blue' },
+        updateApp: { text: 'Updating app...', color: 'yellow' },
+        // Folders
+        getFolders: { text: 'Loading folders...', color: 'blue' },
+        getFolder: { text: 'Loading folder...', color: 'blue' },
+        addFolder: { text: 'Creating folder...', color: 'green' },
+        updateFolder: { text: 'Updating folder...', color: 'yellow' },
+        deleteFolder: { text: 'Deleting folder...', color: 'yellow' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
@@ -141,17 +176,68 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
                             (error as Error).message,
                         )
                     }
-                    throw wrapApiError(error)
+                    throw await wrapApiError(error, property)
                 }
             }
         },
     })
 }
 
-function wrapApiError(error: unknown): Error {
+function isInsufficientScopeError(error: TodoistRequestError): boolean {
+    if (error.httpStatusCode !== 403) return false
+    const data = error.responseData
+    if (typeof data !== 'object' || data === null) return false
+    return (data as { error_tag?: unknown }).error_tag === 'AUTH_INSUFFICIENT_TOKEN_SCOPE'
+}
+
+/**
+ * Group SDK methods by the opt-in OAuth scope they require, so a 403
+ * `AUTH_INSUFFICIENT_TOKEN_SCOPE` can surface a *command-specific* remediation
+ * hint instead of a generic "re-auth" line. Add new methods here as scope-
+ * gated SDK surface lands.
+ *
+ * Methods not listed fall back to the standard remediation — appropriate for
+ * endpoints gated by scopes that are part of the standard grant. The raw
+ * OAuth scope string and user-facing flag name both come from the
+ * `ADDITIONAL_SCOPES` registry via `oauthScopeFor`, so this table is the
+ * single place that needs changes when wiring a new scope-gated method.
+ */
+const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
+    getApps: 'app-management',
+    getApp: 'app-management',
+    getAppSecrets: 'app-management',
+    getAppVerificationToken: 'app-management',
+    getAppTestToken: 'app-management',
+    getAppDistributionToken: 'app-management',
+    getAppWebhook: 'app-management',
+    getBackups: 'backups',
+    downloadBackup: 'backups',
+}
+
+const STANDARD_REMEDIATION =
+    'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.'
+
+async function getScopeRemediation(methodName: string | undefined): Promise<string> {
+    const requiredFlag = methodName ? METHOD_REQUIRED_FLAG[methodName] : undefined
+    if (!requiredFlag) {
+        return STANDARD_REMEDIATION
+    }
+    const metadata = await getAuthMetadata()
+    const command = buildReloginCommand(metadata, requiredFlag)
+    return `This command requires the ${oauthScopeFor(requiredFlag)} scope. Re-run \`${command}\` to grant it.`
+}
+
+export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode
+        if (status === 403 && isInsufficientScopeError(error)) {
+            return new CliError(
+                'MISSING_SCOPE',
+                'Your token is missing the OAuth scope required for this command.',
+                [await getScopeRemediation(methodName)],
+            )
+        }
         if (status === 401 || status === 403) {
             return new CliError('AUTH_ERROR', error.message, [
                 'Check your API token: td auth status',
@@ -204,14 +290,19 @@ function analyzeAndEmitApiResponse(
 }
 
 export function createApiForToken(token: string): TodoistApi {
-    const rawApi = new TodoistApi(token)
+    const rawApi = new TodoistApi(token, { customFetch: createTrackedFetch() })
     return createSpinnerWrappedApi(rawApi)
 }
 
 export async function getApi(): Promise<TodoistApi> {
     if (!apiClient) {
-        const token = await getApiToken()
-        apiClient = createApiForToken(token)
+        const resolved = await resolveActiveUser()
+        apiClient = createApiForToken(resolved.token)
+        // Seed the user-id cache from config when known so callers like
+        // `getCurrentUserId` don't pay an extra `api.getUser()` round trip.
+        if (resolved.id && resolved.id !== 'env' && resolved.id !== 'legacy') {
+            currentUserIdCache = resolved.id
+        }
     }
     return apiClient
 }

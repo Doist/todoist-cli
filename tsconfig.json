@@ -11,7 +11,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "types": ["node", "marked-terminal"]
+        "types": ["node"]
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]

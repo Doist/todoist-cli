@@ -45,6 +45,10 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getWorkspaceUsers',
     'getWorkspaceActiveProjects',
     'getWorkspaceArchivedProjects',
+    'getWorkspaceUserTasks',
+    'getWorkspaceMembersActivity',
+    // Productivity
+    'getProductivityStats',
     // Project insights
     'getProjectActivityStats',
     'getProjectHealth',
@@ -56,10 +60,23 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'exportTemplateAsUrl',
     // Reminders (REST read)
     'getReminders',
+    'getReminder',
     'getLocationReminders',
+    'getLocationReminder',
     // Backups
     'getBackups',
     'downloadBackup',
+    // Apps (developer app management — gated by dev:app_console scope)
+    'getApps',
+    'getApp',
+    'getAppSecrets',
+    'getAppVerificationToken',
+    'getAppTestToken',
+    'getAppDistributionToken',
+    'getAppWebhook',
+    // Folders
+    'getFolders',
+    'getFolder',
     // Sync is handled separately via payload inspection
     'sync',
 ])

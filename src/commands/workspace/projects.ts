@@ -7,7 +7,7 @@ import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 
 export async function listWorkspaceProjects(
-    ref: string,
+    ref: string | undefined,
     options: PaginatedViewOptions,
 ): Promise<void> {
     const workspace = await resolveWorkspaceRef(ref)

@@ -60,7 +60,7 @@ export interface FormatTaskRowOptions {
     accessible?: boolean
 }
 
-export function formatTaskRow({
+export async function formatTaskRow({
     task,
     projectName,
     assignee,
@@ -68,9 +68,9 @@ export function formatTaskRow({
     indent = 0,
     showUrl = false,
     accessible,
-}: FormatTaskRowOptions): string {
+}: FormatTaskRowOptions): Promise<string> {
     const a11y = accessible ?? isAccessible()
-    const content = raw ? task.content : renderMarkdown(task.content)
+    const content = raw ? task.content : await renderMarkdown(task.content)
     const baseIndent = '  '
     const extraIndent = '  '.repeat(indent)
     const line1 = baseIndent + extraIndent + content
@@ -102,16 +102,16 @@ export interface FormatTaskViewOptions {
     raw?: boolean
 }
 
-export function formatTaskView({
+export async function formatTaskView({
     task,
     project,
     parentTask,
     subtaskCount,
     full = false,
     raw = false,
-}: FormatTaskViewOptions): string {
+}: FormatTaskViewOptions): Promise<string> {
     const lines: string[] = []
-    const content = raw ? task.content : renderMarkdown(task.content)
+    const content = raw ? task.content : await renderMarkdown(task.content)
 
     lines.push(content)
     lines.push('')
@@ -149,7 +149,7 @@ export function formatTaskView({
     if (task.description) {
         lines.push('')
         lines.push('Description:')
-        const desc = raw ? task.description : renderMarkdown(task.description)
+        const desc = raw ? task.description : await renderMarkdown(task.description)
         lines.push(desc)
     }
 
@@ -226,6 +226,17 @@ const GOAL_ESSENTIAL_FIELDS = [
     'progress',
 ] as const
 const FILTER_ESSENTIAL_FIELDS = ['id', 'name', 'query', 'color', 'isFavorite'] as const
+const FOLDER_ESSENTIAL_FIELDS = ['id', 'name', 'workspaceId', 'defaultOrder', 'childOrder'] as const
+const APP_ESSENTIAL_FIELDS = [
+    'id',
+    'clientId',
+    'displayName',
+    'status',
+    'serviceUrl',
+    'oauthRedirectUri',
+    'appTokenScopes',
+    'userCount',
+] as const
 const NOTIFICATION_ESSENTIAL_FIELDS = [
     'id',
     'type',
@@ -286,6 +297,12 @@ function addWebUrl<T extends { id: string }>(item: T, type: EntityType): T & { w
         case 'notification':
             url = ''
             break
+        case 'folder':
+            url = ''
+            break
+        case 'app':
+            url = ''
+            break
     }
     return { ...item, webUrl: url }
 }
@@ -300,7 +317,9 @@ export type EntityType =
     | 'location-reminder'
     | 'filter'
     | 'goal'
+    | 'folder'
     | 'notification'
+    | 'app'
 
 function getEssentialFields(type: EntityType): readonly string[] {
     switch (type) {
@@ -322,8 +341,12 @@ function getEssentialFields(type: EntityType): readonly string[] {
             return FILTER_ESSENTIAL_FIELDS
         case 'goal':
             return GOAL_ESSENTIAL_FIELDS
+        case 'folder':
+            return FOLDER_ESSENTIAL_FIELDS
         case 'notification':
             return NOTIFICATION_ESSENTIAL_FIELDS
+        case 'app':
+            return APP_ESSENTIAL_FIELDS
     }
 }
 

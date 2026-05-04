@@ -125,7 +125,7 @@ export async function showUpcoming(
                 cache: collaboratorCache,
             })
             console.log(
-                formatTaskRow({
+                await formatTaskRow({
                     task,
                     projectName: projects.get(task.projectId)?.name,
                     assignee: assignee ?? undefined,
@@ -150,7 +150,7 @@ export async function showUpcoming(
                 cache: collaboratorCache,
             })
             console.log(
-                formatTaskRow({
+                await formatTaskRow({
                     task,
                     projectName: projects.get(task.projectId)?.name,
                     assignee: assignee ?? undefined,

@@ -1,3 +1,142 @@
+## [1.60.3](https://github.com/Doist/todoist-cli/compare/v1.60.2...v1.60.3) (2026-05-02)
+
+### Bug Fixes
+
+* **deps:** bump @doist/todoist-sdk to 10.1.1 ([#312](https://github.com/Doist/todoist-cli/issues/312)) ([308e961](https://github.com/Doist/todoist-cli/commit/308e96116014121ea0df3e70d641e54c91ace4e2))
+
+## [1.60.2](https://github.com/Doist/todoist-cli/compare/v1.60.1...v1.60.2) (2026-05-02)
+
+### Bug Fixes
+
+* **hc:** resolve www.todoist.com marketing article URLs ([#310](https://github.com/Doist/todoist-cli/issues/310)) ([268d315](https://github.com/Doist/todoist-cli/commit/268d315e34b00b8e5768e7dc5c2033d30b02f157))
+
+## [1.60.1](https://github.com/Doist/todoist-cli/compare/v1.60.0...v1.60.1) (2026-05-01)
+
+### Bug Fixes
+
+* honour HTTP_PROXY on the customFetch path ([#305](https://github.com/Doist/todoist-cli/issues/305)) ([e1fc71a](https://github.com/Doist/todoist-cli/commit/e1fc71abfc3c3ad16f1311363368adb06b06c8d7))
+
+## [1.60.0](https://github.com/Doist/todoist-cli/compare/v1.59.0...v1.60.0) (2026-04-30)
+
+### Features
+
+* track cli usage in request headers ([#302](https://github.com/Doist/todoist-cli/issues/302)) ([5c692f8](https://github.com/Doist/todoist-cli/commit/5c692f864c1bb680d171aa30a63db2cbf117f575))
+
+## [1.59.0](https://github.com/Doist/todoist-cli/compare/v1.58.0...v1.59.0) (2026-04-28)
+
+### Features
+
+* **user,config,doctor:** polish multi-user surface ([#301](https://github.com/Doist/todoist-cli/issues/301)) ([d36d4aa](https://github.com/Doist/todoist-cli/commit/d36d4aaf2c923a03a09a0dfb1d1c7d1e242e0458))
+
+## [1.58.0](https://github.com/Doist/todoist-cli/compare/v1.57.0...v1.58.0) (2026-04-28)
+
+### Features
+
+* **auth:** support multiple authenticated Todoist accounts ([#300](https://github.com/Doist/todoist-cli/issues/300)) ([934ffcc](https://github.com/Doist/todoist-cli/commit/934ffccdc31c8627c2e82e2ef9db52ff0b838486))
+
+## [1.57.0](https://github.com/Doist/todoist-cli/compare/v1.56.1...v1.57.0) (2026-04-23)
+
+### Features
+
+* **workspace:** add `td workspace use <ref>` to persist a default workspace ([#294](https://github.com/Doist/todoist-cli/issues/294)) ([579a4c8](https://github.com/Doist/todoist-cli/commit/579a4c8cb17009012ac7b9d28d76f6f3601c4cc2))
+
+## [1.56.1](https://github.com/Doist/todoist-cli/compare/v1.56.0...v1.56.1) (2026-04-23)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.2 ([#292](https://github.com/Doist/todoist-cli/issues/292)) ([18de6b5](https://github.com/Doist/todoist-cli/commit/18de6b5d4fbd75dca4945c7067789e7ae58dfad0))
+
+## [1.56.0](https://github.com/Doist/todoist-cli/compare/v1.55.0...v1.56.0) (2026-04-22)
+
+### Features
+
+* **task:** add --no-due flag to clear due date ([#289](https://github.com/Doist/todoist-cli/issues/289)) ([3570b9f](https://github.com/Doist/todoist-cli/commit/3570b9fa603095f2e1c78d50488d1b1be7d7ea73))
+
+## [1.55.0](https://github.com/Doist/todoist-cli/compare/v1.54.1...v1.55.0) (2026-04-22)
+
+### Features
+
+* **comment:** steer agents away from downloading image attachments ([#288](https://github.com/Doist/todoist-cli/issues/288)) ([d0b16e3](https://github.com/Doist/todoist-cli/commit/d0b16e3ce601f54c86ac97662c60dde377fc161b))
+
+## [1.54.1](https://github.com/Doist/todoist-cli/compare/v1.54.0...v1.54.1) (2026-04-22)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.1 ([#287](https://github.com/Doist/todoist-cli/issues/287)) ([8353768](https://github.com/Doist/todoist-cli/commit/8353768f8c16e29dfd986f686e92fbdc13b2295e))
+
+## [1.54.0](https://github.com/Doist/todoist-cli/compare/v1.53.0...v1.54.0) (2026-04-22)
+
+### Features
+
+* **config:** add `td config view` to inspect the CLI config file ([#285](https://github.com/Doist/todoist-cli/issues/285)) ([9ab14ba](https://github.com/Doist/todoist-cli/commit/9ab14bace7ac7f5b6055885e309de8b32d54c6cc))
+
+## [1.53.0](https://github.com/Doist/todoist-cli/compare/v1.52.0...v1.53.0) (2026-04-21)
+
+### Features
+
+* **apps:** add update subcommand with --add/--remove-oauth-redirect ([#283](https://github.com/Doist/todoist-cli/issues/283)) ([e22da38](https://github.com/Doist/todoist-cli/commit/e22da387f14688cd225b8ca7aef23bdc2986d3d5))
+
+## [1.52.0](https://github.com/Doist/todoist-cli/compare/v1.51.0...v1.52.0) (2026-04-21)
+
+### Features
+
+* **hc:** persist a default Help Center locale via `hc locale --set-default` ([#284](https://github.com/Doist/todoist-cli/issues/284)) ([a4e9d6d](https://github.com/Doist/todoist-cli/commit/a4e9d6d45bc8e9ba19965751242d8f5932bf1726))
+
+## [1.51.0](https://github.com/Doist/todoist-cli/compare/v1.50.0...v1.51.0) (2026-04-20)
+
+### Features
+
+* add folder command group ([#248](https://github.com/Doist/todoist-cli/issues/248)) ([4a17765](https://github.com/Doist/todoist-cli/commit/4a17765e15a45c370fac00810b1a6a7ebabfceb0))
+
+## [1.50.0](https://github.com/Doist/todoist-cli/compare/v1.49.0...v1.50.0) (2026-04-20)
+
+### Features
+
+* Add Help Center CLI commands ([#279](https://github.com/Doist/todoist-cli/issues/279)) ([10d836f](https://github.com/Doist/todoist-cli/commit/10d836fa955e89e1c711338af3cce96cd71c67e5))
+
+## [1.49.0](https://github.com/Doist/todoist-cli/compare/v1.48.0...v1.49.0) (2026-04-19)
+
+### Features
+
+* **skill:** add author/version metadata and keep in sync on release ([#275](https://github.com/Doist/todoist-cli/issues/275)) ([47b9626](https://github.com/Doist/todoist-cli/commit/47b962681d09212b9514cc23e45bcbf58123021f))
+
+## [1.48.0](https://github.com/Doist/todoist-cli/compare/v1.47.0...v1.48.0) (2026-04-18)
+
+### Features
+
+* **apps:** enrich td apps view + surface client_id in list/view ([#267](https://github.com/Doist/todoist-cli/issues/267)) ([1a546f8](https://github.com/Doist/todoist-cli/commit/1a546f833de4c7cb9b747b1e3e6bd237fef477c1))
+
+## [1.47.0](https://github.com/Doist/todoist-cli/compare/v1.46.0...v1.47.0) (2026-04-15)
+
+### Features
+
+* **auth:** replace per-scope flags with --additional-scopes ([#272](https://github.com/Doist/todoist-cli/issues/272)) ([9ae9a05](https://github.com/Doist/todoist-cli/commit/9ae9a0533dc9fbf9327315166b919dabbcd098b9))
+
+## [1.46.0](https://github.com/Doist/todoist-cli/compare/v1.45.0...v1.46.0) (2026-04-13)
+
+### Features
+
+* **auth:** make backups:read opt-in and persist login flags ([#265](https://github.com/Doist/todoist-cli/issues/265)) ([ad4debf](https://github.com/Doist/todoist-cli/commit/ad4debfe028f8497daadef57302e37207f857f2c))
+
+## [1.45.0](https://github.com/Doist/todoist-cli/compare/v1.44.0...v1.45.0) (2026-04-13)
+
+### Features
+
+* **apps:** add td auth login --app-management and td apps list/view ([#264](https://github.com/Doist/todoist-cli/issues/264)) ([9797094](https://github.com/Doist/todoist-cli/commit/97970949bd78b882e3e79ef0155115907f6cfe9b))
+
+## [1.44.0](https://github.com/Doist/todoist-cli/compare/v1.43.0...v1.44.0) (2026-04-13)
+
+### Features
+
+* add td task quickadd subcommand with qa alias ([#262](https://github.com/Doist/todoist-cli/issues/262)) ([75a329a](https://github.com/Doist/todoist-cli/commit/75a329ae9255c7722e236e2913f718271f53458a))
+
+## [1.43.0](https://github.com/Doist/todoist-cli/compare/v1.42.0...v1.43.0) (2026-04-12)
+
+### Features
+
+* add location reminder commands and single-reminder get ([#254](https://github.com/Doist/todoist-cli/issues/254)) ([cc807e9](https://github.com/Doist/todoist-cli/commit/cc807e952e37df1478a01e8cd6868df5b848048a))
+* add workspace CRUD and reporting commands ([#255](https://github.com/Doist/todoist-cli/issues/255)) ([26ec672](https://github.com/Doist/todoist-cli/commit/26ec67215c84f68b1b86ebcb1368e38e7003c6de))
+
 ## [1.42.0](https://github.com/Doist/todoist-cli/compare/v1.41.0...v1.42.0) (2026-04-11)
 
 ### Features

@@ -4,8 +4,10 @@ import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
 import { deleteReminderCmd } from './delete.js'
+import { getReminderCmd } from './get.js'
 import type { ReminderTypeFilter } from './helpers.js'
 import { listReminders } from './list.js'
+import { registerLocationReminderCommand } from './location/index.js'
 import { updateReminderCmd } from './update.js'
 
 export function registerReminderCommand(program: Command): void {
@@ -109,4 +111,19 @@ export function registerReminderCommand(program: Command): void {
             }
             return deleteReminderCmd(id, options)
         })
+
+    const getCmd = reminder
+        .command('get [id]')
+        .description('Get a single time-based reminder by ID')
+        .option('--json', 'Output as JSON')
+        .option('--full', 'Include all fields in JSON output')
+        .action((id, options) => {
+            if (!id) {
+                getCmd.help()
+                return
+            }
+            return getReminderCmd(id, options)
+        })
+
+    registerLocationReminderCommand(reminder)
 }

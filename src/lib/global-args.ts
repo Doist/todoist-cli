@@ -18,6 +18,7 @@ export interface GlobalArgs {
     noSpinner: boolean
     raw: boolean
     progressJsonl: string | true | false // false = absent, true = present without path, string = path
+    user: string | undefined // --user <ref> — selects which stored Todoist account to use
 }
 
 const SHORT_FLAGS: Record<string, keyof GlobalArgs> = {
@@ -43,6 +44,7 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
         noSpinner: false,
         raw: false,
         progressJsonl: false,
+        user: undefined,
     }
 
     for (let i = 0; i < args.length; i++) {
@@ -66,6 +68,17 @@ export function parseGlobalArgs(argv?: string[]): GlobalArgs {
             result.noSpinner = true
         } else if (arg === '--raw') {
             result.raw = true
+        } else if (arg === '--user' || arg.startsWith('--user=')) {
+            if (arg.includes('=')) {
+                result.user = arg.slice(arg.indexOf('=') + 1)
+            } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                // Only consume the next arg as the value when it doesn't look
+                // like another flag — `td --user --json ...` should leave
+                // `result.user` undefined so commander surfaces a usage error
+                // rather than silently swallowing `--json` as the user ref.
+                i++
+                result.user = args[i]
+            }
         } else if (arg === '--progress-jsonl' || arg.startsWith('--progress-jsonl=')) {
             if (arg.includes('=')) {
                 // --progress-jsonl=path
@@ -145,6 +158,45 @@ export function getVerboseLevel(): GlobalArgs['verbose'] {
 
 export function getProgressJsonlPath(): string | true | false {
     return getGlobalArgs().progressJsonl
+}
+
+export function getRequestedUserRef(): string | undefined {
+    return getGlobalArgs().user
+}
+
+/**
+ * Remove `--user <ref>` / `--user=<ref>` from an argv array so commander —
+ * which has no global-option attachment — never sees the flag at subcommand
+ * level. Returns a new array; the original is not mutated. Stops at the `--`
+ * terminator so positional args after it are preserved verbatim.
+ */
+export function stripUserFlag(argv: string[]): string[] {
+    const out: string[] = []
+    let stopped = false
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i]
+        if (stopped) {
+            out.push(arg)
+            continue
+        }
+        if (arg === '--') {
+            stopped = true
+            out.push(arg)
+            continue
+        }
+        if (arg === '--user') {
+            // Consume the value too only when it doesn't look like another
+            // flag — keeps `td --user --json ...` from also stripping `--json`.
+            // Stays in lockstep with `parseGlobalArgs` above.
+            if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) i++
+            continue
+        }
+        if (arg.startsWith('--user=')) {
+            continue
+        }
+        out.push(arg)
+    }
+    return out
 }
 
 export function shouldDisableSpinner(): boolean {

@@ -1,18 +1,33 @@
 import { CliError } from './errors.js'
+import { type AdditionalScopeFlag, oauthScopeFor } from './oauth-scopes.js'
 import { DEFAULT_PORT, getRedirectUri } from './oauth-server.js'
+import { fetchTodoist } from './usage-tracking.js'
 
 const TODOIST_CLIENT_ID = '04863cc1e3584830a578622f50224d5b'
 const OAUTH_AUTHORIZE_URL = 'https://todoist.com/oauth/authorize'
 const OAUTH_TOKEN_URL = 'https://todoist.com/oauth/access_token'
-export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete,backups:read'
-export const READ_ONLY_SCOPES = 'data:read,backups:read'
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
+export const READ_ONLY_SCOPES = 'data:read'
+
+export interface AuthScopeOptions {
+    readOnly?: boolean
+    additionalScopes?: readonly AdditionalScopeFlag[]
+}
+
+export function resolveAuthScope(options: AuthScopeOptions): string {
+    const parts = [options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES]
+    for (const scope of options.additionalScopes ?? []) {
+        parts.push(oauthScopeFor(scope))
+    }
+    return parts.join(',')
+}
 
 export function buildAuthorizationUrl(
     codeChallenge: string,
     state: string,
-    options: { readOnly?: boolean; port?: number } = {},
+    options: AuthScopeOptions & { port?: number } = {},
 ): string {
-    const scope = options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES
+    const scope = resolveAuthScope(options)
     const redirectUri = getRedirectUri(options.port ?? DEFAULT_PORT)
     const params = new URLSearchParams({
         client_id: TODOIST_CLIENT_ID,
@@ -42,7 +57,7 @@ export async function exchangeCodeForToken(
         redirect_uri: getRedirectUri(port),
     })
 
-    const response = await fetch(OAUTH_TOKEN_URL, {
+    const response = await fetchTodoist(OAUTH_TOKEN_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

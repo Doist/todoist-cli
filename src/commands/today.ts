@@ -106,7 +106,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
                 cache: collaboratorCache,
             })
             console.log(
-                formatTaskRow({
+                await formatTaskRow({
                     task,
                     projectName: projects.get(task.projectId)?.name,
                     assignee: assignee ?? undefined,
@@ -127,7 +127,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
             cache: collaboratorCache,
         })
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName: projects.get(task.projectId)?.name,
                 assignee: assignee ?? undefined,
