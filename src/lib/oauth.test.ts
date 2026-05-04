@@ -78,9 +78,9 @@ describe('buildAuthorizationUrl', () => {
         const fetchMock = vi.fn(async (_url: string | URL, options?: RequestInit) => {
             const headers = options?.headers as Record<string, string>
             expect(headers['content-type']).toBe('application/x-www-form-urlencoded')
-            expect(headers['user-agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+$/)
+            expect(headers['user-agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+(-[\w.]+)?$/)
             expect(headers['doist-platform']).toBe('cli')
-            expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
+            expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
             expect(headers['x-td-request-id']).toBeTruthy()
             expect(headers['x-td-session-id']).toBeTruthy()
             expect(headers['x-td-cli-command']).toBe('auth:login')

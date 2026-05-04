@@ -31,9 +31,9 @@ describe('usage tracking', () => {
 
         const headers = buildUsageTrackingHeaders()
 
-        expect(headers['User-Agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+$/)
+        expect(headers['User-Agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+(-[\w.]+)?$/)
         expect(headers['doist-platform']).toBe('cli')
-        expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
+        expect(headers['doist-version']).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
         expect(headers['doist-os']).toMatch(/^(macos|linux|windows|unknown)$/)
         expect(headers['X-TD-Request-Id']).toBeTruthy()
         expect(headers['X-TD-Session-Id']).toBeTruthy()
@@ -67,7 +67,7 @@ describe('usage tracking', () => {
         const secondHeaders = captured[1].headers as Record<string, string>
         expect(firstHeaders.authorization).toBe('Bearer token')
         expect(firstHeaders['doist-platform']).toBe('cli')
-        expect(firstHeaders['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
+        expect(firstHeaders['doist-version']).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
         expect(firstHeaders['x-td-cli-command']).toBe('today')
         expect(firstHeaders['x-td-session-id']).toBe(secondHeaders['x-td-session-id'])
         expect(firstHeaders['x-td-request-id']).not.toBe(secondHeaders['x-td-request-id'])
