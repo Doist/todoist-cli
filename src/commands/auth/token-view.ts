@@ -1,7 +1,7 @@
 import { resolveActiveUser, TOKEN_ENV_VAR } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 
-export async function printToken(): Promise<void> {
+export async function viewToken(): Promise<void> {
     if (process.env[TOKEN_ENV_VAR]) {
         throw new CliError(
             'TOKEN_FROM_ENV',

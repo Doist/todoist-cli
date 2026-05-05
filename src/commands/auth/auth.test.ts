@@ -505,7 +505,7 @@ describe('auth command', () => {
         })
     })
 
-    describe('print-token subcommand', () => {
+    describe('token view subcommand', () => {
         let originalEnvToken: string | undefined
 
         beforeEach(() => {
@@ -531,7 +531,7 @@ describe('auth command', () => {
                 source: 'secure-store',
             })
 
-            await program.parseAsync(['node', 'td', 'auth', 'print-token'])
+            await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
 
             expect(mockResolveActiveUser).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledTimes(1)
@@ -543,7 +543,7 @@ describe('auth command', () => {
             process.env[TOKEN_ENV_VAR] = 'env_token_value'
 
             await expect(
-                program.parseAsync(['node', 'td', 'auth', 'print-token']),
+                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
             ).rejects.toHaveProperty('code', 'TOKEN_FROM_ENV')
             expect(mockResolveActiveUser).not.toHaveBeenCalled()
             expect(consoleSpy).not.toHaveBeenCalled()
@@ -554,7 +554,7 @@ describe('auth command', () => {
             mockResolveActiveUser.mockRejectedValue(new NoTokenError())
 
             await expect(
-                program.parseAsync(['node', 'td', 'auth', 'print-token']),
+                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
             ).rejects.toHaveProperty('code', 'NO_TOKEN')
             expect(consoleSpy).not.toHaveBeenCalled()
         })
@@ -568,11 +568,11 @@ describe('auth command', () => {
             // argv. Stub process.argv to mirror production wiring so the
             // test exercises the same code path as a real invocation.
             const originalArgv = process.argv
-            process.argv = ['node', 'td', 'auth', 'print-token', '--user', 'missing@example.com']
+            process.argv = ['node', 'td', 'auth', 'token', 'view', '--user', 'missing@example.com']
             resetGlobalArgs()
             try {
                 await expect(
-                    program.parseAsync(['node', 'td', 'auth', 'print-token']),
+                    program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
                 ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
             } finally {
                 process.argv = originalArgv
