@@ -1,3 +1,9 @@
+## [1.61.0](https://github.com/Doist/todoist-cli/compare/v1.60.3...v1.61.0) (2026-05-05)
+
+### Features
+
+* **auth:** add `td auth token view` for script and agent use ([#311](https://github.com/Doist/todoist-cli/issues/311)) ([fa6d6b6](https://github.com/Doist/todoist-cli/commit/fa6d6b6f53c549d3ee92058aceccee4b299a86f2))
+
 ## [1.60.3](https://github.com/Doist/todoist-cli/compare/v1.60.2...v1.60.3) (2026-05-02)
 
 ### Bug Fixes
