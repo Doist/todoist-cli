@@ -1,3 +1,4 @@
+import { isStdoutTTY } from '@doist/cli-core'
 import chalk from 'chalk'
 import yoctoSpinner from 'yocto-spinner'
 import { shouldDisableSpinner } from './global-args.js'
@@ -15,7 +16,7 @@ let earlySpinnerInstance: ReturnType<typeof yoctoSpinner> | null = null
 let originalStdoutWrite: typeof process.stdout.write | null = null
 
 export function startEarlySpinner(): void {
-    if (!process.stdout.isTTY || shouldDisableSpinner()) {
+    if (!isStdoutTTY() || shouldDisableSpinner()) {
         return
     }
 
@@ -59,7 +60,7 @@ class LoadingSpinner {
 
     start(options: SpinnerOptions) {
         // Don't show spinner in non-interactive environments, when disabled via options, or when JSON output is expected
-        if (!process.stdout.isTTY || options.noSpinner || shouldDisableSpinner()) {
+        if (!isStdoutTTY() || options.noSpinner || shouldDisableSpinner()) {
             return this
         }
 

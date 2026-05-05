@@ -9,6 +9,8 @@
  * Commander's `parseAsync()` since it reads `process.argv` directly.
  */
 
+import { isCI } from '@doist/cli-core'
+
 export interface GlobalArgs {
     json: boolean
     ndjson: boolean
@@ -201,7 +203,7 @@ export function stripUserFlag(argv: string[]): string[] {
 
 export function shouldDisableSpinner(): boolean {
     if (process.env.TD_SPINNER === 'false') return true
-    if (process.env.CI) return true
+    if (isCI()) return true
 
     const args = getGlobalArgs()
     return (

@@ -1,3 +1,4 @@
+import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
@@ -357,17 +358,11 @@ export function formatJson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return JSON.stringify(data, null, 2)
-    }
+    if (!type) return formatJsonCore(data)
     if (Array.isArray(data)) {
-        return JSON.stringify(
-            data.map((item) => processItem(item, type, full, showUrl)),
-            null,
-            2,
-        )
+        return formatJsonCore(data.map((item) => processItem(item, type, full, showUrl)))
     }
-    return JSON.stringify(processItem(data, type, full, showUrl), null, 2)
+    return formatJsonCore(processItem(data, type, full, showUrl))
 }
 
 export function formatNdjson<T extends object>(
@@ -376,10 +371,8 @@ export function formatNdjson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return items.map((item) => JSON.stringify(item)).join('\n')
-    }
-    return items.map((item) => JSON.stringify(processItem(item, type, full, showUrl))).join('\n')
+    if (!type) return formatNdjsonCore(items)
+    return formatNdjsonCore(items.map((item) => processItem(item, type, full, showUrl)))
 }
 
 function resolveErrorParts(
@@ -441,11 +434,9 @@ export function formatPaginatedJson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return JSON.stringify(data, null, 2)
-    }
+    if (!type) return formatJsonCore(data)
     const results = data.results.map((item) => processItem(item, type, full, showUrl))
-    return JSON.stringify({ results, nextCursor: data.nextCursor }, null, 2)
+    return formatJsonCore({ results, nextCursor: data.nextCursor })
 }
 
 export function formatPaginatedNdjson<T extends object>(
@@ -454,18 +445,13 @@ export function formatPaginatedNdjson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    const lines = data.results.map((item) => {
-        if (!type) {
-            return JSON.stringify(item)
-        }
-        return JSON.stringify(processItem(item, type, full, showUrl))
-    })
-
+    const items: unknown[] = type
+        ? data.results.map((item) => processItem(item, type, full, showUrl))
+        : [...data.results]
     if (data.nextCursor) {
-        lines.push(JSON.stringify({ _meta: true, nextCursor: data.nextCursor }))
+        items.push({ _meta: true, nextCursor: data.nextCursor })
     }
-
-    return lines.join('\n')
+    return formatNdjsonCore(items)
 }
 
 export function formatNextCursorFooter(nextCursor: string | null): string {
