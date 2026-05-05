@@ -1,10 +1,13 @@
-import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import {
+    getConfigPath,
+    readConfig as readConfigCore,
+    readConfigStrict as readConfigStrictCore,
+    writeConfig as writeConfigCore,
+} from '@doist/cli-core'
 import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'
 
-export const CONFIG_PATH = join(homedir(), '.config', 'todoist-cli', 'config.json')
+export const CONFIG_PATH = getConfigPath('todoist-cli')
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
@@ -98,13 +101,7 @@ export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
 const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
 
 export async function readConfig(): Promise<Config> {
-    try {
-        const content = await readFile(CONFIG_PATH, 'utf-8')
-        const parsed = JSON.parse(content)
-        return isObject(parsed) ? (parsed as Config) : {}
-    } catch {
-        return {}
-    }
+    return readConfigCore<Config>(CONFIG_PATH)
 }
 
 export type StrictReadResult = { state: 'missing' } | { state: 'present'; config: Config }
@@ -115,61 +112,39 @@ export type StrictReadResult = { state: 'missing' } | { state: 'present'; config
  * swallows errors for runtime code paths; this one surfaces them.
  */
 export async function readConfigStrict(): Promise<StrictReadResult> {
-    let content: string
-    try {
-        content = await readFile(CONFIG_PATH, 'utf-8')
-    } catch (error) {
-        if (isMissingFileError(error)) return { state: 'missing' }
-        const detail = error instanceof Error ? error.message : String(error)
-        throw new CliError(
-            'CONFIG_READ_FAILED',
-            `Could not read config file ${CONFIG_PATH}: ${detail}`,
-            ['Check file permissions, or run `td doctor` to diagnose'],
-        )
+    const result = await readConfigStrictCore<Config>(CONFIG_PATH)
+    switch (result.state) {
+        case 'missing':
+            return { state: 'missing' }
+        case 'present':
+            return { state: 'present', config: result.config }
+        case 'read-failed':
+            throw new CliError(
+                'CONFIG_READ_FAILED',
+                `Could not read config file ${CONFIG_PATH}: ${result.error.message}`,
+                ['Check file permissions, or run `td doctor` to diagnose'],
+            )
+        case 'invalid-json':
+            throw new CliError(
+                'CONFIG_INVALID_JSON',
+                `Config file at ${CONFIG_PATH} is not valid JSON: ${result.error.message}`,
+                [
+                    'Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`',
+                ],
+            )
+        case 'invalid-shape':
+            throw new CliError(
+                'CONFIG_INVALID_SHAPE',
+                `Config file at ${CONFIG_PATH} must contain a JSON object (got ${result.actual})`,
+                [
+                    'Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`',
+                ],
+            )
     }
-
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(content)
-    } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error)
-        throw new CliError(
-            'CONFIG_INVALID_JSON',
-            `Config file at ${CONFIG_PATH} is not valid JSON: ${detail}`,
-            ['Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`'],
-        )
-    }
-
-    if (!isObject(parsed)) {
-        const actual = Array.isArray(parsed) ? 'array' : typeof parsed
-        throw new CliError(
-            'CONFIG_INVALID_SHAPE',
-            `Config file at ${CONFIG_PATH} must contain a JSON object (got ${actual})`,
-            ['Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`'],
-        )
-    }
-
-    return { state: 'present', config: parsed as Config }
 }
 
 export async function writeConfig(config: Config): Promise<void> {
-    if (Object.keys(config).length === 0) {
-        try {
-            await unlink(CONFIG_PATH)
-        } catch (error) {
-            if (!isMissingFileError(error)) {
-                throw error
-            }
-        }
-        return
-    }
-
-    await mkdir(dirname(CONFIG_PATH), { recursive: true, mode: 0o700 })
-    await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, {
-        encoding: 'utf-8',
-        mode: 0o600,
-    })
-    await chmod(CONFIG_PATH, 0o600)
+    await writeConfigCore(CONFIG_PATH, config, { deleteWhenEmpty: true })
 }
 
 // Keep this validator ad-hoc for now: it is only used by `td doctor`, and the
@@ -354,8 +329,4 @@ export function validateConfigForDoctor(config: Record<string, unknown>): string
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isMissingFileError(error: unknown): boolean {
-    return error instanceof Error && 'code' in error && error.code === 'ENOENT'
 }

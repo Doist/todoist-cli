@@ -1,3 +1,7 @@
+import { CliError as BaseCliError } from '@doist/cli-core'
+
+export type { ErrorType } from '@doist/cli-core'
+
 /**
  * Known error codes used across the CLI.
  * This union provides intellisense suggestions while still accepting any string,
@@ -83,19 +87,11 @@ export type ErrorCode =
     | 'NOT_SHARED'
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
+    // Config inspection
+    | 'CONFIG_READ_FAILED'
+    | 'CONFIG_INVALID_JSON'
+    | 'CONFIG_INVALID_SHAPE'
     // Escape hatch for dynamic codes
     | (string & {})
 
-export type ErrorType = 'error' | 'info'
-
-export class CliError extends Error {
-    constructor(
-        public readonly code: ErrorCode,
-        message: string,
-        public readonly hints?: string[],
-        public readonly type: ErrorType = 'error',
-    ) {
-        super(message)
-        this.name = 'CliError'
-    }
-}
+export class CliError extends BaseCliError<ErrorCode> {}
