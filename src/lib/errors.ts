@@ -1,4 +1,4 @@
-import { CliError as BaseCliError } from '@doist/cli-core'
+import { CliError as BaseCliError, type ErrorType } from '@doist/cli-core'
 
 export type { ErrorType } from '@doist/cli-core'
 
@@ -94,4 +94,13 @@ export type ErrorCode =
     // Escape hatch for dynamic codes
     | (string & {})
 
-export class CliError extends BaseCliError<ErrorCode> {}
+/**
+ * Todoist-flavoured CliError that preserves the historical positional
+ * `(code, message, hints?, type?)` signature used across hundreds of call
+ * sites. Internally it forwards to the cli-core options-object form.
+ */
+export class CliError extends BaseCliError<ErrorCode> {
+    constructor(code: ErrorCode, message: string, hints?: string[], type: ErrorType = 'error') {
+        super(code, message, { hints, type })
+    }
+}

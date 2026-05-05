@@ -101,7 +101,7 @@ export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
 const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
 
 export async function readConfig(): Promise<Config> {
-    return readConfigCore<Config>(CONFIG_PATH)
+    return (await readConfigCore<Config>(CONFIG_PATH)) as Config
 }
 
 export type StrictReadResult = { state: 'missing' } | { state: 'present'; config: Config }
@@ -112,12 +112,12 @@ export type StrictReadResult = { state: 'missing' } | { state: 'present'; config
  * swallows errors for runtime code paths; this one surfaces them.
  */
 export async function readConfigStrict(): Promise<StrictReadResult> {
-    const result = await readConfigStrictCore<Config>(CONFIG_PATH)
+    const result = await readConfigStrictCore(CONFIG_PATH)
     switch (result.state) {
         case 'missing':
             return { state: 'missing' }
         case 'present':
-            return { state: 'present', config: result.config }
+            return { state: 'present', config: result.config as Config }
         case 'read-failed':
             throw new CliError(
                 'CONFIG_READ_FAILED',
