@@ -40,4 +40,30 @@ describe('spinner wrapper', () => {
         const s = new LoadingSpinner()
         expect(s.start({ text: 'noop', noSpinner: true })).toBe(s)
     })
+
+    it('forwards shouldDisableSpinner to cli-core (TD_SPINNER=false suppresses the spinner)', () => {
+        // shouldDisableSpinner is the wrapper's only CLI-specific hook.
+        // Force an interactive, non-CI context so the *only* thing left
+        // gating the spinner is shouldDisableSpinner reading TD_SPINNER.
+        const stdout = process.stdout as unknown as { isTTY?: boolean }
+        const originalIsTTY = stdout.isTTY
+        stdout.isTTY = true
+        const originalCI = process.env.CI
+        delete process.env.CI
+        process.env.TD_SPINNER = 'false'
+
+        const writeBefore = process.stdout.write
+        try {
+            startEarlySpinner()
+            // If the wiring is intact, cli-core saw isDisabled() === true
+            // and never installed its stdout interceptor.
+            expect(process.stdout.write).toBe(writeBefore)
+        } finally {
+            stdout.isTTY = originalIsTTY
+            if (originalCI === undefined) delete process.env.CI
+            else process.env.CI = originalCI
+            delete process.env.TD_SPINNER
+            stopEarlySpinner()
+        }
+    })
 })
