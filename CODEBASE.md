@@ -212,6 +212,11 @@ are opt-in: `--read-only` for a read-only token,
   vitest-mocked versions of every SDK method. Use factories from
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
 - **Pattern:** mock `getApi` via `vi.mock`, then `program.parseAsync(['node','td','<cmd>',…])`.
+- **`@doist/cli-core` inlining:** `vitest.config.ts` lists `@doist/cli-core` in
+  `server.deps.inline` so `vi.doMock('node:fs/promises', …)` /
+  `vi.doMock('node:os', …)` reach cli-core's compiled imports. Without it
+  vitest treats the package as external and Node's native resolver bypasses
+  the mock substitution, breaking the `auth` / `migrate-auth` suites.
 
 ## Build & release
 

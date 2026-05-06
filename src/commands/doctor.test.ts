@@ -56,7 +56,7 @@ vi.mock('../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../lib/auth.js')>()
     return {
         ...actual,
-        CONFIG_PATH: '/tmp/test-config.json',
+        getConfigPath: () => '/tmp/test-config.json',
         probeApiToken: vi.fn(),
     }
 })
