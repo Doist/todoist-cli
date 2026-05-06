@@ -1,4 +1,4 @@
-import { CliError as BaseCliError, type ErrorType } from '@doist/cli-core'
+import { CliError as BaseCliError, type CliErrorCode, type ErrorType } from '@doist/cli-core'
 
 export type { ErrorType } from '@doist/cli-core'
 
@@ -87,10 +87,6 @@ export type ErrorCode =
     | 'NOT_SHARED'
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
-    // Config inspection
-    | 'CONFIG_READ_FAILED'
-    | 'CONFIG_INVALID_JSON'
-    | 'CONFIG_INVALID_SHAPE'
     // Escape hatch for dynamic codes
     | (string & {})
 
@@ -98,9 +94,19 @@ export type ErrorCode =
  * Todoist-flavoured CliError that preserves the historical positional
  * `(code, message, hints?, type?)` signature used across hundreds of call
  * sites. Internally it forwards to the cli-core options-object form.
+ *
+ * `code` accepts the local todoist `ErrorCode` union plus any cli-core
+ * canonical code (`CliErrorCode`), so call sites like
+ * `new CliError('CONFIG_READ_FAILED', …)` still type-check without
+ * `CONFIG_*` having to live in the local union.
  */
 export class CliError extends BaseCliError<ErrorCode> {
-    constructor(code: ErrorCode, message: string, hints?: string[], type: ErrorType = 'error') {
+    constructor(
+        code: ErrorCode | CliErrorCode,
+        message: string,
+        hints?: string[],
+        type: ErrorType = 'error',
+    ) {
         super(code, message, { hints, type })
     }
 }
