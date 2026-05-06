@@ -1,5 +1,5 @@
 import {
-    getConfigPath,
+    getConfigPath as getConfigPathCore,
     readConfig as readConfigCore,
     readConfigStrict as readConfigStrictCore,
     writeConfig as writeConfigCore,
@@ -7,7 +7,17 @@ import {
 import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'
 
-export const CONFIG_PATH = getConfigPath('todoist-cli')
+const APP_NAME = 'todoist-cli'
+
+/**
+ * Resolve the canonical config path lazily. Computing on each call (instead of
+ * caching at module load) keeps the path responsive to vitest's `vi.doMock`
+ * for `node:os` — which only reliably reaches cli-core's compiled `homedir()`
+ * call after the mock has been set up by the test, not at import time.
+ */
+export function getConfigPath(): string {
+    return getConfigPathCore(APP_NAME)
+}
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
 export type UpdateChannel = 'stable' | 'pre-release'
@@ -101,7 +111,9 @@ export const AUTH_FLAGS: ReadonlySet<AuthFlag> = new Set(AUTH_FLAG_ORDER)
 const UPDATE_CHANNELS: ReadonlySet<UpdateChannel> = new Set(['stable', 'pre-release'])
 
 export async function readConfig(): Promise<Config> {
-    return (await readConfigCore<Config>(CONFIG_PATH)) as Config
+    // cli-core's readConfig returns Partial<T> via {} on any failure, so the
+    // result is always an object — Config's all-optional fields make the cast safe.
+    return (await readConfigCore<Config>(getConfigPath())) as Config
 }
 
 export type StrictReadResult = { state: 'missing' } | { state: 'present'; config: Config }
@@ -112,7 +124,8 @@ export type StrictReadResult = { state: 'missing' } | { state: 'present'; config
  * swallows errors for runtime code paths; this one surfaces them.
  */
 export async function readConfigStrict(): Promise<StrictReadResult> {
-    const result = await readConfigStrictCore(CONFIG_PATH)
+    const path = getConfigPath()
+    const result = await readConfigStrictCore(path)
     switch (result.state) {
         case 'missing':
             return { state: 'missing' }
@@ -121,13 +134,13 @@ export async function readConfigStrict(): Promise<StrictReadResult> {
         case 'read-failed':
             throw new CliError(
                 'CONFIG_READ_FAILED',
-                `Could not read config file ${CONFIG_PATH}: ${result.error.message}`,
+                `Could not read config file ${path}: ${result.error.message}`,
                 ['Check file permissions, or run `td doctor` to diagnose'],
             )
         case 'invalid-json':
             throw new CliError(
                 'CONFIG_INVALID_JSON',
-                `Config file at ${CONFIG_PATH} is not valid JSON: ${result.error.message}`,
+                `Config file at ${path} is not valid JSON: ${result.error.message}`,
                 [
                     'Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`',
                 ],
@@ -135,7 +148,7 @@ export async function readConfigStrict(): Promise<StrictReadResult> {
         case 'invalid-shape':
             throw new CliError(
                 'CONFIG_INVALID_SHAPE',
-                `Config file at ${CONFIG_PATH} must contain a JSON object (got ${result.actual})`,
+                `Config file at ${path} must contain a JSON object (got ${result.actual})`,
                 [
                     'Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`',
                 ],
@@ -144,7 +157,7 @@ export async function readConfigStrict(): Promise<StrictReadResult> {
 }
 
 export async function writeConfig(config: Config): Promise<void> {
-    await writeConfigCore(CONFIG_PATH, config, { deleteWhenEmpty: true })
+    await writeConfigCore(getConfigPath(), config, { deleteWhenEmpty: true })
 }
 
 // Keep this validator ad-hoc for now: it is only used by `td doctor`, and the

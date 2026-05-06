@@ -434,9 +434,9 @@ export function formatPaginatedJson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) return formatJsonCore(data)
+    if (!type) return formatJson(data)
     const results = data.results.map((item) => processItem(item, type, full, showUrl))
-    return formatJsonCore({ results, nextCursor: data.nextCursor })
+    return formatJson({ results, nextCursor: data.nextCursor })
 }
 
 export function formatPaginatedNdjson<T extends object>(
@@ -445,13 +445,19 @@ export function formatPaginatedNdjson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    const items: unknown[] = type
+    if (!data.nextCursor) {
+        // No cursor: route directly through the local NDJSON wrapper. The
+        // typed branch processes inline (one walk + serialize), the untyped
+        // branch passes `data.results` through with no copy.
+        return formatNdjson(data.results, type, full, showUrl)
+    }
+    // With cursor: materialize once (processing if a type was passed) and
+    // append the cursor meta record before serialization.
+    const items: object[] = type
         ? data.results.map((item) => processItem(item, type, full, showUrl))
         : [...data.results]
-    if (data.nextCursor) {
-        items.push({ _meta: true, nextCursor: data.nextCursor })
-    }
-    return formatNdjsonCore(items)
+    items.push({ _meta: true, nextCursor: data.nextCursor })
+    return formatNdjson(items)
 }
 
 export function formatNextCursorFooter(nextCursor: string | null): string {
