@@ -81,6 +81,21 @@ describe('lib/auth', () => {
             writeFile: writeFileMock,
         }))
 
+        // Override @doist/cli-core's getConfigPath at the package boundary so
+        // we don't depend on `node:os` mock substitution reaching cli-core's
+        // compiled `homedir()` call — that route works on macOS but not on
+        // Linux runners under vitest 4's `server.deps.inline`. The node:os
+        // mock above is left in place for any other code that reads homedir
+        // directly.
+        vi.doMock('@doist/cli-core', async () => {
+            const actual =
+                await vi.importActual<typeof import('@doist/cli-core')>('@doist/cli-core')
+            return {
+                ...actual,
+                getConfigPath: () => TEST_CONFIG_PATH,
+            }
+        })
+
         vi.doMock('@napi-rs/keyring', () => ({
             AsyncEntry: class {
                 private account: string
