@@ -1,3 +1,9 @@
+## [1.62.0](https://github.com/Doist/todoist-cli/compare/v1.61.2...v1.62.0) (2026-05-07)
+
+### Features
+
+* GitHub Copilot Skill Installation Instructions ([#315](https://github.com/Doist/todoist-cli/issues/315)) ([8704f4b](https://github.com/Doist/todoist-cli/commit/8704f4b61e3653f7cb28120497799a55a5a9fd57))
+
 ## [1.61.2](https://github.com/Doist/todoist-cli/compare/v1.61.1...v1.61.2) (2026-05-06)
 
 ### Bug Fixes
