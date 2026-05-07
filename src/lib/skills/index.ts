@@ -12,6 +12,11 @@ export const skillInstallers: Record<string, SkillInstaller> = {
         description: 'Codex skill for Todoist CLI',
         dirName: '.codex',
     }),
+    copilot: createInstaller({
+        name: 'copilot',
+        description: 'GitHub Copilot skill for Todoist CLI',
+        dirName: '.copilot',
+    }),
     cursor: createInstaller({
         name: 'cursor',
         description: 'Cursor skill for Todoist CLI',

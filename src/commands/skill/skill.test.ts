@@ -42,6 +42,7 @@ describe('skill command', () => {
             expect(consoleSpy).toHaveBeenCalledWith('Available agents:')
             expect(consoleSpy).toHaveBeenCalledWith('  claude-code')
             expect(consoleSpy).toHaveBeenCalledWith('  codex')
+            expect(consoleSpy).toHaveBeenCalledWith('  copilot')
             expect(consoleSpy).toHaveBeenCalledWith('  cursor')
             expect(consoleSpy).toHaveBeenCalledWith('  gemini')
             expect(consoleSpy).toHaveBeenCalledWith('  pi')
@@ -141,6 +142,12 @@ describe('skills registry', () => {
         expect(installer?.name).toBe('codex')
     })
 
+    it('returns copilot installer', () => {
+        const installer = getInstaller('copilot')
+        expect(installer).toBeDefined()
+        expect(installer?.name).toBe('copilot')
+    })
+
     it('returns cursor installer', () => {
         const installer = getInstaller('cursor')
         expect(installer).toBeDefined()
@@ -174,6 +181,7 @@ describe('skills registry', () => {
         const agents = listAgents()
         expect(agents).toContain('claude-code')
         expect(agents).toContain('codex')
+        expect(agents).toContain('copilot')
         expect(agents).toContain('cursor')
         expect(agents).toContain('gemini')
         expect(agents).toContain('pi')
@@ -185,6 +193,7 @@ describe('installer paths', () => {
     const cases = [
         { agent: 'claude-code', dir: '.claude', desc: 'Claude Code skill for Todoist CLI' },
         { agent: 'codex', dir: '.codex', desc: 'Codex skill for Todoist CLI' },
+        { agent: 'copilot', dir: '.copilot', desc: 'GitHub Copilot skill for Todoist CLI' },
         { agent: 'cursor', dir: '.cursor', desc: 'Cursor skill for Todoist CLI' },
         { agent: 'gemini', dir: '.gemini', desc: 'Gemini CLI skill for Todoist CLI' },
         { agent: 'pi', dir: '.pi', desc: 'Pi skill for Todoist CLI' },

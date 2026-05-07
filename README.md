@@ -19,6 +19,7 @@ Install skills for your coding agent:
 ```bash
 td skill install claude-code
 td skill install codex
+td skill install copilot
 td skill install cursor
 td skill install gemini
 td skill install pi
