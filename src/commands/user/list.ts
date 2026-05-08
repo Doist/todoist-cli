@@ -1,3 +1,4 @@
+import { printEmpty } from '@doist/cli-core'
 import chalk from 'chalk'
 import { listStoredUsers, readConfig } from '../../lib/auth.js'
 import { isAccessible } from '../../lib/global-args.js'
@@ -11,6 +12,14 @@ export async function listUsersCommand(options: ListUsersOptions): Promise<void>
     const users = await listStoredUsers()
     const config = await readConfig()
     const defaultId = getDefaultUserId(config)
+
+    if (users.length === 0) {
+        printEmpty({
+            options,
+            message: chalk.dim('No stored Todoist accounts. Run `td auth login` to add one.'),
+        })
+        return
+    }
 
     if (options.json) {
         console.log(
@@ -28,11 +37,6 @@ export async function listUsersCommand(options: ListUsersOptions): Promise<void>
                 2,
             ),
         )
-        return
-    }
-
-    if (users.length === 0) {
-        console.log(chalk.dim('No stored Todoist accounts. Run `td auth login` to add one.'))
         return
     }
 

@@ -1,3 +1,4 @@
+import { printEmpty } from '@doist/cli-core'
 import chalk from 'chalk'
 import { searchHelpCenter } from '../../lib/help-center.js'
 import { withSpinner } from '../../lib/spinner.js'
@@ -19,13 +20,13 @@ export async function searchHelpCenterArticles(
         searchHelpCenter(trimmedQuery, { locale, limit: options.limit }),
     )
 
-    if (options.json) {
-        console.log(JSON.stringify(results, null, 2))
+    if (results.length === 0) {
+        printEmpty({ options, message: `No Help Center articles found for "${trimmedQuery}".` })
         return
     }
 
-    if (results.length === 0) {
-        console.log(`No Help Center articles found for "${trimmedQuery}".`)
+    if (options.json) {
+        console.log(JSON.stringify(results, null, 2))
         return
     }
 
