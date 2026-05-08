@@ -23,9 +23,17 @@ export type TdGlobalArgs = GlobalArgs & {
 /** Back-compat alias — todoist-cli historically exported `GlobalArgs`. */
 export type { TdGlobalArgs as GlobalArgs }
 
-function parseTdLocalFlags(argv: string[]): { user: string | undefined; raw: boolean } {
+type LocalFlags = {
+    user: string | undefined
+    raw: boolean
+    /** Set when `--progress-jsonl <path>` (space form) supplied a value. */
+    progressJsonlPath: string | undefined
+}
+
+function parseTdLocalFlags(argv: string[]): LocalFlags {
     let user: string | undefined
     let raw = false
+    let progressJsonlPath: string | undefined
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i]
         if (arg === '--') break
@@ -42,22 +50,43 @@ function parseTdLocalFlags(argv: string[]): { user: string | undefined; raw: boo
             }
         } else if (arg.startsWith('--user=')) {
             user = arg.slice('--user='.length)
+        } else if (
+            arg === '--progress-jsonl' &&
+            i + 1 < argv.length &&
+            !argv[i + 1].startsWith('-')
+        ) {
+            // Commander's `--progress-jsonl [path]` declaration accepts the
+            // space-separated form, so the pre-commander parser has to too —
+            // otherwise the path is silently dropped and the tracker writes
+            // to stderr while commander stores the path. cli-core 0.5.0
+            // intentionally drops this form (cross-CLI it can swallow
+            // positionals); todoist-cli keeps it because the flag is global,
+            // not subcommand-attached.
+            i++
+            progressJsonlPath = argv[i]
         }
     }
-    return { user, raw }
+    return { user, raw, progressJsonlPath }
 }
 
 /**
  * Parse well-known global flags from an argv array. Pure — pass an explicit
  * array for testing, or omit to read `process.argv.slice(2)`.
  *
- * `--progress-jsonl` accepts only the bare form (output to stderr) and
- * `--progress-jsonl=path`. The space-separated form is intentionally
- * unsupported (would silently consume the next positional arg).
+ * `--progress-jsonl` supports `--progress-jsonl` (bare → stderr),
+ * `--progress-jsonl=<path>`, and `--progress-jsonl <path>` (space form),
+ * mirroring commander's `[path]` declaration.
  */
 export function parseGlobalArgs(argv?: string[]): TdGlobalArgs {
     const args = argv ?? process.argv.slice(2)
-    return { ...parseCoreGlobalArgs(args), ...parseTdLocalFlags(args) }
+    const base = parseCoreGlobalArgs(args)
+    const { user, raw, progressJsonlPath } = parseTdLocalFlags(args)
+    return {
+        ...base,
+        user,
+        raw,
+        progressJsonl: progressJsonlPath !== undefined ? progressJsonlPath : base.progressJsonl,
+    }
 }
 
 const store = createGlobalArgsStore<TdGlobalArgs>(() => parseGlobalArgs())

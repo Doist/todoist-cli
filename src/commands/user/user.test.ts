@@ -84,6 +84,29 @@ describe('user command', () => {
             expect(lines).toContain('default')
         })
 
+        it('emits one JSON value per line for --ndjson with stored accounts', async () => {
+            mockListStoredUsers.mockResolvedValue([
+                { id: '1', email: 'a@b.c', auth_mode: 'read-write' },
+                { id: '2', email: 'd@e.f', auth_mode: 'read-only' },
+            ])
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '2' },
+                users: [],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'list', '--ndjson'])
+
+            const output = consoleSpy.mock.calls[0][0] as string
+            const lines = output.split('\n')
+            expect(lines).toHaveLength(2)
+            const first = JSON.parse(lines[0])
+            const second = JSON.parse(lines[1])
+            expect(first).toMatchObject({ id: '1', email: 'a@b.c', isDefault: false })
+            expect(second).toMatchObject({ id: '2', email: 'd@e.f', isDefault: true })
+            expect(output.endsWith('\n')).toBe(false) // no trailing newline within payload
+        })
+
         it('outputs JSON when --json given', async () => {
             mockListStoredUsers.mockResolvedValue([
                 { id: '1', email: 'a@b.c', auth_mode: 'read-write' },

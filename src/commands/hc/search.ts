@@ -1,4 +1,4 @@
-import { printEmpty } from '@doist/cli-core'
+import { formatJson, formatNdjson, printEmpty } from '@doist/cli-core'
 import chalk from 'chalk'
 import { searchHelpCenter } from '../../lib/help-center.js'
 import { withSpinner } from '../../lib/spinner.js'
@@ -27,12 +27,12 @@ export async function searchHelpCenterArticles(
     }
 
     if (options.json) {
-        console.log(JSON.stringify(results, null, 2))
+        console.log(formatJson(results))
         return
     }
 
     if (options.ndjson) {
-        console.log(results.map((r) => JSON.stringify(r)).join('\n'))
+        console.log(formatNdjson(results))
         return
     }
 

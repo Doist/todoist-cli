@@ -65,6 +65,7 @@ The CLI can hold credentials for multiple Todoist accounts at once.
 ```bash
 td auth login                       # adds the account; first one becomes default
 td user list                        # all stored accounts (with default marker)
+td user list --json                 # array of accounts with auth metadata (--ndjson also supported)
 td user use <id|email>              # set the default account (alias: td user default)
 td user current                     # show the active account
 td user remove <id|email>           # delete an account (and its token)
@@ -251,6 +252,7 @@ td reminder location get id:456
 td hc
 td hc --help
 td hc locale --set-default pt-br
+td hc search "filters" --ndjson     # one article per line for scripts (--json also supported)
 td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 ```
 
