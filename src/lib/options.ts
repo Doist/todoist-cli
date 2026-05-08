@@ -1,6 +1,6 @@
-export type ViewOptions = {
-    json?: boolean
-    ndjson?: boolean
+import type { ViewOptions as CoreViewOptions } from '@doist/cli-core'
+
+export type ViewOptions = CoreViewOptions & {
     full?: boolean
     raw?: boolean
     showUrls?: boolean
