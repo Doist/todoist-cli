@@ -183,8 +183,12 @@ describe('parseGlobalArgs', () => {
             expect(parseGlobalArgs(['--progress-jsonl=/tmp/out']).progressJsonl).toBe('/tmp/out')
         })
 
-        it('extracts value from next arg', () => {
-            expect(parseGlobalArgs(['--progress-jsonl', '/tmp/out']).progressJsonl).toBe('/tmp/out')
+        it('does NOT extract value from next arg (only =path is supported)', () => {
+            // cli-core 0.5.0 deliberately drops the space-separated form so
+            // `td task add --progress-jsonl "Buy milk"` doesn't silently
+            // treat `Buy milk` as a file path. Use --progress-jsonl=path.
+            const result = parseGlobalArgs(['--progress-jsonl', '/tmp/out'])
+            expect(result.progressJsonl).toBe(true)
         })
 
         it('does not consume next arg if it starts with -', () => {

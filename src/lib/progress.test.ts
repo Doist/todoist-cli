@@ -69,7 +69,9 @@ describe('ProgressTracker', () => {
                 true,
             ],
             [
-                'enabled with --progress-jsonl path as separate arg',
+                // Space-separated path is not parsed as a value (cli-core
+                // 0.5.0 spec); the bare flag still enables the tracker.
+                'enabled with --progress-jsonl followed by a separate token',
                 ['node', 'td', 'today', '--progress-jsonl', '/tmp/progress.jsonl'],
                 true,
             ],
@@ -102,11 +104,17 @@ describe('ProgressTracker', () => {
             expect(mockWriteStream.write).toHaveBeenCalled()
         })
 
-        it('should create file when path is provided as separate arg', () => {
+        it('falls back to stderr when path is provided as a separate arg (use =path instead)', () => {
+            // cli-core 0.5.0 spec: the space-separated form is unsupported
+            // because it silently consumes the next positional. The bare
+            // flag still enables the tracker, just routed to stderr.
             process.argv = ['node', 'td', 'today', '--progress-jsonl', '/tmp/progress.jsonl']
-            const _tracker = new ProgressTracker()
+            const tracker = new ProgressTracker()
 
-            expect(fs.createWriteStream).toHaveBeenCalledWith('/tmp/progress.jsonl', { flags: 'a' })
+            expect(fs.createWriteStream).not.toHaveBeenCalled()
+
+            tracker.emit({ type: 'start', command: 'today' })
+            expect(mockStderr.write).toHaveBeenCalled()
         })
 
         it('should fall back to stderr if file creation fails', () => {
