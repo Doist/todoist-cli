@@ -52,6 +52,7 @@ Notes:
         .option('--locale <locale>', LOCALE_OPTION_DESCRIPTION)
         .option('--limit <n>', 'Number of results to return (default: 10, max: 25)')
         .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
         .action((query, options) => {
             if (!query) {
                 searchCmd.help()

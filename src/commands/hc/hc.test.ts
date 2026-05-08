@@ -1,3 +1,4 @@
+import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -81,6 +82,16 @@ describe('hc command', () => {
         expect(String(fetchSpy.mock.calls[0][0])).toContain(
             '/api/v2/help_center/articles/search?query=notifications&locale=en-us&per_page=10',
         )
+    })
+
+    describeEmptyMachineOutput('hc search empty machine output contract', {
+        setup: () => {
+            fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+        },
+        run: async (extraArgs) => {
+            await createProgram().parseAsync(['node', 'td', 'hc', 'search', 'nope', ...extraArgs])
+        },
+        humanMessage: 'No Help Center articles found for "nope".',
     })
 
     it('returns bounded JSON search results without article bodies', async () => {

@@ -6,6 +6,7 @@ import { getDefaultUserId } from '../../lib/users.js'
 
 export interface ListUsersOptions {
     json?: boolean
+    ndjson?: boolean
 }
 
 export async function listUsersCommand(options: ListUsersOptions): Promise<void> {
@@ -21,22 +22,23 @@ export async function listUsersCommand(options: ListUsersOptions): Promise<void>
         return
     }
 
+    const projected = users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        isDefault: u.id === defaultId,
+        authMode: u.auth_mode,
+        authScope: u.auth_scope,
+        authFlags: u.auth_flags,
+        storage: u.api_token ? 'config-file' : 'secure-store',
+    }))
+
     if (options.json) {
-        console.log(
-            JSON.stringify(
-                users.map((u) => ({
-                    id: u.id,
-                    email: u.email,
-                    isDefault: u.id === defaultId,
-                    authMode: u.auth_mode,
-                    authScope: u.auth_scope,
-                    authFlags: u.auth_flags,
-                    storage: u.api_token ? 'config-file' : 'secure-store',
-                })),
-                null,
-                2,
-            ),
-        )
+        console.log(JSON.stringify(projected, null, 2))
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(projected.map((u) => JSON.stringify(u)).join('\n'))
         return
     }
 

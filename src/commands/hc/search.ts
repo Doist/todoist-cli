@@ -6,6 +6,7 @@ import { resolveDefaultHelpCenterLocale } from './locale.js'
 
 export interface SearchHelpCenterOptions {
     json?: boolean
+    ndjson?: boolean
     limit?: string
     locale?: string
 }
@@ -27,6 +28,11 @@ export async function searchHelpCenterArticles(
 
     if (options.json) {
         console.log(JSON.stringify(results, null, 2))
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(results.map((r) => JSON.stringify(r)).join('\n'))
         return
     }
 

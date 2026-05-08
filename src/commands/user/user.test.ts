@@ -1,3 +1,4 @@
+import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -54,11 +55,14 @@ describe('user command', () => {
     })
 
     describe('list', () => {
-        it('prints a hint when no users are stored', async () => {
-            mockListStoredUsers.mockResolvedValue([])
-            await createProgram().parseAsync(['node', 'td', 'user', 'list'])
-
-            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('No stored Todoist accounts')
+        describeEmptyMachineOutput('empty machine output contract', {
+            setup: () => {
+                mockListStoredUsers.mockResolvedValue([])
+            },
+            run: async (extraArgs) => {
+                await createProgram().parseAsync(['node', 'td', 'user', 'list', ...extraArgs])
+            },
+            humanMessage: /No stored Todoist accounts/,
         })
 
         it('marks the default user', async () => {
