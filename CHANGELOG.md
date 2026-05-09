@@ -1,3 +1,9 @@
+## [1.62.1](https://github.com/Doist/todoist-cli/compare/v1.62.0...v1.62.1) (2026-05-09)
+
+### Bug Fixes
+
+* **deps:** bump @doist/todoist-sdk to 10.1.3 for Node 26 gzip fix ([#320](https://github.com/Doist/todoist-cli/issues/320)) ([022d634](https://github.com/Doist/todoist-cli/commit/022d634df37d2aa22e8c6f78c2450c7f7dfedf92))
+
 ## [1.62.0](https://github.com/Doist/todoist-cli/compare/v1.61.2...v1.62.0) (2026-05-07)
 
 ### Features
