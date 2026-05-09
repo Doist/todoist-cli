@@ -47,7 +47,7 @@ export function attachTodoistLoginCommand(auth: Command): Command {
         openBrowser: async (url) => {
             await open(url)
         },
-        onSuccess: (account, view) => {
+        onSuccess: ({ account, view }) => {
             if (view.json) {
                 console.log(formatJson({ displayName: 'Todoist', account }))
                 return
