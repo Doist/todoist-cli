@@ -1,6 +1,29 @@
 import { AUTH_FLAG_ORDER, type AuthFlag } from './config.js'
 import { CliError } from './errors.js'
 
+/** Base OAuth scopes for read-write logins (the default). */
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
+/** Base OAuth scope for `--read-only` logins. */
+export const READ_ONLY_SCOPES = 'data:read'
+
+export type AuthScopeOptions = {
+    readOnly?: boolean
+    additionalScopes?: readonly AdditionalScopeFlag[]
+}
+
+/**
+ * Build the comma-separated scope string Todoist expects on the authorize
+ * URL. Combines the base grant (read-write or read-only) with any opt-in
+ * additional scopes, in canonical order.
+ */
+export function resolveAuthScope(options: AuthScopeOptions): string {
+    const parts = [options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES]
+    for (const scope of options.additionalScopes ?? []) {
+        parts.push(oauthScopeFor(scope))
+    }
+    return parts.join(',')
+}
+
 /**
  * Additional OAuth scopes that can be requested on top of the base data grant
  * via `td auth login --additional-scopes=...`. `read-only` is intentionally

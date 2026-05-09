@@ -1,6 +1,6 @@
-import { Command } from 'commander'
+import type { Command } from 'commander'
 import { formatScopesHelp } from '../../lib/oauth-scopes.js'
-import { loginWithOAuth } from './login.js'
+import { attachLoginCommand } from './login.js'
 import { logout } from './logout.js'
 import { showStatus } from './status.js'
 import { viewToken } from './token-view.js'
@@ -9,20 +9,7 @@ import { loginWithToken } from './token.js'
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    auth.command('login')
-        .description('Authenticate with Todoist via OAuth')
-        .option('--read-only', 'Authenticate with read-only scope (data:read)')
-        .option(
-            '--additional-scopes <list>',
-            'Comma-separated opt-in OAuth scopes (see list below). The flag may be repeated; every occurrence is merged.',
-            // Commander treats this as a scalar by default, so repeated uses
-            // (`--additional-scopes=a --additional-scopes=b`) would silently
-            // drop earlier values. Concatenate into one comma-separated string
-            // and let parseScopesOption split/dedupe/validate as usual.
-            (value: string, prev: string | undefined) => (prev ? `${prev},${value}` : value),
-        )
-        .addHelpText('after', formatScopesHelp())
-        .action(loginWithOAuth)
+    attachLoginCommand(auth).addHelpText('after', formatScopesHelp())
 
     // `token` is a hybrid: it accepts a positional `[token]` (save) and also
     // exposes subcommands (`view`). Commander matches subcommand names before

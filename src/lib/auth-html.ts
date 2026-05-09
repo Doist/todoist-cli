@@ -1,8 +1,11 @@
-import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http'
-
-export const DEFAULT_PORT = 8765
-const MAX_PORT_ATTEMPTS = 5
-const TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes
+/**
+ * Branded HTML pages served by the OAuth callback server. Wired into
+ * cli-core's `registerAuthCommand` via the `renderSuccess` / `renderError`
+ * options so the runtime stays generic while the CLI keeps its branding.
+ *
+ * The two consts (SUCCESS_HTML / ERROR_HTML) were lifted verbatim from the
+ * pre-cli-core `src/lib/oauth-server.ts` to preserve the existing UX.
+ */
 
 const SUCCESS_HTML = `
 <!DOCTYPE html>
@@ -710,118 +713,10 @@ const ERROR_HTML = (message: string) => `
 </html>
 `
 
-export function getRedirectUri(port: number): string {
-    return `http://localhost:${port}/callback`
+export function renderAuthSuccessPage(): string {
+    return SUCCESS_HTML
 }
 
-function tryListen(server: Server, port: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-        server.once('error', reject)
-        server.listen(port, () => {
-            server.removeListener('error', reject)
-            resolve()
-        })
-    })
-}
-
-export async function startCallbackServer(expectedState: string): Promise<{
-    promise: Promise<string>
-    port: number
-    cleanup: () => void
-}> {
-    let timeoutId: NodeJS.Timeout | null = null
-    let boundPort = DEFAULT_PORT
-
-    const server = createServer()
-
-    let closed = false
-    const cleanup = () => {
-        if (closed) return
-        closed = true
-        if (timeoutId) {
-            clearTimeout(timeoutId)
-            timeoutId = null
-        }
-        server.close()
-    }
-
-    // Find an available port
-    for (let port = DEFAULT_PORT; port < DEFAULT_PORT + MAX_PORT_ATTEMPTS; port++) {
-        try {
-            await tryListen(server, port)
-            boundPort = port
-            break
-        } catch (err: unknown) {
-            if (
-                err instanceof Error &&
-                'code' in err &&
-                (err as NodeJS.ErrnoException).code === 'EADDRINUSE'
-            ) {
-                if (port === DEFAULT_PORT + MAX_PORT_ATTEMPTS - 1) {
-                    throw new Error(
-                        `Could not find an available port (tried ${DEFAULT_PORT}-${DEFAULT_PORT + MAX_PORT_ATTEMPTS - 1})`,
-                    )
-                }
-                continue
-            }
-            throw err
-        }
-    }
-
-    const promise = new Promise<string>((resolve, reject) => {
-        server.on('request', (req: IncomingMessage, res: ServerResponse) => {
-            const url = new URL(req.url || '/', `http://localhost:${boundPort}`)
-
-            if (url.pathname !== '/callback') {
-                res.writeHead(404)
-                res.end('Not found')
-                return
-            }
-
-            const code = url.searchParams.get('code')
-            const state = url.searchParams.get('state')
-            const error = url.searchParams.get('error')
-
-            if (error) {
-                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
-                res.end(ERROR_HTML(error))
-                cleanup()
-                reject(new Error(`OAuth error: ${error}`))
-                return
-            }
-
-            if (!code || !state) {
-                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
-                res.end(ERROR_HTML('Missing code or state parameter'))
-                cleanup()
-                reject(new Error('Missing code or state parameter'))
-                return
-            }
-
-            if (state !== expectedState) {
-                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' })
-                res.end(ERROR_HTML('Invalid state parameter (possible CSRF attack)'))
-                cleanup()
-                reject(new Error('Invalid state parameter'))
-                return
-            }
-
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-            res.end(SUCCESS_HTML)
-            cleanup()
-            resolve(code)
-        })
-
-        server.on('error', (err) => {
-            cleanup()
-            reject(err)
-        })
-
-        timeoutId = setTimeout(() => {
-            cleanup()
-            reject(new Error('OAuth callback timed out'))
-        }, TIMEOUT_MS)
-    })
-
-    return { promise, port: boundPort, cleanup }
+export function renderAuthErrorPage(message: string): string {
+    return ERROR_HTML(message)
 }
