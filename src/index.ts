@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
-import { CliError as BaseCliError } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
-import { CliError } from './lib/errors.js'
+import { BaseCliError, CliError } from './lib/errors.js'
 import {
     getRequestedUserRef,
     isJsonMode,

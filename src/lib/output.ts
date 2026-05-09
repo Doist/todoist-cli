@@ -1,13 +1,9 @@
-import {
-    type CliError as BaseCliError,
-    formatJson as formatJsonCore,
-    formatNdjson as formatNdjsonCore,
-} from '@doist/cli-core'
+import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
-import type { ErrorType } from './errors.js'
+import { type BaseCliError, type ErrorType } from './errors.js'
 
 type AnyCliError = BaseCliError<string>
 import { isAccessible } from './global-args.js'

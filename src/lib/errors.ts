@@ -1,5 +1,6 @@
 import { CliError as BaseCliError, type CliErrorCode, type ErrorType } from '@doist/cli-core'
 
+export { BaseCliError }
 export type { ErrorType } from '@doist/cli-core'
 
 /**
