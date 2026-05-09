@@ -324,9 +324,10 @@ td doctor --offline
 td doctor --json
 
 td update --check
+td update --check --json
 td update --channel
 td update switch --stable
-td update switch --pre-release
+td update switch --pre-release --json
 
 td changelog --count 10
 ```
