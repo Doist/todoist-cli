@@ -1,9 +1,15 @@
-import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
+import {
+    type CliError as BaseCliError,
+    formatJson as formatJsonCore,
+    formatNdjson as formatNdjsonCore,
+} from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
-import type { CliError, ErrorType } from './errors.js'
+import type { ErrorType } from './errors.js'
+
+type AnyCliError = BaseCliError<string>
 import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
@@ -376,7 +382,7 @@ export function formatNdjson<T extends object>(
 }
 
 function resolveErrorParts(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): { code: string; message: string; hints: string[] | undefined; type: ErrorType } {
@@ -391,10 +397,10 @@ function resolveErrorParts(
     }
 }
 
-export function formatError(error: CliError): string
+export function formatError(error: AnyCliError): string
 export function formatError(code: string, message: string, hints?: string[]): string
 export function formatError(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): string {
@@ -410,10 +416,10 @@ export function formatError(
     return color(lines.join('\n'))
 }
 
-export function formatErrorJson(error: CliError): string
+export function formatErrorJson(error: AnyCliError): string
 export function formatErrorJson(code: string, message: string, hints?: string[]): string
 export function formatErrorJson(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): string {
