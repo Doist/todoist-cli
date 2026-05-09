@@ -52,11 +52,9 @@ src/
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
 │  │                      # notifications, reminders, stats, user-settings, uploads)
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
-├─ test-support/
-│  ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
-│  └─ fixtures.ts         # Sample task/project/label/section fixtures
-└─ types/
-   └─ marked-terminal-renderer.d.ts  # Type declarations for marked-terminal-renderer
+└─ test-support/
+   ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
+   └─ fixtures.ts         # Sample task/project/label/section fixtures
 ```
 
 ## Architecture flow
@@ -268,7 +266,10 @@ file, or a token stored in the OS credential manager via `td auth login`.
 - Mutating commands (`add`/`create`/`update`): always support `--json`
   emitting `formatJson(result, entityType)` — see AGENTS.md
 - User-facing errors: throw `CliError(code, message, hints?)` from
-  `src/lib/errors.ts`; global `parseAsync().catch` in `src/index.ts` renders it
+  `src/lib/errors.ts`; the global `parseAsync().catch` in `src/index.ts`
+  renders it. The same handler also catches `BaseCliError` (re-exported
+  from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers
+  route through the same path
 - Global flags handled in `src/lib/global-args.ts` — check `isJsonMode()` etc.
   before printing
 
