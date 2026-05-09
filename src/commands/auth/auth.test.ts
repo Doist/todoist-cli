@@ -24,15 +24,17 @@ vi.mock('../../lib/api/core.js', () => ({
 // Mock chalk to avoid colors in tests
 vi.mock('chalk')
 
-// Mock cli-core's auth registrar so the login subcommand never actually drives
-// the OAuth flow. The original todoist-local OAuth tests were dropped when
-// `pkce` / `oauth` / `oauth-server` moved to cli-core; cli-core has its own
-// runtime + registrar tests.
+// Mock cli-core's login registrar so the login subcommand never actually
+// drives the OAuth flow. The original todoist-local OAuth tests were dropped
+// when `pkce` / `oauth` / `oauth-server` moved to cli-core; cli-core has its
+// own runtime + registrar tests.
 vi.mock('@doist/cli-core/auth', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
     return {
         ...actual,
-        registerAuthCommand: vi.fn(),
+        attachLoginCommand: vi.fn((parent: { command: (name: string) => unknown }) =>
+            parent.command('login'),
+        ),
     }
 })
 

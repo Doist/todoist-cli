@@ -1,6 +1,5 @@
 import type { Command } from 'commander'
-import { formatScopesHelp } from '../../lib/oauth-scopes.js'
-import { attachLoginCommand } from './login.js'
+import { attachTodoistLoginCommand } from './login.js'
 import { logout } from './logout.js'
 import { showStatus } from './status.js'
 import { viewToken } from './token-view.js'
@@ -9,7 +8,7 @@ import { loginWithToken } from './token.js'
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    attachLoginCommand(auth).addHelpText('after', formatScopesHelp())
+    attachTodoistLoginCommand(auth)
 
     // `token` is a hybrid: it accepts a positional `[token]` (save) and also
     // exposes subcommands (`view`). Commander matches subcommand names before
