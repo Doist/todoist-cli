@@ -165,7 +165,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
 - **`usage-tracking.ts`** — request markers (`User-Agent`, `doist-*`,
-  `X-TD-*`, including `X-TD-CLI-Command`), session/request ids, command path
+  `request-id`, `session-id`, `cli-command`), session/request ids, command path
 - **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
 
