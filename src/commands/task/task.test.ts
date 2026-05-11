@@ -1698,6 +1698,31 @@ describe('task update --no-labels', () => {
         })
         consoleSpy.mockRestore()
     })
+
+    it('previews --no-labels with --dry-run without calling API', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            labels: ['deep', 'quick'],
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--no-labels',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(remove all)'))
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('task add/update --uncompletable', () => {
