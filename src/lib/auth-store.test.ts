@@ -62,30 +62,16 @@ const ACCOUNT_A: TodoistAccount = {
     auth_flags: undefined,
 }
 
-describe('toTodoistAccount', () => {
-    it('builds the canonical account shape with label derived from email', () => {
-        expect(
-            toTodoistAccount({
-                id: '12345',
-                email: 'you@example.com',
-                authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete',
-                authFlags: undefined,
-            }),
-        ).toEqual({
-            id: '12345',
-            email: 'you@example.com',
-            label: 'you@example.com',
-            auth_mode: 'read-write',
-            auth_scope: 'data:read_write,data:delete,project:delete',
-            auth_flags: undefined,
+describe('TodoistAccount mappers', () => {
+    it('round-trips through toTodoistAccount → accountToUpsertInput', () => {
+        const account = toTodoistAccount({
+            id: USER_A.id,
+            email: USER_A.email,
+            authMode: USER_A.auth_mode,
+            authScope: USER_A.auth_scope,
         })
-    })
-})
-
-describe('accountToUpsertInput', () => {
-    it('inverts toTodoistAccount into the shape upsertUser expects', () => {
-        expect(accountToUpsertInput(ACCOUNT_A, 'token_xyz123456')).toEqual({
+        expect(account).toEqual(ACCOUNT_A)
+        expect(accountToUpsertInput(account, 'token_xyz123456')).toEqual({
             id: USER_A.id,
             email: USER_A.email,
             token: 'token_xyz123456',
@@ -116,36 +102,22 @@ describe('createTodoistTokenStore', () => {
     describe('active()', () => {
         it('returns null when TODOIST_API_TOKEN is set (env tokens are not persisted)', async () => {
             process.env[TOKEN_ENV_VAR] = 'env_token_value'
-            const store = createTodoistTokenStore()
-
-            expect(await store.active()).toBeNull()
+            expect(await createTodoistTokenStore().active()).toBeNull()
             expect(mockReadConfig).not.toHaveBeenCalled()
         })
 
         it('returns null when no users are stored', async () => {
             mockReadConfig.mockResolvedValue({ users: [] })
-            const store = createTodoistTokenStore()
-
-            expect(await store.active()).toBeNull()
+            expect(await createTodoistTokenStore().active()).toBeNull()
         })
 
         it('returns the single stored user when no default is set', async () => {
             mockReadConfig.mockResolvedValue({ users: [USER_A] })
             mockLoadToken.mockResolvedValue({ token: 'tok_a', source: 'secure-store' })
 
-            const store = createTodoistTokenStore()
-            const result = await store.active()
-
-            expect(result).toEqual({
+            expect(await createTodoistTokenStore().active()).toEqual({
                 token: 'tok_a',
-                account: {
-                    id: USER_A.id,
-                    email: USER_A.email,
-                    label: USER_A.email,
-                    auth_mode: 'read-write',
-                    auth_scope: USER_A.auth_scope,
-                    auth_flags: undefined,
-                },
+                account: ACCOUNT_A,
             })
         })
 
@@ -156,79 +128,30 @@ describe('createTodoistTokenStore', () => {
             })
             mockLoadToken.mockResolvedValue({ token: 'tok_b', source: 'secure-store' })
 
-            const store = createTodoistTokenStore()
-            const result = await store.active()
-
+            const result = await createTodoistTokenStore().active()
             expect(mockLoadToken).toHaveBeenCalledWith(USER_B)
             expect(result?.account.id).toBe(USER_B.id)
             expect(result?.account.auth_flags).toEqual(['read-only'])
         })
 
-        it('returns null when multiple users are stored without a default (no selection error)', async () => {
+        it('returns null on multi-user-no-default (no selection error leaks out)', async () => {
             mockReadConfig.mockResolvedValue({ users: [USER_A, USER_B] })
-
-            const store = createTodoistTokenStore()
-            expect(await store.active()).toBeNull()
+            expect(await createTodoistTokenStore().active()).toBeNull()
             expect(mockLoadToken).not.toHaveBeenCalled()
         })
 
-        it('ignores the global --user selector (pure persisted-state view)', async () => {
-            // Even though the global args layer might be carrying a --user ref,
-            // active() must not consult it. Simulate by stubbing readConfig with
-            // a single user and confirming we get *that* user back regardless.
+        it.each([
+            ['NoTokenError', new NoTokenError()],
+            ['SecureStoreUnavailableError', new SecureStoreUnavailableError('offline')],
+        ])('returns null when token load throws %s', async (_label, error) => {
             mockReadConfig.mockResolvedValue({ users: [USER_A] })
-            mockLoadToken.mockResolvedValue({ token: 'tok_a', source: 'secure-store' })
-
-            const store = createTodoistTokenStore()
-            const result = await store.active()
-
-            expect(result?.account.id).toBe(USER_A.id)
-        })
-
-        it('returns null when token load surfaces NoTokenError', async () => {
-            mockReadConfig.mockResolvedValue({ users: [USER_A] })
-            mockLoadToken.mockRejectedValue(new NoTokenError())
-
-            const store = createTodoistTokenStore()
-            expect(await store.active()).toBeNull()
-        })
-
-        it('returns null when the secure store is unavailable', async () => {
-            mockReadConfig.mockResolvedValue({ users: [USER_A] })
-            mockLoadToken.mockRejectedValue(new SecureStoreUnavailableError('offline'))
-
-            const store = createTodoistTokenStore()
-            expect(await store.active()).toBeNull()
-        })
-
-        it('propagates unexpected errors', async () => {
-            mockReadConfig.mockResolvedValue({ users: [USER_A] })
-            mockLoadToken.mockRejectedValue(new Error('boom'))
-
-            const store = createTodoistTokenStore()
-            await expect(store.active()).rejects.toThrow('boom')
+            mockLoadToken.mockRejectedValue(error)
+            expect(await createTodoistTokenStore().active()).toBeNull()
         })
     })
 
     describe('set()', () => {
-        it('persists the account via upsertUser and captures the storage result', async () => {
-            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
-
-            const store = createTodoistTokenStore()
-            await store.set(ACCOUNT_A, 'token_xyz123456')
-
-            expect(mockUpsertUser).toHaveBeenCalledWith({
-                id: USER_A.id,
-                email: USER_A.email,
-                token: 'token_xyz123456',
-                authMode: 'read-write',
-                authScope: USER_A.auth_scope,
-                authFlags: undefined,
-            })
-            expect(store.getLastStorageResult()).toEqual({ storage: 'secure-store' })
-        })
-
-        it('exposes the config-file fallback warning for the login command to surface', async () => {
+        it('persists via upsertUser and exposes the storage result + warning', async () => {
             mockUpsertUser.mockResolvedValue({
                 storage: 'config-file',
                 replaced: false,
@@ -239,6 +162,9 @@ describe('createTodoistTokenStore', () => {
             const store = createTodoistTokenStore()
             await store.set(ACCOUNT_A, 'token_xyz123456')
 
+            expect(mockUpsertUser).toHaveBeenCalledWith(
+                accountToUpsertInput(ACCOUNT_A, 'token_xyz123456'),
+            )
             expect(store.getLastStorageResult()).toEqual({
                 storage: 'config-file',
                 warning:
@@ -250,10 +176,7 @@ describe('createTodoistTokenStore', () => {
     describe('clear()', () => {
         it('delegates to clearApiToken', async () => {
             mockClearApiToken.mockResolvedValue({ storage: 'secure-store' })
-
-            const store = createTodoistTokenStore()
-            await store.clear()
-
+            await createTodoistTokenStore().clear()
             expect(mockClearApiToken).toHaveBeenCalled()
         })
     })

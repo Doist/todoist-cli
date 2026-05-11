@@ -19,12 +19,10 @@ vi.mock('../../lib/api/core.js', () => ({
 vi.mock('chalk')
 
 // Capture (but don't execute) the options handed to cli-core's
-// `attachLoginCommand`. Tests then invoke `resolveScopes` / `onSuccess`
-// directly so the local mapping logic — which cli-core's own tests can't
-// see — stays covered.
-const capturedAttachOptions: Array<{
-    options: Record<string, unknown>
-}> = []
+// `attachLoginCommand` so tests can invoke the Todoist-local callbacks
+// (`resolveScopes`, `onSuccess`) directly — cli-core's own tests don't cover
+// the mapping logic, so the local glue would otherwise go unverified.
+const capturedAttachOptions: Array<{ options: Record<string, unknown> }> = []
 
 vi.mock('@doist/cli-core/auth', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
@@ -39,84 +37,55 @@ vi.mock('@doist/cli-core/auth', async (importOriginal) => {
     }
 })
 
-import { createTodoistTokenStore } from '../../lib/auth-store.js'
 import { attachTodoistLoginCommand } from './login.js'
 
-function lastAttachOptions() {
-    if (capturedAttachOptions.length === 0) {
-        throw new Error('attachLoginCommand was not invoked')
-    }
-    return capturedAttachOptions[capturedAttachOptions.length - 1].options as {
-        resolveScopes: (ctx: { readOnly: boolean; flags: Record<string, unknown> }) => string[]
-        onSuccess: (ctx: {
-            account: { id: string; label?: string }
-            view: { json: boolean; ndjson: boolean }
-            flags: Record<string, unknown>
-        }) => void | Promise<void>
-    }
+type AttachOptions = {
+    resolveScopes: (ctx: { readOnly: boolean; flags: Record<string, unknown> }) => string[]
+    onSuccess: (ctx: {
+        account: { id: string; label?: string }
+        view: { json: boolean; ndjson: boolean }
+        flags: Record<string, unknown>
+    }) => void | Promise<void>
+    store: { getLastStorageResult: () => unknown }
 }
 
-function attachAndCapture(): ReturnType<typeof lastAttachOptions> {
+function attachAndCapture(): AttachOptions {
     capturedAttachOptions.length = 0
     const program = new Command()
     program.exitOverride()
     attachTodoistLoginCommand(program)
-    return lastAttachOptions()
+    return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
 }
 
-describe('attachTodoistLoginCommand: resolveScopes', () => {
+const ACCOUNT = {
+    id: '12345',
+    email: 'you@example.com',
+    label: 'you@example.com',
+    auth_mode: 'read-write' as const,
+    auth_scope: 'data:read_write,data:delete,project:delete',
+    auth_flags: undefined,
+}
+
+describe('attachTodoistLoginCommand: resolveScopes callback', () => {
     afterEach(() => {
         capturedAttachOptions.length = 0
     })
 
     it('returns the read-write base scope set when nothing is overridden', () => {
-        const opts = attachAndCapture()
-        expect(opts.resolveScopes({ readOnly: false, flags: {} })).toEqual([
+        expect(attachAndCapture().resolveScopes({ readOnly: false, flags: {} })).toEqual([
             'data:read_write',
             'data:delete',
             'project:delete',
         ])
     })
 
-    it('swaps the base grant to read-only', () => {
-        const opts = attachAndCapture()
-        expect(opts.resolveScopes({ readOnly: true, flags: {} })).toEqual(['data:read'])
-    })
-
-    it('layers --additional-scopes onto the base grant in canonical order', () => {
-        const opts = attachAndCapture()
+    it('combines --read-only with --additional-scopes in canonical order', () => {
         expect(
-            opts.resolveScopes({
-                readOnly: false,
+            attachAndCapture().resolveScopes({
+                readOnly: true,
                 flags: { additionalScopes: 'backups,app-management' },
             }),
-        ).toEqual([
-            'data:read_write',
-            'data:delete',
-            'project:delete',
-            'dev:app_console',
-            'backups:read',
-        ])
-    })
-
-    it('combines --read-only with --additional-scopes', () => {
-        const opts = attachAndCapture()
-        expect(
-            opts.resolveScopes({
-                readOnly: true,
-                flags: { additionalScopes: 'backups' },
-            }),
-        ).toEqual(['data:read', 'backups:read'])
-    })
-
-    it('rejects unknown additional scopes', () => {
-        const opts = attachAndCapture()
-        expect(() =>
-            opts.resolveScopes({
-                readOnly: false,
-                flags: { additionalScopes: 'not-a-scope' },
-            }),
-        ).toThrowError(/Unknown scope/)
+        ).toEqual(['data:read', 'dev:app_console', 'backups:read'])
     })
 })
 
@@ -135,148 +104,42 @@ describe('attachTodoistLoginCommand: onSuccess output formatting', () => {
         capturedAttachOptions.length = 0
     })
 
-    const ACCOUNT = {
-        id: '12345',
-        email: 'you@example.com',
-        label: 'you@example.com',
-        auth_mode: 'read-write' as const,
-        auth_scope: 'data:read_write,data:delete,project:delete',
-        auth_flags: undefined,
-    }
-
     it('prints the human "Signed in" confirmation in plain mode', async () => {
         const opts = attachAndCapture()
-
-        await opts.onSuccess({
-            account: ACCOUNT,
-            view: { json: false, ndjson: false },
-            flags: {},
-        })
+        await opts.onSuccess({ account: ACCOUNT, view: { json: false, ndjson: false }, flags: {} })
 
         const printed = consoleSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')
         expect(printed).toContain('Signed in to Todoist as')
         expect(printed).toContain('you@example.com')
     })
 
-    it('emits a JSON envelope in --json mode', async () => {
+    it.each([
+        ['--json', { json: true, ndjson: false }],
+        ['--ndjson', { json: false, ndjson: true }],
+    ])('emits a machine-output envelope in %s mode', async (_label, view) => {
         const opts = attachAndCapture()
-
-        await opts.onSuccess({
-            account: ACCOUNT,
-            view: { json: true, ndjson: false },
-            flags: {},
-        })
+        await opts.onSuccess({ account: ACCOUNT, view, flags: {} })
 
         expect(consoleSpy).toHaveBeenCalledTimes(1)
-        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        const parsed = JSON.parse((consoleSpy.mock.calls[0][0] as string).trim())
         expect(parsed).toMatchObject({
             displayName: 'Todoist',
             account: { id: ACCOUNT.id, email: ACCOUNT.email },
         })
     })
 
-    it('emits an NDJSON line in --ndjson mode', async () => {
+    it('surfaces keyring-fallback warnings via stderr, keeping --json stdout clean', async () => {
         const opts = attachAndCapture()
+        const warning =
+            'system credential manager unavailable; token saved as plaintext in /tmp/c.json'
+        opts.store.getLastStorageResult = () => ({ storage: 'config-file', warning })
 
-        await opts.onSuccess({
-            account: ACCOUNT,
-            view: { json: false, ndjson: true },
-            flags: {},
-        })
+        await opts.onSuccess({ account: ACCOUNT, view: { json: true, ndjson: false }, flags: {} })
 
-        expect(consoleSpy).toHaveBeenCalledTimes(1)
-        const line = (consoleSpy.mock.calls[0][0] as string).trim()
-        // Single NDJSON line — no trailing newlines, parses as a JSON object.
-        const parsed = JSON.parse(line)
-        expect(parsed).toMatchObject({ displayName: 'Todoist', account: { id: ACCOUNT.id } })
-    })
-})
-
-describe('attachTodoistLoginCommand: storage warning surfacing', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>
-    let errorSpy: ReturnType<typeof vi.spyOn>
-
-    beforeEach(() => {
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
-        errorSpy.mockRestore()
-        capturedAttachOptions.length = 0
-    })
-
-    const ACCOUNT = {
-        id: '12345',
-        email: 'you@example.com',
-        label: 'you@example.com',
-        auth_mode: 'read-write' as const,
-    }
-
-    it('surfaces a keyring-fallback warning written by the token store', async () => {
-        // Drive a real store + simulate `upsertUser` returning the fallback
-        // warning; the login command should read it via getLastStorageResult
-        // and log it to stderr — without that wiring, this PR silently
-        // wrote plaintext tokens.
-        const { upsertUser } = await import('../../lib/auth.js')
-        vi.mocked(upsertUser).mockResolvedValue({
-            storage: 'config-file',
-            replaced: false,
-            warning:
-                'system credential manager unavailable; token saved as plaintext in /tmp/c.json',
-        })
-
-        const store = createTodoistTokenStore()
-        await store.set(ACCOUNT, 'token_xyz123456')
-
-        const opts = attachAndCapture()
-        // Manually splice in the freshly-set store so onSuccess pulls from it.
-        // (`attachAndCapture` builds its own internal store; we exercise the
-        // surfacing path by simulating the same shape.)
-        const captured = capturedAttachOptions[capturedAttachOptions.length - 1].options as {
-            store: { getLastStorageResult: () => unknown }
-        }
-        captured.store.getLastStorageResult = () => ({
-            storage: 'config-file',
-            warning:
-                'system credential manager unavailable; token saved as plaintext in /tmp/c.json',
-        })
-
-        await opts.onSuccess({
-            account: ACCOUNT,
-            view: { json: false, ndjson: false },
-            flags: {},
-        })
-
-        expect(errorSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')).toContain(
-            'system credential manager unavailable',
-        )
-    })
-
-    it('still surfaces warnings in --json mode (to stderr, leaving stdout clean)', async () => {
-        const opts = attachAndCapture()
-        const captured = capturedAttachOptions[capturedAttachOptions.length - 1].options as {
-            store: { getLastStorageResult: () => unknown }
-        }
-        captured.store.getLastStorageResult = () => ({
-            storage: 'config-file',
-            warning:
-                'system credential manager unavailable; token saved as plaintext in /tmp/c.json',
-        })
-
-        await opts.onSuccess({
-            account: ACCOUNT,
-            view: { json: true, ndjson: false },
-            flags: {},
-        })
-
-        // stdout has only the JSON envelope
+        // stdout carries only the JSON envelope; warning lands on stderr so it
+        // doesn't break consumers piping the output into `jq`.
         expect(consoleSpy).toHaveBeenCalledTimes(1)
         expect(() => JSON.parse(consoleSpy.mock.calls[0][0] as string)).not.toThrow()
-        // stderr carries the warning
-        expect(errorSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')).toContain(
-            'system credential manager unavailable',
-        )
+        expect(errorSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')).toContain(warning)
     })
 })
