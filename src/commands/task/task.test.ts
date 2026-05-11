@@ -1671,6 +1671,35 @@ describe('task update --no-due', () => {
     })
 })
 
+describe('task update --no-labels', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+    })
+
+    it('removes all labels with --no-labels', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Task',
+            labels: ['deep', 'quick'],
+        })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--no-labels'])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            labels: [],
+        })
+        consoleSpy.mockRestore()
+    })
+})
+
 describe('task add/update --uncompletable', () => {
     let mockApi: MockApi
 
