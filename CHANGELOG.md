@@ -1,3 +1,9 @@
+## [1.62.2](https://github.com/Doist/todoist-cli/compare/v1.62.1...v1.62.2) (2026-05-11)
+
+### Bug Fixes
+
+* **task:** add --no-labels flag to clear labels on update ([#327](https://github.com/Doist/todoist-cli/issues/327)) ([20d13af](https://github.com/Doist/todoist-cli/commit/20d13afac05970b98551cbf802ee47473e6d15b8)), closes [#326](https://github.com/Doist/todoist-cli/issues/326)
+
 ## [1.62.1](https://github.com/Doist/todoist-cli/compare/v1.62.0...v1.62.1) (2026-05-09)
 
 ### Bug Fixes
