@@ -389,7 +389,7 @@ export async function listStoredUsers(): Promise<StoredUser[]> {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function loadTokenForStoredUser(
+export async function loadTokenForStoredUser(
     user: StoredUser,
 ): Promise<{ token: string; source: 'secure-store' | 'config-file' }> {
     if (user.api_token?.trim()) {

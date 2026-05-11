@@ -7,11 +7,11 @@ import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.
 import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
 import { createTodoistTokenStore, type TodoistAccount } from '../../lib/auth-store.js'
 import {
-    type AdditionalScopeFlag,
+    extractAdditionalScopes,
     formatScopesHelp,
-    parseScopesOption,
     resolveAuthScope,
 } from '../../lib/oauth-scopes.js'
+import { logTokenStorageResult } from './helpers.js'
 
 const TODOIST_CALLBACK_PORT = 8765
 const TODOIST_CALLBACK_PORT_FALLBACK = 5
@@ -28,15 +28,15 @@ const TODOIST_CALLBACK_PORT_FALLBACK = 5
  * to `resolveScopes`.
  */
 export function attachTodoistLoginCommand(auth: Command): Command {
+    const store = createTodoistTokenStore()
+
     const login = attachLoginCommand<TodoistAccount>(auth, {
         provider: createTodoistAuthProvider(),
-        store: createTodoistTokenStore(),
+        store,
         preferredPort: TODOIST_CALLBACK_PORT,
         portFallbackCount: TODOIST_CALLBACK_PORT_FALLBACK,
         resolveScopes: ({ readOnly, flags }) => {
-            const additionalScopes: AdditionalScopeFlag[] = flags.additionalScopes
-                ? parseScopesOption(flags.additionalScopes as string)
-                : []
+            const additionalScopes = extractAdditionalScopes(flags)
             // resolveAuthScope returns the comma-separated string Todoist expects;
             // split into the array cli-core's PKCE provider re-joins (the provider
             // is configured with `scopeSeparator: ','`).
@@ -48,16 +48,34 @@ export function attachTodoistLoginCommand(auth: Command): Command {
             await open(url)
         },
         onSuccess: ({ account, view }) => {
+            const storage = store.getLastStorageResult()
+
             if (view.json) {
                 console.log(formatJson({ displayName: 'Todoist', account }))
-                return
-            }
-            if (view.ndjson) {
+            } else if (view.ndjson) {
                 console.log(formatNdjson([{ displayName: 'Todoist', account }]))
-                return
+            } else {
+                const label = account.label ?? account.id
+                console.log(`${chalk.green('✓')} Signed in to Todoist as ${chalk.cyan(label)}`)
             }
-            const label = account.label ?? account.id
-            console.log(`${chalk.green('✓')} Signed in to Todoist as ${chalk.cyan(label)}`)
+
+            // Surface keyring-fallback warnings regardless of view mode so a
+            // silent plaintext-storage fallback never goes unreported.
+            // `logTokenStorageResult` writes warnings to stderr, keeping the
+            // `--json` / `--ndjson` stdout envelope clean; the human "stored
+            // securely" confirmation is suppressed in machine-output mode.
+            if (storage) {
+                if (view.json || view.ndjson) {
+                    if (storage.warning) {
+                        console.error(chalk.yellow('Warning:'), storage.warning)
+                    }
+                } else {
+                    logTokenStorageResult(
+                        storage,
+                        'Token stored securely in the system credential manager',
+                    )
+                }
+            }
         },
     })
 

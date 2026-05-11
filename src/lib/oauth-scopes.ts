@@ -121,6 +121,18 @@ export function parseScopesOption(raw: string): AdditionalScopeFlag[] {
 }
 
 /**
+ * Pull `--additional-scopes` out of a Commander-style options bag and parse it
+ * into the canonical `AdditionalScopeFlag[]`. Centralises the string-typed
+ * casting + empty-string handling so `auth-provider` and the login command's
+ * `resolveScopes` callback agree on what counts as "no additional scopes".
+ */
+export function extractAdditionalScopes(flags: Record<string, unknown>): AdditionalScopeFlag[] {
+    const raw = flags.additionalScopes
+    if (typeof raw !== 'string' || raw.length === 0) return []
+    return parseScopesOption(raw)
+}
+
+/**
  * Render the `Available scopes / Examples` block appended to
  * `td auth login --help` via `.addHelpText('after', ...)`.
  */
