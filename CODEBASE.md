@@ -124,7 +124,18 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
   `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`
 - **`secure-store.ts`** — `@napi-rs/keyring` wrapper (OS credential manager)
-- **`oauth-server.ts` / `oauth.ts` / `oauth-scopes.ts` / `pkce.ts`** — OAuth flow
+- **`auth-provider.ts`** — `createTodoistAuthProvider()`: `@doist/cli-core`
+  PKCE `AuthProvider` adapter with a Todoist-specific `validateToken`
+  (calls `getUser`, builds `auth_mode` / `auth_scope` / `auth_flags`)
+- **`auth-store.ts`** — `createTodoistTokenStore()`: cli-core
+  `TokenStore<TodoistAccount>` adapter over `auth.ts`'s multi-user primitives.
+  Also exports `toTodoistAccount` / `accountToUpsertInput` mappers (shared
+  account shape) and `getLastStorageResult()` for surfacing keyring-fallback
+  warnings after `set()`.
+- **`auth-html.ts`** — branded HTML pages for the cli-core OAuth callback
+  (`renderAuthSuccessPage` / `renderAuthErrorPage`)
+- **`oauth-scopes.ts`** — opt-in OAuth scope registry, `parseScopesOption`,
+  `extractAdditionalScopes`, `resolveAuthScope`, `formatScopesHelp`
 - **`output.ts`** — `formatTaskRow`, `formatTaskView`, `formatJson`,
   `formatNdjson`, `formatPaginatedJson`, `formatDueDate`, `formatPriority`,
   `formatError`, `formatErrorJson`, `printDryRun`
@@ -197,9 +208,14 @@ Token lookup order (see `src/lib/auth.ts` — `getApiToken()` / `probeApiToken()
    into secure-store on first read when present
 3. OS credential manager via `src/lib/secure-store.ts`
 
-`td auth login` runs a full OAuth PKCE flow (`src/lib/oauth-server.ts`,
-`DEFAULT_PORT = 8765` with a small fallback range, browser launch). Scopes
-are opt-in: `--read-only` for a read-only token,
+`td auth login` runs through `@doist/cli-core`'s OAuth runtime
+(`attachLoginCommand` → `runOAuthFlow`). The Todoist-local pieces live in
+`src/lib/auth-provider.ts` (PKCE provider + `validateToken`) and
+`src/lib/auth-store.ts` (multi-user `TokenStore` adapter); the command is
+attached in `src/commands/auth/login.ts`. cli-core wires the standard flags
+(`--read-only`, `--callback-port`, `--json`, `--ndjson`) and binds the local
+callback server on port `8765` with a small fallback range. Scopes are
+opt-in: `--read-only` for a read-only token,
 `--additional-scopes=app-management,backups` to broaden.
 
 ## Testing

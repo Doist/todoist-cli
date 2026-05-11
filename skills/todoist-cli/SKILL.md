@@ -40,12 +40,17 @@ td auth login --read-only --additional-scopes=app-management
 td auth login --additional-scopes=backups
 td auth login --read-only --additional-scopes=backups
 td auth login --additional-scopes=app-management,backups
+td auth login --callback-port 9000           # override the OAuth callback port
+td auth login --json                         # emit the new account record as JSON
+td auth login --ndjson                       # one-line newline-delimited JSON
 td auth token
 td auth status
 TOKEN=$(td auth token view)
 TOKEN=$(td auth token view --user you@example.com)
 td auth logout
 ```
+
+`td auth login` accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy) and the standard `--json` / `--ndjson` machine-output flags. Use `--json` / `--ndjson` to capture the newly stored account record (id, email, auth metadata) for scripts; warnings about keyring fallback are written to stderr so stdout stays parseable.
 
 Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separated). Run `td auth login --help` for the full list. Currently supported:
 

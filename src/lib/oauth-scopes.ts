@@ -1,6 +1,29 @@
 import { AUTH_FLAG_ORDER, type AuthFlag } from './config.js'
 import { CliError } from './errors.js'
 
+/** Base OAuth scopes for read-write logins (the default). */
+export const READ_WRITE_SCOPES = 'data:read_write,data:delete,project:delete'
+/** Base OAuth scope for `--read-only` logins. */
+export const READ_ONLY_SCOPES = 'data:read'
+
+export type AuthScopeOptions = {
+    readOnly?: boolean
+    additionalScopes?: readonly AdditionalScopeFlag[]
+}
+
+/**
+ * Build the comma-separated scope string Todoist expects on the authorize
+ * URL. Combines the base grant (read-write or read-only) with any opt-in
+ * additional scopes, in canonical order.
+ */
+export function resolveAuthScope(options: AuthScopeOptions): string {
+    const parts = [options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES]
+    for (const scope of options.additionalScopes ?? []) {
+        parts.push(oauthScopeFor(scope))
+    }
+    return parts.join(',')
+}
+
 /**
  * Additional OAuth scopes that can be requested on top of the base data grant
  * via `td auth login --additional-scopes=...`. `read-only` is intentionally
@@ -95,6 +118,18 @@ export function parseScopesOption(raw: string): AdditionalScopeFlag[] {
     return AUTH_FLAG_ORDER.filter(
         (f): f is AdditionalScopeFlag => f !== 'read-only' && seen.has(f as AdditionalScopeFlag),
     )
+}
+
+/**
+ * Pull `--additional-scopes` out of a Commander-style options bag and parse it
+ * into the canonical `AdditionalScopeFlag[]`. Centralises the string-typed
+ * casting + empty-string handling so `auth-provider` and the login command's
+ * `resolveScopes` callback agree on what counts as "no additional scopes".
+ */
+export function extractAdditionalScopes(flags: Record<string, unknown>): AdditionalScopeFlag[] {
+    const raw = flags.additionalScopes
+    if (typeof raw !== 'string' || raw.length === 0) return []
+    return parseScopesOption(raw)
 }
 
 /**
