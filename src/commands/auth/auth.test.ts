@@ -11,6 +11,7 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         getAuthMetadata: vi.fn(),
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
+        resolveActiveUser: vi.fn(),
     }
 })
 
@@ -23,33 +24,19 @@ vi.mock('../../lib/api/core.js', () => ({
 // Mock chalk to avoid colors in tests
 vi.mock('chalk')
 
-// Mock PKCE module
-vi.mock('../../lib/pkce.js', () => ({
-    generateCodeVerifier: vi.fn(() => 'test_code_verifier'),
-    generateCodeChallenge: vi.fn(() => 'test_code_challenge'),
-    generateState: vi.fn(() => 'test_state'),
-}))
-
-// Mock OAuth server
-vi.mock('../../lib/oauth-server.js', () => ({
-    startCallbackServer: vi.fn(),
-    OAUTH_REDIRECT_URI: 'http://localhost:8765/callback',
-}))
-
-// Mock OAuth module
-vi.mock('../../lib/oauth.js', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../lib/oauth.js')>()
+// Mock cli-core's login registrar so the login subcommand never actually
+// drives the OAuth flow. The original todoist-local OAuth tests were dropped
+// when `pkce` / `oauth` / `oauth-server` moved to cli-core; cli-core has its
+// own runtime + registrar tests.
+vi.mock('@doist/cli-core/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
     return {
         ...actual,
-        buildAuthorizationUrl: vi.fn(() => 'https://todoist.com/oauth/authorize?test=1'),
-        exchangeCodeForToken: vi.fn(),
+        attachLoginCommand: vi.fn((parent: { command: (name: string) => unknown }) =>
+            parent.command('login'),
+        ),
     }
 })
-
-// Mock open module
-vi.mock('open', () => ({
-    default: vi.fn(),
-}))
 
 // Mock readline for interactive token input
 vi.mock('node:readline', () => ({
@@ -63,18 +50,19 @@ vi.mock('node:readline', () => ({
 }))
 
 import { createInterface, type Interface } from 'node:readline'
-import open from 'open'
 import { createApiForToken, getApi } from '../../lib/api/core.js'
 import {
     NoTokenError,
+    TOKEN_ENV_VAR,
     clearApiToken,
     getAuthMetadata,
     listStoredUsers,
     readConfig,
+    resolveActiveUser,
     upsertUser,
 } from '../../lib/auth.js'
-import { startCallbackServer } from '../../lib/oauth-server.js'
-import { buildAuthorizationUrl, exchangeCodeForToken } from '../../lib/oauth.js'
+import { resetGlobalArgs } from '../../lib/global-args.js'
+import { UserNotFoundError } from '../../lib/users.js'
 import { createMockApi } from '../../test-support/mock-api.js'
 import { registerAuthCommand } from './index.js'
 
@@ -85,12 +73,9 @@ const mockClearApiToken = vi.mocked(clearApiToken)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
+const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 const mockGetApi = vi.mocked(getApi)
 const mockCreateApiForToken = vi.mocked(createApiForToken)
-const mockStartCallbackServer = vi.mocked(startCallbackServer)
-const mockBuildAuthorizationUrl = vi.mocked(buildAuthorizationUrl)
-const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
-const mockOpen = vi.mocked(open)
 
 const TEST_USER = {
     id: '12345',
@@ -251,153 +236,9 @@ describe('auth command', () => {
         })
     })
 
-    describe('login subcommand (OAuth flow)', () => {
-        function setupOAuthFlow(authCode: string, accessToken: string) {
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.resolve(authCode),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-            mockExchangeCodeForToken.mockResolvedValue(accessToken)
-            stubProbeApiForUser()
-            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: false })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-        }
-
-        it('completes OAuth flow successfully', async () => {
-            const program = createProgram()
-            setupOAuthFlow('oauth_auth_code_123', 'oauth_access_token_456')
-
-            await program.parseAsync(['node', 'td', 'auth', 'login'])
-
-            expect(mockOpen).toHaveBeenCalledWith('https://todoist.com/oauth/authorize?test=1')
-            expect(mockStartCallbackServer).toHaveBeenCalledWith('test_state')
-            expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
-                'oauth_auth_code_123',
-                'test_code_verifier',
-                8765,
-            )
-            expect(mockCreateApiForToken).toHaveBeenCalledWith('oauth_access_token_456')
-            expect(mockUpsertUser).toHaveBeenCalledWith({
-                id: TEST_USER.id,
-                email: TEST_USER.email,
-                token: 'oauth_access_token_456',
-                authMode: 'read-write',
-                authScope: 'data:read_write,data:delete,project:delete',
-                authFlags: [],
-            })
-            expect(consoleSpy).toHaveBeenCalledWith('✓', `Logged in as ${TEST_USER.email}`)
-        })
-
-        it('uses read-only scope when --read-only is set', async () => {
-            const program = createProgram()
-            setupOAuthFlow('oauth_auth_code_123', 'oauth_access_token_456')
-
-            await program.parseAsync(['node', 'td', 'auth', 'login', '--read-only'])
-
-            expect(mockBuildAuthorizationUrl).toHaveBeenCalledWith(
-                'test_code_challenge',
-                'test_state',
-                { readOnly: true, additionalScopes: [], port: 8765 },
-            )
-            expect(mockUpsertUser).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    authMode: 'read-only',
-                    authScope: 'data:read',
-                    authFlags: ['read-only'],
-                }),
-            )
-        })
-
-        it('appends app-management scope', async () => {
-            const program = createProgram()
-            setupOAuthFlow('oauth_auth_code_app', 'oauth_access_token_app')
-
-            await program.parseAsync([
-                'node',
-                'td',
-                'auth',
-                'login',
-                '--additional-scopes=app-management',
-            ])
-
-            expect(mockUpsertUser).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    authScope: 'data:read_write,data:delete,project:delete,dev:app_console',
-                    authFlags: ['app-management'],
-                }),
-            )
-        })
-
-        it('combines read-only with backups scope', async () => {
-            const program = createProgram()
-            setupOAuthFlow('c', 't')
-
-            await program.parseAsync([
-                'node',
-                'td',
-                'auth',
-                'login',
-                '--additional-scopes=backups',
-                '--read-only',
-            ])
-
-            expect(mockUpsertUser).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    authMode: 'read-only',
-                    authScope: 'data:read,backups:read',
-                    authFlags: ['read-only', 'backups'],
-                }),
-            )
-        })
-
-        it('shows "Updated credentials for" when re-logging in to the same account', async () => {
-            const program = createProgram()
-            setupOAuthFlow('c', 't')
-            mockUpsertUser.mockResolvedValue({ storage: 'secure-store', replaced: true })
-
-            await program.parseAsync(['node', 'td', 'auth', 'login'])
-
-            expect(consoleSpy).toHaveBeenCalledWith(
-                '✓',
-                `Updated credentials for ${TEST_USER.email}`,
-            )
-        })
-
-        it('rejects an unknown scope', async () => {
-            const program = createProgram()
-            mockStartCallbackServer.mockResolvedValue({
-                promise: new Promise(() => {}),
-                port: 8765,
-                cleanup: vi.fn(),
-            })
-
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'login', '--additional-scopes=nonsense']),
-            ).rejects.toThrow(/Unknown scope/)
-            expect(mockOpen).not.toHaveBeenCalled()
-            expect(mockUpsertUser).not.toHaveBeenCalled()
-        })
-
-        it('cleanup runs on OAuth callback error', async () => {
-            const program = createProgram()
-            const mockCleanup = vi.fn()
-
-            mockStartCallbackServer.mockResolvedValue({
-                promise: Promise.reject(new Error('OAuth callback timed out')),
-                port: 8765,
-                cleanup: mockCleanup,
-            })
-            mockOpen.mockResolvedValue({} as Awaited<ReturnType<typeof open>>)
-
-            await expect(program.parseAsync(['node', 'td', 'auth', 'login'])).rejects.toThrow(
-                'OAuth callback timed out',
-            )
-
-            expect(mockCleanup).toHaveBeenCalled()
-            expect(mockUpsertUser).not.toHaveBeenCalled()
-        })
-    })
+    // login subcommand: handled by @doist/cli-core/auth tests now.
+    // The pre-extraction OAuth flow tests lived here and were dropped along
+    // with `pkce.ts` / `oauth.ts` / `oauth-server.ts`.
 
     describe('status subcommand', () => {
         it('shows authenticated status when logged in', async () => {
@@ -496,6 +337,83 @@ describe('auth command', () => {
 
             expect(mockClearApiToken).toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('✓', 'Logged out')
+        })
+    })
+
+    describe('token view subcommand', () => {
+        let originalEnvToken: string | undefined
+
+        beforeEach(() => {
+            originalEnvToken = process.env[TOKEN_ENV_VAR]
+            delete process.env[TOKEN_ENV_VAR]
+        })
+
+        afterEach(() => {
+            if (originalEnvToken === undefined) {
+                delete process.env[TOKEN_ENV_VAR]
+            } else {
+                process.env[TOKEN_ENV_VAR] = originalEnvToken
+            }
+        })
+
+        it('prints the bare token to stdout', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockResolvedValue({
+                id: TEST_USER.id,
+                email: TEST_USER.email,
+                token: 'stored_token_abc123456',
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+
+            expect(mockResolveActiveUser).toHaveBeenCalled()
+            expect(consoleSpy).toHaveBeenCalledTimes(1)
+            expect(consoleSpy).toHaveBeenCalledWith('stored_token_abc123456')
+        })
+
+        it('refuses when TODOIST_API_TOKEN is set', async () => {
+            const program = createProgram()
+            process.env[TOKEN_ENV_VAR] = 'env_token_value'
+
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
+            ).rejects.toHaveProperty('code', 'TOKEN_FROM_ENV')
+            expect(mockResolveActiveUser).not.toHaveBeenCalled()
+            expect(consoleSpy).not.toHaveBeenCalled()
+        })
+
+        it('propagates NoTokenError when no users are stored', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockRejectedValue(new NoTokenError())
+
+            await expect(
+                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
+            ).rejects.toHaveProperty('code', 'NO_TOKEN')
+            expect(consoleSpy).not.toHaveBeenCalled()
+        })
+
+        it('propagates UserNotFoundError when --user ref does not match', async () => {
+            const program = createProgram()
+            mockResolveActiveUser.mockRejectedValue(new UserNotFoundError('missing@example.com'))
+
+            // `--user <ref>` is parsed from process.argv by the global-args
+            // layer (not commander) and stripped before commander sees the
+            // argv. Stub process.argv to mirror production wiring so the
+            // test exercises the same code path as a real invocation.
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', 'auth', 'token', 'view', '--user', 'missing@example.com']
+            resetGlobalArgs()
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
+                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+            expect(consoleSpy).not.toHaveBeenCalled()
         })
     })
 })

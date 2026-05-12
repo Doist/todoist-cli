@@ -1,3 +1,4 @@
+import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { TodoistRequestError } from '@doist/todoist-sdk'
 import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -106,16 +107,15 @@ describe('apps list', () => {
         consoleSpy.mockRestore()
     })
 
-    it('shows "No apps found." when empty', async () => {
-        const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-        mockApi.getApps.mockResolvedValue([])
-
-        await program.parseAsync(['node', 'td', 'apps', 'list'])
-
-        expect(consoleSpy).toHaveBeenCalledWith('No apps found.')
-        consoleSpy.mockRestore()
+    describeEmptyMachineOutput('empty machine output contract', {
+        setup: () => {
+            mockApi.getApps.mockResolvedValue([])
+        },
+        run: async (extraArgs) => {
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'apps', 'list', ...extraArgs])
+        },
+        humanMessage: 'No apps found.',
     })
 
     it('outputs full JSON with --json flag', async () => {

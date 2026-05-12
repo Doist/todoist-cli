@@ -7,8 +7,8 @@ import {
 } from './secure-store.js'
 export {
     AUTH_FLAG_ORDER,
-    CONFIG_PATH,
     CONFIG_VERSION,
+    getConfigPath,
     readConfig,
     writeConfig,
     type AuthFlag,
@@ -19,8 +19,8 @@ export {
 } from './config.js'
 
 import {
-    CONFIG_PATH,
     CONFIG_VERSION,
+    getConfigPath,
     readConfig,
     writeConfig,
     type AuthFlag,
@@ -282,7 +282,7 @@ export async function upsertUser(
         const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
         throw new CliError(
             'CONFIG_WRITE_FAILED',
-            `Could not persist account record to ${CONFIG_PATH}${detail}`,
+            `Could not persist account record to ${getConfigPath()}${detail}`,
             ['Check file permissions on ~/.config/todoist-cli/, then re-run the command'],
         )
     }
@@ -354,7 +354,7 @@ export async function removeUserById(id: string): Promise<TokenStorageResult> {
         await writeConfig(next)
     } catch (error) {
         const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
-        throw new CliError('CONFIG_WRITE_FAILED', `Could not update ${CONFIG_PATH}${detail}`, [
+        throw new CliError('CONFIG_WRITE_FAILED', `Could not update ${getConfigPath()}${detail}`, [
             'Check file permissions on ~/.config/todoist-cli/, then re-run the command',
         ])
     }
@@ -389,7 +389,7 @@ export async function listStoredUsers(): Promise<StoredUser[]> {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function loadTokenForStoredUser(
+export async function loadTokenForStoredUser(
     user: StoredUser,
 ): Promise<{ token: string; source: 'secure-store' | 'config-file' }> {
     if (user.api_token?.trim()) {
@@ -522,10 +522,10 @@ function resolvedToMetadata(resolved: ResolvedUser): AuthMetadata {
 }
 
 function buildFallbackWarning(action: string): string {
-    return `${SECURE_STORE_DESCRIPTION} unavailable; ${action} ${CONFIG_PATH}`
+    return `${SECURE_STORE_DESCRIPTION} unavailable; ${action} ${getConfigPath()}`
 }
 
 function buildConfigCleanupWarning(prefix: string, error: unknown): string {
     const detail = error instanceof Error && error.message ? ` (${error.message})` : ''
-    return `${prefix} but could not update ${CONFIG_PATH}${detail}`
+    return `${prefix} but could not update ${getConfigPath()}${detail}`
 }

@@ -2,7 +2,7 @@
 
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
-import { CliError } from './lib/errors.js'
+import { BaseCliError, CliError } from './lib/errors.js'
 import {
     getRequestedUserRef,
     isJsonMode,
@@ -290,7 +290,7 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        if (err instanceof CliError) {
+        if (err instanceof BaseCliError) {
             console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
         } else {
             console.error(

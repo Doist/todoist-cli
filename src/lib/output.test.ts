@@ -1,10 +1,12 @@
 import type { Task } from '@doist/todoist-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fixtures } from '../test-support/fixtures.js'
+import { BaseCliError } from './errors.js'
 import { isAccessible, resetGlobalArgs } from './global-args.js'
 import {
     formatDue,
     formatError,
+    formatErrorJson,
     formatJson,
     formatNdjson,
     formatNextCursorFooter,
@@ -550,6 +552,30 @@ describe('formatError', () => {
     it('handles empty hints array', async () => {
         const result = formatError('ERROR', 'Something went wrong', [])
         expect(result).not.toContain('-')
+    })
+
+    it('formats a cli-core CliError instance (code, message, hints)', async () => {
+        const err = new BaseCliError('FILE_READ_ERROR', 'Could not read changelog file', {
+            hints: ['Check the file path'],
+        })
+        const result = formatError(err)
+        expect(result).toContain('Error: FILE_READ_ERROR')
+        expect(result).toContain('Could not read changelog file')
+        expect(result).toContain('Check the file path')
+    })
+})
+
+describe('formatErrorJson', () => {
+    it('serializes a cli-core CliError instance', async () => {
+        const err = new BaseCliError('INVALID_TYPE', 'Count must be a positive integer')
+        const parsed = JSON.parse(formatErrorJson(err))
+        expect(parsed).toEqual({
+            error: {
+                code: 'INVALID_TYPE',
+                message: 'Count must be a positive integer',
+                hints: undefined,
+            },
+        })
     })
 })
 

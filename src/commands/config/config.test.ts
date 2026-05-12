@@ -2,7 +2,7 @@ import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/config.js', () => ({
-    CONFIG_PATH: '/tmp/fake-todoist-cli/config.json',
+    getConfigPath: () => '/tmp/fake-todoist-cli/config.json',
     readConfigStrict: vi.fn(),
     readConfig: vi.fn().mockResolvedValue({}),
 }))

@@ -35,7 +35,7 @@ Use this to verify changes work before committing.
 - **Implicit `view` subcommand edge case:** `td project <ref>` defaults to `td project view <ref>`. If a project/task name matches a subcommand name (e.g., `"list"`), the subcommand wins — users must use `td project view list`.
 - **API response shape:** client returns `{ results: T[], nextCursor? }` — always destructure.
 - **Priority mapping:** CLI uses `"p1"`–`"p4"` strings; API uses 4=p1 (highest), 1=p4 (lowest). Use `parsePriority` from `src/lib/task-list.ts`, never hand-roll.
-- **Errors:** throw `CliError(code, message, hints?)` from `src/lib/errors.ts` for anything user-facing. The global `parseAsync().catch` in `src/index.ts` renders it correctly in JSON and pretty modes.
+- **Errors:** throw `CliError(code, message, hints?)` from `src/lib/errors.ts` for anything user-facing. The global `parseAsync().catch` in `src/index.ts` renders it correctly in JSON and pretty modes. The same handler also matches `BaseCliError` (re-exported from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers route through the same formatter.
 
 ## Testing
 

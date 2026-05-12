@@ -1,63 +1,95 @@
+import { formatJson, formatNdjson } from '@doist/cli-core'
+import { attachLoginCommand } from '@doist/cli-core/auth'
 import chalk from 'chalk'
+import type { Command } from 'commander'
 import open from 'open'
-import { createApiForToken } from '../../lib/api/core.js'
-import { type AuthFlag, upsertUser } from '../../lib/auth.js'
-import { type AdditionalScopeFlag, parseScopesOption } from '../../lib/oauth-scopes.js'
-import { startCallbackServer } from '../../lib/oauth-server.js'
-import { buildAuthorizationUrl, exchangeCodeForToken, resolveAuthScope } from '../../lib/oauth.js'
-import { generateCodeChallenge, generateCodeVerifier, generateState } from '../../lib/pkce.js'
+import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'
+import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
+import { createTodoistTokenStore, type TodoistAccount } from '../../lib/auth-store.js'
+import {
+    extractAdditionalScopes,
+    formatScopesHelp,
+    resolveAuthScope,
+} from '../../lib/oauth-scopes.js'
 import { logTokenStorageResult } from './helpers.js'
 
-export async function loginWithOAuth(
-    options: { readOnly?: boolean; additionalScopes?: string } = {},
-): Promise<void> {
-    const additionalScopes: AdditionalScopeFlag[] = options.additionalScopes
-        ? parseScopesOption(options.additionalScopes)
-        : []
+const TODOIST_CALLBACK_PORT = 8765
+const TODOIST_CALLBACK_PORT_FALLBACK = 5
 
-    const codeVerifier = generateCodeVerifier()
-    const codeChallenge = generateCodeChallenge(codeVerifier)
-    const state = generateState()
+/**
+ * Attach `td auth login` via cli-core's generic `attachLoginCommand`. The
+ * registrar wires `--read-only`, `--callback-port`, `--json`, `--ndjson` and
+ * drives `runOAuthFlow`; the bits below stay todoist-local: scope resolution
+ * (comma-joined, custom validators), branded HTML, multi-user store via
+ * `createTodoistTokenStore`, and the human-mode success line.
+ *
+ * `--additional-scopes` is attached after the registrar so the option lands on
+ * the same Commander view; cli-core surfaces it through the `flags` argument
+ * to `resolveScopes`.
+ */
+export function attachTodoistLoginCommand(auth: Command): Command {
+    const store = createTodoistTokenStore()
 
-    console.log('Opening browser for Todoist authorization...')
+    const login = attachLoginCommand<TodoistAccount>(auth, {
+        provider: createTodoistAuthProvider(),
+        store,
+        preferredPort: TODOIST_CALLBACK_PORT,
+        portFallbackCount: TODOIST_CALLBACK_PORT_FALLBACK,
+        resolveScopes: ({ readOnly, flags }) => {
+            const additionalScopes = extractAdditionalScopes(flags)
+            // resolveAuthScope returns the comma-separated string Todoist expects;
+            // split into the array cli-core's PKCE provider re-joins (the provider
+            // is configured with `scopeSeparator: ','`).
+            return resolveAuthScope({ readOnly, additionalScopes }).split(',')
+        },
+        renderSuccess: renderAuthSuccessPage,
+        renderError: renderAuthErrorPage,
+        openBrowser: async (url) => {
+            await open(url)
+        },
+        onSuccess: ({ account, view }) => {
+            const storage = store.getLastStorageResult()
 
-    const { promise: callbackPromise, port, cleanup } = await startCallbackServer(state)
-    const authUrl = buildAuthorizationUrl(codeChallenge, state, {
-        readOnly: options.readOnly,
-        additionalScopes,
-        port,
+            if (view.json) {
+                console.log(formatJson({ displayName: 'Todoist', account }))
+            } else if (view.ndjson) {
+                console.log(formatNdjson([{ displayName: 'Todoist', account }]))
+            } else {
+                const label = account.label ?? account.id
+                console.log(`${chalk.green('✓')} Signed in to Todoist as ${chalk.cyan(label)}`)
+            }
+
+            // Surface keyring-fallback warnings regardless of view mode so a
+            // silent plaintext-storage fallback never goes unreported.
+            // `logTokenStorageResult` writes warnings to stderr, keeping the
+            // `--json` / `--ndjson` stdout envelope clean; the human "stored
+            // securely" confirmation is suppressed in machine-output mode.
+            if (storage) {
+                if (view.json || view.ndjson) {
+                    if (storage.warning) {
+                        console.error(chalk.yellow('Warning:'), storage.warning)
+                    }
+                } else {
+                    logTokenStorageResult(
+                        storage,
+                        'Token stored securely in the system credential manager',
+                    )
+                }
+            }
+        },
     })
 
-    try {
-        await open(authUrl)
-        console.log(chalk.dim('Waiting for authorization...'))
-
-        const code = await callbackPromise
-        console.log(chalk.dim('Exchanging code for token...'))
-
-        const accessToken = await exchangeCodeForToken(code, codeVerifier, port)
-        const authFlags: AuthFlag[] = []
-        if (options.readOnly) authFlags.push('read-only')
-        authFlags.push(...additionalScopes)
-
-        // Identify the user behind the new token before persisting.
-        const probeApi = createApiForToken(accessToken)
-        const user = await probeApi.getUser()
-
-        const result = await upsertUser({
-            id: user.id,
-            email: user.email,
-            token: accessToken,
-            authMode: options.readOnly ? 'read-only' : 'read-write',
-            authScope: resolveAuthScope({ readOnly: options.readOnly, additionalScopes }),
-            authFlags,
-        })
-
-        const verb = result.replaced ? 'Updated credentials for' : 'Logged in as'
-        console.log(chalk.green('✓'), `${verb} ${user.email}`)
-        logTokenStorageResult(result, 'Token stored securely in the system credential manager')
-    } catch (error) {
-        cleanup()
-        throw error
-    }
+    return login
+        .description('Authenticate with Todoist via OAuth')
+        .option(
+            '--additional-scopes <list>',
+            'Comma-separated opt-in OAuth scopes (see list below). The flag may be repeated; every occurrence is merged.',
+            // Commander treats this as a scalar by default, so repeated uses
+            // (`--additional-scopes=a --additional-scopes=b`) would silently drop
+            // earlier values. Concatenate into one comma-separated string and let
+            // parseScopesOption split/dedupe/validate as usual.
+            (value: string, prev: string | undefined) =>
+                prev && prev.length > 0 ? `${prev},${value}` : value,
+        )
+        .addHelpText('after', formatScopesHelp())
 }

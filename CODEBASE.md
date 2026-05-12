@@ -52,11 +52,9 @@ src/
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
 │  │                      # notifications, reminders, stats, user-settings, uploads)
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
-├─ test-support/
-│  ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
-│  └─ fixtures.ts         # Sample task/project/label/section fixtures
-└─ types/
-   └─ marked-terminal-renderer.d.ts  # Type declarations for marked-terminal-renderer
+└─ test-support/
+   ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
+   └─ fixtures.ts         # Sample task/project/label/section fixtures
 ```
 
 ## Architecture flow
@@ -126,7 +124,18 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
   `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`
 - **`secure-store.ts`** — `@napi-rs/keyring` wrapper (OS credential manager)
-- **`oauth-server.ts` / `oauth.ts` / `oauth-scopes.ts` / `pkce.ts`** — OAuth flow
+- **`auth-provider.ts`** — `createTodoistAuthProvider()`: `@doist/cli-core`
+  PKCE `AuthProvider` adapter with a Todoist-specific `validateToken`
+  (calls `getUser`, builds `auth_mode` / `auth_scope` / `auth_flags`)
+- **`auth-store.ts`** — `createTodoistTokenStore()`: cli-core
+  `TokenStore<TodoistAccount>` adapter over `auth.ts`'s multi-user primitives.
+  Also exports `toTodoistAccount` / `accountToUpsertInput` mappers (shared
+  account shape) and `getLastStorageResult()` for surfacing keyring-fallback
+  warnings after `set()`.
+- **`auth-html.ts`** — branded HTML pages for the cli-core OAuth callback
+  (`renderAuthSuccessPage` / `renderAuthErrorPage`)
+- **`oauth-scopes.ts`** — opt-in OAuth scope registry, `parseScopesOption`,
+  `extractAdditionalScopes`, `resolveAuthScope`, `formatScopesHelp`
 - **`output.ts`** — `formatTaskRow`, `formatTaskView`, `formatJson`,
   `formatNdjson`, `formatPaginatedJson`, `formatDueDate`, `formatPriority`,
   `formatError`, `formatErrorJson`, `printDryRun`
@@ -199,9 +208,14 @@ Token lookup order (see `src/lib/auth.ts` — `getApiToken()` / `probeApiToken()
    into secure-store on first read when present
 3. OS credential manager via `src/lib/secure-store.ts`
 
-`td auth login` runs a full OAuth PKCE flow (`src/lib/oauth-server.ts`,
-`DEFAULT_PORT = 8765` with a small fallback range, browser launch). Scopes
-are opt-in: `--read-only` for a read-only token,
+`td auth login` runs through `@doist/cli-core`'s OAuth runtime
+(`attachLoginCommand` → `runOAuthFlow`). The Todoist-local pieces live in
+`src/lib/auth-provider.ts` (PKCE provider + `validateToken`) and
+`src/lib/auth-store.ts` (multi-user `TokenStore` adapter); the command is
+attached in `src/commands/auth/login.ts`. cli-core wires the standard flags
+(`--read-only`, `--callback-port`, `--json`, `--ndjson`) and binds the local
+callback server on port `8765` with a small fallback range. Scopes are
+opt-in: `--read-only` for a read-only token,
 `--additional-scopes=app-management,backups` to broaden.
 
 ## Testing
@@ -212,6 +226,11 @@ are opt-in: `--read-only` for a read-only token,
   vitest-mocked versions of every SDK method. Use factories from
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
 - **Pattern:** mock `getApi` via `vi.mock`, then `program.parseAsync(['node','td','<cmd>',…])`.
+- **`@doist/cli-core` inlining:** `vitest.config.ts` lists `@doist/cli-core` in
+  `server.deps.inline` so `vi.doMock('node:fs/promises', …)` /
+  `vi.doMock('node:os', …)` reach cli-core's compiled imports. Without it
+  vitest treats the package as external and Node's native resolver bypasses
+  the mock substitution, breaking the `auth` / `migrate-auth` suites.
 
 ## Build & release
 
@@ -263,7 +282,10 @@ file, or a token stored in the OS credential manager via `td auth login`.
 - Mutating commands (`add`/`create`/`update`): always support `--json`
   emitting `formatJson(result, entityType)` — see AGENTS.md
 - User-facing errors: throw `CliError(code, message, hints?)` from
-  `src/lib/errors.ts`; global `parseAsync().catch` in `src/index.ts` renders it
+  `src/lib/errors.ts`; the global `parseAsync().catch` in `src/index.ts`
+  renders it. The same handler also catches `BaseCliError` (re-exported
+  from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers
+  route through the same path
 - Global flags handled in `src/lib/global-args.ts` — check `isJsonMode()` etc.
   before printing
 
