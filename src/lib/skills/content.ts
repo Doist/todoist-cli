@@ -154,8 +154,13 @@ td project update "Roadmap" --folder "Engineering"
 td project update "Roadmap" --no-folder
 td project update "Roadmap" --parent "Engineering"
 td project update "Roadmap" --no-parent
+td project update "Roadmap" --parent "Engineering" --json
+td project update "Roadmap" --parent "Engineering" --dry-run
 td project reorder "Roadmap" --before "Marketing"
+td project reorder "Roadmap" --after "Marketing"
 td project reorder "Roadmap" --position 0
+td project reorder "Roadmap" --position 2 --json
+td project reorder "Roadmap" --before "Marketing" --dry-run
 td project archive "Roadmap"
 td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes

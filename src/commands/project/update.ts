@@ -6,6 +6,7 @@ import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { resolveFolderByRef } from '../folder/helpers.js'
+import { isDescendantOf, loadPersonalProjects, resolvePersonalParent } from './helpers.js'
 
 export interface UpdateOptions {
     name?: string
@@ -58,26 +59,29 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
         if (isWorkspaceProject(project)) {
             throw new CliError(
                 'WORKSPACE_NO_SUBPROJECTS',
-                'Workspace projects do not support sub-projects.',
+                'Workspace projects cannot be nested under another project.',
                 ['Sub-projects are only supported for personal projects.'],
             )
         }
+        const currentParentId = project.parentId ?? null
         if (options.parent === false) {
-            newParentId = null
+            if (currentParentId !== null) newParentId = null
         } else {
-            const parentProject = await resolveProjectRef(api, options.parent)
-            if (isWorkspaceProject(parentProject)) {
-                throw new CliError(
-                    'WORKSPACE_NO_SUBPROJECTS',
-                    'Workspace projects cannot be used as parent.',
-                    ['Sub-projects are only supported under personal projects.'],
-                )
-            }
+            const parentProject = await resolvePersonalParent(api, options.parent)
             if (parentProject.id === project.id) {
                 throw new CliError('INVALID_OPTIONS', 'Cannot set a project as its own parent.')
             }
-            newParentId = parentProject.id
-            newParentName = parentProject.name
+            if (parentProject.id !== currentParentId) {
+                const allPersonal = await loadPersonalProjects(api)
+                if (isDescendantOf(allPersonal, parentProject.id, project.id)) {
+                    throw new CliError(
+                        'INVALID_OPTIONS',
+                        `Cannot nest "${project.name}" under "${parentProject.name}": that would create a cycle.`,
+                    )
+                }
+                newParentId = parentProject.id
+                newParentName = parentProject.name
+            }
         }
     }
 

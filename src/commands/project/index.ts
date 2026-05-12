@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { parseOrderArg } from '../../lib/order.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
 import { archiveProject } from './archive.js'
@@ -202,7 +203,7 @@ Examples:
         .description('Reorder a personal project among its siblings')
         .option('--before <ref>', 'Place before this sibling (name or id:xxx)')
         .option('--after <ref>', 'Place after this sibling (name or id:xxx)')
-        .option('--position <n>', 'Move to a 0-indexed position among siblings')
+        .option('--position <n>', 'Move to a 0-indexed position among siblings', parseOrderArg)
         .option('--json', 'Output the new ordering as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .addHelpText(

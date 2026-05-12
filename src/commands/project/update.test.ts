@@ -393,4 +393,67 @@ describe('project update --parent / --no-parent', () => {
         expect(mockMoveProjectParent).not.toHaveBeenCalled()
         expect(mockApi.updateProject).not.toHaveBeenCalled()
     })
+
+    it('rejects re-parenting to a descendant (cycle prevention)', async () => {
+        const program = createProgram()
+        // Tree: A (parent=null) > B (parent=A). Attempting `update A --parent B`
+        // must reject — B is a descendant of A.
+        const a = { id: 'p-A', name: 'A', parentId: null, childOrder: 1 }
+        const b = { id: 'p-B', name: 'B', parentId: 'p-A', childOrder: 1 }
+        mockApi.getProject.mockResolvedValueOnce(a).mockResolvedValueOnce(b)
+        mockApi.getProjects.mockResolvedValue({ results: [a, b], nextCursor: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'update', 'id:p-A', '--parent', 'id:p-B']),
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
+        expect(mockMoveProjectParent).not.toHaveBeenCalled()
+    })
+
+    it('skips the move when --parent matches the current parent', async () => {
+        const program = createProgram()
+        mockApi.getProject
+            .mockResolvedValueOnce({ id: 'p-1', name: 'Child', parentId: 'p-2' })
+            .mockResolvedValueOnce({ id: 'p-2', name: 'Parent', parentId: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'update', 'id:p-1', '--parent', 'id:p-2']),
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
+        expect(mockMoveProjectParent).not.toHaveBeenCalled()
+    })
+
+    it('skips the move when --no-parent is given on an already top-level project', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue({ id: 'p-1', name: 'Top', parentId: null })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'update', 'id:p-1', '--no-parent']),
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
+        expect(mockMoveProjectParent).not.toHaveBeenCalled()
+    })
+
+    it('--parent --json refetches and emits the refreshed project as JSON', async () => {
+        const program = createProgram()
+        mockApi.getProject
+            .mockResolvedValueOnce({ id: 'p-1', name: 'Child', parentId: null })
+            .mockResolvedValueOnce({ id: 'p-2', name: 'NewParent', parentId: null })
+            .mockResolvedValueOnce({ id: 'p-1', name: 'Child', parentId: 'p-2' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:p-1',
+            '--parent',
+            'id:p-2',
+            '--json',
+        ])
+
+        expect(mockMoveProjectParent).toHaveBeenCalledWith('p-1', 'p-2')
+        const output = consoleSpy.mock.calls[0][0] as string
+        const parsed = JSON.parse(output)
+        expect(parsed.id).toBe('p-1')
+        expect(parsed.parentId).toBe('p-2')
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
+    })
 })

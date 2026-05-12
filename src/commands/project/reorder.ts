@@ -1,16 +1,16 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
-import { getApi, type Project } from '../../lib/api/core.js'
+import { isWorkspaceProject, type PersonalProject } from '@doist/todoist-sdk'
+import { getApi } from '../../lib/api/core.js'
 import { reorderProjects } from '../../lib/api/projects-sync.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson } from '../../lib/output.js'
-import { paginate } from '../../lib/pagination.js'
 import { resolveProjectRef } from '../../lib/refs.js'
+import { loadPersonalProjects, resolvePersonalFromList } from './helpers.js'
 
 export type ReorderOptions = {
     before?: string
     after?: string
-    position?: string
+    position?: number
     json?: boolean
     dryRun?: boolean
 }
@@ -42,20 +42,11 @@ export async function reorderProject(ref: string, options: ReorderOptions): Prom
         )
     }
 
-    const { results: allProjects } = await paginate(
-        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
-        { limit: Number.MAX_SAFE_INTEGER, startCursor: undefined },
-    )
-
-    const targetParentId = (target as { parentId?: string | null }).parentId ?? null
-    const siblings: Project[] = allProjects
-        .filter((p) => !isWorkspaceProject(p))
-        .filter((p) => ((p as { parentId?: string | null }).parentId ?? null) === targetParentId)
-        .sort((a, b) => {
-            const ao = (a as { childOrder?: number }).childOrder ?? 0
-            const bo = (b as { childOrder?: number }).childOrder ?? 0
-            return ao - bo
-        })
+    const allPersonal = await loadPersonalProjects(api)
+    const targetParentId = target.parentId ?? null
+    const siblings: PersonalProject[] = allPersonal
+        .filter((p) => (p.parentId ?? null) === targetParentId)
+        .sort((a, b) => a.childOrder - b.childOrder)
 
     const oldIndex = siblings.findIndex((p) => p.id === target.id)
     if (oldIndex === -1) {
@@ -64,19 +55,14 @@ export async function reorderProject(ref: string, options: ReorderOptions): Prom
 
     let newIndex: number
     if (options.position !== undefined) {
-        const parsed = Number.parseInt(options.position, 10)
-        if (Number.isNaN(parsed) || parsed < 0) {
-            throw new CliError('INVALID_OPTIONS', '--position must be a non-negative integer.')
-        }
-        newIndex = Math.min(parsed, siblings.length - 1)
+        newIndex = Math.min(options.position, siblings.length - 1)
     } else {
         const siblingRef = (options.before ?? options.after) as string
-        const sibling = await resolveProjectRef(api, siblingRef)
+        const sibling = resolvePersonalFromList(allPersonal, siblingRef)
         if (sibling.id === target.id) {
             throw new CliError('INVALID_OPTIONS', 'Cannot reorder a project relative to itself.')
         }
-        const siblingParentId = (sibling as { parentId?: string | null }).parentId ?? null
-        if (isWorkspaceProject(sibling) || siblingParentId !== targetParentId) {
+        if ((sibling.parentId ?? null) !== targetParentId) {
             throw new CliError(
                 'NOT_SIBLINGS',
                 `Project "${sibling.name}" is not a sibling of "${target.name}".`,
@@ -88,13 +74,14 @@ export async function reorderProject(ref: string, options: ReorderOptions): Prom
     }
 
     if (newIndex === oldIndex) {
-        if (!isQuiet() && !options.json) {
-            console.log(`No change: "${target.name}" already at position ${oldIndex}.`)
-        }
         if (options.json) {
             console.log(
                 formatJson(siblings.map((p, i) => ({ id: p.id, name: p.name, position: i }))),
             )
+            return
+        }
+        if (!isQuiet()) {
+            console.log(`No change: "${target.name}" already at position ${oldIndex}.`)
         }
         return
     }

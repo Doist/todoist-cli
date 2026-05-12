@@ -2,21 +2,12 @@ import { Command } from 'commander'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { parseOrderArg } from '../../lib/order.js'
 import { createFolder } from './create.js'
 import { deleteFolder } from './delete.js'
 import { listFolders } from './list.js'
 import { updateFolder } from './update.js'
 import { viewFolder } from './view.js'
-
-function parseOrderArg(val: string): number {
-    const n = Number(val)
-    if (!Number.isInteger(n) || n < 0) {
-        throw new CliError('INVALID_ORDER', `Invalid order value: "${val}"`, [
-            'Order must be a non-negative integer (e.g., 0 for top of list)',
-        ])
-    }
-    return n
-}
 
 export function registerFolderCommand(program: Command): void {
     const folder = program
