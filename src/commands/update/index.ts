@@ -1,19 +1,15 @@
-import { Command } from 'commander'
-import { updateAction } from './action.js'
-import { switchChannel } from './switch.js'
+import { registerUpdateCommand as registerCoreUpdateCommand } from '@doist/cli-core/commands'
+import type { Command } from 'commander'
+import packageJson from '../../../package.json' with { type: 'json' }
+import { getConfigPath } from '../../lib/config.js'
+import { withSpinner } from '../../lib/spinner.js'
 
 export function registerUpdateCommand(program: Command): void {
-    const update = program
-        .command('update')
-        .description('Update the CLI to the latest version for the configured channel')
-        .option('--check', 'Check for updates without installing')
-        .option('--channel', 'Show the current update channel')
-        .action(updateAction)
-
-    update
-        .command('switch')
-        .description('Switch update channel between stable and pre-release')
-        .option('--stable', 'Use the stable release channel')
-        .option('--pre-release', 'Use the pre-release (next) channel')
-        .action(switchChannel)
+    registerCoreUpdateCommand(program, {
+        packageName: packageJson.name,
+        currentVersion: packageJson.version,
+        configPath: getConfigPath(),
+        changelogCommandName: 'td changelog',
+        withSpinner,
+    })
 }

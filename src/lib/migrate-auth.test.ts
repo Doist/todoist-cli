@@ -144,7 +144,7 @@ describe('migrateLegacyAuth', () => {
                 headers: expect.objectContaining({
                     authorization: 'Bearer legacy-1234567',
                     'doist-platform': 'cli',
-                    'doist-version': expect.stringMatching(/^\d+\.\d+\.\d+$/),
+                    'doist-version': expect.stringMatching(/^\d+\.\d+\.\d+(-[\w.]+)?$/),
                     'x-td-request-id': expect.any(String),
                     'x-td-session-id': expect.any(String),
                     'x-td-cli-command': 'postinstall:auth-migrate',

@@ -1,3 +1,45 @@
+## [1.63.0](https://github.com/Doist/todoist-cli/compare/v1.62.2...v1.63.0) (2026-05-12)
+
+### Features
+
+* **project:** add `--parent` on update and new `reorder` command ([#330](https://github.com/Doist/todoist-cli/issues/330)) ([f32f56a](https://github.com/Doist/todoist-cli/commit/f32f56adefee35943cd9fc43b592b6ad75591240))
+
+## [1.62.2](https://github.com/Doist/todoist-cli/compare/v1.62.1...v1.62.2) (2026-05-11)
+
+### Bug Fixes
+
+* **task:** add --no-labels flag to clear labels on update ([#327](https://github.com/Doist/todoist-cli/issues/327)) ([20d13af](https://github.com/Doist/todoist-cli/commit/20d13afac05970b98551cbf802ee47473e6d15b8)), closes [#326](https://github.com/Doist/todoist-cli/issues/326)
+
+## [1.62.1](https://github.com/Doist/todoist-cli/compare/v1.62.0...v1.62.1) (2026-05-09)
+
+### Bug Fixes
+
+* **deps:** bump @doist/todoist-sdk to 10.1.3 for Node 26 gzip fix ([#320](https://github.com/Doist/todoist-cli/issues/320)) ([022d634](https://github.com/Doist/todoist-cli/commit/022d634df37d2aa22e8c6f78c2450c7f7dfedf92))
+
+## [1.62.0](https://github.com/Doist/todoist-cli/compare/v1.61.2...v1.62.0) (2026-05-07)
+
+### Features
+
+* GitHub Copilot Skill Installation Instructions ([#315](https://github.com/Doist/todoist-cli/issues/315)) ([8704f4b](https://github.com/Doist/todoist-cli/commit/8704f4b61e3653f7cb28120497799a55a5a9fd57))
+
+## [1.61.2](https://github.com/Doist/todoist-cli/compare/v1.61.1...v1.61.2) (2026-05-06)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.3 ([#306](https://github.com/Doist/todoist-cli/issues/306)) ([63d75a3](https://github.com/Doist/todoist-cli/commit/63d75a340dedc308b291fe35e90f5273ae0f730f))
+
+## [1.61.1](https://github.com/Doist/todoist-cli/compare/v1.61.0...v1.61.1) (2026-05-05)
+
+### Bug Fixes
+
+* **deps:** update dependency @napi-rs/keyring to v1.3.0 ([#309](https://github.com/Doist/todoist-cli/issues/309)) ([1c264eb](https://github.com/Doist/todoist-cli/commit/1c264eb5b97cdc59b9d9f00e106aad0d0fd63058))
+
+## [1.61.0](https://github.com/Doist/todoist-cli/compare/v1.60.3...v1.61.0) (2026-05-05)
+
+### Features
+
+* **auth:** add `td auth token view` for script and agent use ([#311](https://github.com/Doist/todoist-cli/issues/311)) ([fa6d6b6](https://github.com/Doist/todoist-cli/commit/fa6d6b6f53c549d3ee92058aceccee4b299a86f2))
+
 ## [1.60.3](https://github.com/Doist/todoist-cli/compare/v1.60.2...v1.60.3) (2026-05-02)
 
 ### Bug Fixes

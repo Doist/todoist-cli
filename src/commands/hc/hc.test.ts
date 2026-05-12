@@ -1,3 +1,4 @@
+import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -81,6 +82,55 @@ describe('hc command', () => {
         expect(String(fetchSpy.mock.calls[0][0])).toContain(
             '/api/v2/help_center/articles/search?query=notifications&locale=en-us&per_page=10',
         )
+    })
+
+    describeEmptyMachineOutput('hc search empty machine output contract', {
+        setup: () => {
+            fetchSpy.mockResolvedValue(createJsonResponse({ results: [] }))
+        },
+        run: async (extraArgs) => {
+            await createProgram().parseAsync(['node', 'td', 'hc', 'search', 'nope', ...extraArgs])
+        },
+        humanMessage: 'No Help Center articles found for "nope".',
+    })
+
+    it('emits one JSON value per line for --ndjson with results', async () => {
+        fetchSpy.mockResolvedValue(
+            createJsonResponse({
+                results: [
+                    {
+                        id: 205348301,
+                        title: 'Set reminders for your tasks',
+                        html_url:
+                            'https://get.todoist.help/hc/en-us/articles/205348301-set-reminders',
+                        snippet: 'reminder snippet',
+                        body: '<p>Body excluded from --ndjson</p>',
+                    },
+                    {
+                        id: 360000269065,
+                        title: 'Manage your notifications in Todoist',
+                        html_url:
+                            'https://get.todoist.help/hc/en-us/articles/360000269065-manage-your-notifications',
+                        snippet: 'notifications snippet',
+                        body: '<p>Body excluded from --ndjson</p>',
+                    },
+                ],
+            }),
+        )
+
+        const program = createProgram()
+        await program.parseAsync(['node', 'td', 'hc', 'search', 'todoist', '--ndjson'])
+
+        const output = consoleSpy.mock.calls[0][0] as string
+        const lines = output.split('\n')
+        expect(lines).toHaveLength(2)
+        const first = JSON.parse(lines[0])
+        const second = JSON.parse(lines[1])
+        expect(first.id).toBe('205348301')
+        expect(first.title).toBe('Set reminders for your tasks')
+        expect(first).not.toHaveProperty('body')
+        expect(second.id).toBe('360000269065')
+        expect(output.endsWith('\n')).toBe(false)
     })
 
     it('returns bounded JSON search results without article bodies', async () => {

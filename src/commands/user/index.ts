@@ -10,6 +10,7 @@ export function registerUserCommand(program: Command): void {
     user.command('list')
         .description('List all stored Todoist accounts')
         .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
         .action(listUsersCommand)
 
     user.command('use <ref>')

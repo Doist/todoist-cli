@@ -190,6 +190,7 @@ Examples:
             ),
         )
         .option('--labels <a,b>', 'New labels (replaces existing)')
+        .option('--no-labels', 'Remove all labels')
         .option('--description <text>', 'New description')
         .option('--stdin', 'Read task description from stdin')
         .option('--assignee <ref>', 'Assign to user (name, email, id:xxx, or "me")')

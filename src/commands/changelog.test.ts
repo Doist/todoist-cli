@@ -2,154 +2,62 @@ import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs/promises')
-vi.mock('chalk')
 
 import { readFile } from 'node:fs/promises'
+import packageJson from '../../package.json' with { type: 'json' }
 import { registerChangelogCommand } from './changelog.js'
 
 const mockReadFile = vi.mocked(readFile)
 
 const SAMPLE_CHANGELOG = `# Changelog
 
-All notable changes to this project will be documented in this file.
-
-## [1.5.0](https://example.com) (2026-03-15)
+## [9.9.0](https://example.com) (2026-05-09)
 
 ### Features
-* feature five
+* delegated to cli-core
 
-## [1.4.0](https://example.com) (2026-03-14)
-
-### Features
-* feature four
-
-## [1.3.0](https://example.com) (2026-03-13)
-
-### Bug Fixes
-* fix three
-
-## [1.2.0](https://example.com) (2026-03-12)
+## [9.8.0](https://example.com) (2026-05-08)
 
 ### Features
-* feature two
-
-## [1.1.0](https://example.com) (2026-03-11)
-
-### Features
-* feature one
-
-## [1.0.0](https://example.com) (2026-03-10)
-
-### Features
-* initial release
+* prior release
 `
 
-function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerChangelogCommand(program)
-    return program
-}
-
-describe('changelog command', () => {
-    let consoleSpy: ReturnType<typeof vi.spyOn>
-    let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+describe('changelog wrapper', () => {
+    let logSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        process.exitCode = undefined
+        logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
     afterEach(() => {
         vi.restoreAllMocks()
-        process.exitCode = undefined
+        mockReadFile.mockReset()
     })
 
-    it('shows last 5 versions by default', async () => {
+    it('passes the todoist CHANGELOG.md path through to cli-core', async () => {
         mockReadFile.mockResolvedValue(SAMPLE_CHANGELOG)
+        const program = new Command()
+        program.exitOverride()
+        registerChangelogCommand(program)
 
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog'])
+        await program.parseAsync(['node', 'td', 'changelog', '-n', '1'])
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1.5.0'))
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1.1.0'))
-        // Should show "view full changelog" link since there are 6 versions
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('View full changelog'))
+        expect(mockReadFile).toHaveBeenCalledTimes(1)
+        const [path] = mockReadFile.mock.calls[0]
+        expect(String(path)).toMatch(/\/CHANGELOG\.md$/)
     })
 
-    it('includes latest version when changelog has no preamble', async () => {
-        const noPreambleChangelog = `## [2.0.0](https://example.com) (2026-03-20)
-
-### Features
-* new major version
-
-## [1.5.0](https://example.com) (2026-03-15)
-
-### Features
-* feature five
-`
-        mockReadFile.mockResolvedValue(noPreambleChangelog)
-
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog'])
-
-        const output = consoleSpy.mock.calls[0][0] as string
-        expect(output).toContain('2.0.0')
-        expect(output).toContain('1.5.0')
-    })
-
-    it('respects --count option', async () => {
+    it('emits a footer link pointing at the todoist repo and current version', async () => {
         mockReadFile.mockResolvedValue(SAMPLE_CHANGELOG)
+        const program = new Command()
+        program.exitOverride()
+        registerChangelogCommand(program)
 
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog', '-n', '2'])
+        await program.parseAsync(['node', 'td', 'changelog', '-n', '1'])
 
-        const output = consoleSpy.mock.calls[0][0] as string
-        expect(output).toContain('1.5.0')
-        expect(output).toContain('1.4.0')
-        expect(output).not.toContain('1.3.0')
-    })
-
-    it('handles fewer entries than requested', async () => {
-        const shortChangelog = `# Changelog
-
-## [1.1.0](https://example.com) (2026-03-11)
-
-### Features
-* only version
-`
-        mockReadFile.mockResolvedValue(shortChangelog)
-
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog'])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1.1.0'))
-        // Should NOT show "view full changelog" link since all versions are shown
-        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('View full changelog'))
-    })
-
-    it('handles missing changelog file', async () => {
-        mockReadFile.mockRejectedValue(new Error('ENOENT'))
-
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog'])
-
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-            expect.anything(),
-            expect.stringContaining('Could not read changelog file'),
+        const all = logSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+        expect(all).toContain(
+            `View full changelog: https://github.com/Doist/todoist-cli/blob/v${packageJson.version}/CHANGELOG.md`,
         )
-        expect(process.exitCode).toBe(1)
-    })
-
-    it('handles invalid count', async () => {
-        const program = createProgram()
-        await program.parseAsync(['node', 'td', 'changelog', '-n', 'abc'])
-
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-            expect.anything(),
-            expect.stringContaining('Count must be a positive number'),
-        )
-        expect(process.exitCode).toBe(1)
     })
 })

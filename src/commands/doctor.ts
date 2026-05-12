@@ -4,7 +4,7 @@ import { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
 import { createApiForToken } from '../lib/api/core.js'
 import {
-    CONFIG_PATH,
+    getConfigPath,
     listStoredUsers,
     NoTokenError,
     readConfig,
@@ -113,16 +113,17 @@ function checkNodeVersion(): DoctorCheck | null {
 }
 
 async function checkConfigFile(): Promise<DoctorCheck | null> {
+    const path = getConfigPath()
     try {
-        const content = await readFile(CONFIG_PATH, 'utf-8')
+        const content = await readFile(path, 'utf-8')
         const parsed = JSON.parse(content)
 
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
             return {
                 name: 'config',
                 status: 'fail',
-                message: `Config file must contain a JSON object (${CONFIG_PATH})`,
-                details: { path: CONFIG_PATH },
+                message: `Config file must contain a JSON object (${path})`,
+                details: { path },
             }
         }
 
@@ -133,9 +134,9 @@ async function checkConfigFile(): Promise<DoctorCheck | null> {
             status: issues.length > 0 ? 'warn' : 'pass',
             message:
                 issues.length > 0
-                    ? `Config file is readable but ${issues.join('; ')} (${CONFIG_PATH})`
-                    : `Config file is readable (${CONFIG_PATH})`,
-            details: { path: CONFIG_PATH, exists: true, issues },
+                    ? `Config file is readable but ${issues.join('; ')} (${path})`
+                    : `Config file is readable (${path})`,
+            details: { path, exists: true, issues },
         }
     } catch (error) {
         if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
@@ -146,8 +147,8 @@ async function checkConfigFile(): Promise<DoctorCheck | null> {
         return {
             name: 'config',
             status: 'fail',
-            message: `Could not read config file ${CONFIG_PATH}: ${message}`,
-            details: { path: CONFIG_PATH },
+            message: `Could not read config file ${path}: ${message}`,
+            details: { path },
         }
     }
 }
