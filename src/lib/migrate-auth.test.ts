@@ -145,9 +145,9 @@ describe('migrateLegacyAuth', () => {
                     authorization: 'Bearer legacy-1234567',
                     'doist-platform': 'cli',
                     'doist-version': expect.stringMatching(/^\d+\.\d+\.\d+$/),
-                    'x-td-request-id': expect.any(String),
-                    'x-td-session-id': expect.any(String),
-                    'x-td-cli-command': 'postinstall:auth-migrate',
+                    'request-id': expect.any(String),
+                    'session-id': expect.any(String),
+                    'cli-command': 'postinstall:auth-migrate',
                 }),
             }),
         )
