@@ -1,3 +1,9 @@
+## [1.63.0](https://github.com/Doist/todoist-cli/compare/v1.62.2...v1.63.0) (2026-05-12)
+
+### Features
+
+* **project:** add `--parent` on update and new `reorder` command ([#330](https://github.com/Doist/todoist-cli/issues/330)) ([f32f56a](https://github.com/Doist/todoist-cli/commit/f32f56adefee35943cd9fc43b592b6ad75591240))
+
 ## [1.62.2](https://github.com/Doist/todoist-cli/compare/v1.62.1...v1.62.2) (2026-05-11)
 
 ### Bug Fixes
