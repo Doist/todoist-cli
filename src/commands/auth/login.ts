@@ -63,16 +63,11 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
             // `--json` / `--ndjson` stdout envelope clean; the human "stored
             // securely" confirmation is suppressed in machine-output mode.
             if (storage) {
-                if (view.json || view.ndjson) {
-                    if (storage.warning) {
-                        console.error(chalk.yellow('Warning:'), storage.warning)
-                    }
-                } else {
-                    logTokenStorageResult(
-                        storage,
-                        'Token stored securely in the system credential manager',
-                    )
-                }
+                logTokenStorageResult(
+                    storage,
+                    'Token stored securely in the system credential manager',
+                    view.json || view.ndjson,
+                )
             }
         },
     })

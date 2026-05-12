@@ -1,5 +1,4 @@
 import { attachLogoutCommand } from '@doist/cli-core/auth'
-import chalk from 'chalk'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { logTokenStorageResult } from './helpers.js'
@@ -17,14 +16,11 @@ export function attachTodoistLogoutCommand(auth: Command, store: TodoistTokenSto
         onCleared: ({ view }) => {
             const result = store.getLastClearResult()
             if (!result) return
-            if (view.json || view.ndjson) {
-                if (result.warning) console.error(chalk.yellow('Warning:'), result.warning)
-            } else {
-                logTokenStorageResult(
-                    result,
-                    'Stored token removed from the system credential manager',
-                )
-            }
+            logTokenStorageResult(
+                result,
+                'Stored token removed from the system credential manager',
+                view.json || view.ndjson,
+            )
         },
     })
 }

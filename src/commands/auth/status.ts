@@ -2,8 +2,12 @@ import { formatJson, formatNdjson } from '@doist/cli-core'
 import { attachStatusCommand } from '@doist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
-import { getApi } from '../../lib/api/core.js'
-import { type TodoistAccount, type TodoistTokenStore } from '../../lib/auth-store.js'
+import { createApiForToken, getApi } from '../../lib/api/core.js'
+import {
+    toTodoistAccount,
+    type TodoistAccount,
+    type TodoistTokenStore,
+} from '../../lib/auth-store.js'
 import {
     type AuthMetadata,
     type AuthMode,
@@ -12,6 +16,7 @@ import {
     readConfig,
     type StoredUser,
 } from '../../lib/auth.js'
+import { getRequestedUserRef } from '../../lib/global-args.js'
 import { getDefaultUserId } from '../../lib/users.js'
 
 type StatusData = {
@@ -31,8 +36,14 @@ function formatAuthMode(authMode: AuthMode, authScope?: string): string {
     return 'unknown (manual token or env var; assuming write access)'
 }
 
-async function gatherStatusData(): Promise<StatusData> {
-    const api = await getApi()
+/**
+ * `token` shortcut: when the caller already has a resolved token (e.g. from
+ * the cli-core `store.active()` snapshot, and no `--user <ref>` override is
+ * in play), pass it through to skip the redundant keyring round-trip
+ * `getApi()` would do via `resolveActiveUser`.
+ */
+async function gatherStatusData(token?: string): Promise<StatusData> {
+    const api = token ? createApiForToken(token) : await getApi()
     const [user, metadata, storedUsers, config] = await Promise.all([
         api.getUser(),
         getAuthMetadata(),
@@ -108,8 +119,10 @@ function buildStatusJson(data: StatusData): unknown {
  * full status fetch through `onNotAuthenticated`; when `active()` does return
  * a snapshot, `fetchLive` covers the same gather so renderText/renderJson can
  * read from a single closure-captured `StatusData` regardless of which path
- * we took. The same gather (`gatherStatusData`) is reused so output is
- * byte-for-byte identical between paths.
+ * we took. The snapshot path also short-circuits one credential resolve via
+ * `gatherStatusData(token)` when no `--user <ref>` is in play; when `--user`
+ * is set we re-resolve through `getApi()` so the displayed account matches
+ * the selector instead of the snapshot's default.
  */
 export function attachTodoistStatusCommand(auth: Command, store: TodoistTokenStore): Command {
     let data: StatusData | null = null
@@ -117,15 +130,19 @@ export function attachTodoistStatusCommand(auth: Command, store: TodoistTokenSto
     return attachStatusCommand<TodoistAccount>(auth, {
         store,
         description: 'Show current authentication status',
-        fetchLive: async ({ account }) => {
-            data = await gatherStatusData()
-            return {
-                ...account,
+        fetchLive: async ({ token }) => {
+            // Snapshot's token only matches `--user` when no selector is set.
+            // Re-resolve via getApi when --user is present so the displayed
+            // account is the requested one, not the snapshot's default.
+            const userOverride = getRequestedUserRef() !== undefined
+            data = await gatherStatusData(userOverride ? undefined : token)
+            return toTodoistAccount({
+                id: data.user.id,
                 email: data.user.email,
-                auth_mode: data.metadata.authMode,
-                auth_scope: data.metadata.authScope,
-                auth_flags: data.metadata.authFlags,
-            }
+                authMode: data.metadata.authMode,
+                authScope: data.metadata.authScope,
+                authFlags: data.metadata.authFlags,
+            })
         },
         renderText: () => {
             if (!data) throw new Error('status renderText called before fetchLive')
@@ -136,10 +153,11 @@ export function attachTodoistStatusCommand(auth: Command, store: TodoistTokenSto
             return buildStatusJson(data)
         },
         onNotAuthenticated: async ({ view }) => {
-            // active() returned null — either env-token mode, --user selector,
-            // or no default. Drive the legacy resolver (getApi) so all three
-            // paths render identically; getApi throws NoTokenError /
-            // UserNotFoundError when nothing resolves, matching prior UX.
+            // active() returned null — either env-token mode, --user selector
+            // without a snapshot match, or no default. Drive the legacy
+            // resolver (getApi) so all three paths render identically; getApi
+            // throws NoTokenError / UserNotFoundError when nothing resolves,
+            // matching prior UX.
             data = await gatherStatusData()
             if (view.json) {
                 console.log(formatJson(buildStatusJson(data)))
