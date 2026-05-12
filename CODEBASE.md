@@ -22,7 +22,8 @@ eslint/prettier) · semantic-release on merge to `main`.
 ├─ skills/todoist-cli/    # Generated SKILL.md (from src/lib/skills/content.ts)
 ├─ .github/workflows/     # test.yml, lint.yml, release.yml, check-skill-sync.yml,
 │                         # check-semantic-pull-request.yml, update-todoist-sdk.yml,
-│                         # issue-automation.yml, request-reviews.yml
+│                         # issue-automation.yml, request-reviews.yml,
+│                         # sync-next-with-main.yml
 ├─ AGENTS.md              # Prescriptive rules (build cmds, skill-sync, JSON flag)
 ├─ CODEBASE.md            # This file — descriptive map
 ├─ CLAUDE.md              # One-liner forward to AGENTS.md
@@ -246,6 +247,14 @@ opt-in: `--read-only` for a read-only token,
 - **Release:** semantic-release on merge to `main` (`.github/workflows/release.yml`).
   Commits must follow Conventional Commits — enforced by
   `check-semantic-pull-request.yml`.
+- **Prerelease sync:** `sync-next-with-main.yml` opens (or updates) a
+  `chore: merge main into next` PR whenever `main` is ahead of `next`. Runs
+  on push to `main`, daily at 09:00 UTC, and `workflow_dispatch`. Clean
+  merges go through the standard PR CI; conflicts are committed with
+  markers and surfaced in the PR body for manual resolution. Idempotent —
+  skips reruns when the existing sync branch already merges the current
+  `main`/`next` tips, and refuses to overwrite branches whose HEAD was not
+  authored by the bot.
 
 ## Skill content flow
 
