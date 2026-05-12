@@ -1,0 +1,143 @@
+name: Sync next with main
+
+on:
+    push:
+        branches:
+            - main
+    schedule:
+        # Daily at 09:00 UTC. Catches release commits (`[skip ci]`) that don't
+        # trigger workflows via push, and any drift the push trigger missed.
+        - cron: '0 9 * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}
+    cancel-in-progress: false
+
+jobs:
+    sync:
+        name: Sync
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Generate bot token
+              id: generate_token
+              uses: actions/create-github-app-token@v3
+              with:
+                  app-id: ${{ secrets.DOIST_RELEASE_BOT_ID }}
+                  private-key: ${{ secrets.DOIST_RELEASE_BOT_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-pull-requests: write
+
+            - name: Checkout next
+              uses: actions/checkout@v4
+              with:
+                  ref: next
+                  token: ${{ steps.generate_token.outputs.token }}
+                  fetch-depth: 0
+
+            - name: Configure git
+              run: |
+                  git config user.name "${{ steps.generate_token.outputs.app-slug }}[bot]"
+                  git config user.email "${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+            - name: Check if main is ahead of next
+              id: divergence
+              run: |
+                  git fetch origin main
+                  ahead=$(git rev-list --count next..origin/main)
+                  echo "ahead=$ahead" >> "$GITHUB_OUTPUT"
+                  if [ "$ahead" -eq 0 ]; then
+                      echo "next is up to date with main; nothing to do"
+                  else
+                      echo "main is $ahead commit(s) ahead of next"
+                  fi
+
+            - name: Create sync branch
+              if: steps.divergence.outputs.ahead != '0'
+              run: git checkout -B chore/sync-main-into-next
+
+            - name: Attempt merge
+              if: steps.divergence.outputs.ahead != '0'
+              id: merge
+              run: |
+                  if git merge --no-ff origin/main -m "chore: merge main into next"; then
+                      echo "status=clean" >> "$GITHUB_OUTPUT"
+                      {
+                          echo "conflicts<<EOF"
+                          echo "EOF"
+                      } >> "$GITHUB_OUTPUT"
+                  else
+                      conflicts=$(git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/')
+                      git add -A
+                      git commit -m "chore: merge main into next (conflicts to resolve)"
+                      echo "status=conflicts" >> "$GITHUB_OUTPUT"
+                      {
+                          echo "conflicts<<EOF"
+                          echo "$conflicts"
+                          echo "EOF"
+                      } >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Push sync branch
+              if: steps.divergence.outputs.ahead != '0'
+              run: git push --force origin chore/sync-main-into-next
+
+            - name: Open or update PR
+              if: steps.divergence.outputs.ahead != '0'
+              env:
+                  GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+                  MERGE_STATUS: ${{ steps.merge.outputs.status }}
+                  CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+              run: |
+                  if [ "$MERGE_STATUS" = "clean" ]; then
+                      cat > /tmp/pr-body.md <<'EOF'
+                  Automated sync of `main` into `next`.
+
+                  The merge applied cleanly. Standard CI (Tests, Lint, Skill Sync) will validate against the merged tree.
+
+                  Once green and reviewed, merge this to publish a new `…-next.N` prerelease.
+                  EOF
+                  else
+                      cat > /tmp/pr-body.md <<EOF
+                  Automated sync of \`main\` into \`next\`.
+
+                  ⚠️ **Conflicts detected** — the branch was pushed with conflict markers and needs manual resolution.
+
+                  ### Conflicting files
+
+                  ${CONFLICTS}
+
+                  ### How to resolve
+
+                  \`\`\`bash
+                  git fetch origin
+                  git checkout chore/sync-main-into-next
+                  # resolve conflicts in the files above
+                  git add -A
+                  git commit --amend --no-edit
+                  git push --force-with-lease
+                  \`\`\`
+                  EOF
+                  fi
+
+                  existing=$(gh pr list \
+                      --base next \
+                      --head chore/sync-main-into-next \
+                      --state open \
+                      --json number \
+                      --jq '.[0].number')
+
+                  if [ -n "$existing" ]; then
+                      gh pr edit "$existing" --body-file /tmp/pr-body.md
+                  else
+                      gh pr create \
+                          --base next \
+                          --head chore/sync-main-into-next \
+                          --title "chore: merge main into next" \
+                          --body-file /tmp/pr-body.md
+                  fi
