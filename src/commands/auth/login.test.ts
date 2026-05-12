@@ -37,6 +37,7 @@ vi.mock('@doist/cli-core/auth', async (importOriginal) => {
     }
 })
 
+import { createTodoistTokenStore } from '../../lib/auth-store.js'
 import { attachTodoistLoginCommand } from './login.js'
 
 type AttachOptions = {
@@ -53,7 +54,7 @@ function attachAndCapture(): AttachOptions {
     capturedAttachOptions.length = 0
     const program = new Command()
     program.exitOverride()
-    attachTodoistLoginCommand(program)
+    attachTodoistLoginCommand(program, createTodoistTokenStore())
     return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
 }
 
