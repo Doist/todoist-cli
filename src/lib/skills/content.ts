@@ -80,7 +80,7 @@ Resolution order: \`--user <ref>\` > \`user.defaultUser\` from config > the only
 
 - Daily views: \`td today\`, \`td inbox\`, \`td upcoming\`, \`td completed\`, \`td activity\`
 - Task lifecycle: \`td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse\` (alias: \`td task qa\` for \`quickadd\`)
-- Projects: \`td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions\`
+- Projects: \`td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/browse/collaborators/permissions\`
 - Project analytics: \`td project progress/health/health-context/activity-stats/analyze-health\`
 - Organization: \`td label ...\`, \`td filter ...\`, \`td section ...\`, \`td folder ...\`, \`td workspace ...\`
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
@@ -152,6 +152,10 @@ td project create --name "New Project" --color blue
 td project update "Roadmap" --favorite
 td project update "Roadmap" --folder "Engineering"
 td project update "Roadmap" --no-folder
+td project update "Roadmap" --parent "Engineering"
+td project update "Roadmap" --no-parent
+td project reorder "Roadmap" --before "Marketing"
+td project reorder "Roadmap" --position 0
 td project archive "Roadmap"
 td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes

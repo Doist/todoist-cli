@@ -44,6 +44,9 @@ export type ErrorCode =
     | 'INVALID_VISIBILITY'
     | 'INVALID_ROLE'
     | 'NOT_ADMIN'
+    | 'NOT_SIBLINGS'
+    | 'WORKSPACE_NO_SUBPROJECTS'
+    | 'WORKSPACE_REORDER_UNSUPPORTED'
     // Missing input
     | 'MISSING_CONTENT'
     | 'MISSING_DESTINATION'
