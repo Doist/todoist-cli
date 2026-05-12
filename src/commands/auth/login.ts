@@ -5,7 +5,7 @@ import type { Command } from 'commander'
 import open from 'open'
 import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'
 import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
-import { createTodoistTokenStore, type TodoistAccount } from '../../lib/auth-store.js'
+import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import {
     extractAdditionalScopes,
     formatScopesHelp,
@@ -27,9 +27,7 @@ const TODOIST_CALLBACK_PORT_FALLBACK = 5
  * the same Commander view; cli-core surfaces it through the `flags` argument
  * to `resolveScopes`.
  */
-export function attachTodoistLoginCommand(auth: Command): Command {
-    const store = createTodoistTokenStore()
-
+export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStore): Command {
     const login = attachLoginCommand<TodoistAccount>(auth, {
         provider: createTodoistAuthProvider(),
         store,

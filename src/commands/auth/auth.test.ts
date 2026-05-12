@@ -253,7 +253,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
-            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated')
+            expect(consoleSpy).toHaveBeenCalledWith('✓ Authenticated')
             expect(consoleSpy).toHaveBeenCalledWith(`  Email: ${TEST_USER.email}`)
             expect(consoleSpy).toHaveBeenCalledWith(`  Name:  ${TEST_USER.fullName}`)
             expect(consoleSpy).toHaveBeenCalledWith('  Mode:  read-write')
@@ -271,7 +271,7 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
-            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Authenticated (default)')
+            expect(consoleSpy).toHaveBeenCalledWith('✓ Authenticated (default)')
         })
 
         it('lists other stored accounts', async () => {
@@ -336,7 +336,7 @@ describe('auth command', () => {
             await program.parseAsync(['node', 'td', 'auth', 'logout'])
 
             expect(mockClearApiToken).toHaveBeenCalled()
-            expect(consoleSpy).toHaveBeenCalledWith('✓', 'Logged out')
+            expect(consoleSpy).toHaveBeenCalledWith('✓ Logged out')
         })
     })
 

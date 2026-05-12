@@ -86,10 +86,12 @@ function storedUserToAccount(user: StoredUser): TodoistAccount {
  */
 export type TodoistTokenStore = TokenStore<TodoistAccount> & {
     getLastStorageResult(): TokenStorageResult | undefined
+    getLastClearResult(): TokenStorageResult | undefined
 }
 
 export function createTodoistTokenStore(): TodoistTokenStore {
     let lastStorageResult: TokenStorageResult | undefined
+    let lastClearResult: TokenStorageResult | undefined
 
     return {
         /**
@@ -133,11 +135,15 @@ export function createTodoistTokenStore(): TodoistTokenStore {
         },
 
         async clear() {
-            await clearApiToken()
+            lastClearResult = await clearApiToken()
         },
 
         getLastStorageResult() {
             return lastStorageResult
+        },
+
+        getLastClearResult() {
+            return lastClearResult
         },
     }
 }

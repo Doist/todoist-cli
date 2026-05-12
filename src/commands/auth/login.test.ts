@@ -53,7 +53,22 @@ function attachAndCapture(): AttachOptions {
     capturedAttachOptions.length = 0
     const program = new Command()
     program.exitOverride()
-    attachTodoistLoginCommand(program)
+    // Stub `TodoistTokenStore` — the login attacher just forwards the store to
+    // cli-core, which is mocked here. The tests only exercise the local
+    // resolveScopes / onSuccess callbacks.
+    const stubStore = {
+        async active() {
+            return null
+        },
+        async set() {},
+        async clear() {},
+        getLastStorageResult: () => undefined,
+        getLastClearResult: () => undefined,
+    }
+    attachTodoistLoginCommand(
+        program,
+        stubStore as unknown as Parameters<typeof attachTodoistLoginCommand>[1],
+    )
     return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
 }
 
