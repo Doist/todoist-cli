@@ -15,9 +15,6 @@ import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 
-// Real temp file shared by the attachment-bearing tests below. The
-// command reads the file into a Blob before calling `api.uploadFile`,
-// so a fake path would throw ENOENT before reaching the mocked API.
 let attachmentTmpDir: string
 let attachmentFilePath: string
 
@@ -354,9 +351,6 @@ describe('comment add with attachment', () => {
             attachmentFilePath,
         ])
 
-        // Blob + fileName is the shape the SDK's native-FormData branch
-        // accepts. If a regression switched back to a Buffer/path, undici
-        // would re-hit its "[object FormData]" coercion bug.
         const callArg = mockApi.uploadFile.mock.calls[0][0]
         expect(callArg.file).toBeInstanceOf(Blob)
         expect(callArg.fileName).toBe('file.pdf')

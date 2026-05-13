@@ -197,9 +197,6 @@ describe('template', () => {
                 '/tmp/template.csv',
             ])
 
-            // Blob + fileName is what the SDK's native-FormData branch
-            // accepts. A Buffer would route through the form-data
-            // package and break undici serialization.
             const createArg = mockApi.createProjectFromTemplate.mock.calls[0][0]
             expect(createArg).toMatchObject({
                 name: 'My Project',

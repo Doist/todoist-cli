@@ -3,7 +3,6 @@ import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
-import { toFileCliError } from '../../lib/file-errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
@@ -69,15 +68,18 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         | undefined
 
     if (options.file) {
-        // Read the file into a Blob so the SDK's `uploadFile` takes its
-        // native-`FormData` (Blob) branch instead of the Node `form-data`
-        // branch, which undici's fetch can't serialize. See AGENTS.md
-        // for the broader rationale.
         let buffer: Buffer
         try {
             buffer = await readFile(options.file)
         } catch (err) {
-            throw toFileCliError(err, 'File') ?? err
+            const message = err instanceof Error ? err.message : String(err)
+            const code = (err as NodeJS.ErrnoException).code
+            if (code === 'ENOENT') {
+                throw new CliError('FILE_NOT_FOUND', `File not found: ${options.file}`, [
+                    'Check the file path and try again.',
+                ])
+            }
+            throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
         }
         const fileName = basename(options.file)
         const blob = new Blob([new Uint8Array(buffer)])

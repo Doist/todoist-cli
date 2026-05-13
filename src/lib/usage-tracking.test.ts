@@ -20,10 +20,6 @@ vi.mock('@doist/todoist-sdk', async (importOriginal) => {
 const getDefaultDispatcherMock = vi.mocked(getDefaultDispatcher)
 
 describe('usage tracking', () => {
-    afterEach(() => {
-        vi.restoreAllMocks()
-    })
-
     it('normalizes commander command paths into header-friendly values', () => {
         expect(normalizeCommandPath('td task view')).toBe('task:view')
         expect(normalizeCommandPath('td today')).toBe('today')
