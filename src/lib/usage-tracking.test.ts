@@ -21,6 +21,13 @@ vi.mock('@doist/todoist-sdk', async (importOriginal) => {
 const getDefaultDispatcherMock = vi.mocked(getDefaultDispatcher)
 
 describe('usage tracking', () => {
+    // The new multipart tests spy on `globalThis.fetch`. Restore mocks
+    // between every case here so a failure in one doesn't leak a stub
+    // into following tests.
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
     it('normalizes commander command paths into header-friendly values', () => {
         expect(normalizeCommandPath('td task view')).toBe('task:view')
         expect(normalizeCommandPath('td today')).toBe('today')
@@ -242,6 +249,91 @@ describe('usage tracking', () => {
             code: 'FILE_NOT_FOUND',
             message: expect.stringContaining('/tmp/does-not-exist'),
         })
+    })
+
+    it('honors an already-aborted signal without starting the upload', async () => {
+        let pipeCalled = false
+        const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+        const form = {
+            getHeaders: () => ({ 'content-type': 'multipart/form-data; boundary=x' }),
+            pipe: <T>(dest: T) => {
+                pipeCalled = true
+                return dest
+            },
+            on: () => undefined,
+        }
+
+        const controller = new AbortController()
+        controller.abort(new Error('canceled by user'))
+
+        const trackedFetch = createTrackedFetch()
+        await expect(
+            trackedFetch('https://api.todoist.com/api/v1/uploads', {
+                method: 'POST',
+                body: form as unknown as BodyInit,
+                headers: form.getHeaders(),
+                signal: controller.signal,
+            }),
+        ).rejects.toThrow(/canceled by user/)
+
+        // Critical: an already-aborted upload must not open the local
+        // file or hit the network. `form.pipe()` would put a real
+        // form-data into flowing mode and `fs.createReadStream` would
+        // start reading.
+        expect(pipeCalled).toBe(false)
+        expect(fetchSpy).not.toHaveBeenCalled()
+    })
+
+    it('cancels an in-flight multipart upload when its signal aborts', async () => {
+        // Simulate undici: drain the body, observe the abort signal,
+        // reject when the upstream stream errors out.
+        vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+            _url: RequestInfo | URL,
+            options?: RequestInit,
+        ) => {
+            if (!options?.body) throw new Error('missing body')
+            const reader = (options.body as ReadableStream<Uint8Array>).getReader()
+            for (;;) {
+                const { done } = await reader.read()
+                if (done) break
+            }
+            return new Response('{}', { status: 200 })
+        }) as typeof fetch)
+
+        // A form that streams forever — until the PassThrough is
+        // destroyed by the abort handler.
+        const form = {
+            getHeaders: () => ({ 'content-type': 'multipart/form-data; boundary=x' }),
+            pipe<T extends NodeJS.WritableStream>(dest: T): T {
+                let cancelled = false
+                ;(dest as unknown as { on: (e: string, l: () => void) => void }).on('close', () => {
+                    cancelled = true
+                })
+                const tick = (): void => {
+                    if (cancelled || (dest as unknown as { destroyed?: boolean }).destroyed) return
+                    dest.write('chunk\r\n')
+                    setImmediate(tick)
+                }
+                setImmediate(tick)
+                return dest
+            },
+            on: () => undefined,
+        }
+
+        const controller = new AbortController()
+        const trackedFetch = createTrackedFetch()
+        const promise = trackedFetch('https://api.todoist.com/api/v1/uploads', {
+            method: 'POST',
+            body: form as unknown as BodyInit,
+            headers: form.getHeaders(),
+            signal: controller.signal,
+        })
+
+        // Abort once the stream is producing data.
+        setImmediate(() => controller.abort(new Error('mid-flight abort')))
+
+        await expect(promise).rejects.toThrow()
     })
 
     it('maps sdk timeouts to abort signals', async () => {

@@ -3,6 +3,7 @@ import path from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
+import { fsCodeToCliError, toFileCliError } from '../../lib/file-errors.js'
 import { printDryRun } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { formatImportResult } from './helpers.js'
@@ -26,9 +27,7 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
 
     const filePath = path.resolve(options.file)
     if (!fs.existsSync(filePath)) {
-        throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
-            'Check the file path and try again.',
-        ])
+        throw fsCodeToCliError('ENOENT', 'Template file', filePath) as CliError
     }
 
     if (options.dryRun) {
@@ -53,8 +52,7 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
     try {
         file = fs.readFileSync(filePath) as Buffer
     } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
+        throw toFileCliError(err, 'Template file') ?? err
     }
     const fileName = options.fileName || path.basename(filePath)
 

@@ -6,7 +6,7 @@ import {
     getDefaultDispatcher,
 } from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
-import { CliError } from './errors.js'
+import { toFileCliError } from './file-errors.js'
 
 const CLI_NAME = 'todoist-cli'
 const CLI_VERSION = packageJson.version
@@ -129,37 +129,39 @@ function isFormDataPackageInstance(body: unknown): body is FormDataPackage {
 // Bridge the `form-data` CombinedStream — which undici's native fetch
 // doesn't recognize — into a WHATWG ReadableStream it does. Piping
 // through a PassThrough keeps the body lazy (no in-process buffering of
-// the whole file) and lets undici honor `signal` / cancel the upstream
-// stream when the request is aborted. Stream errors (e.g. ENOENT from
-// `fs.createReadStream`) propagate to the PassThrough so undici rejects
-// the fetch with the original error as its `cause`.
-function formDataToWebStream(form: FormDataPackage): ReadableStream<Uint8Array> {
+// the whole file) and lets undici honor `signal` by destroying the
+// PassThrough on abort, which propagates upstream and closes any open
+// `fs.createReadStream` handles. Stream errors (e.g. ENOENT) propagate
+// the same way so undici rejects the fetch with the original error in
+// its `cause`.
+function formDataToWebStream(
+    form: FormDataPackage,
+    signal: AbortSignal | undefined,
+): ReadableStream<Uint8Array> {
     const pass = new PassThrough()
-    form.pipe(pass)
+    // Wire the error handler *before* starting the pipe so a
+    // synchronous emit during `pipe()` can't slip past us. Wrap the
+    // `pipe()` call itself for the same reason — some duck-typed
+    // implementations matching `isFormDataPackageInstance` may throw
+    // synchronously.
     form.on('error', (err) => pass.destroy(err))
-    return Readable.toWeb(pass) as ReadableStream<Uint8Array>
-}
-
-// Walk the error/cause chain looking for a Node fs error so local file
-// problems (the SDK opens uploads via `fs.createReadStream`) surface as a
-// structured `CliError` rather than a generic `INTERNAL_ERROR`.
-function mapStreamErrorToCliError(error: unknown): CliError | undefined {
-    let current: unknown = error
-    const seen = new Set<unknown>()
-    while (current instanceof Error && !seen.has(current)) {
-        seen.add(current)
-        const code = (current as NodeJS.ErrnoException).code
-        const path = (current as NodeJS.ErrnoException).path
-        const where = path ? `: ${path}` : ''
-        if (code === 'ENOENT') {
-            return new CliError('FILE_NOT_FOUND', `File not found${where}`)
+    if (signal) {
+        const onAbort = (): void => {
+            const reason =
+                signal.reason instanceof Error
+                    ? signal.reason
+                    : new DOMException('The operation was aborted.', 'AbortError')
+            pass.destroy(reason)
         }
-        if (code === 'EACCES' || code === 'EPERM' || code === 'EISDIR') {
-            return new CliError('FILE_READ_ERROR', `Cannot read file${where}`, [current.message])
-        }
-        current = (current as Error & { cause?: unknown }).cause
+        if (signal.aborted) onAbort()
+        else signal.addEventListener('abort', onAbort, { once: true })
     }
-    return undefined
+    try {
+        form.pipe(pass)
+    } catch (err) {
+        pass.destroy(err instanceof Error ? err : new Error(String(err)))
+    }
+    return Readable.toWeb(pass) as ReadableStream<Uint8Array>
 }
 
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
@@ -180,7 +182,21 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
         // as-is and decide for themselves how to handle it.
         const useNativeFetch = baseFetch === globalThis.fetch
         const needsBodyBridge = useNativeFetch && isFormDataPackageInstance(body)
-        const resolvedBody = needsBodyBridge ? formDataToWebStream(body) : body
+
+        // Short-circuit an already-aborted upload *before* starting the
+        // pipe. Otherwise `form.pipe()` puts the form into flowing mode
+        // synchronously and a canceled upload still opens the local
+        // file (and can race into ENOENT translation instead of
+        // surfacing the abort).
+        if (needsBodyBridge && abortSignal?.aborted) {
+            throw abortSignal.reason instanceof Error
+                ? abortSignal.reason
+                : new DOMException('The operation was aborted.', 'AbortError')
+        }
+
+        const resolvedBody = needsBodyBridge
+            ? formDataToWebStream(body, abortSignal ?? undefined)
+            : body
 
         const fetchOptions: RequestInit & { duplex?: 'half' } = {
             ...rest,
@@ -197,7 +213,7 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             return toCustomFetchResponse(response)
         } catch (error) {
             if (needsBodyBridge) {
-                const mapped = mapStreamErrorToCliError(error)
+                const mapped = toFileCliError(error, 'File')
                 if (mapped) throw mapped
             }
             throw error
