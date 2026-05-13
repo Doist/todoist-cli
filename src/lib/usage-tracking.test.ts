@@ -1,3 +1,5 @@
+import { EventEmitter } from 'node:events'
+import { Readable } from 'node:stream'
 import { getDefaultDispatcher } from '@doist/todoist-sdk'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -75,7 +77,46 @@ describe('usage tracking', () => {
     })
 
     it('materializes form-data package bodies into a Buffer for undici fetch', async () => {
-        const { default: FormData } = await import('form-data')
+        // Minimal stub matching the duck-typed `FormDataPackage` shape that
+        // `isFormDataPackageInstance` looks for. We avoid importing
+        // `form-data` so this test isn't tied to that being a transitive
+        // dependency of the SDK, and we deliberately back the `file` part
+        // with a Readable stream — the higher-value failure mode, since
+        // form-data's `getBuffer()` doesn't serialize stream parts. If the
+        // fix regressed to a `getBuffer()`-based implementation, the
+        // tripwire on `getBuffer` below would catch it.
+        class FormDataStub extends EventEmitter {
+            private readonly boundary = '----test-boundary'
+            constructor(private readonly fileBytes: Buffer) {
+                super()
+            }
+            getHeaders(): Record<string, string> {
+                return { 'content-type': `multipart/form-data; boundary=${this.boundary}` }
+            }
+            getBuffer(): Buffer {
+                throw new Error('getBuffer must not be called for stream-backed parts')
+            }
+            pipe(): unknown {
+                return this
+            }
+            resume(): void {
+                const preamble = Buffer.from(
+                    `--${this.boundary}\r\nContent-Disposition: form-data; name="file"; filename="test.bin"\r\nContent-Type: application/octet-stream\r\n\r\n`,
+                )
+                const closer = Buffer.from(`\r\n--${this.boundary}--\r\n`)
+                this.emit('data', preamble)
+                const source = Readable.from([this.fileBytes])
+                source.on('data', (chunk: Buffer) => this.emit('data', chunk))
+                source.once('end', () => {
+                    this.emit('data', closer)
+                    this.emit('end')
+                })
+                source.once('error', (err: Error) => this.emit('error', err))
+            }
+        }
+
+        const fileBytes = Buffer.from('hello world bytes from a stream')
+        const form = new FormDataStub(fileBytes)
 
         let captured: RequestInit | undefined
         const trackedFetch = createTrackedFetch(async (_url, options) => {
@@ -85,14 +126,6 @@ describe('usage tracking', () => {
                 headers: { 'content-type': 'application/json' },
             })
         })
-
-        const form = new FormData()
-        form.append('file_name', 'test.bin')
-        form.append('file', Buffer.from('hello world bytes'), {
-            filename: 'test.bin',
-            contentType: 'application/octet-stream',
-        })
-        const expectedLength = form.getLengthSync()
 
         await trackedFetch('https://api.todoist.com/api/v1/uploads', {
             method: 'POST',
@@ -104,7 +137,12 @@ describe('usage tracking', () => {
 
         if (!captured) throw new Error('tracked fetch did not capture request options')
         expect(captured.body).toBeInstanceOf(Buffer)
-        expect((captured.body as Buffer).length).toBe(expectedLength)
+        const body = captured.body as Buffer
+        // The stream contents must survive serialization — this is the
+        // bug we're guarding against (undici otherwise coerces the body
+        // to "[object FormData]" and the file bytes vanish).
+        expect(body.includes(fileBytes)).toBe(true)
+        expect(body.toString('utf8')).toContain('Content-Disposition: form-data')
         const headers = captured.headers as Record<string, string>
         expect(headers['content-type']).toMatch(/^multipart\/form-data; boundary=/)
     })
