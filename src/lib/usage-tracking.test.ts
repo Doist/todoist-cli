@@ -74,6 +74,30 @@ describe('usage tracking', () => {
         expect(response.ok).toBe(true)
     })
 
+    it('forwards arrayBuffer so binary attachments are not corrupted', async () => {
+        // PNG magic + a stretch of high bytes that would be replaced with
+        // U+FFFD by any UTF-8 text round-trip on the response body.
+        const binaryBytes = new Uint8Array([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0xff, 0xfe,
+            0xfd, 0x80,
+        ])
+        const trackedFetch = createTrackedFetch(
+            async () =>
+                new Response(binaryBytes, {
+                    status: 200,
+                    headers: { 'content-type': 'image/png' },
+                }),
+        )
+
+        const response = await trackedFetch('https://files.todoist.com/file.png')
+        const buffer = await response.arrayBuffer?.()
+
+        expect(buffer).toBeDefined()
+        if (buffer) {
+            expect(new Uint8Array(buffer)).toEqual(binaryBytes)
+        }
+    })
+
     it('maps sdk timeouts to abort signals', async () => {
         let captured: RequestInit | undefined
         const trackedFetch = createTrackedFetch(async (_url, options) => {
