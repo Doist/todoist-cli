@@ -1,4 +1,4 @@
-import fs from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
@@ -23,11 +23,6 @@ export async function importTemplateFile(
     }
 
     const filePath = path.resolve(options.file)
-    if (!fs.existsSync(filePath)) {
-        throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
-            'Check the file path and try again.',
-        ])
-    }
 
     if (options.dryRun) {
         printDryRun('import template into project', {
@@ -43,8 +38,13 @@ export async function importTemplateFile(
 
     let buffer: Buffer
     try {
-        buffer = fs.readFileSync(filePath) as Buffer
+        buffer = await readFile(filePath)
     } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
+                'Check the file path and try again.',
+            ])
+        }
         const message = err instanceof Error ? err.message : String(err)
         throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
     }

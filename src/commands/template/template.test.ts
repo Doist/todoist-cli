@@ -1,8 +1,12 @@
 import fs from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
+vi.mock('node:fs/promises', () => ({
+    readFile: vi.fn(),
+}))
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
@@ -170,8 +174,7 @@ describe('template', () => {
 
     describe('create', () => {
         beforeEach(() => {
-            vi.mocked(fs.existsSync).mockReturnValue(true)
-            vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('template content'))
+            vi.mocked(readFile).mockResolvedValue(Buffer.from('template content'))
         })
 
         it('creates project from template file', async () => {
@@ -296,7 +299,9 @@ describe('template', () => {
 
         it('errors when file does not exist', async () => {
             const program = createProgram()
-            vi.mocked(fs.existsSync).mockReturnValue(false)
+            vi.mocked(readFile).mockRejectedValue(
+                Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
+            )
 
             await expect(
                 program.parseAsync([
@@ -315,8 +320,7 @@ describe('template', () => {
 
     describe('import-file', () => {
         beforeEach(() => {
-            vi.mocked(fs.existsSync).mockReturnValue(true)
-            vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('template content'))
+            vi.mocked(readFile).mockResolvedValue(Buffer.from('template content'))
         })
 
         it('imports template file into project', async () => {
