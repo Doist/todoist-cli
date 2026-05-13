@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises'
+import { openAsBlob } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
@@ -44,9 +45,10 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         workspaceId = workspace.id
     }
 
-    let buffer: Buffer
+    let file: Blob
     try {
-        buffer = await readFile(filePath)
+        await stat(filePath)
+        file = await openAsBlob(filePath)
     } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
             throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
@@ -57,7 +59,6 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
     }
     const fileName = options.fileName || path.basename(filePath)
-    const file = new Blob([new Uint8Array(buffer)])
 
     const result = await api.createProjectFromTemplate({
         name: options.name,

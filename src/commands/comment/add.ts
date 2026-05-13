@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises'
+import { openAsBlob } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
@@ -68,21 +69,26 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         | undefined
 
     if (options.file) {
-        let buffer: Buffer
+        // `openAsBlob` returns a file-backed Blob that streams from disk
+        // on demand — no eager full-file read. Passing the Blob to the
+        // SDK makes it take its native-FormData branch (which undici can
+        // serialize). `stat` first because `openAsBlob` rewraps fs
+        // errors as opaque `ERR_INVALID_ARG_VALUE` TypeErrors, which
+        // would lose our `FILE_NOT_FOUND` vs `FILE_READ_ERROR` mapping.
+        let file: Blob
         try {
-            buffer = await readFile(options.file)
+            await stat(options.file)
+            file = await openAsBlob(options.file)
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            const code = (err as NodeJS.ErrnoException).code
-            if (code === 'ENOENT') {
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
                 throw new CliError('FILE_NOT_FOUND', `File not found: ${options.file}`, [
                     'Check the file path and try again.',
                 ])
             }
+            const message = err instanceof Error ? err.message : String(err)
             throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
         }
         const fileName = basename(options.file)
-        const file = new Blob([new Uint8Array(buffer)])
         const uploadResult = await api.uploadFile({ file, fileName })
         if (!uploadResult.fileUrl) {
             throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')

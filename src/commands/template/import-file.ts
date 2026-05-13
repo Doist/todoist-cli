@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises'
+import { openAsBlob } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
@@ -36,9 +37,10 @@ export async function importTemplateFile(
     const api = await getApi()
     const project = await resolveProjectRef(api, projectRef)
 
-    let buffer: Buffer
+    let file: Blob
     try {
-        buffer = await readFile(filePath)
+        await stat(filePath)
+        file = await openAsBlob(filePath)
     } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
             throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
@@ -49,7 +51,6 @@ export async function importTemplateFile(
         throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
     }
     const fileName = options.fileName || path.basename(filePath)
-    const file = new Blob([new Uint8Array(buffer)])
 
     const result = await api.importTemplateIntoProject({
         projectId: project.id,
