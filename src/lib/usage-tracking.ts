@@ -104,9 +104,46 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
     }
 }
 
+// Minimal shape of the `form-data` npm package's FormData class. The SDK
+// uses it internally for multipart uploads. Distinct from the global
+// WHATWG `FormData`, which has no `getBuffer`/`getHeaders`/`pipe`.
+type FormDataPackage = {
+    getBuffer: () => Buffer
+    getHeaders: () => Record<string, string>
+    pipe: (...args: unknown[]) => unknown
+    on: (event: 'data' | 'end' | 'error', listener: (arg?: unknown) => void) => unknown
+    resume: () => unknown
+}
+
+function isFormDataPackageInstance(body: unknown): body is FormDataPackage {
+    if (typeof body !== 'object' || body === null) return false
+    const candidate = body as Record<string, unknown>
+    return (
+        typeof candidate.getBuffer === 'function' &&
+        typeof candidate.getHeaders === 'function' &&
+        typeof candidate.pipe === 'function'
+    )
+}
+
+// `form-data` is a CombinedStream — it emits buffers via 'data' events but
+// is not async-iterable, so we read it manually. Handles both buffer parts
+// (`getBuffer` alone would suffice) and stream parts like
+// `fs.createReadStream`, which `getBuffer` does not serialize.
+function formDataToBuffer(form: FormDataPackage): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const chunks: Buffer[] = []
+        form.on('data', (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string))
+        })
+        form.on('end', () => resolve(Buffer.concat(chunks)))
+        form.on('error', (err) => reject(err as Error))
+        form.resume()
+    })
+}
+
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
     return async (url, options = {}) => {
-        const { timeout: timeoutMs, headers, signal, ...rest } = options
+        const { timeout: timeoutMs, headers, signal, body, ...rest } = options
 
         let abortSignal = signal
         if (timeoutMs) {
@@ -114,8 +151,17 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             abortSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
         }
 
+        // Undici's fetch (Node's native `fetch`) doesn't recognize the
+        // `form-data` npm package as a body type, so it coerces it to
+        // `"[object FormData]"` — a 17-byte string — and the upload arrives
+        // without the file. Materialize it into a Buffer so undici sends
+        // the real multipart payload. The SDK already populated the
+        // multipart `Content-Type` (with boundary) in `headers`.
+        const resolvedBody = isFormDataPackageInstance(body) ? await formDataToBuffer(body) : body
+
         const fetchOptions: RequestInit = {
             ...rest,
+            body: resolvedBody as BodyInit | null | undefined,
             signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
         }

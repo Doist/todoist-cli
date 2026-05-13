@@ -74,6 +74,41 @@ describe('usage tracking', () => {
         expect(response.ok).toBe(true)
     })
 
+    it('materializes form-data package bodies into a Buffer for undici fetch', async () => {
+        const { default: FormData } = await import('form-data')
+
+        let captured: RequestInit | undefined
+        const trackedFetch = createTrackedFetch(async (_url, options) => {
+            captured = options
+            return new Response('{}', {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+        })
+
+        const form = new FormData()
+        form.append('file_name', 'test.bin')
+        form.append('file', Buffer.from('hello world bytes'), {
+            filename: 'test.bin',
+            contentType: 'application/octet-stream',
+        })
+        const expectedLength = form.getLengthSync()
+
+        await trackedFetch('https://api.todoist.com/api/v1/uploads', {
+            method: 'POST',
+            // Cast through unknown: the SDK passes a form-data instance as
+            // body even though it isn't part of WHATWG BodyInit.
+            body: form as unknown as BodyInit,
+            headers: { ...form.getHeaders(), Authorization: 'Bearer token' },
+        })
+
+        if (!captured) throw new Error('tracked fetch did not capture request options')
+        expect(captured.body).toBeInstanceOf(Buffer)
+        expect((captured.body as Buffer).length).toBe(expectedLength)
+        const headers = captured.headers as Record<string, string>
+        expect(headers['content-type']).toMatch(/^multipart\/form-data; boundary=/)
+    })
+
     it('maps sdk timeouts to abort signals', async () => {
         let captured: RequestInit | undefined
         const trackedFetch = createTrackedFetch(async (_url, options) => {

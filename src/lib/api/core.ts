@@ -16,6 +16,7 @@ import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
 import { withSpinner } from '../spinner.js'
+import { uploadAttachment } from '../uploads.js'
 import { createTrackedFetch } from '../usage-tracking.js'
 
 let apiClient: TodoistApi | null = null
@@ -291,6 +292,11 @@ function analyzeAndEmitApiResponse(
 
 export function createApiForToken(token: string): TodoistApi {
     const rawApi = new TodoistApi(token, { customFetch: createTrackedFetch() })
+    // SDK ≤ 0.10.x validates the `/api/v1/uploads` response without first
+    // running `camelCaseKeys`, so `resource_type` never lands on
+    // `resourceType` and Zod throws. Override with a direct upload until
+    // the SDK is patched.
+    rawApi.uploadFile = (args) => uploadAttachment(args, token)
     return createSpinnerWrappedApi(rawApi)
 }
 
