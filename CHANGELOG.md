@@ -1,3 +1,9 @@
+## [1.63.1](https://github.com/Doist/todoist-cli/compare/v1.63.0...v1.63.1) (2026-05-13)
+
+### Bug Fixes
+
+* forward arrayBuffer on tracked-fetch wrapper for binary attachments ([#338](https://github.com/Doist/todoist-cli/issues/338)) ([8ca5598](https://github.com/Doist/todoist-cli/commit/8ca559855c0e4d8cfa7f8ede1f6c89324f008f8d))
+
 ## [1.63.0](https://github.com/Doist/todoist-cli/compare/v1.62.2...v1.63.0) (2026-05-12)
 
 ### Features
