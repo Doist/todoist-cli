@@ -45,12 +45,14 @@ td auth login --json                         # emit the new account record as JS
 td auth login --ndjson                       # one-line newline-delimited JSON
 td auth token
 td auth status
+td auth status --json                        # full status payload as JSON (--ndjson also supported)
 TOKEN=$(td auth token view)
 TOKEN=$(td auth token view --user you@example.com)
 td auth logout
+td auth logout --json                        # emits `{"ok": true}` (--ndjson is silent)
 ```
 
-`td auth login` accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy) and the standard `--json` / `--ndjson` machine-output flags. Use `--json` / `--ndjson` to capture the newly stored account record (id, email, auth metadata) for scripts; warnings about keyring fallback are written to stderr so stdout stays parseable.
+`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. Across all three, keyring-fallback warnings are written to stderr so stdout stays parseable. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy).
 
 Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separated). Run `td auth login --help` for the full list. Currently supported:
 
