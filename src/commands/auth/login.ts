@@ -5,7 +5,7 @@ import type { Command } from 'commander'
 import open from 'open'
 import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'
 import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
-import { createTodoistTokenStore, type TodoistAccount } from '../../lib/auth-store.js'
+import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import {
     extractAdditionalScopes,
     formatScopesHelp,
@@ -27,9 +27,7 @@ const TODOIST_CALLBACK_PORT_FALLBACK = 5
  * the same Commander view; cli-core surfaces it through the `flags` argument
  * to `resolveScopes`.
  */
-export function attachTodoistLoginCommand(auth: Command): Command {
-    const store = createTodoistTokenStore()
-
+export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStore): Command {
     const login = attachLoginCommand<TodoistAccount>(auth, {
         provider: createTodoistAuthProvider(),
         store,
@@ -65,16 +63,11 @@ export function attachTodoistLoginCommand(auth: Command): Command {
             // `--json` / `--ndjson` stdout envelope clean; the human "stored
             // securely" confirmation is suppressed in machine-output mode.
             if (storage) {
-                if (view.json || view.ndjson) {
-                    if (storage.warning) {
-                        console.error(chalk.yellow('Warning:'), storage.warning)
-                    }
-                } else {
-                    logTokenStorageResult(
-                        storage,
-                        'Token stored securely in the system credential manager',
-                    )
-                }
+                logTokenStorageResult(
+                    storage,
+                    'Token stored securely in the system credential manager',
+                    view.json || view.ndjson,
+                )
             }
         },
     })

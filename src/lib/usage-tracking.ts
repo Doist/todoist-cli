@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import {
-    type CustomFetch,
-    type CustomFetchResponse,
-    getDefaultDispatcher,
-} from '@doist/todoist-sdk'
+import { type CustomFetch, type FileResponse, getDefaultDispatcher } from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
 
 const CLI_NAME = 'todoist-cli'
@@ -57,9 +53,9 @@ export function buildUsageTrackingHeaders(commandPath?: string): Record<string, 
         'doist-platform': 'cli',
         'doist-version': CLI_VERSION,
         'doist-os': getDoistOs(),
-        'X-TD-Request-Id': randomUUID(),
-        'X-TD-Session-Id': SESSION_ID,
-        'X-TD-CLI-Command': normalizedCommandPath ?? 'unknown',
+        'request-id': randomUUID(),
+        'session-id': SESSION_ID,
+        'cli-command': normalizedCommandPath ?? 'unknown',
     }
 
     return headers
@@ -93,7 +89,13 @@ async function attachDispatcherIfNative(
     }
 }
 
-function toCustomFetchResponse(response: Response): CustomFetchResponse {
+// `FileResponse` (== `CustomFetchResponse + arrayBuffer`) is the richer
+// shape: SDK file endpoints (`viewAttachment`, `downloadBackup`) read the body
+// via `arrayBuffer()` and would otherwise fall back to a `text()` round-trip
+// that mangles binary bytes. Returning `FileResponse` for every call is safe
+// — non-binary endpoints simply ignore the extra method — and keeps the
+// `CustomFetch` contract (a `FileResponse` is a structural `CustomFetchResponse`).
+function toCustomFetchResponse(response: Response): FileResponse {
     return {
         ok: response.ok,
         status: response.status,
@@ -101,10 +103,13 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
         headers: Object.fromEntries(response.headers.entries()),
         text: () => response.text(),
         json: () => response.json(),
+        arrayBuffer: () => response.arrayBuffer(),
     }
 }
 
-export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
+export function createTrackedFetch(
+    baseFetch: typeof fetch = globalThis.fetch,
+): (url: string, options?: Parameters<CustomFetch>[1]) => Promise<FileResponse> {
     return async (url, options = {}) => {
         const { timeout: timeoutMs, headers, signal, ...rest } = options
 
