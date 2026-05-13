@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
+import { PassThrough, Readable } from 'node:stream'
 import {
     type CustomFetch,
     type CustomFetchResponse,
     getDefaultDispatcher,
 } from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
+import { CliError } from './errors.js'
 
 const CLI_NAME = 'todoist-cli'
 const CLI_VERSION = packageJson.version
@@ -106,39 +108,58 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
 
 // Minimal shape of the `form-data` npm package's FormData class. The SDK
 // uses it internally for multipart uploads. Distinct from the global
-// WHATWG `FormData`, which has no `getBuffer`/`getHeaders`/`pipe`.
+// WHATWG `FormData`, which has no `getHeaders`/`pipe`. We require `pipe`
+// + `on` because the streaming workaround below uses both.
 type FormDataPackage = {
-    getBuffer: () => Buffer
     getHeaders: () => Record<string, string>
-    pipe: (...args: unknown[]) => unknown
-    on: (event: 'data' | 'end' | 'error', listener: (arg?: unknown) => void) => unknown
-    resume: () => unknown
+    pipe: <T extends NodeJS.WritableStream>(destination: T) => T
+    on: (event: 'error', listener: (err: Error) => void) => unknown
 }
 
 function isFormDataPackageInstance(body: unknown): body is FormDataPackage {
     if (typeof body !== 'object' || body === null) return false
     const candidate = body as Record<string, unknown>
     return (
-        typeof candidate.getBuffer === 'function' &&
         typeof candidate.getHeaders === 'function' &&
-        typeof candidate.pipe === 'function'
+        typeof candidate.pipe === 'function' &&
+        typeof candidate.on === 'function'
     )
 }
 
-// `form-data` is a CombinedStream — it emits buffers via 'data' events but
-// is not async-iterable, so we read it manually. Handles both buffer parts
-// (`getBuffer` alone would suffice) and stream parts like
-// `fs.createReadStream`, which `getBuffer` does not serialize.
-function formDataToBuffer(form: FormDataPackage): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        const chunks: Buffer[] = []
-        form.on('data', (chunk) => {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string))
-        })
-        form.on('end', () => resolve(Buffer.concat(chunks)))
-        form.on('error', (err) => reject(err as Error))
-        form.resume()
-    })
+// Bridge the `form-data` CombinedStream — which undici's native fetch
+// doesn't recognize — into a WHATWG ReadableStream it does. Piping
+// through a PassThrough keeps the body lazy (no in-process buffering of
+// the whole file) and lets undici honor `signal` / cancel the upstream
+// stream when the request is aborted. Stream errors (e.g. ENOENT from
+// `fs.createReadStream`) propagate to the PassThrough so undici rejects
+// the fetch with the original error as its `cause`.
+function formDataToWebStream(form: FormDataPackage): ReadableStream<Uint8Array> {
+    const pass = new PassThrough()
+    form.pipe(pass)
+    form.on('error', (err) => pass.destroy(err))
+    return Readable.toWeb(pass) as ReadableStream<Uint8Array>
+}
+
+// Walk the error/cause chain looking for a Node fs error so local file
+// problems (the SDK opens uploads via `fs.createReadStream`) surface as a
+// structured `CliError` rather than a generic `INTERNAL_ERROR`.
+function mapStreamErrorToCliError(error: unknown): CliError | undefined {
+    let current: unknown = error
+    const seen = new Set<unknown>()
+    while (current instanceof Error && !seen.has(current)) {
+        seen.add(current)
+        const code = (current as NodeJS.ErrnoException).code
+        const path = (current as NodeJS.ErrnoException).path
+        const where = path ? `: ${path}` : ''
+        if (code === 'ENOENT') {
+            return new CliError('FILE_NOT_FOUND', `File not found${where}`)
+        }
+        if (code === 'EACCES' || code === 'EPERM' || code === 'EISDIR') {
+            return new CliError('FILE_READ_ERROR', `Cannot read file${where}`, [current.message])
+        }
+        current = (current as Error & { cause?: unknown }).cause
+    }
+    return undefined
 }
 
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
@@ -151,24 +172,36 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             abortSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
         }
 
-        // Undici's fetch (Node's native `fetch`) doesn't recognize the
-        // `form-data` npm package as a body type, so it coerces it to
-        // `"[object FormData]"` — a 17-byte string — and the upload arrives
-        // without the file. Materialize it into a Buffer so undici sends
-        // the real multipart payload. The SDK already populated the
-        // multipart `Content-Type` (with boundary) in `headers`.
-        const resolvedBody = isFormDataPackageInstance(body) ? await formDataToBuffer(body) : body
+        // Undici's fetch doesn't recognize the `form-data` npm package as
+        // a body type — it coerces it to `"[object FormData]"` (17 bytes)
+        // and the upload arrives empty. Bridge it to a WHATWG stream so
+        // undici streams the real multipart payload. Gated to the native
+        // fetch path: test stubs and other custom transports get the body
+        // as-is and decide for themselves how to handle it.
+        const useNativeFetch = baseFetch === globalThis.fetch
+        const needsBodyBridge = useNativeFetch && isFormDataPackageInstance(body)
+        const resolvedBody = needsBodyBridge ? formDataToWebStream(body) : body
 
-        const fetchOptions: RequestInit = {
+        const fetchOptions: RequestInit & { duplex?: 'half' } = {
             ...rest,
             body: resolvedBody as BodyInit | null | undefined,
             signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
         }
+        // Required by undici when the body is a streaming `ReadableStream`.
+        if (needsBodyBridge) fetchOptions.duplex = 'half'
         await attachDispatcherIfNative(baseFetch, fetchOptions)
 
-        const response = await baseFetch(url, fetchOptions)
-        return toCustomFetchResponse(response)
+        try {
+            const response = await baseFetch(url, fetchOptions)
+            return toCustomFetchResponse(response)
+        } catch (error) {
+            if (needsBodyBridge) {
+                const mapped = mapStreamErrorToCliError(error)
+                if (mapped) throw mapped
+            }
+            throw error
+        }
     }
 }
 

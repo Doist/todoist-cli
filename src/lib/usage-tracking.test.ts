@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events'
-import { Readable } from 'node:stream'
 import { getDefaultDispatcher } from '@doist/todoist-sdk'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -76,15 +75,13 @@ describe('usage tracking', () => {
         expect(response.ok).toBe(true)
     })
 
-    it('materializes form-data package bodies into a Buffer for undici fetch', async () => {
+    it('streams form-data package bodies as a ReadableStream for undici fetch', async () => {
         // Minimal stub matching the duck-typed `FormDataPackage` shape that
         // `isFormDataPackageInstance` looks for. We avoid importing
         // `form-data` so this test isn't tied to that being a transitive
-        // dependency of the SDK, and we deliberately back the `file` part
-        // with a Readable stream — the higher-value failure mode, since
-        // form-data's `getBuffer()` doesn't serialize stream parts. If the
-        // fix regressed to a `getBuffer()`-based implementation, the
-        // tripwire on `getBuffer` below would catch it.
+        // dependency of the SDK. The file part is backed by a Readable
+        // stream — the higher-value failure mode (form-data's
+        // `getBuffer()` can't serialize stream parts).
         class FormDataStub extends EventEmitter {
             private readonly boundary = '----test-boundary'
             constructor(private readonly fileBytes: Buffer) {
@@ -93,25 +90,23 @@ describe('usage tracking', () => {
             getHeaders(): Record<string, string> {
                 return { 'content-type': `multipart/form-data; boundary=${this.boundary}` }
             }
+            // Tripwire — the workaround must not regress to `getBuffer()`,
+            // which would silently drop stream-backed parts.
             getBuffer(): Buffer {
                 throw new Error('getBuffer must not be called for stream-backed parts')
             }
-            pipe(): unknown {
-                return this
-            }
-            resume(): void {
+            pipe<T extends NodeJS.WritableStream>(dest: T): T {
                 const preamble = Buffer.from(
                     `--${this.boundary}\r\nContent-Disposition: form-data; name="file"; filename="test.bin"\r\nContent-Type: application/octet-stream\r\n\r\n`,
                 )
                 const closer = Buffer.from(`\r\n--${this.boundary}--\r\n`)
-                this.emit('data', preamble)
-                const source = Readable.from([this.fileBytes])
-                source.on('data', (chunk: Buffer) => this.emit('data', chunk))
-                source.once('end', () => {
-                    this.emit('data', closer)
-                    this.emit('end')
+                setImmediate(() => {
+                    dest.write(preamble)
+                    dest.write(this.fileBytes)
+                    dest.write(closer)
+                    dest.end()
                 })
-                source.once('error', (err: Error) => this.emit('error', err))
+                return dest
             }
         }
 
@@ -119,13 +114,21 @@ describe('usage tracking', () => {
         const form = new FormDataStub(fileBytes)
 
         let captured: RequestInit | undefined
-        const trackedFetch = createTrackedFetch(async (_url, options) => {
+        // The bridge only kicks in on the native-fetch path. Mock
+        // `globalThis.fetch` so the gate (`baseFetch === globalThis.fetch`)
+        // matches.
+        vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+            _url: RequestInfo | URL,
+            options?: RequestInit,
+        ) => {
             captured = options
             return new Response('{}', {
                 status: 200,
                 headers: { 'content-type': 'application/json' },
             })
-        })
+        }) as typeof fetch)
+
+        const trackedFetch = createTrackedFetch()
 
         await trackedFetch('https://api.todoist.com/api/v1/uploads', {
             method: 'POST',
@@ -136,15 +139,109 @@ describe('usage tracking', () => {
         })
 
         if (!captured) throw new Error('tracked fetch did not capture request options')
-        expect(captured.body).toBeInstanceOf(Buffer)
-        const body = captured.body as Buffer
-        // The stream contents must survive serialization — this is the
-        // bug we're guarding against (undici otherwise coerces the body
-        // to "[object FormData]" and the file bytes vanish).
+        expect(captured.body).toBeInstanceOf(ReadableStream)
+        // Undici requires `duplex: 'half'` to accept a streaming body.
+        expect((captured as RequestInit & { duplex?: string }).duplex).toBe('half')
+
+        // Read the stream and assert the multipart bytes (including the
+        // stream-backed file content) reach `fetch` intact — undici would
+        // otherwise have coerced the body to "[object FormData]".
+        const reader = (captured.body as ReadableStream<Uint8Array>).getReader()
+        const chunks: Uint8Array[] = []
+        for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            if (value) chunks.push(value)
+        }
+        const body = Buffer.concat(chunks.map((c) => Buffer.from(c)))
         expect(body.includes(fileBytes)).toBe(true)
         expect(body.toString('utf8')).toContain('Content-Disposition: form-data')
+
         const headers = captured.headers as Record<string, string>
         expect(headers['content-type']).toMatch(/^multipart\/form-data; boundary=/)
+    })
+
+    it('passes form-data bodies through unchanged for non-native fetch transports', async () => {
+        // The bridge is only safe for undici's native fetch. Custom
+        // transports (test stubs, alternate clients) receive the form
+        // as-is so they aren't forced into stream-body semantics.
+        let captured: RequestInit | undefined
+        const trackedFetch = createTrackedFetch(async (_url, options) => {
+            captured = options
+            return new Response('{}', {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })
+        })
+
+        const form = {
+            getHeaders: () => ({ 'content-type': 'multipart/form-data; boundary=x' }),
+            pipe: <T>(dest: T) => dest,
+            on: () => undefined,
+        }
+
+        await trackedFetch('https://api.todoist.com/api/v1/uploads', {
+            method: 'POST',
+            body: form as unknown as BodyInit,
+            headers: form.getHeaders(),
+        })
+
+        expect(captured?.body).toBe(form)
+        expect((captured as RequestInit & { duplex?: string }).duplex).toBeUndefined()
+    })
+
+    it('maps form-data stream fs errors to a structured CliError', async () => {
+        const fsError = Object.assign(new Error('ENOENT: no such file or directory'), {
+            code: 'ENOENT',
+            path: '/tmp/does-not-exist',
+        })
+
+        class FailingFormData extends EventEmitter {
+            getHeaders() {
+                return { 'content-type': 'multipart/form-data; boundary=x' }
+            }
+            pipe<T extends NodeJS.WritableStream>(dest: T): T {
+                // Surface the fs error via the standard form-data mechanism:
+                // emit 'error' on the form itself, which the bridge wires
+                // through to the PassThrough.
+                setImmediate(() => this.emit('error', fsError))
+                return dest
+            }
+        }
+
+        vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+            _url: RequestInfo | URL,
+            options?: RequestInit,
+        ) => {
+            // Drain the body so the upstream error actually propagates.
+            if (!options?.body) throw new Error('missing body on mocked fetch')
+            const reader = (options.body as ReadableStream<Uint8Array>).getReader()
+            try {
+                for (;;) {
+                    const { done } = await reader.read()
+                    if (done) break
+                }
+            } catch (err) {
+                // undici would surface this with `cause: fsError`; mimic
+                // that wrapping so the mapper has something to walk.
+                throw Object.assign(new TypeError('fetch failed'), { cause: err })
+            }
+            return new Response('{}', { status: 200 })
+        }) as typeof fetch)
+
+        const trackedFetch = createTrackedFetch()
+        const form = new FailingFormData()
+
+        await expect(
+            trackedFetch('https://api.todoist.com/api/v1/uploads', {
+                method: 'POST',
+                body: form as unknown as BodyInit,
+                headers: form.getHeaders(),
+            }),
+        ).rejects.toMatchObject({
+            code: 'FILE_NOT_FOUND',
+            message: expect.stringContaining('/tmp/does-not-exist'),
+        })
     })
 
     it('maps sdk timeouts to abort signals', async () => {
