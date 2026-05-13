@@ -1,6 +1,9 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { Command } from 'commander'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -11,6 +14,22 @@ import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
+
+// Real temp file shared by the attachment-bearing tests below. The
+// command reads the file into a Blob before calling `api.uploadFile`,
+// so a fake path would throw ENOENT before reaching the mocked API.
+let attachmentTmpDir: string
+let attachmentFilePath: string
+
+beforeAll(async () => {
+    attachmentTmpDir = await mkdtemp(join(tmpdir(), 'td-comment-test-'))
+    attachmentFilePath = join(attachmentTmpDir, 'file.pdf')
+    await writeFile(attachmentFilePath, 'fake pdf bytes')
+})
+
+afterAll(async () => {
+    await rm(attachmentTmpDir, { recursive: true, force: true })
+})
 
 function createProgram() {
     const program = new Command()
@@ -332,10 +351,17 @@ describe('comment add with attachment', () => {
             '--content',
             'See attached',
             '--file',
-            '/path/to/file.pdf',
+            attachmentFilePath,
         ])
 
-        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
+        // Blob + fileName is the shape the SDK's native-FormData branch
+        // accepts. If a regression switched back to a Buffer/path, undici
+        // would re-hit its "[object FormData]" coercion bug.
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.file).toBeInstanceOf(Blob)
+        expect(callArg.fileName).toBe('file.pdf')
+        expect(await (callArg.file as Blob).text()).toBe('fake pdf bytes')
+
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',
             content: 'See attached',
@@ -348,6 +374,29 @@ describe('comment add with attachment', () => {
         })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Attached: test.pdf'))
         consoleSpy.mockRestore()
+    })
+
+    it('returns FILE_NOT_FOUND when the --file path does not exist', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'comment',
+                'add',
+                'id:task-1',
+                '--content',
+                'See attached',
+                '--file',
+                join(attachmentTmpDir, 'does-not-exist.pdf'),
+            ]),
+        ).rejects.toMatchObject({
+            code: 'FILE_NOT_FOUND',
+        })
+        expect(mockApi.uploadFile).not.toHaveBeenCalled()
     })
 
     it('works without --file flag', async () => {
@@ -1089,10 +1138,12 @@ describe('project comment add', () => {
             '--content',
             'See attached',
             '--file',
-            '/path/to/file.pdf',
+            attachmentFilePath,
         ])
 
-        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.file).toBeInstanceOf(Blob)
+        expect(callArg.fileName).toBe('file.pdf')
         expect(mockApi.addComment).toHaveBeenCalledWith({
             projectId: 'proj-1',
             content: 'See attached',

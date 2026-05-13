@@ -40,13 +40,16 @@ export async function importTemplateFile(
     const api = await getApi()
     const project = await resolveProjectRef(api, projectRef)
 
-    let file: Buffer
+    let buffer: Buffer
     try {
-        file = fs.readFileSync(filePath) as Buffer
+        buffer = fs.readFileSync(filePath) as Buffer
     } catch (err) {
         throw toFileCliError(err, 'Template file') ?? err
     }
     const fileName = options.fileName || path.basename(filePath)
+    // Pass a Blob so the SDK takes its native-`FormData` branch (which
+    // undici can serialize) instead of the Node `form-data` branch.
+    const file = new Blob([new Uint8Array(buffer)])
 
     const result = await api.importTemplateIntoProject({
         projectId: project.id,

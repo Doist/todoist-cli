@@ -1,12 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { PassThrough, Readable } from 'node:stream'
 import {
     type CustomFetch,
     type CustomFetchResponse,
     getDefaultDispatcher,
 } from '@doist/todoist-sdk'
 import packageJson from '../../package.json' with { type: 'json' }
-import { toFileCliError } from './file-errors.js'
 
 const CLI_NAME = 'todoist-cli'
 const CLI_VERSION = packageJson.version
@@ -106,67 +104,9 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
     }
 }
 
-// Minimal shape of the `form-data` npm package's FormData class. The SDK
-// uses it internally for multipart uploads. Distinct from the global
-// WHATWG `FormData`, which has no `getHeaders`/`pipe`. We require `pipe`
-// + `on` because the streaming workaround below uses both.
-type FormDataPackage = {
-    getHeaders: () => Record<string, string>
-    pipe: <T extends NodeJS.WritableStream>(destination: T) => T
-    on: (event: 'error', listener: (err: Error) => void) => unknown
-}
-
-function isFormDataPackageInstance(body: unknown): body is FormDataPackage {
-    if (typeof body !== 'object' || body === null) return false
-    const candidate = body as Record<string, unknown>
-    return (
-        typeof candidate.getHeaders === 'function' &&
-        typeof candidate.pipe === 'function' &&
-        typeof candidate.on === 'function'
-    )
-}
-
-// Bridge the `form-data` CombinedStream — which undici's native fetch
-// doesn't recognize — into a WHATWG ReadableStream it does. Piping
-// through a PassThrough keeps the body lazy (no in-process buffering of
-// the whole file) and lets undici honor `signal` by destroying the
-// PassThrough on abort, which propagates upstream and closes any open
-// `fs.createReadStream` handles. Stream errors (e.g. ENOENT) propagate
-// the same way so undici rejects the fetch with the original error in
-// its `cause`.
-function formDataToWebStream(
-    form: FormDataPackage,
-    signal: AbortSignal | undefined,
-): ReadableStream<Uint8Array> {
-    const pass = new PassThrough()
-    // Wire the error handler *before* starting the pipe so a
-    // synchronous emit during `pipe()` can't slip past us. Wrap the
-    // `pipe()` call itself for the same reason — some duck-typed
-    // implementations matching `isFormDataPackageInstance` may throw
-    // synchronously.
-    form.on('error', (err) => pass.destroy(err))
-    if (signal) {
-        const onAbort = (): void => {
-            const reason =
-                signal.reason instanceof Error
-                    ? signal.reason
-                    : new DOMException('The operation was aborted.', 'AbortError')
-            pass.destroy(reason)
-        }
-        if (signal.aborted) onAbort()
-        else signal.addEventListener('abort', onAbort, { once: true })
-    }
-    try {
-        form.pipe(pass)
-    } catch (err) {
-        pass.destroy(err instanceof Error ? err : new Error(String(err)))
-    }
-    return Readable.toWeb(pass) as ReadableStream<Uint8Array>
-}
-
 export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): CustomFetch {
     return async (url, options = {}) => {
-        const { timeout: timeoutMs, headers, signal, body, ...rest } = options
+        const { timeout: timeoutMs, headers, signal, ...rest } = options
 
         let abortSignal = signal
         if (timeoutMs) {
@@ -174,50 +114,15 @@ export function createTrackedFetch(baseFetch: typeof fetch = globalThis.fetch): 
             abortSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
         }
 
-        // Undici's fetch doesn't recognize the `form-data` npm package as
-        // a body type — it coerces it to `"[object FormData]"` (17 bytes)
-        // and the upload arrives empty. Bridge it to a WHATWG stream so
-        // undici streams the real multipart payload. Gated to the native
-        // fetch path: test stubs and other custom transports get the body
-        // as-is and decide for themselves how to handle it.
-        const useNativeFetch = baseFetch === globalThis.fetch
-        const needsBodyBridge = useNativeFetch && isFormDataPackageInstance(body)
-
-        // Short-circuit an already-aborted upload *before* starting the
-        // pipe. Otherwise `form.pipe()` puts the form into flowing mode
-        // synchronously and a canceled upload still opens the local
-        // file (and can race into ENOENT translation instead of
-        // surfacing the abort).
-        if (needsBodyBridge && abortSignal?.aborted) {
-            throw abortSignal.reason instanceof Error
-                ? abortSignal.reason
-                : new DOMException('The operation was aborted.', 'AbortError')
-        }
-
-        const resolvedBody = needsBodyBridge
-            ? formDataToWebStream(body, abortSignal ?? undefined)
-            : body
-
-        const fetchOptions: RequestInit & { duplex?: 'half' } = {
+        const fetchOptions: RequestInit = {
             ...rest,
-            body: resolvedBody as BodyInit | null | undefined,
             signal: abortSignal,
             headers: mergeTodoistHeaders(headers),
         }
-        // Required by undici when the body is a streaming `ReadableStream`.
-        if (needsBodyBridge) fetchOptions.duplex = 'half'
         await attachDispatcherIfNative(baseFetch, fetchOptions)
 
-        try {
-            const response = await baseFetch(url, fetchOptions)
-            return toCustomFetchResponse(response)
-        } catch (error) {
-            if (needsBodyBridge) {
-                const mapped = toFileCliError(error, 'File')
-                if (mapped) throw mapped
-            }
-            throw error
-        }
+        const response = await baseFetch(url, fetchOptions)
+        return toCustomFetchResponse(response)
     }
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildRescheduleDate, createApiForToken } from './core.js'
 
 describe('buildRescheduleDate', () => {
@@ -52,14 +52,22 @@ describe('buildRescheduleDate', () => {
 })
 
 describe('createApiForToken', () => {
-    // If `createApiForToken` stops wiring `createTrackedFetch` in as the
-    // SDK's `customFetch`, multipart uploads silently regress: undici
-    // re-applies its "[object FormData]" coercion and the file part
-    // disappears. The `comment add --file` command tests mock `getApi()`
-    // entirely, so they wouldn't catch that. Drive a real upload through
-    // the constructed api and assert it lands at the mocked global fetch
-    // as a streaming body (the shape `createTrackedFetch` produces).
-    it('routes multipart uploads through createTrackedFetch (body arrives as ReadableStream)', async () => {
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    // The CLI fix for `comment add --file` (and the two template
+    // commands) is to pass the file payload to `api.uploadFile` as a
+    // `Blob`. That makes the SDK take its native-`FormData` branch
+    // inside `multipart-upload.js` — undici can serialize that body;
+    // the SDK's Node `form-data` branch it can't. If a future change
+    // ever swapped the Blob back for a Buffer / path / stream, the
+    // command tests (which mock `getApi`) would all keep passing
+    // while uploads silently arrived empty over the wire. This drives
+    // a real `uploadFile` through the assembled api and asserts the
+    // request body lands at native fetch as something undici can
+    // actually serialize.
+    it('serializes Blob uploads as a real multipart body (not "[object FormData]")', async () => {
         let captured: RequestInit | undefined
         vi.spyOn(globalThis, 'fetch').mockImplementation((async (
             _url: RequestInfo | URL,
@@ -80,19 +88,17 @@ describe('createApiForToken', () => {
         }) as typeof fetch)
 
         const api = createApiForToken('test-token')
-        await api.uploadFile({ file: Buffer.from('data'), fileName: 'test.bin' })
+        const blob = new Blob([new Uint8Array(Buffer.from('data'))])
+        await api.uploadFile({ file: blob, fileName: 'test.bin' })
 
-        if (!captured) throw new Error('global fetch was not called — customFetch not wired')
-        // ReadableStream body + duplex: 'half' is the signature of
-        // `createTrackedFetch`'s form-data → stream bridge. If a future
-        // refactor drops `customFetch`, undici sees the raw form-data
-        // instance and `captured.body` is no longer a ReadableStream.
-        expect(captured.body).toBeInstanceOf(ReadableStream)
-        expect((captured as RequestInit & { duplex?: string }).duplex).toBe('half')
-        // Tracking headers also come from `createTrackedFetch`.
+        if (!captured) throw new Error('global fetch was not called')
+        // Undici turns native FormData into a multipart Request whose
+        // body it later streams. A regression to passing a Buffer/path
+        // would land here as the form-data package instance (or a raw
+        // Buffer), which is the failure mode this test guards against.
+        expect(captured.body).toBeInstanceOf(FormData)
+        // Tracking headers come from createTrackedFetch.
         const headers = captured.headers as Record<string, string>
         expect(headers['doist-platform']).toBe('cli')
-
-        vi.restoreAllMocks()
     })
 })

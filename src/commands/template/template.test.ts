@@ -197,12 +197,17 @@ describe('template', () => {
                 '/tmp/template.csv',
             ])
 
-            expect(mockApi.createProjectFromTemplate).toHaveBeenCalledWith({
+            // Blob + fileName is what the SDK's native-FormData branch
+            // accepts. A Buffer would route through the form-data
+            // package and break undici serialization.
+            const createArg = mockApi.createProjectFromTemplate.mock.calls[0][0]
+            expect(createArg).toMatchObject({
                 name: 'My Project',
-                file: Buffer.from('template content'),
                 fileName: 'template.csv',
                 workspaceId: undefined,
             })
+            expect(createArg.file).toBeInstanceOf(Blob)
+            expect(await (createArg.file as Blob).text()).toBe('template content')
             expect(consoleSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Created project: My Project'),
             )
@@ -339,11 +344,13 @@ describe('template', () => {
             ])
 
             expect(mockResolveProjectRef).toHaveBeenCalledWith(mockApi, 'Work')
-            expect(mockApi.importTemplateIntoProject).toHaveBeenCalledWith({
+            const importArg = mockApi.importTemplateIntoProject.mock.calls[0][0]
+            expect(importArg).toMatchObject({
                 projectId: fixtures.projects.work.id,
-                file: Buffer.from('template content'),
                 fileName: 'template.csv',
             })
+            expect(importArg.file).toBeInstanceOf(Blob)
+            expect(await (importArg.file as Blob).text()).toBe('template content')
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1 tasks'))
         })
 

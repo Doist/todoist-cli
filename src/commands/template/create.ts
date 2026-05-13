@@ -48,13 +48,16 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         workspaceId = workspace.id
     }
 
-    let file: Buffer
+    let buffer: Buffer
     try {
-        file = fs.readFileSync(filePath) as Buffer
+        buffer = fs.readFileSync(filePath) as Buffer
     } catch (err) {
         throw toFileCliError(err, 'Template file') ?? err
     }
     const fileName = options.fileName || path.basename(filePath)
+    // Pass a Blob so the SDK takes its native-`FormData` branch (which
+    // undici can serialize) instead of the Node `form-data` branch.
+    const file = new Blob([new Uint8Array(buffer)])
 
     const result = await api.createProjectFromTemplate({
         name: options.name,

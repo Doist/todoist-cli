@@ -1,7 +1,9 @@
+import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
+import { toFileCliError } from '../../lib/file-errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
@@ -67,13 +69,25 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         | undefined
 
     if (options.file) {
-        const uploadResult = await api.uploadFile({ file: options.file })
+        // Read the file into a Blob so the SDK's `uploadFile` takes its
+        // native-`FormData` (Blob) branch instead of the Node `form-data`
+        // branch, which undici's fetch can't serialize. See AGENTS.md
+        // for the broader rationale.
+        let buffer: Buffer
+        try {
+            buffer = await readFile(options.file)
+        } catch (err) {
+            throw toFileCliError(err, 'File') ?? err
+        }
+        const fileName = basename(options.file)
+        const blob = new Blob([new Uint8Array(buffer)])
+        const uploadResult = await api.uploadFile({ file: blob, fileName })
         if (!uploadResult.fileUrl) {
             throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')
         }
         attachment = {
             fileUrl: uploadResult.fileUrl,
-            fileName: uploadResult.fileName ?? basename(options.file),
+            fileName: uploadResult.fileName ?? fileName,
             fileType: uploadResult.fileType ?? undefined,
             resourceType: uploadResult.resourceType,
         }
