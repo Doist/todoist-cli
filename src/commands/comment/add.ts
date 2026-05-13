@@ -82,8 +82,8 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
             throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
         }
         const fileName = basename(options.file)
-        const blob = new Blob([new Uint8Array(buffer)])
-        const uploadResult = await api.uploadFile({ file: blob, fileName })
+        const file = new Blob([new Uint8Array(buffer)])
+        const uploadResult = await api.uploadFile({ file, fileName })
         if (!uploadResult.fileUrl) {
             throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')
         }
