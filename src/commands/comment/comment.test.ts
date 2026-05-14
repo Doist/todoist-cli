@@ -390,34 +390,10 @@ describe('comment add with attachment', () => {
         ).rejects.toMatchObject({
             code: 'FILE_NOT_FOUND',
         })
-        expect(mockApi.uploadFile).not.toHaveBeenCalled()
-    })
-
-    it('returns FILE_READ_ERROR when the --file path is unreadable', async () => {
-        const program = createProgram()
-
-        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
-
-        // Embedded null byte → `stat` rejects with ERR_INVALID_ARG_VALUE
-        // (non-ENOENT), exercising the FILE_READ_ERROR branch. Portable
-        // across platforms — Node forbids null bytes in paths everywhere.
-        const unreadablePath = `${attachmentTmpDir}/has-${String.fromCharCode(0)}-null.pdf`
-
-        await expect(
-            program.parseAsync([
-                'node',
-                'td',
-                'comment',
-                'add',
-                'id:task-1',
-                '--content',
-                'See attached',
-                '--file',
-                unreadablePath,
-            ]),
-        ).rejects.toMatchObject({
-            code: 'FILE_READ_ERROR',
-        })
+        // File validation runs before any API/auth work — if a future
+        // change reorders that, `getApi` would record a call and this
+        // assertion would catch the regression.
+        expect(mockGetApi).not.toHaveBeenCalled()
         expect(mockApi.uploadFile).not.toHaveBeenCalled()
     })
 

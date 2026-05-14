@@ -1,11 +1,11 @@
 import fs from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
 vi.mock('node:fs/promises', () => ({
-    stat: vi.fn(),
+    open: vi.fn(),
 }))
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -174,7 +174,9 @@ describe('template', () => {
 
     describe('create', () => {
         beforeEach(() => {
-            vi.mocked(stat).mockResolvedValue({} as Awaited<ReturnType<typeof stat>>)
+            vi.mocked(open).mockResolvedValue({ close: vi.fn() } as unknown as Awaited<
+                ReturnType<typeof open>
+            >)
             vi.mocked(fs.openAsBlob).mockResolvedValue(new Blob([Buffer.from('template content')]))
         })
 
@@ -300,7 +302,7 @@ describe('template', () => {
 
         it('errors when file does not exist', async () => {
             const program = createProgram()
-            vi.mocked(stat).mockRejectedValue(
+            vi.mocked(open).mockRejectedValue(
                 Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
             )
 
@@ -316,11 +318,16 @@ describe('template', () => {
                     '/tmp/nonexistent.csv',
                 ]),
             ).rejects.toThrow('not found')
+            // File validation runs before any API/ref work — if a
+            // future change reorders that, these mocks would record a
+            // call and this test would catch the regression.
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveWorkspaceRef).not.toHaveBeenCalled()
         })
 
         it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
             const program = createProgram()
-            vi.mocked(stat).mockRejectedValue(
+            vi.mocked(open).mockRejectedValue(
                 Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
             )
 
@@ -336,12 +343,16 @@ describe('template', () => {
                     '/tmp/unreadable.csv',
                 ]),
             ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveWorkspaceRef).not.toHaveBeenCalled()
         })
     })
 
     describe('import-file', () => {
         beforeEach(() => {
-            vi.mocked(stat).mockResolvedValue({} as Awaited<ReturnType<typeof stat>>)
+            vi.mocked(open).mockResolvedValue({ close: vi.fn() } as unknown as Awaited<
+                ReturnType<typeof open>
+            >)
             vi.mocked(fs.openAsBlob).mockResolvedValue(new Blob([Buffer.from('template content')]))
         })
 
@@ -424,7 +435,7 @@ describe('template', () => {
 
         it('errors with FILE_NOT_FOUND when the --file path does not exist', async () => {
             const program = createProgram()
-            vi.mocked(stat).mockRejectedValue(
+            vi.mocked(open).mockRejectedValue(
                 Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
             )
 
@@ -439,11 +450,16 @@ describe('template', () => {
                     '/tmp/nonexistent.csv',
                 ]),
             ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+            // File validation runs before any API/ref work — if a
+            // future change reorders that, these mocks would record a
+            // call and this test would catch the regression.
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveProjectRef).not.toHaveBeenCalled()
         })
 
         it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
             const program = createProgram()
-            vi.mocked(stat).mockRejectedValue(
+            vi.mocked(open).mockRejectedValue(
                 Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
             )
 
@@ -458,6 +474,8 @@ describe('template', () => {
                     '/tmp/unreadable.csv',
                 ]),
             ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveProjectRef).not.toHaveBeenCalled()
         })
     })
 

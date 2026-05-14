@@ -164,6 +164,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`permissions.ts`** — collaborator permission parsing
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
+- **`local-file.ts`** — `openLocalFileAsBlob()`: file-backed `Blob` for
+  multipart uploads (used by `comment add --file`, `template create
+--file`, `template import-file`). Maps fs errors to `FILE_NOT_FOUND` /
+  `FILE_READ_ERROR` CliErrors.
 - **`usage-tracking.ts`** — request/session metadata headers, CLI command
   attribution, tracked fetch wrappers
 - **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers

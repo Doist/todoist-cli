@@ -1,5 +1,5 @@
 import { openAsBlob } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { CliError } from './errors.js'
 
@@ -9,16 +9,23 @@ import { CliError } from './errors.js'
  * lazily when serializing the multipart request body, so the payload
  * never has to fit in memory all at once.
  *
- * `stat` runs before `openAsBlob` because `openAsBlob` rewraps fs
- * errors as opaque `ERR_INVALID_ARG_VALUE` TypeErrors, which would
- * collapse the `FILE_NOT_FOUND` / `FILE_READ_ERROR` distinction.
+ * Why `open` + `close` rather than `stat`: `stat` only proves the path
+ * exists; an unreadable file (chmod 000) would slip past and then
+ * fail later inside undici, where the error surfaces as a generic
+ * transport failure and renders as `INTERNAL_ERROR`. Opening for read
+ * and immediately closing verifies actual readability and keeps any
+ * fs failure (ENOENT / EACCES / EPERM / EISDIR / …) on the structured
+ * `CliError` path. Also disambiguates the opaque
+ * `ERR_INVALID_ARG_VALUE` TypeError that `openAsBlob` rewraps fs
+ * errors as.
  */
 export async function openLocalFileAsBlob(
     rawPath: string,
 ): Promise<{ blob: Blob; filePath: string; fileName: string }> {
     const filePath = resolve(rawPath)
     try {
-        await stat(filePath)
+        const handle = await open(filePath, 'r')
+        await handle.close()
         const blob = await openAsBlob(filePath)
         return { blob, filePath, fileName: basename(filePath) }
     } catch (err) {
