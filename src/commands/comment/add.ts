@@ -1,10 +1,8 @@
-import { openAsBlob } from 'node:fs'
-import { stat } from 'node:fs/promises'
-import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
+import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
@@ -35,22 +33,12 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         throw new CliError('MISSING_CONTENT', 'Content is required: use --content or --stdin')
     }
 
-    let attachmentBlob: Blob | undefined
+    let attachmentFile: Blob | undefined
     let attachmentFileName: string | undefined
     if (options.file) {
-        try {
-            await stat(options.file)
-            attachmentBlob = await openAsBlob(options.file)
-        } catch (err) {
-            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-                throw new CliError('FILE_NOT_FOUND', `File not found: ${options.file}`, [
-                    'Check the file path and try again.',
-                ])
-            }
-            const message = err instanceof Error ? err.message : String(err)
-            throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
-        }
-        attachmentFileName = basename(options.file)
+        const opened = await openLocalFileAsBlob(options.file)
+        attachmentFile = opened.blob
+        attachmentFileName = opened.fileName
     }
 
     if (options.dryRun) {
@@ -86,9 +74,9 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
           }
         | undefined
 
-    if (attachmentBlob && attachmentFileName) {
+    if (attachmentFile && attachmentFileName) {
         const uploadResult = await api.uploadFile({
-            file: attachmentBlob,
+            file: attachmentFile,
             fileName: attachmentFileName,
         })
         if (!uploadResult.fileUrl) {
