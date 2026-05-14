@@ -24,19 +24,6 @@ export async function importTemplateFile(
     }
 
     const filePath = path.resolve(options.file)
-
-    if (options.dryRun) {
-        printDryRun('import template into project', {
-            Project: projectRef,
-            File: filePath,
-            'File name': options.fileName,
-        })
-        return
-    }
-
-    const api = await getApi()
-    const project = await resolveProjectRef(api, projectRef)
-
     let file: Blob
     try {
         await stat(filePath)
@@ -51,6 +38,18 @@ export async function importTemplateFile(
         throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
     }
     const fileName = options.fileName || path.basename(filePath)
+
+    if (options.dryRun) {
+        printDryRun('import template into project', {
+            Project: projectRef,
+            File: filePath,
+            'File name': options.fileName,
+        })
+        return
+    }
+
+    const api = await getApi()
+    const project = await resolveProjectRef(api, projectRef)
 
     const result = await api.importTemplateIntoProject({
         projectId: project.id,

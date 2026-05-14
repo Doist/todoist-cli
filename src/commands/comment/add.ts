@@ -35,6 +35,24 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         throw new CliError('MISSING_CONTENT', 'Content is required: use --content or --stdin')
     }
 
+    let attachmentBlob: Blob | undefined
+    let attachmentFileName: string | undefined
+    if (options.file) {
+        try {
+            await stat(options.file)
+            attachmentBlob = await openAsBlob(options.file)
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+                throw new CliError('FILE_NOT_FOUND', `File not found: ${options.file}`, [
+                    'Check the file path and try again.',
+                ])
+            }
+            const message = err instanceof Error ? err.message : String(err)
+            throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
+        }
+        attachmentFileName = basename(options.file)
+    }
+
     if (options.dryRun) {
         printDryRun('add comment', {
             Target: ref,
@@ -68,28 +86,17 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
           }
         | undefined
 
-    if (options.file) {
-        let file: Blob
-        try {
-            await stat(options.file)
-            file = await openAsBlob(options.file)
-        } catch (err) {
-            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-                throw new CliError('FILE_NOT_FOUND', `File not found: ${options.file}`, [
-                    'Check the file path and try again.',
-                ])
-            }
-            const message = err instanceof Error ? err.message : String(err)
-            throw new CliError('FILE_READ_ERROR', `Cannot read file: ${options.file}`, [message])
-        }
-        const fileName = basename(options.file)
-        const uploadResult = await api.uploadFile({ file, fileName })
+    if (attachmentBlob && attachmentFileName) {
+        const uploadResult = await api.uploadFile({
+            file: attachmentBlob,
+            fileName: attachmentFileName,
+        })
         if (!uploadResult.fileUrl) {
             throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')
         }
         attachment = {
             fileUrl: uploadResult.fileUrl,
-            fileName: uploadResult.fileName ?? fileName,
+            fileName: uploadResult.fileName ?? attachmentFileName,
             fileType: uploadResult.fileType ?? undefined,
             resourceType: uploadResult.resourceType,
         }

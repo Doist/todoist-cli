@@ -26,6 +26,20 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
     }
 
     const filePath = path.resolve(options.file)
+    let file: Blob
+    try {
+        await stat(filePath)
+        file = await openAsBlob(filePath)
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
+                'Check the file path and try again.',
+            ])
+        }
+        const message = err instanceof Error ? err.message : String(err)
+        throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
+    }
+    const fileName = options.fileName || path.basename(filePath)
 
     if (options.dryRun) {
         printDryRun('create project from template', {
@@ -44,21 +58,6 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         const workspace = await resolveWorkspaceRef(options.workspace)
         workspaceId = workspace.id
     }
-
-    let file: Blob
-    try {
-        await stat(filePath)
-        file = await openAsBlob(filePath)
-    } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
-                'Check the file path and try again.',
-            ])
-        }
-        const message = err instanceof Error ? err.message : String(err)
-        throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
-    }
-    const fileName = options.fileName || path.basename(filePath)
 
     const result = await api.createProjectFromTemplate({
         name: options.name,
