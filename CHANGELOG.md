@@ -1,3 +1,9 @@
+## [1.63.2](https://github.com/Doist/todoist-cli/compare/v1.63.1...v1.63.2) (2026-05-14)
+
+### Bug Fixes
+
+* **comment:** make `comment add --file` actually upload the file ([#337](https://github.com/Doist/todoist-cli/issues/337)) ([48aa467](https://github.com/Doist/todoist-cli/commit/48aa467035318fdb28b049eb6534133df120b5ea))
+
 ## [1.63.1](https://github.com/Doist/todoist-cli/compare/v1.63.0...v1.63.1) (2026-05-13)
 
 ### Bug Fixes
