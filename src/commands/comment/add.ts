@@ -69,12 +69,6 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         | undefined
 
     if (options.file) {
-        // `openAsBlob` returns a file-backed Blob that streams from disk
-        // on demand — no eager full-file read. Passing the Blob to the
-        // SDK makes it take its native-FormData branch (which undici can
-        // serialize). `stat` first because `openAsBlob` rewraps fs
-        // errors as opaque `ERR_INVALID_ARG_VALUE` TypeErrors, which
-        // would lose our `FILE_NOT_FOUND` vs `FILE_READ_ERROR` mapping.
         let file: Blob
         try {
             await stat(options.file)

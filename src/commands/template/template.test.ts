@@ -317,6 +317,26 @@ describe('template', () => {
                 ]),
             ).rejects.toThrow('not found')
         })
+
+        it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
+            const program = createProgram()
+            vi.mocked(stat).mockRejectedValue(
+                Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
+            )
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'template',
+                    'create',
+                    '--name',
+                    'Test',
+                    '--file',
+                    '/tmp/unreadable.csv',
+                ]),
+            ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
+        })
     })
 
     describe('import-file', () => {
@@ -400,6 +420,44 @@ describe('template', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
             expect(mockApi.importTemplateIntoProject).not.toHaveBeenCalled()
+        })
+
+        it('errors with FILE_NOT_FOUND when the --file path does not exist', async () => {
+            const program = createProgram()
+            vi.mocked(stat).mockRejectedValue(
+                Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
+            )
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'template',
+                    'import-file',
+                    'Work',
+                    '--file',
+                    '/tmp/nonexistent.csv',
+                ]),
+            ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+        })
+
+        it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
+            const program = createProgram()
+            vi.mocked(stat).mockRejectedValue(
+                Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
+            )
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'template',
+                    'import-file',
+                    'Work',
+                    '--file',
+                    '/tmp/unreadable.csv',
+                ]),
+            ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
         })
     })
 
