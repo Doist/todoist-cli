@@ -1,8 +1,7 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
+import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { printDryRun } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { formatImportResult } from './helpers.js'
@@ -24,12 +23,11 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         throw new CliError('MISSING_FILE', 'Template file path is required (--file)')
     }
 
-    const filePath = path.resolve(options.file)
-    if (!fs.existsSync(filePath)) {
-        throw new CliError('FILE_NOT_FOUND', `Template file not found: ${filePath}`, [
-            'Check the file path and try again.',
-        ])
-    }
+    const {
+        blob: file,
+        filePath,
+        fileName,
+    } = await openLocalFileAsBlob({ file: options.file, fileName: options.fileName })
 
     if (options.dryRun) {
         printDryRun('create project from template', {
@@ -48,15 +46,6 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         const workspace = await resolveWorkspaceRef(options.workspace)
         workspaceId = workspace.id
     }
-
-    let file: Buffer
-    try {
-        file = fs.readFileSync(filePath) as Buffer
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        throw new CliError('FILE_READ_ERROR', `Cannot read template file: ${filePath}`, [message])
-    }
-    const fileName = options.fileName || path.basename(filePath)
 
     const result = await api.createProjectFromTemplate({
         name: options.name,
