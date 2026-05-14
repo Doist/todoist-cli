@@ -370,6 +370,37 @@ describe('comment add with attachment', () => {
         consoleSpy.mockRestore()
     })
 
+    it('forwards --file-name to api.uploadFile as the attachment filename', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.addComment.mockResolvedValue({
+            id: 'comment-new',
+            content: 'See attached',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--content',
+            'See attached',
+            '--file',
+            attachmentFilePath,
+            '--file-name',
+            'custom-name.pdf',
+        ])
+
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.fileName).toBe('custom-name.pdf')
+        // Override wins over basename(--file).
+        expect(callArg.fileName).not.toBe('file.pdf')
+        consoleSpy.mockRestore()
+    })
+
     it('returns FILE_NOT_FOUND when the --file path does not exist', async () => {
         const program = createProgram()
 

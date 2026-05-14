@@ -11,6 +11,7 @@ interface AddOptions {
     content?: string
     stdin?: boolean
     file?: string
+    fileName?: string
     project?: boolean
     json?: boolean
     dryRun?: boolean
@@ -36,7 +37,10 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
     let attachmentFile: Blob | undefined
     let attachmentFileName: string | undefined
     if (options.file) {
-        const opened = await openLocalFileAsBlob(options.file)
+        const opened = await openLocalFileAsBlob({
+            file: options.file,
+            fileName: options.fileName,
+        })
         attachmentFile = opened.blob
         attachmentFileName = opened.fileName
     }

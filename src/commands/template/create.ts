@@ -26,9 +26,8 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
     const {
         blob: file,
         filePath,
-        fileName: defaultFileName,
-    } = await openLocalFileAsBlob(options.file)
-    const fileName = options.fileName || defaultFileName
+        fileName,
+    } = await openLocalFileAsBlob({ file: options.file, fileName: options.fileName })
 
     if (options.dryRun) {
         printDryRun('create project from template', {

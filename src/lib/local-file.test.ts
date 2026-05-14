@@ -31,7 +31,7 @@ describe('openLocalFileAsBlob', () => {
     })
 
     it('returns a file-backed Blob plus the resolved absolute path and basename', async () => {
-        const result = await openLocalFileAsBlob(filePath)
+        const result = await openLocalFileAsBlob({ file: filePath })
 
         expect(result.filePath).toBe(filePath)
         expect(result.fileName).toBe('sample.bin')
@@ -42,7 +42,7 @@ describe('openLocalFileAsBlob', () => {
 
     it('resolves relative paths against the current working directory', async () => {
         const rel = relative(process.cwd(), filePath)
-        const result = await openLocalFileAsBlob(rel)
+        const result = await openLocalFileAsBlob({ file: rel })
 
         // The returned filePath is the absolute form.
         expect(result.filePath).toBe(filePath)
@@ -50,10 +50,24 @@ describe('openLocalFileAsBlob', () => {
         expect(await result.blob.text()).toBe('hello local-file helper')
     })
 
+    it('prefers the caller-provided fileName over basename(filePath)', async () => {
+        const result = await openLocalFileAsBlob({ file: filePath, fileName: 'override.bin' })
+
+        expect(result.fileName).toBe('override.bin')
+        // filePath is still the absolute resolved path on disk.
+        expect(result.filePath).toBe(filePath)
+    })
+
+    it('falls back to basename when fileName is an empty string', async () => {
+        const result = await openLocalFileAsBlob({ file: filePath, fileName: '' })
+
+        expect(result.fileName).toBe('sample.bin')
+    })
+
     it('throws FILE_NOT_FOUND with the standard hint when the file is missing', async () => {
         const missing = join(tmpDir, 'does-not-exist.bin')
 
-        await expect(openLocalFileAsBlob(missing)).rejects.toMatchObject({
+        await expect(openLocalFileAsBlob({ file: missing })).rejects.toMatchObject({
             code: 'FILE_NOT_FOUND',
             message: `File not found: ${missing}`,
             hints: ['Check the file path and try again.'],
@@ -67,7 +81,7 @@ describe('openLocalFileAsBlob', () => {
         // forbids null bytes in paths everywhere.
         const badPath = join(tmpDir, `bad-${String.fromCharCode(0)}-name.bin`)
 
-        await expect(openLocalFileAsBlob(badPath)).rejects.toMatchObject({
+        await expect(openLocalFileAsBlob({ file: badPath })).rejects.toMatchObject({
             code: 'FILE_READ_ERROR',
             message: expect.stringContaining('Cannot read file:'),
             hints: [expect.stringContaining('null bytes')],
@@ -85,7 +99,7 @@ describe('openLocalFileAsBlob', () => {
             }),
         )
 
-        await expect(openLocalFileAsBlob(filePath)).rejects.toMatchObject({
+        await expect(openLocalFileAsBlob({ file: filePath })).rejects.toMatchObject({
             code: 'FILE_READ_ERROR',
             message: `Cannot read file: ${filePath}`,
             hints: [expect.stringContaining('Unable to open file as blob')],
@@ -97,7 +111,7 @@ describe('openLocalFileAsBlob', () => {
             Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
         )
 
-        await expect(openLocalFileAsBlob(filePath)).rejects.toMatchObject({
+        await expect(openLocalFileAsBlob({ file: filePath })).rejects.toMatchObject({
             code: 'FILE_NOT_FOUND',
             message: `File not found: ${filePath}`,
             hints: ['Check the file path and try again.'],
@@ -114,7 +128,7 @@ describe('openLocalFileAsBlob', () => {
             await writeFile(unreadable, 'secret')
             chmodSync(unreadable, 0o000)
             try {
-                await expect(openLocalFileAsBlob(unreadable)).rejects.toMatchObject({
+                await expect(openLocalFileAsBlob({ file: unreadable })).rejects.toMatchObject({
                     code: 'FILE_READ_ERROR',
                     message: `Cannot read file: ${unreadable}`,
                     hints: [expect.stringContaining('EACCES')],
@@ -131,7 +145,7 @@ describe('openLocalFileAsBlob', () => {
         // absolute path, not the raw input — a relative path with `./`
         // segments shouldn't change the resulting fileName.
         const messy = `./${basename(tmpDir)}/./sample.bin`
-        const result = await openLocalFileAsBlob(join(tmpDir, '..', messy))
+        const result = await openLocalFileAsBlob({ file: join(tmpDir, '..', messy) })
         expect(result.fileName).toBe('sample.bin')
     })
 })

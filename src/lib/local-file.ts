@@ -3,11 +3,22 @@ import { open } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { CliError } from './errors.js'
 
+export interface LocalFileOptions {
+    /** Path to the file on disk (relative paths resolve against cwd). */
+    file: string
+    /** Optional override for the upload's user-facing filename. Defaults to `basename(file)`. */
+    fileName?: string
+}
+
 /**
  * Open a local file as a streaming `Blob` for upload, with CLI-grade
  * error reporting. The returned Blob is file-backed — undici reads it
  * lazily when serializing the multipart request body, so the payload
  * never has to fit in memory all at once.
+ *
+ * Returns the resolved absolute path and the effective `fileName`
+ * (caller's override, falling back to `basename(filePath)`) so call
+ * sites don't have to recompute either.
  *
  * Why `open` + `close` rather than `stat`: `stat` only proves the path
  * exists; an unreadable file (chmod 000) would slip past and then
@@ -20,14 +31,14 @@ import { CliError } from './errors.js'
  * errors as.
  */
 export async function openLocalFileAsBlob(
-    rawPath: string,
+    options: LocalFileOptions,
 ): Promise<{ blob: Blob; filePath: string; fileName: string }> {
-    const filePath = resolve(rawPath)
+    const filePath = resolve(options.file)
     try {
         const handle = await open(filePath, 'r')
         await handle.close()
         const blob = await openAsBlob(filePath)
-        return { blob, filePath, fileName: basename(filePath) }
+        return { blob, filePath, fileName: options.fileName || basename(filePath) }
     } catch (err) {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
             throw new CliError('FILE_NOT_FOUND', `File not found: ${filePath}`, [

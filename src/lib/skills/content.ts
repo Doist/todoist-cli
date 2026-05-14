@@ -231,6 +231,7 @@ Shared labels can appear in \`td label list\` and \`td label view\`, but standar
 td comment list "Plan sprint"
 td comment list "Roadmap" --project
 td comment add "Plan sprint" --content "See attached" --file ./report.pdf
+td comment add "Plan sprint" --content "See attached" --file ./report.pdf --file-name "Quarterly report.pdf"
 td comment update id:123 --content "Updated text"
 td comment delete id:123 --yes
 td comment browse id:123
@@ -275,7 +276,9 @@ td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 td template export-file "Roadmap" --output template.csv
 td template export-url "Roadmap"
 td template create --name "New Project" --file template.csv --workspace "Acme"
+td template create --name "New Project" --file template.csv --file-name "Q2 plan.csv"
 td template import-file "Roadmap" --file template.csv
+td template import-file "Roadmap" --file template.csv --file-name "Q2 plan.csv"
 td template import-id "Roadmap" --template-id product-launch --locale fr
 \`\`\`
 

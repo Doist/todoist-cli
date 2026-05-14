@@ -216,6 +216,35 @@ describe('template', () => {
             )
         })
 
+        it('forwards --file-name to api.createProjectFromTemplate (overrides basename)', async () => {
+            const program = createProgram()
+            mockApi.createProjectFromTemplate.mockResolvedValue({
+                status: 'ok',
+                projectId: 'new-proj-1',
+                templateType: 'project',
+                projects: [],
+                sections: [],
+                tasks: [],
+                comments: [],
+            })
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'template',
+                'create',
+                '--name',
+                'My Project',
+                '--file',
+                '/tmp/template.csv',
+                '--file-name',
+                'override.csv',
+            ])
+
+            const createArg = mockApi.createProjectFromTemplate.mock.calls[0][0]
+            expect(createArg.fileName).toBe('override.csv')
+        })
+
         it('resolves workspace ref when --workspace is provided', async () => {
             const program = createProgram()
             mockResolveWorkspaceRef.mockResolvedValue({
@@ -324,28 +353,6 @@ describe('template', () => {
             expect(mockGetApi).not.toHaveBeenCalled()
             expect(mockResolveWorkspaceRef).not.toHaveBeenCalled()
         })
-
-        it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
-            const program = createProgram()
-            vi.mocked(open).mockRejectedValue(
-                Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
-            )
-
-            await expect(
-                program.parseAsync([
-                    'node',
-                    'td',
-                    'template',
-                    'create',
-                    '--name',
-                    'Test',
-                    '--file',
-                    '/tmp/unreadable.csv',
-                ]),
-            ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
-            expect(mockGetApi).not.toHaveBeenCalled()
-            expect(mockResolveWorkspaceRef).not.toHaveBeenCalled()
-        })
     })
 
     describe('import-file', () => {
@@ -386,6 +393,33 @@ describe('template', () => {
             expect(importArg.file).toBeInstanceOf(Blob)
             expect(await (importArg.file as Blob).text()).toBe('template content')
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1 tasks'))
+        })
+
+        it('forwards --file-name to api.importTemplateIntoProject (overrides basename)', async () => {
+            const program = createProgram()
+            mockApi.importTemplateIntoProject.mockResolvedValue({
+                status: 'ok',
+                templateType: 'project',
+                projects: [],
+                sections: [],
+                tasks: [],
+                comments: [],
+            })
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'template',
+                'import-file',
+                'Work',
+                '--file',
+                '/tmp/template.csv',
+                '--file-name',
+                'override.csv',
+            ])
+
+            const importArg = mockApi.importTemplateIntoProject.mock.calls[0][0]
+            expect(importArg.fileName).toBe('override.csv')
         })
 
         it('outputs JSON with --json', async () => {
@@ -453,27 +487,6 @@ describe('template', () => {
             // File validation runs before any API/ref work — if a
             // future change reorders that, these mocks would record a
             // call and this test would catch the regression.
-            expect(mockGetApi).not.toHaveBeenCalled()
-            expect(mockResolveProjectRef).not.toHaveBeenCalled()
-        })
-
-        it('errors with FILE_READ_ERROR when stat fails for a non-ENOENT reason', async () => {
-            const program = createProgram()
-            vi.mocked(open).mockRejectedValue(
-                Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
-            )
-
-            await expect(
-                program.parseAsync([
-                    'node',
-                    'td',
-                    'template',
-                    'import-file',
-                    'Work',
-                    '--file',
-                    '/tmp/unreadable.csv',
-                ]),
-            ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
             expect(mockGetApi).not.toHaveBeenCalled()
             expect(mockResolveProjectRef).not.toHaveBeenCalled()
         })
