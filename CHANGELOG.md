@@ -1,3 +1,9 @@
+## [1.64.0](https://github.com/Doist/todoist-cli/compare/v1.63.2...v1.64.0) (2026-05-15)
+
+### Features
+
+* **auth:** adopt cli-core 0.12.0 multi-user TokenStore contract ([#340](https://github.com/Doist/todoist-cli/issues/340)) ([6b4e7f7](https://github.com/Doist/todoist-cli/commit/6b4e7f732c1d734084489ce849e8c3e6df009b32))
+
 ## [1.63.2](https://github.com/Doist/todoist-cli/compare/v1.63.1...v1.63.2) (2026-05-14)
 
 ### Bug Fixes
