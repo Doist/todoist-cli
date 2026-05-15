@@ -11,7 +11,6 @@ import {
     parseGlobalArgs,
     resetGlobalArgs,
     shouldDisableSpinner,
-    stripUserFlag,
 } from './global-args.js'
 
 describe('parseGlobalArgs', () => {
@@ -82,37 +81,6 @@ describe('parseGlobalArgs', () => {
         })
         it('leaves --user at end of argv as undefined', () => {
             expect(parseGlobalArgs(['task', 'list', '--user']).user).toBeUndefined()
-        })
-    })
-
-    describe('stripUserFlag', () => {
-        it('removes --user <value>', () => {
-            expect(stripUserFlag(['task', 'list', '--user', 'a@b.c', '--json'])).toEqual([
-                'task',
-                'list',
-                '--json',
-            ])
-        })
-        it('removes --user=<value>', () => {
-            expect(stripUserFlag(['--user=12345', 'today'])).toEqual(['today'])
-        })
-        it('does not strip the next arg when it looks like a flag', () => {
-            // Mirrors parseGlobalArgs: keep --json intact so commander can
-            // surface a usage error on the bare --user.
-            expect(stripUserFlag(['--user', '--json', 'auth', 'status'])).toEqual([
-                '--json',
-                'auth',
-                'status',
-            ])
-        })
-        it('preserves args after --', () => {
-            expect(stripUserFlag(['task', 'list', '--', '--user', 'x'])).toEqual([
-                'task',
-                'list',
-                '--',
-                '--user',
-                'x',
-            ])
         })
     })
 

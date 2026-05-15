@@ -7,6 +7,7 @@ vi.mock('./auth.js', async (importOriginal) => {
         loadTokenForStoredUser: vi.fn(),
         upsertUser: vi.fn(),
         clearApiToken: vi.fn(),
+        setDefaultUserId: vi.fn(),
     }
 })
 
@@ -28,16 +29,19 @@ import {
     clearApiToken,
     loadTokenForStoredUser,
     NoTokenError,
+    setDefaultUserId,
     TOKEN_ENV_VAR,
     upsertUser,
 } from './auth.js'
 import { readConfig } from './config.js'
 import { SecureStoreUnavailableError } from './secure-store.js'
+import { UserNotFoundError } from './users.js'
 
 const mockReadConfig = vi.mocked(readConfig)
 const mockLoadToken = vi.mocked(loadTokenForStoredUser)
 const mockUpsertUser = vi.mocked(upsertUser)
 const mockClearApiToken = vi.mocked(clearApiToken)
+const mockSetDefaultUserId = vi.mocked(setDefaultUserId)
 
 const USER_A = {
     id: '111',
@@ -60,6 +64,15 @@ const ACCOUNT_A: TodoistAccount = {
     auth_mode: USER_A.auth_mode,
     auth_scope: USER_A.auth_scope,
     auth_flags: undefined,
+}
+
+const ACCOUNT_B: TodoistAccount = {
+    id: USER_B.id,
+    email: USER_B.email,
+    label: USER_B.email,
+    auth_mode: USER_B.auth_mode,
+    auth_scope: USER_B.auth_scope,
+    auth_flags: ['read-only'],
 }
 
 describe('TodoistAccount mappers', () => {
@@ -143,10 +156,48 @@ describe('createTodoistTokenStore', () => {
         it.each([
             ['NoTokenError', new NoTokenError()],
             ['SecureStoreUnavailableError', new SecureStoreUnavailableError('offline')],
-        ])('returns null when token load throws %s', async (_label, error) => {
-            mockReadConfig.mockResolvedValue({ users: [USER_A] })
-            mockLoadToken.mockRejectedValue(error)
-            expect(await createTodoistTokenStore().active()).toBeNull()
+        ])(
+            'propagates %s when token load fails for a matched user (does not collapse to null)',
+            async (_label, error) => {
+                // Pre cli-core 0.12.0 these were swallowed to null, but `null`
+                // is now reserved for "ref miss" — see TokenStore contract.
+                mockReadConfig.mockResolvedValue({ users: [USER_A] })
+                mockLoadToken.mockRejectedValue(error)
+                await expect(createTodoistTokenStore().active()).rejects.toBe(error)
+            },
+        )
+
+        describe('with --user ref', () => {
+            it('returns the matched account when ref hits a stored id', async () => {
+                mockReadConfig.mockResolvedValue({ users: [USER_A, USER_B] })
+                mockLoadToken.mockResolvedValue({ token: 'tok_b', source: 'secure-store' })
+
+                const result = await createTodoistTokenStore().active(USER_B.id)
+                expect(mockLoadToken).toHaveBeenCalledWith(USER_B)
+                expect(result?.account.id).toBe(USER_B.id)
+            })
+
+            it('returns the matched account when ref hits a stored email', async () => {
+                mockReadConfig.mockResolvedValue({ users: [USER_A, USER_B] })
+                mockLoadToken.mockResolvedValue({ token: 'tok_a', source: 'secure-store' })
+
+                const result = await createTodoistTokenStore().active(USER_A.email)
+                expect(mockLoadToken).toHaveBeenCalledWith(USER_A)
+                expect(result?.account.email).toBe(USER_A.email)
+            })
+
+            it('returns null when ref does not match any stored account', async () => {
+                mockReadConfig.mockResolvedValue({ users: [USER_A] })
+                expect(await createTodoistTokenStore().active('nobody@example.com')).toBeNull()
+                expect(mockLoadToken).not.toHaveBeenCalled()
+            })
+
+            it('propagates keyring errors when ref matches but token load fails', async () => {
+                mockReadConfig.mockResolvedValue({ users: [USER_A, USER_B] })
+                const error = new SecureStoreUnavailableError('offline')
+                mockLoadToken.mockRejectedValue(error)
+                await expect(createTodoistTokenStore().active(USER_B.id)).rejects.toBe(error)
+            })
         })
     })
 
@@ -174,10 +225,64 @@ describe('createTodoistTokenStore', () => {
     })
 
     describe('clear()', () => {
-        it('delegates to clearApiToken', async () => {
+        it('delegates to clearApiToken with no ref', async () => {
             mockClearApiToken.mockResolvedValue({ storage: 'secure-store' })
             await createTodoistTokenStore().clear()
-            expect(mockClearApiToken).toHaveBeenCalled()
+            expect(mockClearApiToken).toHaveBeenCalledWith({ ref: undefined })
+        })
+
+        it('forwards a ref to clearApiToken', async () => {
+            mockClearApiToken.mockResolvedValue({ storage: 'secure-store' })
+            await createTodoistTokenStore().clear(USER_B.email)
+            expect(mockClearApiToken).toHaveBeenCalledWith({ ref: USER_B.email })
+        })
+    })
+
+    describe('list()', () => {
+        it('returns an empty array when nothing is stored', async () => {
+            mockReadConfig.mockResolvedValue({ users: [] })
+            expect(await createTodoistTokenStore().list()).toEqual([])
+        })
+
+        it('marks the only stored user as the default (implicit single-user fallback)', async () => {
+            mockReadConfig.mockResolvedValue({ users: [USER_A] })
+            expect(await createTodoistTokenStore().list()).toEqual([
+                { account: ACCOUNT_A, isDefault: true },
+            ])
+        })
+
+        it('marks the explicit defaultUser when multiple are stored', async () => {
+            mockReadConfig.mockResolvedValue({
+                users: [USER_A, USER_B],
+                user: { defaultUser: USER_B.id },
+            })
+            expect(await createTodoistTokenStore().list()).toEqual([
+                { account: ACCOUNT_A, isDefault: false },
+                { account: ACCOUNT_B, isDefault: true },
+            ])
+        })
+
+        it('marks none as default when multiple users are stored without an explicit default', async () => {
+            mockReadConfig.mockResolvedValue({ users: [USER_A, USER_B] })
+            expect(await createTodoistTokenStore().list()).toEqual([
+                { account: ACCOUNT_A, isDefault: false },
+                { account: ACCOUNT_B, isDefault: false },
+            ])
+        })
+    })
+
+    describe('setDefault()', () => {
+        it('delegates to setDefaultUserId', async () => {
+            await createTodoistTokenStore().setDefault(USER_B.email)
+            expect(mockSetDefaultUserId).toHaveBeenCalledWith(USER_B.email)
+        })
+
+        it('propagates UserNotFoundError when the ref does not match', async () => {
+            const error = new UserNotFoundError('nobody@example.com')
+            mockSetDefaultUserId.mockRejectedValueOnce(error)
+            await expect(createTodoistTokenStore().setDefault('nobody@example.com')).rejects.toBe(
+                error,
+            )
         })
     })
 })

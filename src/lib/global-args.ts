@@ -131,36 +131,3 @@ export const shouldDisableSpinner = createSpinnerGate({
     envVar: 'TD_SPINNER',
     getArgs: store.get,
 })
-
-/**
- * Remove `--user <ref>` / `--user=<ref>` from an argv array so commander —
- * which has no global-option attachment — never sees the flag at subcommand
- * level. Returns a new array; the original is not mutated. Stops at the `--`
- * terminator so positional args after it are preserved verbatim.
- */
-export function stripUserFlag(argv: string[]): string[] {
-    const out: string[] = []
-    let stopped = false
-    for (let i = 0; i < argv.length; i++) {
-        const arg = argv[i]
-        if (stopped) {
-            out.push(arg)
-            continue
-        }
-        if (arg === '--') {
-            stopped = true
-            out.push(arg)
-            continue
-        }
-        if (arg === '--user') {
-            // Stays in lockstep with `parseTdLocalFlags` above.
-            if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) i++
-            continue
-        }
-        if (arg.startsWith('--user=')) {
-            continue
-        }
-        out.push(arg)
-    }
-    return out
-}
