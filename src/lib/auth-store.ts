@@ -1,8 +1,9 @@
-import type { AuthAccount, TokenStore } from '@doist/cli-core/auth'
+import type { AccountRef, AuthAccount, TokenStore } from '@doist/cli-core/auth'
 import {
     clearApiToken,
     loadTokenForStoredUser,
     NoTokenError,
+    setDefaultUserId,
     type TokenStorageResult,
     TOKEN_ENV_VAR,
     upsertUser,
@@ -10,7 +11,7 @@ import {
 } from './auth.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
 import { SecureStoreUnavailableError } from './secure-store.js'
-import { getDefaultUser, getStoredUsers } from './users.js'
+import { findUserByRef, getDefaultUser, getStoredUsers } from './users.js'
 
 /**
  * Account shape stored by todoist-cli. Extends cli-core's `AuthAccount` with
@@ -95,23 +96,27 @@ export function createTodoistTokenStore(): TodoistTokenStore {
 
     return {
         /**
-         * Pure view of persisted state. Deliberately ignores the global
-         * `--user` selector (a CLI-invocation concern, not storage) and
-         * returns `null` when `TODOIST_API_TOKEN` is in play (env tokens
-         * don't represent a persisted account). When multiple accounts
-         * are stored without a default, returns `null` rather than
-         * throwing a selection error — the runtime caller can react to
-         * "no active persisted account" but shouldn't see CLI-arg errors
-         * leaking out of a store read.
+         * Pure view of persisted state. Returns `null` when `TODOIST_API_TOKEN`
+         * is in play (env tokens don't represent a persisted account). With
+         * `ref`, returns that specific stored account; without, returns the
+         * default-or-only account. A `ref` that does not match any stored
+         * account returns `null` so cli-core's resolver layer can translate
+         * the miss into a typed error without storage reads leaking CLI-arg
+         * errors.
          */
-        async active() {
+        async active(ref?: AccountRef) {
             if (process.env[TOKEN_ENV_VAR]) return null
 
             const config = await readConfig()
             const users = getStoredUsers(config)
             if (users.length === 0) return null
 
-            const target = getDefaultUser(config) ?? (users.length === 1 ? users[0] : null)
+            let target: StoredUser | null
+            if (ref !== undefined) {
+                target = findUserByRef(config, ref)?.user ?? null
+            } else {
+                target = getDefaultUser(config) ?? (users.length === 1 ? users[0] : null)
+            }
             if (!target) return null
 
             try {
@@ -134,8 +139,27 @@ export function createTodoistTokenStore(): TodoistTokenStore {
             lastStorageResult = result
         },
 
-        async clear() {
-            lastClearResult = await clearApiToken()
+        async clear(ref?: AccountRef) {
+            lastClearResult = await clearApiToken({ ref })
+        },
+
+        async list() {
+            const config = await readConfig()
+            const users = getStoredUsers(config)
+            if (users.length === 0) return []
+            const defaultUser = getDefaultUser(config)
+            const defaultId = defaultUser?.id ?? (users.length === 1 ? users[0].id : undefined)
+            return users.map((user) => ({
+                account: storedUserToAccount(user),
+                isDefault: user.id === defaultId,
+            }))
+        },
+
+        async setDefault(ref: AccountRef) {
+            // `setDefaultUserId` accepts any ref (id or email) and throws
+            // `UserNotFoundError` (a `CliError` with code `USER_NOT_FOUND`)
+            // when the ref does not match any stored account.
+            await setDefaultUserId(ref)
         },
 
         getLastStorageResult() {

@@ -360,6 +360,10 @@ describe('auth command', () => {
                     },
                     async set() {},
                     async clear() {},
+                    async list() {
+                        return [{ account: SNAPSHOT_ACCOUNT, isDefault: true }]
+                    },
+                    async setDefault() {},
                     getLastStorageResult: () => undefined,
                     getLastClearResult: () => undefined,
                 }
