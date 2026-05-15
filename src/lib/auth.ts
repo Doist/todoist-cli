@@ -306,12 +306,18 @@ export async function clearApiToken(opts: { ref?: string } = {}): Promise<TokenS
     // No users stored yet — fall through to legacy logout only on a v1-shaped
     // config (no `users` key at all). Empty `users: []` is an already-clean
     // v2 install; treat it as a no-op rather than poking the legacy keyring.
+    //
+    // A `requestedRef` always wins over the legacy fallback: a caller asking
+    // for a specific account on a legacy install should see `USER_NOT_FOUND`,
+    // not have their legacy token silently wiped (matches `resolveActiveUser`
+    // above and prevents `td auth logout --user missing@x` from clearing the
+    // wrong credential).
     if (users.length === 0) {
-        if (!Array.isArray(config.users)) {
-            return clearLegacyToken(config)
-        }
         if (requestedRef) {
             throw new UserNotFoundError(requestedRef)
+        }
+        if (!Array.isArray(config.users)) {
+            return clearLegacyToken(config)
         }
         throw new NoTokenError()
     }

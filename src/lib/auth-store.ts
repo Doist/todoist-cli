@@ -2,7 +2,6 @@ import type { AccountRef, AuthAccount, TokenStore } from '@doist/cli-core/auth'
 import {
     clearApiToken,
     loadTokenForStoredUser,
-    NoTokenError,
     setDefaultUserId,
     type TokenStorageResult,
     TOKEN_ENV_VAR,
@@ -10,8 +9,7 @@ import {
     type UpsertUserInput,
 } from './auth.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
-import { SecureStoreUnavailableError } from './secure-store.js'
-import { findUserByRef, getDefaultUser, getStoredUsers } from './users.js'
+import { findUserByRef, getEffectiveDefaultUser, getStoredUsers } from './users.js'
 
 /**
  * Account shape stored by todoist-cli. Extends cli-core's `AuthAccount` with
@@ -97,39 +95,28 @@ export function createTodoistTokenStore(): TodoistTokenStore {
     return {
         /**
          * Pure view of persisted state. Returns `null` when `TODOIST_API_TOKEN`
-         * is in play (env tokens don't represent a persisted account). With
-         * `ref`, returns that specific stored account; without, returns the
-         * default-or-only account. A `ref` that does not match any stored
-         * account returns `null` so cli-core's resolver layer can translate
-         * the miss into a typed error without storage reads leaking CLI-arg
-         * errors.
+         * is in play (env tokens don't represent a persisted account), when
+         * nothing is stored, or when `ref` does not match any stored account
+         * — cli-core's resolver layer translates the miss into a typed error.
+         * With `ref`, returns that specific stored account; without, returns
+         * the default-or-only account.
+         *
+         * Token-load failures (broken keyring, missing secret) propagate as
+         * typed errors once a user was matched — collapsing them to `null`
+         * would make a real account look like an unknown `ref` to cli-core.
          */
         async active(ref?: AccountRef) {
             if (process.env[TOKEN_ENV_VAR]) return null
 
             const config = await readConfig()
-            const users = getStoredUsers(config)
-            if (users.length === 0) return null
-
-            let target: StoredUser | null
-            if (ref !== undefined) {
-                target = findUserByRef(config, ref)?.user ?? null
-            } else {
-                target = getDefaultUser(config) ?? (users.length === 1 ? users[0] : null)
-            }
+            const target =
+                ref !== undefined
+                    ? (findUserByRef(config, ref)?.user ?? null)
+                    : getEffectiveDefaultUser(config)
             if (!target) return null
 
-            try {
-                const { token } = await loadTokenForStoredUser(target)
-                return { token, account: storedUserToAccount(target) }
-            } catch (error) {
-                // Token unreachable (no secret, keyring offline) — surface as
-                // "no active persisted account" so a `set()` retry can recover
-                // without a runtime caller having to special-case storage errors.
-                if (error instanceof NoTokenError) return null
-                if (error instanceof SecureStoreUnavailableError) return null
-                throw error
-            }
+            const { token } = await loadTokenForStoredUser(target)
+            return { token, account: storedUserToAccount(target) }
         },
 
         async set(account, token) {
@@ -147,8 +134,7 @@ export function createTodoistTokenStore(): TodoistTokenStore {
             const config = await readConfig()
             const users = getStoredUsers(config)
             if (users.length === 0) return []
-            const defaultUser = getDefaultUser(config)
-            const defaultId = defaultUser?.id ?? (users.length === 1 ? users[0].id : undefined)
+            const defaultId = getEffectiveDefaultUser(config)?.id
             return users.map((user) => ({
                 account: storedUserToAccount(user),
                 isDefault: user.id === defaultId,

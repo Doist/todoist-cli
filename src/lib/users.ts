@@ -77,6 +77,19 @@ export function getDefaultUser(config: Config): StoredUser | null {
 }
 
 /**
+ * The user that should be treated as the "default" when no `--user` ref is
+ * supplied: the explicitly-set default, or the sole stored user when only
+ * one exists. Returns `null` when no default can be inferred (empty store,
+ * or multiple users with no explicit default).
+ */
+export function getEffectiveDefaultUser(config: Config): StoredUser | null {
+    const explicit = getDefaultUser(config)
+    if (explicit) return explicit
+    const users = getStoredUsers(config)
+    return users.length === 1 ? users[0] : null
+}
+
+/**
  * Replace or append a user record. Returns a new config and whether the user
  * was already present (so callers can show "replaced" vs "added" messages).
  */
