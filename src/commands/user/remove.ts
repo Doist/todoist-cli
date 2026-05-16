@@ -1,5 +1,6 @@
 import chalk from 'chalk'
-import { readConfig, removeUserById } from '../../lib/auth.js'
+import { createTodoistTokenStore } from '../../lib/auth-store.js'
+import { readConfig } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { getDefaultUserId, requireUserByRef } from '../../lib/users.js'
@@ -12,11 +13,16 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
         )
     }
 
+    // Resolve the ref against the on-disk config first so we can report
+    // "Removed <email>" + the "cleared default" hint with the user's actual
+    // email — the store's clear path is keyed by id, not email, and would
+    // silently no-op on miss (printing the wrong reassurance).
     const config = await readConfig()
     const { user } = requireUserByRef(config, ref)
     const wasDefault = getDefaultUserId(config) === user.id
 
-    const result = await removeUserById(user.id)
+    const store = createTodoistTokenStore()
+    await store.clear(user.id)
 
     if (!isQuiet()) {
         console.log(chalk.green('✓'), `Removed ${user.email}`)
@@ -27,9 +33,8 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
         }
     }
 
-    // Always surface partial-cleanup warnings, even with --quiet — the user
-    // needs to know if the keyring or config wasn't fully cleared.
-    if (result.warning) {
+    const result = store.getLastClearResult()
+    if (result?.warning) {
         console.error(chalk.yellow('Warning:'), result.warning)
     }
 }

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { createApiForToken } from '../../lib/api/core.js'
-import { upsertUser } from '../../lib/auth.js'
+import { createTodoistTokenStore, toTodoistAccount } from '../../lib/auth-store.js'
 import { logTokenStorageResult, promptHiddenInput } from './helpers.js'
 
 export async function loginWithToken(token?: string): Promise<void> {
@@ -18,14 +18,15 @@ export async function loginWithToken(token?: string): Promise<void> {
     const probeApi = createApiForToken(trimmed)
     const user = await probeApi.getUser()
 
-    const result = await upsertUser({
-        id: user.id,
-        email: user.email,
-        token: trimmed,
-        authMode: 'unknown',
-    })
+    const store = createTodoistTokenStore()
+    await store.set(
+        toTodoistAccount({ id: user.id, email: user.email, authMode: 'unknown' }),
+        trimmed,
+    )
 
-    const verb = result.replaced ? 'Updated stored token for' : 'Saved token for'
-    console.log(chalk.green('✓'), `${verb} ${user.email}`)
-    logTokenStorageResult(result, 'Token stored securely in the system credential manager')
+    console.log(chalk.green('✓'), `Saved token for ${user.email}`)
+    const result = store.getLastStorageResult()
+    if (result) {
+        logTokenStorageResult(result, 'Token stored securely in the system credential manager')
+    }
 }
