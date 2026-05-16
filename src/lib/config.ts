@@ -160,6 +160,25 @@ export async function writeConfig(config: Config): Promise<void> {
     await writeConfigCore(getConfigPath(), config, { deleteWhenEmpty: true })
 }
 
+/**
+ * Strip the v1 top-level auth fields. Called on every v2 config write so a
+ * stale `api_token` / `auth_mode` / `auth_flags` from a pre-migration config
+ * can't outlive a successful multi-user write. Single source of truth for
+ * the list — the keyring/migration paths and the v2-shape normalizer all
+ * delegate here.
+ */
+export function stripLegacyAuthFields(config: Config): Config {
+    const {
+        api_token: _t,
+        auth_mode: _m,
+        auth_scope: _s,
+        auth_flags: _f,
+        pendingSecureStoreClear: _p,
+        ...rest
+    } = config
+    return rest
+}
+
 // Keep this validator ad-hoc for now: it is only used by `td doctor`, and the
 // config schema is still small enough that adding a runtime validation
 // dependency would be heavier than the problem. If more config or payload

@@ -12,8 +12,19 @@
  */
 
 import { migrateLegacyAuth as coreMigrateLegacyAuth } from '@doist/cli-core/auth'
-import { toTodoistAccount, type TodoistAccount } from './auth-store.js'
-import { type Config, CONFIG_VERSION, readConfig, writeConfig } from './config.js'
+import {
+    LEGACY_ACCOUNT,
+    SERVICE_NAME,
+    toTodoistAccount,
+    type TodoistAccount,
+} from './auth-store.js'
+import {
+    type Config,
+    CONFIG_VERSION,
+    readConfig,
+    stripLegacyAuthFields,
+    writeConfig,
+} from './config.js'
 import { fetchTodoist } from './usage-tracking.js'
 import { createTodoistUserRecordStore } from './user-records.js'
 
@@ -36,9 +47,23 @@ const USER_ENDPOINT = 'https://api.todoist.com/api/v1/user'
 export async function migrateLegacyAuth(opts: MigrateOptions = {}): Promise<MigrateAuthResult> {
     const fetchImpl = opts.fetchImpl ?? fetch
 
+    // Cache the config across the cli-core callbacks: a successful migration
+    // hits `hasMigrated`, `loadLegacyPlaintextToken`, `identifyAccount`, and
+    // `cleanupLegacyConfig` back-to-back. Without the cache we'd re-read +
+    // re-parse the same file four times for one postinstall run.
+    let cached: Config | undefined
+    const read = async (): Promise<Config> => {
+        if (cached === undefined) cached = await readConfig()
+        return cached
+    }
+    const write = async (next: Config): Promise<void> => {
+        await writeConfig(next)
+        cached = next
+    }
+
     const result = await coreMigrateLegacyAuth<TodoistAccount>({
-        serviceName: 'todoist-cli',
-        legacyAccount: 'api-token',
+        serviceName: SERVICE_NAME,
+        legacyAccount: LEGACY_ACCOUNT,
         userRecords: createTodoistUserRecordStore(),
         silent: opts.silent,
         logPrefix: 'todoist-cli',
@@ -46,20 +71,20 @@ export async function migrateLegacyAuth(opts: MigrateOptions = {}): Promise<Migr
         // survives logout (which clears `users[]` but leaves `config_version`),
         // so a reinstall over a logged-out v2 install cannot re-migrate a
         // stale legacy keyring entry.
-        hasMigrated: async () => (await readConfig()).config_version === CONFIG_VERSION,
+        hasMigrated: async () => (await read()).config_version === CONFIG_VERSION,
         markMigrated: async () => {
-            const config = await readConfig()
+            const config = await read()
             if (config.config_version === CONFIG_VERSION) return
-            await writeConfig({ ...config, config_version: CONFIG_VERSION })
+            await write({ ...config, config_version: CONFIG_VERSION })
         },
         loadLegacyPlaintextToken: async () => {
-            const config = await readConfig()
+            const config = await read()
             return typeof config.api_token === 'string' && config.api_token.trim()
                 ? config.api_token.trim()
                 : null
         },
         identifyAccount: async (token) => {
-            const config = await readConfig()
+            const config = await read()
             const user = await fetchUser(token, fetchImpl)
             return toTodoistAccount({
                 id: user.id,
@@ -70,16 +95,8 @@ export async function migrateLegacyAuth(opts: MigrateOptions = {}): Promise<Migr
             })
         },
         cleanupLegacyConfig: async () => {
-            const config = await readConfig()
-            const {
-                api_token: _t,
-                auth_mode: _m,
-                auth_scope: _s,
-                auth_flags: _f,
-                pendingSecureStoreClear: _p,
-                ...rest
-            } = config
-            await writeConfig(rest as Config)
+            const config = await read()
+            await write(stripLegacyAuthFields(config))
         },
     })
 

@@ -1,6 +1,4 @@
 import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
-
-const SECURE_STORE_DESCRIPTION = 'system credential manager'
 import chalk from 'chalk'
 import {
     type AuthMetadata,
@@ -12,6 +10,8 @@ import {
 } from '../../lib/auth.js'
 import { type Config, getConfigPath, readConfigStrict } from '../../lib/config.js'
 import { getDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
+
+const SECURE_STORE_DESCRIPTION = 'system credential manager'
 
 export interface ViewConfigOptions {
     json?: boolean

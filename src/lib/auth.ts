@@ -13,19 +13,22 @@ export {
     type UpdateChannel,
 } from './config.js'
 
-import { type AuthFlag, type AuthMode, type Config, readConfig, type StoredUser } from './config.js'
+import { accountForUser, LEGACY_ACCOUNT, SERVICE_NAME } from './auth-store.js'
+import {
+    type AuthFlag,
+    type AuthMode,
+    type Config,
+    getConfigPath,
+    readConfig,
+    type StoredUser,
+    stripLegacyAuthFields,
+    writeConfig,
+} from './config.js'
 import { CliError } from './errors.js'
 import { getRequestedUserRef } from './global-args.js'
 import { findUserByRef, getStoredUsers, NoUserSelectedError, UserNotFoundError } from './users.js'
 
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
-
-const SERVICE_NAME = 'todoist-cli'
-const LEGACY_ACCOUNT = 'api-token'
-
-function accountForUser(id: string): string {
-    return `user-${id}`
-}
 
 export interface AuthMetadata {
     authMode: AuthMode
@@ -254,6 +257,60 @@ async function resolveLegacyToken(config: Config): Promise<ResolvedUser> {
     }
 
     throw new NoTokenError()
+}
+
+/**
+ * v1 logout: clean up legacy state when a `td auth logout` lands on a v1
+ * install that postinstall migration hasn't touched yet (offline first run,
+ * etc.). Pairs with the `resolveLegacyToken` read path above; remove together
+ * once that fallback is dropped.
+ *
+ * Returns the storage location that was cleared (mirrors `TokenStorageResult`)
+ * or `null` if nothing legacy was present.
+ */
+export async function clearLegacyToken(): Promise<{
+    storage: 'secure-store' | 'config-file'
+    warning?: string
+} | null> {
+    const config = await readConfig()
+    const hadLegacyConfig = typeof config.api_token === 'string' && config.api_token.length > 0
+    const secureStore = createSecureStore({ serviceName: SERVICE_NAME, account: LEGACY_ACCOUNT })
+
+    let secureStoreCleared = false
+    let keyringUnavailable = false
+    try {
+        secureStoreCleared = await secureStore.deleteSecret()
+    } catch (error) {
+        if (!(error instanceof SecureStoreUnavailableError)) throw error
+        keyringUnavailable = true
+    }
+
+    if (!hadLegacyConfig && !secureStoreCleared && !keyringUnavailable) {
+        return null
+    }
+
+    // Persist v2 shape so subsequent runs don't keep entering the legacy path.
+    // Drop `api_token` / `auth_mode` / etc. and stamp `pendingSecureStoreClear`
+    // only when the keyring couldn't be reached, mirroring the prior contract
+    // the resolver checks via `resolveLegacyToken`.
+    const stripped = stripLegacyAuthFields(config)
+    const next: Config = keyringUnavailable
+        ? { ...stripped, pendingSecureStoreClear: true }
+        : stripped
+    try {
+        await writeConfig(next)
+    } catch {
+        // Best-effort — the keyring delete already happened (or failed
+        // visibly); a config-write failure on logout is not worth surfacing.
+    }
+
+    if (keyringUnavailable) {
+        return {
+            storage: 'config-file',
+            warning: `system credential manager unavailable; local auth state cleared in ${getConfigPath()}`,
+        }
+    }
+    return { storage: 'secure-store' }
 }
 
 function resolvedToMetadata(resolved: ResolvedUser): AuthMetadata {

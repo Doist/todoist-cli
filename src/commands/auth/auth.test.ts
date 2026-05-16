@@ -1,7 +1,35 @@
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock the auth module
+// Mock the auth-store factory so token / logout commands can drive a stub.
+const setMock = vi.fn()
+const clearMock = vi.fn()
+const activeMock = vi.fn<(ref?: string) => Promise<unknown>>()
+const lastStorageMock = vi.fn<() => unknown>()
+const lastClearMock = vi.fn<() => unknown>()
+vi.mock('../../lib/auth-store.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
+    return {
+        ...actual,
+        createTodoistTokenStore: () => ({
+            active: activeMock,
+            list: vi.fn().mockResolvedValue([]),
+            setDefault: vi.fn(),
+            set: setMock,
+            clear: clearMock,
+            getLastStorageResult: lastStorageMock,
+            getLastClearResult: lastClearMock,
+        }),
+    }
+})
+
+// Stub `clearLegacyToken` so the wrap's empty-store legacy fallback can be
+// observed without touching the real config/keyring. `vi.hoisted` is required
+// here because vi.mock factories run before top-level `const` initializers,
+// and the factory needs to close over a stable reference.
+const { clearLegacyTokenMock } = vi.hoisted(() => ({
+    clearLegacyTokenMock: vi.fn<() => Promise<unknown>>(),
+}))
 vi.mock('../../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth.js')>()
     return {
@@ -10,27 +38,7 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
         resolveActiveUser: vi.fn(),
-    }
-})
-
-// Mock the auth-store factory so token / logout commands can drive a stub.
-const setMock = vi.fn()
-const clearMock = vi.fn()
-const lastStorageMock = vi.fn<() => unknown>()
-const lastClearMock = vi.fn<() => unknown>()
-vi.mock('../../lib/auth-store.js', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
-    return {
-        ...actual,
-        createTodoistTokenStore: () => ({
-            active: vi.fn(),
-            list: vi.fn().mockResolvedValue([]),
-            setDefault: vi.fn(),
-            set: setMock,
-            clear: clearMock,
-            getLastStorageResult: lastStorageMock,
-            getLastClearResult: lastClearMock,
-        }),
+        clearLegacyToken: clearLegacyTokenMock,
     }
 })
 
@@ -437,6 +445,8 @@ describe('auth command', () => {
         beforeEach(() => {
             clearMock.mockReset().mockResolvedValue(undefined)
             lastClearMock.mockReset().mockReturnValue({ storage: 'secure-store' })
+            activeMock.mockReset()
+            clearLegacyTokenMock.mockReset()
         })
 
         it('surfaces keyring-fallback warning to stderr', async () => {
@@ -445,6 +455,80 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'logout'])
 
+            expect(errorSpy).toHaveBeenCalledWith('Warning:', WARNING_RESULT.warning)
+        })
+
+        it('threads --user from global args through to store.clear', async () => {
+            // `index.ts` strips `--user` from process.argv before commander
+            // runs; cli-core's `attachLogoutCommand` therefore can't see it.
+            // The Todoist wrap reads `getRequestedUserRef()` from global args
+            // and substitutes it when commander calls `store.clear(undefined)`.
+            activeMock.mockResolvedValue({
+                token: 'tok-a',
+                account: { id: '111', email: 'a@example.com', label: 'a@example.com' },
+            })
+
+            const program = createProgram()
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'logout']
+            resetGlobalArgs()
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'logout'])
+                expect(clearMock).toHaveBeenCalledWith('a@example.com')
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+        })
+
+        it('throws UserNotFoundError when --user does not match any stored account', async () => {
+            // cli-core's `clear(ref)` is contractually a no-op on miss; without
+            // the wrap's pre-check, `logout --user mistake` would print
+            // "✓ Logged out" and exit 0. The wrap surfaces the typed miss.
+            activeMock.mockResolvedValue(null)
+
+            const program = createProgram()
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--user', 'missing@example.com', 'auth', 'logout']
+            resetGlobalArgs()
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'logout']),
+                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+                expect(clearMock).not.toHaveBeenCalled()
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+        })
+
+        it('falls back to clearLegacyToken on an unmigrated install (empty v2 store)', async () => {
+            // Empty v2 store + no `--user`: cli-core's clear is a no-op
+            // (`getLastClearResult()` stays undefined). The wrap then runs
+            // `clearLegacyToken()` so the v1 user actually logs out.
+            activeMock.mockResolvedValue(null)
+            lastClearMock.mockReturnValue(undefined)
+            clearLegacyTokenMock.mockResolvedValue({ storage: 'secure-store' })
+
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'auth', 'logout'])
+
+            expect(clearMock).toHaveBeenCalledWith(undefined)
+            expect(clearLegacyTokenMock).toHaveBeenCalled()
+        })
+
+        it('keeps the keyring-fallback warning on stderr in --json mode (and out of the JSON envelope)', async () => {
+            // `attachTodoistLogoutCommand`'s `onCleared` branches on
+            // `view.json || view.ndjson` to suppress the human "Stored token
+            // removed" confirmation; a regression that leaks that text into
+            // stdout would corrupt machine-output consumers.
+            const program = createProgram()
+            lastClearMock.mockReturnValue(WARNING_RESULT)
+
+            await program.parseAsync(['node', 'td', 'auth', 'logout', '--json'])
+
+            const stdout = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n')
+            expect(stdout).not.toContain('Stored token removed')
             expect(errorSpy).toHaveBeenCalledWith('Warning:', WARNING_RESULT.warning)
         })
     })

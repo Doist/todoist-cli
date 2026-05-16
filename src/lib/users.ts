@@ -125,3 +125,14 @@ export function removeStoredUser(config: Config, id: string): Config {
 export function setDefaultUser(config: Config, id: string): Config {
     return { ...config, user: { ...config.user, defaultUser: id } }
 }
+
+/** Inverse of `setDefaultUser`: drop the pointer (and the wrapper if empty). */
+export function clearDefaultUser(config: Config): Config {
+    if (!config.user) return config
+    const { defaultUser: _d, ...restUser } = config.user
+    if (Object.keys(restUser).length > 0) {
+        return { ...config, user: restUser }
+    }
+    const { user: _u, ...rest } = config
+    return rest
+}

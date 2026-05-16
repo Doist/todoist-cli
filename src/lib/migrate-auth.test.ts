@@ -1,4 +1,4 @@
-import type { MigrateLegacyAuthOptions } from '@doist/cli-core/auth'
+import type { MigrateAuthResult, MigrateLegacyAuthOptions } from '@doist/cli-core/auth'
 /**
  * Adapter-level tests for the local `migrate-auth.ts` wrapper. The actual
  * migration mechanics (keyring read/write, default promotion, rollback)
@@ -15,8 +15,12 @@ const TEST_CONFIG_PATH = `${TEST_HOME}/.config/todoist-cli/config.json`
 
 // Capture the options object the wrapper passes into cli-core. Each test
 // re-imports the wrapper after mocks are installed so the captured value is
-// scoped to one test.
+// scoped to one test. `coreResult` lets a test pre-load the return value the
+// stubbed `migrateLegacyAuth` should resolve to — needed for the
+// `toLocalResult` translation cases that don't have a real cli-core run to
+// observe.
 let capturedOptions: MigrateLegacyAuthOptions<TodoistAccount> | undefined
+let coreResult: MigrateAuthResult<TodoistAccount>
 
 describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
     let configContent: string | null
@@ -25,6 +29,7 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
         vi.resetModules()
         vi.clearAllMocks()
         capturedOptions = undefined
+        coreResult = { status: 'no-legacy-state' }
 
         configContent = null
 
@@ -65,7 +70,7 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
                 migrateLegacyAuth: vi.fn(
                     async (options: MigrateLegacyAuthOptions<TodoistAccount>) => {
                         capturedOptions = options
-                        return { status: 'no-legacy-state' as const }
+                        return coreResult
                     },
                 ),
             }
@@ -134,6 +139,53 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
         await migrateLegacyAuth({ silent: true, fetchImpl })
 
         await expect(capturedOptions?.identifyAccount('any-token-1234567')).rejects.toThrow(/500/)
+    })
+
+    describe('toLocalResult translation', () => {
+        it('migrated → migratedUserId + migratedEmail (the local result shape)', async () => {
+            coreResult = {
+                status: 'migrated',
+                account: {
+                    id: '999',
+                    email: 'me@example.com',
+                    label: 'me@example.com',
+                    auth_mode: 'read-write',
+                },
+            }
+
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            const result = await migrateLegacyAuth({ silent: true })
+
+            expect(result).toEqual({
+                status: 'migrated',
+                migratedUserId: '999',
+                migratedEmail: 'me@example.com',
+            })
+        })
+
+        it('skipped → flattens cli-core reason + detail into one string', async () => {
+            coreResult = {
+                status: 'skipped',
+                reason: 'identify-failed',
+                detail: 'HTTP 500 boom',
+            }
+
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            const result = await migrateLegacyAuth({ silent: true })
+
+            expect(result).toEqual({
+                status: 'skipped',
+                reason: 'identify-failed: HTTP 500 boom',
+            })
+        })
+
+        it('already-migrated / no-legacy-state pass through with no extra fields', async () => {
+            coreResult = { status: 'already-migrated' }
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            await expect(migrateLegacyAuth({ silent: true })).resolves.toEqual({
+                status: 'already-migrated',
+            })
+        })
     })
 
     it('cleanupLegacyConfig strips top-level v1 fields', async () => {

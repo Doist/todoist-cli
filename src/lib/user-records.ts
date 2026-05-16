@@ -1,6 +1,14 @@
 import type { UserRecord, UserRecordStore } from '@doist/cli-core/auth'
-import type { TodoistAccount } from './auth-store.js'
-import { type Config, CONFIG_VERSION, readConfig, type StoredUser, writeConfig } from './config.js'
+import { toTodoistAccount, type TodoistAccount } from './auth-store.js'
+import {
+    type Config,
+    CONFIG_VERSION,
+    readConfig,
+    type StoredUser,
+    stripLegacyAuthFields,
+    writeConfig,
+} from './config.js'
+import { clearDefaultUser, removeStoredUser, setDefaultUser, upsertStoredUser } from './users.js'
 
 function recordToStoredUser(record: UserRecord<TodoistAccount>): StoredUser {
     const stored: StoredUser = {
@@ -18,14 +26,13 @@ function recordToStoredUser(record: UserRecord<TodoistAccount>): StoredUser {
 
 function storedUserToRecord(user: StoredUser): UserRecord<TodoistAccount> {
     const record: UserRecord<TodoistAccount> = {
-        account: {
+        account: toTodoistAccount({
             id: user.id,
-            label: user.email,
             email: user.email,
-            auth_mode: user.auth_mode ?? 'unknown',
-            auth_scope: user.auth_scope,
-            auth_flags: user.auth_flags,
-        },
+            authMode: user.auth_mode ?? 'unknown',
+            authScope: user.auth_scope,
+            authFlags: user.auth_flags,
+        }),
     }
     if (user.api_token !== undefined) {
         record.fallbackToken = user.api_token
@@ -39,29 +46,12 @@ function storedUserToRecord(user: StoredUser): UserRecord<TodoistAccount> {
  * `api_token`/`auth_mode` can't outlive a successful multi-user write.
  */
 function ensureV2(config: Config): Config {
-    const {
-        api_token: _t,
-        auth_mode: _m,
-        auth_scope: _s,
-        auth_flags: _f,
-        pendingSecureStoreClear: _p,
-        ...rest
-    } = config
+    const stripped = stripLegacyAuthFields(config)
     return {
-        ...rest,
+        ...stripped,
         config_version: CONFIG_VERSION,
-        users: Array.isArray(rest.users) ? rest.users : [],
+        users: Array.isArray(stripped.users) ? stripped.users : [],
     }
-}
-
-function withoutDefaultUser(config: Config): Config {
-    if (!config.user) return config
-    const { defaultUser: _d, ...restUser } = config.user
-    if (Object.keys(restUser).length > 0) {
-        return { ...config, user: restUser }
-    }
-    const { user: _u, ...rest } = config
-    return rest as Config
 }
 
 /**
@@ -71,6 +61,11 @@ function withoutDefaultUser(config: Config): Config {
  * incoming record so a stale `api_token` from a prior offline-fallback write
  * cannot outlive a later keyring-online write (cli-core preferentially reads
  * `fallbackToken` over the keyring).
+ *
+ * Array manipulation (upsert / remove / default-pointer maintenance)
+ * delegates to the same helpers `users.ts` exposes to the rest of the CLI
+ * (`upsertStoredUser`, `removeStoredUser`, `setDefaultUser`,
+ * `clearDefaultUser`) so the on-disk config layout has one set of mutators.
  */
 export function createTodoistUserRecordStore(): UserRecordStore<TodoistAccount> {
     return {
@@ -82,25 +77,13 @@ export function createTodoistUserRecordStore(): UserRecordStore<TodoistAccount> 
 
         async upsert(record) {
             const base = ensureV2(await readConfig())
-            const next = recordToStoredUser(record)
-            const users = (base.users ?? []).slice()
-            const idx = users.findIndex((u) => u.id === record.account.id)
-            if (idx >= 0) {
-                users[idx] = next
-            } else {
-                users.push(next)
-            }
-            await writeConfig({ ...base, users })
+            const next = upsertStoredUser(base, recordToStoredUser(record)).config
+            await writeConfig(next)
         },
 
         async remove(id) {
             const base = ensureV2(await readConfig())
-            const users = (base.users ?? []).filter((u) => u.id !== id)
-            let nextConfig: Config = { ...base, users }
-            if (nextConfig.user?.defaultUser === id) {
-                nextConfig = withoutDefaultUser(nextConfig)
-            }
-            await writeConfig(nextConfig)
+            await writeConfig(removeStoredUser(base, id))
         },
 
         async getDefaultId() {
@@ -110,11 +93,7 @@ export function createTodoistUserRecordStore(): UserRecordStore<TodoistAccount> 
 
         async setDefaultId(id) {
             const base = ensureV2(await readConfig())
-            if (id === null) {
-                await writeConfig(withoutDefaultUser(base))
-                return
-            }
-            await writeConfig({ ...base, user: { ...base.user, defaultUser: id } })
+            await writeConfig(id === null ? clearDefaultUser(base) : setDefaultUser(base, id))
         },
     }
 }
