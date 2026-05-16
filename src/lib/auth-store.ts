@@ -6,6 +6,7 @@ import {
 } from '@doist/cli-core/auth'
 import { type AuthFlag, type AuthMode, getConfigPath } from './config.js'
 import { createTodoistUserRecordStore } from './user-records.js'
+import { matchUserRef } from './users.js'
 
 /**
  * Persisted identifiers for the keyring/config ABI. Shared with the read-side
@@ -15,6 +16,7 @@ import { createTodoistUserRecordStore } from './user-records.js'
  */
 export const SERVICE_NAME = 'todoist-cli'
 export const LEGACY_ACCOUNT = 'api-token'
+export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
 export function accountForUser(id: string): string {
     return `user-${id}`
 }
@@ -58,33 +60,39 @@ export function toTodoistAccount(input: TodoistAccountInput): TodoistAccount {
 export type TodoistTokenStore = KeyringTokenStore<TodoistAccount>
 
 /**
- * Case-insensitive email match on top of cli-core's default id-or-label
- * equality. `findUserByRef` (in `users.ts`) historically lowercased the email
- * compare; pin that behaviour explicitly here so a cli-core default change
- * can't drop it.
- */
-function matchTodoistAccount(account: TodoistAccount, ref: AccountRef): boolean {
-    if (account.id === ref) return true
-    // `toTodoistAccount` always populates `label = email`, but cli-core types
-    // it as optional — fall back to `email` to keep the case-insensitive
-    // compare working even for accounts loaded from somewhere unexpected.
-    const label = account.label ?? account.email
-    return label.toLowerCase() === ref.toLowerCase()
-}
-
-/**
  * cli-core's keyring-backed `TokenStore`, wired to todoist-cli's
- * `UserRecordStore` adapter. `accountForUser` and `matchAccount` are passed
- * explicitly so the persisted keyring slot name + the `--user <ref>` match
- * rules are part of this module's contract, not inherited from cli-core's
- * defaults.
+ * `UserRecordStore` adapter. Two Todoist-specific overlays on top of the
+ * defaults:
+ *
+ *   - `active()` short-circuits to `null` when `TODOIST_API_TOKEN` is set.
+ *     The env var is the canonical override across the CLI; without this
+ *     short-circuit, `td auth status` would render the stored account while
+ *     `getAuthMetadata()` reports `source: 'env'` (wrong account, right
+ *     diagnostic).
+ *   - `accountForUser` / `matchAccount` are passed explicitly. `matchAccount`
+ *     delegates to `matchUserRef` so the keyring-store path and the
+ *     config-driven `findUserByRef` path share one matcher (case-insensitive
+ *     email + trim).
  */
 export function createTodoistTokenStore(): TodoistTokenStore {
-    return createKeyringTokenStore<TodoistAccount>({
+    const inner = createKeyringTokenStore<TodoistAccount>({
         serviceName: SERVICE_NAME,
         userRecords: createTodoistUserRecordStore(),
         recordsLocation: getConfigPath(),
         accountForUser,
-        matchAccount: matchTodoistAccount,
+        matchAccount: (account: TodoistAccount, ref: AccountRef) =>
+            matchUserRef({ id: account.id, email: account.email }, ref),
     })
+    return {
+        active: async (ref) => {
+            if (process.env[TOKEN_ENV_VAR]) return null
+            return inner.active(ref)
+        },
+        set: (account, token) => inner.set(account, token),
+        clear: (ref) => inner.clear(ref),
+        list: () => inner.list(),
+        setDefault: (ref) => inner.setDefault(ref),
+        getLastStorageResult: () => inner.getLastStorageResult(),
+        getLastClearResult: () => inner.getLastClearResult(),
+    }
 }

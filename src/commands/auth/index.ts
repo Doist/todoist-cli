@@ -1,7 +1,6 @@
 import { attachTokenViewCommand } from '@doist/cli-core/auth'
 import type { Command } from 'commander'
-import { createTodoistTokenStore } from '../../lib/auth-store.js'
-import { TOKEN_ENV_VAR } from '../../lib/auth.js'
+import { createTodoistTokenStore, TOKEN_ENV_VAR } from '../../lib/auth-store.js'
 import { attachTodoistLoginCommand } from './login.js'
 import { attachTodoistLogoutCommand } from './logout.js'
 import { attachTodoistStatusCommand } from './status.js'
@@ -11,14 +10,20 @@ import { loginWithToken } from './token.js'
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    // Shared store: login stashes the post-`set` storage result for its
-    // success handler; logout reads the post-`clear` result for the same
-    // keyring-fallback warning surface; status uses `active()` as the
-    // authenticated-snapshot gate.
+    // Two stores share storage but expose different reads:
+    //   - `store` is the raw cli-core `TokenStore` — login uses it to `set()`,
+    //     status uses `active()` (with env-token short-circuit) as the
+    //     authenticated-snapshot gate.
+    //   - `refAware` substitutes `getRequestedUserRef()` for the `--user
+    //     <ref>` that `index.ts` strips from argv before commander runs, and
+    //     turns ref-misses into typed `UserNotFoundError`. Used by every
+    //     cli-core registrar that needs the global `--user` flag (logout +
+    //     token view).
     const store = createTodoistTokenStore()
+    const refAware = withUserRefAware(store)
 
     attachTodoistLoginCommand(auth, store)
-    attachTodoistLogoutCommand(auth, store)
+    attachTodoistLogoutCommand(auth, refAware)
     attachTodoistStatusCommand(auth, store)
 
     // `token` is a hybrid: positional `[token]` saves, and the `view`
@@ -32,7 +37,7 @@ export function registerAuthCommand(program: Command): void {
 
     attachTokenViewCommand(tokenCmd, {
         name: 'view',
-        store: withUserRefAware(store),
+        store: refAware,
         envVarName: TOKEN_ENV_VAR,
         description:
             'Print the stored API token for the active user (or --user <ref>) to stdout for use in scripts',

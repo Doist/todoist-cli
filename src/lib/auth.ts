@@ -13,13 +13,13 @@ export {
     type UpdateChannel,
 } from './config.js'
 
-import { accountForUser, SERVICE_NAME } from './auth-store.js'
+import { accountForUser, SERVICE_NAME, TOKEN_ENV_VAR } from './auth-store.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
 import { CliError } from './errors.js'
 import { getRequestedUserRef } from './global-args.js'
 import { findUserByRef, getStoredUsers, NoUserSelectedError, UserNotFoundError } from './users.js'
 
-export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
+export { TOKEN_ENV_VAR } from './auth-store.js'
 
 export interface AuthMetadata {
     authMode: AuthMode

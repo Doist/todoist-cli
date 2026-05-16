@@ -89,6 +89,37 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
         return configContent ? (JSON.parse(configContent) as Record<string, unknown>) : null
     }
 
+    describe('hasMigrated / markMigrated (the one-way gate)', () => {
+        it('hasMigrated returns true when config_version is at CONFIG_VERSION', async () => {
+            setConfig({ config_version: 2, users: [] })
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            await migrateLegacyAuth({ silent: true })
+            await expect(capturedOptions?.hasMigrated()).resolves.toBe(true)
+        })
+
+        it('hasMigrated returns false on a pre-v2 config (lets cli-core proceed)', async () => {
+            setConfig({ api_token: 'legacy-1234567' })
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            await migrateLegacyAuth({ silent: true })
+            await expect(capturedOptions?.hasMigrated()).resolves.toBe(false)
+        })
+
+        it('markMigrated stamps config_version without touching the legacy fields', async () => {
+            // Legacy strip is cleanupLegacyConfig's job — markMigrated only
+            // sets the durable gate so a later logout + reinstall can't
+            // re-migrate the (now stale) legacy token.
+            setConfig({ api_token: 'legacy-1234567', auth_mode: 'read-write' })
+            const { migrateLegacyAuth } = await import('./migrate-auth.js')
+            await migrateLegacyAuth({ silent: true })
+            await capturedOptions?.markMigrated()
+            expect(readConfig()).toEqual({
+                api_token: 'legacy-1234567',
+                auth_mode: 'read-write',
+                config_version: 2,
+            })
+        })
+    })
+
     it('loadLegacyPlaintextToken returns config.api_token when set', async () => {
         setConfig({ api_token: '  legacy-token-1234567  ' })
         const { migrateLegacyAuth } = await import('./migrate-auth.js')

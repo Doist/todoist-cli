@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const setMock = vi.fn()
 const clearMock = vi.fn()
 const activeMock = vi.fn<(ref?: string) => Promise<unknown>>()
+const listMock = vi.fn<() => Promise<unknown[]>>().mockResolvedValue([])
 const lastStorageMock = vi.fn<() => unknown>()
 const lastClearMock = vi.fn<() => unknown>()
 vi.mock('../../lib/auth-store.js', async (importOriginal) => {
@@ -13,7 +14,7 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
         ...actual,
         createTodoistTokenStore: () => ({
             active: activeMock,
-            list: vi.fn().mockResolvedValue([]),
+            list: listMock,
             setDefault: vi.fn(),
             set: setMock,
             clear: clearMock,
@@ -23,13 +24,6 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
     }
 })
 
-// Stub `clearLegacyToken` so the wrap's empty-store legacy fallback can be
-// observed without touching the real config/keyring. `vi.hoisted` is required
-// here because vi.mock factories run before top-level `const` initializers,
-// and the factory needs to close over a stable reference.
-const { clearLegacyTokenMock } = vi.hoisted(() => ({
-    clearLegacyTokenMock: vi.fn<() => Promise<unknown>>(),
-}))
 vi.mock('../../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth.js')>()
     return {
@@ -38,7 +32,6 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
         resolveActiveUser: vi.fn(),
-        clearLegacyToken: clearLegacyTokenMock,
     }
 })
 
@@ -437,7 +430,7 @@ describe('auth command', () => {
             clearMock.mockReset().mockResolvedValue(undefined)
             lastClearMock.mockReset().mockReturnValue({ storage: 'secure-store' })
             activeMock.mockReset()
-            clearLegacyTokenMock.mockReset()
+            listMock.mockReset().mockResolvedValue([])
         })
 
         it('surfaces keyring-fallback warning to stderr', async () => {
@@ -454,10 +447,14 @@ describe('auth command', () => {
             // runs; cli-core's `attachLogoutCommand` therefore can't see it.
             // The Todoist wrap reads `getRequestedUserRef()` from global args
             // and substitutes it when commander calls `store.clear(undefined)`.
-            activeMock.mockResolvedValue({
-                token: 'tok-a',
-                account: { id: '111', email: 'a@example.com', label: 'a@example.com' },
-            })
+            // Existence is checked via `store.list()` (no token side effect),
+            // not `store.active()`.
+            listMock.mockResolvedValue([
+                {
+                    account: { id: '111', email: 'a@example.com', label: 'a@example.com' },
+                    isDefault: true,
+                },
+            ])
 
             const program = createProgram()
             const originalArgv = process.argv
@@ -476,7 +473,7 @@ describe('auth command', () => {
             // cli-core's `clear(ref)` is contractually a no-op on miss; without
             // the wrap's pre-check, `logout --user mistake` would print
             // "✓ Logged out" and exit 0. The wrap surfaces the typed miss.
-            activeMock.mockResolvedValue(null)
+            listMock.mockResolvedValue([])
 
             const program = createProgram()
             const originalArgv = process.argv
@@ -493,24 +490,68 @@ describe('auth command', () => {
             }
         })
 
-        it('keeps the keyring-fallback warning on stderr in --json mode (and out of the JSON envelope)', async () => {
+        it('emits the JSON envelope on stdout and routes the keyring warning to stderr under --json', async () => {
             // `attachTodoistLogoutCommand`'s `onCleared` branches on
             // `view.json || view.ndjson` to suppress the human "Stored token
-            // removed" confirmation; a regression that leaks that text into
-            // stdout would corrupt machine-output consumers.
+            // removed" confirmation; cli-core then prints `{ok: true}`. A
+            // regression that leaked human prose into stdout — or dropped the
+            // envelope — would corrupt machine-output consumers.
             const program = createProgram()
             lastClearMock.mockReturnValue(WARNING_RESULT)
 
             await program.parseAsync(['node', 'td', 'auth', 'logout', '--json'])
 
             const stdout = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n')
+            expect(stdout).toContain('"ok": true')
             expect(stdout).not.toContain('Stored token removed')
             expect(errorSpy).toHaveBeenCalledWith('Warning:', WARNING_RESULT.warning)
         })
     })
 
-    // `token view` is now wired via cli-core's `attachTokenViewCommand`;
-    // bare-token output, `TOKEN_FROM_ENV` refusal, and `NOT_AUTHENTICATED`
-    // are tested in cli-core itself. The `--user <ref>` wrap is exercised
-    // via the logout tests above.
+    describe('token view subcommand', () => {
+        // `attachTokenViewCommand`'s bare-token output, TOKEN_FROM_ENV
+        // refusal, and NOT_AUTHENTICATED on no-snapshot are all tested in
+        // cli-core. The wrap's `--user` injection is exercised here because
+        // it goes through `withUserRefAware.active`, which the logout tests
+        // don't cover (they only exercise `.clear`).
+
+        it('routes --user from global args through the active() path', async () => {
+            const account = { id: '111', email: 'a@example.com', label: 'a@example.com' }
+            listMock.mockResolvedValue([{ account, isDefault: true }])
+            activeMock.mockResolvedValue({ token: 'stored-token-1234567', account })
+
+            const program = createProgram()
+            const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'token', 'view']
+            resetGlobalArgs()
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+                expect(activeMock).toHaveBeenCalledWith('a@example.com')
+                expect(stdoutWrite).toHaveBeenCalledWith('stored-token-1234567')
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+                stdoutWrite.mockRestore()
+            }
+        })
+
+        it('surfaces UserNotFoundError when --user does not match', async () => {
+            listMock.mockResolvedValue([])
+
+            const program = createProgram()
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--user', 'nobody@example.com', 'auth', 'token', 'view']
+            resetGlobalArgs()
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
+                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+                expect(activeMock).not.toHaveBeenCalled()
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+        })
+    })
 })

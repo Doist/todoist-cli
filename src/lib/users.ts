@@ -37,21 +37,29 @@ export function getDefaultUserId(config: Config): string | undefined {
 }
 
 /**
- * Resolve a user ref (id or case-insensitive email). Returns `null` on miss;
+ * Single source of truth for `--user <ref>` matching: exact id, or
+ * case-insensitive email. Both `findUserByRef` (config-driven path) and
+ * `auth-store.ts`'s cli-core `matchAccount` (keyring-store path) delegate
+ * here so the two routes can't drift.
+ */
+export function matchUserRef(user: { id: string; email: string }, ref: string): boolean {
+    const trimmed = ref.trim()
+    if (!trimmed) return false
+    if (user.id === trimmed) return true
+    return user.email.toLowerCase() === trimmed.toLowerCase()
+}
+
+/**
+ * Resolve a user ref against the on-disk config. Returns `null` on miss;
  * the call sites that need to fail loudly wrap with `requireUserByRef`.
  */
 export function findUserByRef(
     config: Config,
     ref: string,
 ): { user: StoredUser; index: number } | null {
-    const trimmed = ref.trim()
-    if (!trimmed) return null
     const users = getStoredUsers(config)
-    const byId = users.findIndex((u) => u.id === trimmed)
-    if (byId !== -1) return { user: users[byId], index: byId }
-    const lower = trimmed.toLowerCase()
-    const byEmail = users.findIndex((u) => u.email.toLowerCase() === lower)
-    return byEmail !== -1 ? { user: users[byEmail], index: byEmail } : null
+    const idx = users.findIndex((u) => matchUserRef(u, ref))
+    return idx !== -1 ? { user: users[idx], index: idx } : null
 }
 
 export function requireUserByRef(config: Config, ref: string): { user: StoredUser; index: number } {

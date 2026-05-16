@@ -2,20 +2,19 @@ import { attachLogoutCommand } from '@doist/cli-core/auth'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { logTokenStorageResult } from './helpers.js'
-import { withUserRefAware } from './store-wrap.js'
 
 /**
  * `td auth logout`. cli-core owns the success line + `--json` / `--ndjson`
- * envelopes; the Todoist wrap threads `--user <ref>` from global args
- * (`withUserRefAware`) and surfaces the keyring-fallback warning that
- * cli-core's `TokenStore.clear: void` contract can't carry.
+ * envelopes; the Todoist hook surfaces the keyring-fallback warning that
+ * cli-core's `TokenStore.clear: void` contract can't carry. The `--user
+ * <ref>` injection lives on the wrapped store the caller passes in (see
+ * `withUserRefAware` in `store-wrap.ts`).
  */
 export function attachTodoistLogoutCommand(auth: Command, store: TodoistTokenStore): Command {
-    const refAware = withUserRefAware(store)
     return attachLogoutCommand<TodoistAccount>(auth, {
-        store: refAware,
+        store,
         onCleared: ({ view }) => {
-            const result = refAware.getLastClearResult()
+            const result = store.getLastClearResult()
             if (!result) return
             logTokenStorageResult(
                 result,
