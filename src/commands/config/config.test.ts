@@ -18,10 +18,10 @@ vi.mock('../../lib/auth.js', async () => {
 
 vi.mock('chalk')
 
+import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
 import { listStoredUsers, NoTokenError, probeApiToken } from '../../lib/auth.js'
 import { type Config, readConfigStrict } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
-import { SecureStoreUnavailableError } from '../../lib/secure-store.js'
 import { registerConfigCommand } from './index.js'
 
 const mockReadConfigStrict = vi.mocked(readConfigStrict)
