@@ -118,42 +118,24 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
   `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`
-- **`auth.ts`** — read-side resolver. `resolveActiveUser()`, `getApiToken()`,
-  `probeApiToken()`, `getAuthMetadata()`, `listStoredUsers()`, `NoTokenError`.
-  Also `clearLegacyToken()` for the unmigrated-v1 `td auth logout` path
-  (transitional, drops alongside `resolveLegacyToken`). All write-side
-  storage goes through `auth-store.ts` and the `UserRecordStore` adapter —
-  do not add new write paths here.
+- **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
+  `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
+  write/clear paths go through `auth-store.ts`.
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
-  `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`. Also `stripLegacyAuthFields()`
-  — single source of truth for the v1 top-level fields scrubbed on every v2
-  write (`api_token`, `auth_mode`, `auth_scope`, `auth_flags`,
-  `pendingSecureStoreClear`).
-- **`auth-provider.ts`** — `createTodoistAuthProvider()`: `@doist/cli-core`
-  PKCE `AuthProvider` adapter with a Todoist-specific `validateToken`
-  (calls `getUser`, builds `auth_mode` / `auth_scope` / `auth_flags`)
-- **`auth-store.ts`** — central auth-storage module. `createTodoistTokenStore()`
-  wires `@doist/cli-core/auth`'s `createKeyringTokenStore` (the keyring-backed
-  multi-account `TokenStore`) against the `UserRecordStore` adapter in
-  `user-records.ts`. Exports the persisted-identifier constants
-  (`SERVICE_NAME = 'todoist-cli'`, `LEGACY_ACCOUNT = 'api-token'`,
-  `accountForUser(id) → 'user-${id}'`) so read/write/migration paths share one
-  source of truth. Also exports `toTodoistAccount()` — the single account-shape
-  mapper used by login, migration, and the record-store adapter.
-- **`user-records.ts`** — `createTodoistUserRecordStore()`: the
-  `UserRecordStore<TodoistAccount>` port cli-core's `createKeyringTokenStore`
-  reads/writes through. REPLACE-not-merge `upsert`; every write runs through
-  `ensureV2` (stamps `config_version`, defaults `users` to `[]`, strips legacy
-  fields via `stripLegacyAuthFields`). Array manipulation delegates to
-  `users.ts` (`upsertStoredUser`, `removeStoredUser`, `setDefaultUser`,
-  `clearDefaultUser`) so on-disk config mutation has one set of mutators.
-- **`migrate-auth.ts`** — one-time v1 → v2 migration. Thin wrapper around
-  `@doist/cli-core/auth`'s `migrateLegacyAuth`, supplying the Todoist callbacks
-  (`hasMigrated` / `markMigrated` gated on `config_version === CONFIG_VERSION`,
-  `/api/v1/user` `identifyAccount`, `cleanupLegacyConfig` via
-  `stripLegacyAuthFields`). Invoked from `src/postinstall.ts`.
+  `stripLegacyAuthFields`, `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`.
+- **`auth-provider.ts`** — `createTodoistAuthProvider()`: cli-core PKCE
+  provider with Todoist `validateToken` (builds `auth_mode` / `auth_scope` /
+  `auth_flags` from `getUser`).
+- **`auth-store.ts`** — `createTodoistTokenStore()` (cli-core
+  `createKeyringTokenStore` wired to the `UserRecordStore` adapter),
+  persisted identifier constants (`SERVICE_NAME`, `LEGACY_ACCOUNT`,
+  `accountForUser`), and `toTodoistAccount()` mapper.
+- **`user-records.ts`** — `UserRecordStore<TodoistAccount>` adapter over
+  the config file. REPLACE-not-merge `upsert`; `ensureV2` on every write.
+- **`migrate-auth.ts`** — postinstall v1 → v2 migration; thin wrapper
+  around cli-core's `migrateLegacyAuth` with the Todoist callbacks.
 - **`auth-html.ts`** — branded HTML pages for the cli-core OAuth callback
   (`renderAuthSuccessPage` / `renderAuthErrorPage`)
 - **`oauth-scopes.ts`** — opt-in OAuth scope registry, `parseScopesOption`,
@@ -227,48 +209,25 @@ All live in `src/lib/refs.ts`:
 
 ## Auth & token storage
 
-Multi-user storage is owned by `@doist/cli-core/auth`. todoist-cli supplies a
-`UserRecordStore<TodoistAccount>` adapter (`src/lib/user-records.ts`) over its
-config file; cli-core's `createKeyringTokenStore` owns the keyring writes,
-fallback handling, and `--user <ref>` resolution. Persisted identifiers
-(`SERVICE_NAME = 'todoist-cli'`, per-user slug `user-<id>`, legacy v1 slug
-`api-token`) live in `src/lib/auth-store.ts`.
+`@doist/cli-core/auth` owns the keyring, multi-user `TokenStore`, OAuth flow,
+and the `login` / `logout` / `status` / `token view` registrars. todoist-cli
+supplies a `UserRecordStore<TodoistAccount>` adapter (`user-records.ts`) over
+its config file plus a Todoist-specific `validateToken` (`auth-provider.ts`).
 
-Read path — `resolveActiveUser()` / `getApiToken()` / `probeApiToken()`
-(`src/lib/auth.ts`):
+Read path (`auth.ts` — `resolveActiveUser` / `getApiToken` / `probeApiToken`):
+env `TODOIST_API_TOKEN` first, then a config-derived target user, then either
+`StoredUser.api_token` (plaintext keyring-offline fallback) or cli-core's
+`createSecureStore` for the keyring slot.
 
-1. `TODOIST_API_TOKEN` env var
-2. `config.users[]` record — prefers `api_token` (plaintext fallback, present
-   only when keyring was unavailable at write time), otherwise reads the
-   keyring slot via cli-core's `createSecureStore`
-3. **v1 fallback (transitional):** when `config.users` is not an array, read
-   the legacy top-level `api_token` / `api-token` keyring slot. This keeps
-   unmigrated installs working when postinstall migration hasn't run yet
-   (offline first run, etc.). Removed once `migrate-auth.ts` has had time to
-   land on every install.
+Write/clear/list all route through `createTodoistTokenStore()`; commands never
+write the config directly. `auth logout` and `auth token view` use
+`withUserRefAware` (`commands/auth/store-wrap.ts`) to substitute the
+global `--user <ref>` that `index.ts` strips from argv before commander runs.
 
-Write/clear paths (login, `td auth token`, `td user remove`, `td user use`,
-`td auth logout`) all go through `createTodoistTokenStore()` — never write
-the config directly. `td auth logout` is wrapped in
-`src/commands/auth/logout.ts` to thread the global `--user <ref>` into
-`store.clear`, surface `UserNotFoundError` on miss, and fall back to
-`clearLegacyToken()` for unmigrated v1 installs.
-
-`td auth login` runs through `@doist/cli-core`'s OAuth runtime
-(`attachLoginCommand` → `runOAuthFlow`). The Todoist-local pieces live in
-`src/lib/auth-provider.ts` (PKCE provider + `validateToken`) and
-`src/lib/auth-store.ts` (cli-core `TokenStore<TodoistAccount>` factory);
-the command is attached in `src/commands/auth/login.ts`. cli-core wires the
-standard flags (`--read-only`, `--callback-port`, `--json`, `--ndjson`) and
-binds the local callback server on port `8765` with a small fallback range.
-Scopes are opt-in: `--read-only` for a read-only token,
-`--additional-scopes=app-management,backups` to broaden.
-
-v1 → v2 migration runs from `src/postinstall.ts` via `src/lib/migrate-auth.ts`
-(thin wrapper around cli-core's `migrateLegacyAuth`). The one-way gate is
-`config.config_version === CONFIG_VERSION`, which survives logout, so a
-reinstall over a logged-out v2 install can't re-migrate a stale legacy
-keyring entry.
+v1 → v2 migration (`migrate-auth.ts` → cli-core's `migrateLegacyAuth`) runs
+from `postinstall.ts`. Gate is `config.config_version === CONFIG_VERSION`,
+which survives logout so a reinstall over a logged-out v2 install can't
+re-migrate a stale legacy slot.
 
 ## Testing
 

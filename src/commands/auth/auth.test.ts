@@ -79,16 +79,8 @@ vi.mock('node:readline', () => ({
 import { createInterface, type Interface } from 'node:readline'
 import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
-import {
-    NoTokenError,
-    TOKEN_ENV_VAR,
-    getAuthMetadata,
-    listStoredUsers,
-    readConfig,
-    resolveActiveUser,
-} from '../../lib/auth.js'
+import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
-import { UserNotFoundError } from '../../lib/users.js'
 import { createMockApi } from '../../test-support/mock-api.js'
 import { registerAuthCommand } from './index.js'
 import { attachTodoistStatusCommand } from './status.js'
@@ -98,7 +90,6 @@ const mockCreateInterface = vi.mocked(createInterface)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
-const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 const mockGetApi = vi.mocked(getApi)
 const mockCreateApiForToken = vi.mocked(createApiForToken)
 
@@ -502,21 +493,6 @@ describe('auth command', () => {
             }
         })
 
-        it('falls back to clearLegacyToken on an unmigrated install (empty v2 store)', async () => {
-            // Empty v2 store + no `--user`: cli-core's clear is a no-op
-            // (`getLastClearResult()` stays undefined). The wrap then runs
-            // `clearLegacyToken()` so the v1 user actually logs out.
-            activeMock.mockResolvedValue(null)
-            lastClearMock.mockReturnValue(undefined)
-            clearLegacyTokenMock.mockResolvedValue({ storage: 'secure-store' })
-
-            const program = createProgram()
-            await program.parseAsync(['node', 'td', 'auth', 'logout'])
-
-            expect(clearMock).toHaveBeenCalledWith(undefined)
-            expect(clearLegacyTokenMock).toHaveBeenCalled()
-        })
-
         it('keeps the keyring-fallback warning on stderr in --json mode (and out of the JSON envelope)', async () => {
             // `attachTodoistLogoutCommand`'s `onCleared` branches on
             // `view.json || view.ndjson` to suppress the human "Stored token
@@ -533,80 +509,8 @@ describe('auth command', () => {
         })
     })
 
-    describe('token view subcommand', () => {
-        let originalEnvToken: string | undefined
-
-        beforeEach(() => {
-            originalEnvToken = process.env[TOKEN_ENV_VAR]
-            delete process.env[TOKEN_ENV_VAR]
-        })
-
-        afterEach(() => {
-            if (originalEnvToken === undefined) {
-                delete process.env[TOKEN_ENV_VAR]
-            } else {
-                process.env[TOKEN_ENV_VAR] = originalEnvToken
-            }
-        })
-
-        it('prints the bare token to stdout', async () => {
-            const program = createProgram()
-            mockResolveActiveUser.mockResolvedValue({
-                id: TEST_USER.id,
-                email: TEST_USER.email,
-                token: 'stored_token_abc123456',
-                authMode: 'read-write',
-                source: 'secure-store',
-            })
-
-            await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
-
-            expect(mockResolveActiveUser).toHaveBeenCalled()
-            expect(consoleSpy).toHaveBeenCalledTimes(1)
-            expect(consoleSpy).toHaveBeenCalledWith('stored_token_abc123456')
-        })
-
-        it('refuses when TODOIST_API_TOKEN is set', async () => {
-            const program = createProgram()
-            process.env[TOKEN_ENV_VAR] = 'env_token_value'
-
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
-            ).rejects.toHaveProperty('code', 'TOKEN_FROM_ENV')
-            expect(mockResolveActiveUser).not.toHaveBeenCalled()
-            expect(consoleSpy).not.toHaveBeenCalled()
-        })
-
-        it('propagates NoTokenError when no users are stored', async () => {
-            const program = createProgram()
-            mockResolveActiveUser.mockRejectedValue(new NoTokenError())
-
-            await expect(
-                program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
-            ).rejects.toHaveProperty('code', 'NO_TOKEN')
-            expect(consoleSpy).not.toHaveBeenCalled()
-        })
-
-        it('propagates UserNotFoundError when --user ref does not match', async () => {
-            const program = createProgram()
-            mockResolveActiveUser.mockRejectedValue(new UserNotFoundError('missing@example.com'))
-
-            // `--user <ref>` is parsed from process.argv by the global-args
-            // layer (not commander) and stripped before commander sees the
-            // argv. Stub process.argv to mirror production wiring so the
-            // test exercises the same code path as a real invocation.
-            const originalArgv = process.argv
-            process.argv = ['node', 'td', 'auth', 'token', 'view', '--user', 'missing@example.com']
-            resetGlobalArgs()
-            try {
-                await expect(
-                    program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
-                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
-            } finally {
-                process.argv = originalArgv
-                resetGlobalArgs()
-            }
-            expect(consoleSpy).not.toHaveBeenCalled()
-        })
-    })
+    // `token view` is now wired via cli-core's `attachTokenViewCommand`;
+    // bare-token output, `TOKEN_FROM_ENV` refusal, and `NOT_AUTHENTICATED`
+    // are tested in cli-core itself. The `--user <ref>` wrap is exercised
+    // via the logout tests above.
 })

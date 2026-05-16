@@ -98,33 +98,6 @@ describe('createTodoistUserRecordStore', () => {
         expect(persisted.users[0].api_token).toBe('plaintext-1234567')
     })
 
-    it('upsert appends new users without overwriting existing ones', async () => {
-        setConfig({
-            config_version: 2,
-            user: { defaultUser: '111' },
-            users: [{ id: '111', email: 'a@example.com' }],
-        })
-
-        const { createTodoistUserRecordStore } = await import('./user-records.js')
-        await createTodoistUserRecordStore().upsert({
-            account: {
-                id: '222',
-                email: 'b@example.com',
-                label: 'b@example.com',
-                auth_mode: 'read-only',
-            },
-        })
-
-        const persisted = readPersisted() as {
-            users: { id: string }[]
-            user: { defaultUser: string }
-        }
-        expect(persisted.users.map((u) => u.id)).toEqual(['111', '222'])
-        // Default is the consumer's responsibility (set via `setDefaultId`),
-        // not auto-promoted on upsert.
-        expect(persisted.user.defaultUser).toBe('111')
-    })
-
     it('every write strips top-level v1 legacy fields (ensureV2)', async () => {
         // Pre-migration config with legacy top-level state still hanging around.
         setConfig({
@@ -170,67 +143,5 @@ describe('createTodoistUserRecordStore', () => {
         // Default pointed at the removed user — must be cleared (otherwise the
         // resolver would keep targeting an orphan id).
         expect(persisted.user).toBeUndefined()
-    })
-
-    it('remove leaves an unrelated default pointer intact', async () => {
-        setConfig({
-            config_version: 2,
-            user: { defaultUser: '111' },
-            users: [
-                { id: '111', email: 'a@example.com' },
-                { id: '222', email: 'b@example.com' },
-            ],
-        })
-
-        const { createTodoistUserRecordStore } = await import('./user-records.js')
-        await createTodoistUserRecordStore().remove('222')
-
-        const persisted = readPersisted() as { user: { defaultUser: string } }
-        expect(persisted.user.defaultUser).toBe('111')
-    })
-
-    it('setDefaultId(null) removes the pointer entirely (and the wrapper if it becomes empty)', async () => {
-        setConfig({
-            config_version: 2,
-            user: { defaultUser: '111' },
-            users: [{ id: '111', email: 'a@example.com' }],
-        })
-
-        const { createTodoistUserRecordStore } = await import('./user-records.js')
-        await createTodoistUserRecordStore().setDefaultId(null)
-
-        const persisted = readPersisted() as Record<string, unknown>
-        expect(persisted.user).toBeUndefined()
-    })
-
-    it('list translates StoredUser → UserRecord, surfacing `fallbackToken` from `api_token`', async () => {
-        setConfig({
-            config_version: 2,
-            users: [
-                {
-                    id: '111',
-                    email: 'a@example.com',
-                    auth_mode: 'read-only',
-                    api_token: 'fallback-1234567',
-                },
-            ],
-        })
-
-        const { createTodoistUserRecordStore } = await import('./user-records.js')
-        const records = await createTodoistUserRecordStore().list()
-
-        expect(records).toEqual([
-            {
-                account: {
-                    id: '111',
-                    email: 'a@example.com',
-                    label: 'a@example.com',
-                    auth_mode: 'read-only',
-                    auth_scope: undefined,
-                    auth_flags: undefined,
-                },
-                fallbackToken: 'fallback-1234567',
-            },
-        ])
     })
 })

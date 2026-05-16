@@ -160,14 +160,18 @@ describe('user command', () => {
         })
 
         it('rejects an unknown ref', async () => {
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                users: [{ id: '111', email: 'a@b.c' }],
-            })
+            // `td user use` routes directly through `store.setDefault(ref)`
+            // now; cli-core's `KeyringTokenStore` throws
+            // `CliError('ACCOUNT_NOT_FOUND', …)` on miss — the test stub
+            // mirrors that contract so the command propagates correctly.
+            const { CliError } = await import('../../lib/errors.js')
+            setDefaultMock.mockRejectedValueOnce(
+                new CliError('ACCOUNT_NOT_FOUND', 'No stored account matches "nope".'),
+            )
 
             await expect(
                 createProgram().parseAsync(['node', 'td', 'user', 'use', 'nope']),
-            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
         })
 
         it('default subcommand is an alias of use', async () => {

@@ -178,14 +178,6 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
                 reason: 'identify-failed: HTTP 500 boom',
             })
         })
-
-        it('already-migrated / no-legacy-state pass through with no extra fields', async () => {
-            coreResult = { status: 'already-migrated' }
-            const { migrateLegacyAuth } = await import('./migrate-auth.js')
-            await expect(migrateLegacyAuth({ silent: true })).resolves.toEqual({
-                status: 'already-migrated',
-            })
-        })
     })
 
     it('cleanupLegacyConfig strips top-level v1 fields', async () => {

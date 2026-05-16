@@ -1,9 +1,7 @@
 import chalk from 'chalk'
 import { createTodoistTokenStore } from '../../lib/auth-store.js'
-import { readConfig } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { requireUserByRef } from '../../lib/users.js'
 
 export async function useUserCommand(ref: string | undefined): Promise<void> {
     if (!ref) {
@@ -13,11 +11,12 @@ export async function useUserCommand(ref: string | undefined): Promise<void> {
         )
     }
 
-    const config = await readConfig()
-    const { user } = requireUserByRef(config, ref)
-    await createTodoistTokenStore().setDefault(user.id)
+    // `store.setDefault(ref)` throws `CliError('ACCOUNT_NOT_FOUND', …)` on miss,
+    // which the top-level error handler renders as the standard "not found"
+    // message — no pre-check needed.
+    await createTodoistTokenStore().setDefault(ref)
 
     if (!isQuiet()) {
-        console.log(chalk.green('✓'), `Default account set to ${user.email} (id:${user.id})`)
+        console.log(chalk.green('✓'), `Default account set to ${ref}`)
     }
 }

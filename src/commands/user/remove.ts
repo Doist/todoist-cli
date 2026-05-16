@@ -13,6 +13,10 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
         )
     }
 
+    // Resolve the ref against the on-disk config first so we can report
+    // "Removed <email>" + the "cleared default" hint with the user's actual
+    // email — the store's clear path is keyed by id, not email, and would
+    // silently no-op on miss (printing the wrong reassurance).
     const config = await readConfig()
     const { user } = requireUserByRef(config, ref)
     const wasDefault = getDefaultUserId(config) === user.id
@@ -29,8 +33,6 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
         }
     }
 
-    // Always surface partial-cleanup warnings, even with --quiet — the user
-    // needs to know if the keyring or config wasn't fully cleared.
     const result = store.getLastClearResult()
     if (result?.warning) {
         console.error(chalk.yellow('Warning:'), result.warning)

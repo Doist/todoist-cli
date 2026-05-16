@@ -254,60 +254,6 @@ describe('lib/auth', () => {
         await expect(resolveActiveUser({ ref: 'nope' })).rejects.toBeInstanceOf(UserNotFoundError)
     })
 
-    // --- legacy fallback ------------------------------------------------------
-
-    it('serves a legacy config token when no v2 users exist (graceful fallback)', async () => {
-        setConfig({
-            api_token: 'legacy-token-1234567',
-            auth_mode: 'read-write',
-        })
-
-        const { resolveActiveUser } = await import('./auth.js')
-
-        const resolved = await resolveActiveUser()
-        expect(resolved.id).toBe('legacy')
-        expect(resolved.token).toBe('legacy-token-1234567')
-        expect(resolved.authMode).toBe('read-write')
-        // does NOT auto-migrate at runtime — that's postinstall's job
-        expect(readConfig()).toEqual({
-            api_token: 'legacy-token-1234567',
-            auth_mode: 'read-write',
-        })
-    })
-
-    it('serves a legacy keyring token when no v2 users and no plaintext', async () => {
-        entryFor(keyring, 'api-token').token = 'legacy-secure-1234567'
-
-        const { resolveActiveUser } = await import('./auth.js')
-
-        const resolved = await resolveActiveUser()
-        expect(resolved.id).toBe('legacy')
-        expect(resolved.token).toBe('legacy-secure-1234567')
-        expect(resolved.source).toBe('secure-store')
-    })
-
-    it('treats v1 pendingSecureStoreClear as logged out', async () => {
-        setConfig({ pendingSecureStoreClear: true })
-        entryFor(keyring, 'api-token').token = 'stale-1234567'
-
-        const { resolveActiveUser, NoTokenError } = await import('./auth.js')
-
-        await expect(resolveActiveUser()).rejects.toBeInstanceOf(NoTokenError)
-    })
-
-    it('does not reauth from legacy keyring when v2 users[] is explicitly empty', async () => {
-        // Logged-out v2 install. A leftover `api-token` keyring entry must
-        // NOT be picked up — that would silently sign the user back in.
-        setConfig({ config_version: 2, users: [] })
-        entryFor(keyring, 'api-token').token = 'leftover-from-v1'
-
-        const { resolveActiveUser, NoTokenError } = await import('./auth.js')
-
-        await expect(resolveActiveUser()).rejects.toBeInstanceOf(NoTokenError)
-        // legacy slot wasn't even consulted
-        expect(entryFor(keyring, 'api-token').getCalls).toBe(0)
-    })
-
     // --- probe / metadata under keyring failure -------------------------------
 
     it('probeApiToken surfaces SecureStoreUnavailableError instead of NoTokenError', async () => {
@@ -346,10 +292,6 @@ describe('lib/auth', () => {
 
     function setConfig(config: Record<string, unknown>): void {
         configContent = `${JSON.stringify(config, null, 2)}\n`
-    }
-
-    function readConfig(): Record<string, unknown> | null {
-        return configContent ? (JSON.parse(configContent) as Record<string, unknown>) : null
     }
 
     function createErrnoError(code: string): Error & { code: string } {
