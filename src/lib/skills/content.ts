@@ -137,6 +137,7 @@ Choosing between \`task add\` and \`task quickadd\`:
 - Use \`td task add\` when you need flags that Quick Add syntax can't express (\`--deadline\`, \`--description\`, \`--parent\`, \`--duration\`, \`--uncompletable\`, \`--order\`), when the text is being composed programmatically, or when you need explicit \`id:\` / URL references for project/section/parent.
 - \`td task quickadd\` supports \`--stdin\`, \`--json\`, and \`--dry-run\` only; everything else is embedded in the text.
 - The top-level \`td add <text>\` is a human shorthand for \`td task quickadd\` — same parser, same flag surface (\`--stdin\`, \`--json\`, \`--dry-run\`). Agents should prefer \`td task quickadd\` / \`qa\` for discoverability alongside the other task subcommands.
+- \`--due\` on \`task add\` / \`task update\` is **sent verbatim** to the API as \`due_string\` — the CLI does not parse or rewrite it. The server's \`due_string\` parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but does **not** consume \`starting <date>\` clauses: a string like \`"every! 2 weeks starting 2026-05-17"\` is stored as the entire literal recurrence rule and the task never advances on completion. For recurrence with an explicit first-occurrence date, use \`td task quickadd "<content> every! 2 weeks starting <date>"\` (the quick-add parser consumes the \`starting\` clause correctly).
 
 Useful task flags:
 - \`--stdin\` on \`task add\` reads the task description from stdin; on \`task quickadd\` (and the top-level \`td add\`) it reads the full natural-language text from stdin.

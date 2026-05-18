@@ -115,7 +115,10 @@ Examples:
         .command('add [content]')
         .description('Add a task')
         .option('--content <text>', 'Task content (legacy, prefer positional argument)')
-        .option('--due <date>', 'Due date (natural language or YYYY-MM-DD)')
+        .option(
+            '--due <date>',
+            'Due date (YYYY-MM-DD or natural-language; sent verbatim to the API — see Notes below)',
+        )
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .addOption(
             withCaseInsensitiveChoices(
@@ -157,6 +160,20 @@ Examples:
             }
             return addTask({ ...options, content })
         })
+        .addHelpText(
+            'after',
+            `
+Notes:
+  --due is sent verbatim as the task's due_string. The server's due_string
+  parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but
+  does NOT consume "starting <date>" clauses — a string like
+  "every! 2 weeks starting 2026-05-17" is stored as the entire literal
+  recurrence rule, and the task will never advance on completion.
+
+  For natural-language input — especially recurrence with an explicit first
+  occurrence — use quickadd, which routes through Todoist's quick-add parser:
+    td task quickadd "Pay rent every! month starting 2026-06-01"`,
+        )
 
     const quickaddCmd = task
         .command('quickadd [text]')
@@ -179,7 +196,10 @@ Examples:
         .command('update [ref]')
         .description('Update a task')
         .option('--content <text>', 'New content')
-        .option('--due <date>', 'New due date')
+        .option(
+            '--due <date>',
+            'New due date (sent verbatim to the API as due_string — the same caveats as "task add --due" apply; see "td task add --help")',
+        )
         .option('--no-due', 'Remove due date')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--no-deadline', 'Remove deadline')
