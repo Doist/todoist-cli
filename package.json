@@ -69,7 +69,7 @@
     "@types/node": "25.7.0",
     "conventional-changelog-conventionalcommits": "9.3.1",
     "lefthook": "2.1.6",
-    "oxfmt": "0.48.0",
+    "oxfmt": "0.49.0",
     "oxlint": "1.63.0",
     "semantic-release": "25.0.3",
     "typescript": "6.0.3",
