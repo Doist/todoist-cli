@@ -1,3 +1,15 @@
+## [1.65.0](https://github.com/Doist/todoist-cli/compare/v1.64.0...v1.65.0) (2026-05-18)
+
+### Features
+
+* td goal CLI command ([#218](https://github.com/Doist/todoist-cli/issues/218)) ([81fea00](https://github.com/Doist/todoist-cli/commit/81fea0066080d13ada73801a7b941e281c4a9294))
+
+### Bug Fixes
+
+* **goal:** address review feedback from doistbot ([2484b59](https://github.com/Doist/todoist-cli/commit/2484b59641db6048157c582af3caf279dfa4e2cd))
+* **goal:** include description in JSON output ([#268](https://github.com/Doist/todoist-cli/issues/268)) ([cefe909](https://github.com/Doist/todoist-cli/commit/cefe9090cff798e1376f3e81f2c2ae87bf8633fa))
+* **goal:** use *TaskCount progress fields from SDK 9.1.0-next.2 ([#263](https://github.com/Doist/todoist-cli/issues/263)) ([9b3a026](https://github.com/Doist/todoist-cli/commit/9b3a02636dcf2e21e314cdc1a9dfb1afe1b3cb1d)), closes [Doist/todoist-sdk-typescript#567](https://github.com/Doist/todoist-sdk-typescript/issues/567)
+
 ## [1.64.0](https://github.com/Doist/todoist-cli/compare/v1.63.2...v1.64.0) (2026-05-15)
 
 ### Features
