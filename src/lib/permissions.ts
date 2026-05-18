@@ -77,6 +77,10 @@ const KNOWN_SAFE_API_METHODS = new Set([
     // Folders
     'getFolders',
     'getFolder',
+    // Goals
+    'getGoals',
+    'getGoal',
+    'searchGoals',
     // Sync is handled separately via payload inspection
     'sync',
 ])

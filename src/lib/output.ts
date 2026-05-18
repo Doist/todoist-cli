@@ -357,6 +357,15 @@ function hasId<T extends object>(item: T): item is T & { id: string } {
     return 'id' in item && typeof (item as Record<string, unknown>).id === 'string'
 }
 
+export function processJsonItem<T extends object>(
+    item: T,
+    type: EntityType,
+    full = false,
+    showUrl = false,
+): object {
+    return processItem(item, type, full, showUrl)
+}
+
 function processItem<T extends object>(
     item: T,
     type: EntityType,

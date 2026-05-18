@@ -44,6 +44,7 @@ src/
 ├─ commands/              # One file per flat command, one folder per group
 │  ├─ add.ts, today.ts, upcoming.ts, inbox.ts, view.ts,
 │  │  doctor.ts, changelog.ts, activity.ts, attachment.ts
+│  ├─ goal.ts             # Flat command with subcommand registry inside
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
 │  │  backup/, apps/, stats/, completed/, auth/, settings/,
@@ -100,6 +101,8 @@ lives in `src/lib/skills/content.ts` (SKILL_CONTENT) — don't duplicate here.
   activity-stats, health, analyze-health
 - **Labels, Sections, Comments, Filters, Reminders, Folders, Templates** —
   standard CRUD + browse
+- **Goals** — list, view, create, update, delete, complete, uncomplete,
+  link/unlink tasks
 - **Workspaces** — list/view + workspace users + access management
 - **Notifications** — list/view/accept/reject/dismiss
 - **Productivity & activity** — `activity`, `stats`, `completed`
@@ -141,12 +144,14 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`oauth-scopes.ts`** — opt-in OAuth scope registry, `parseScopesOption`,
   `extractAdditionalScopes`, `resolveAuthScope`, `formatScopesHelp`
 - **`output.ts`** — `formatTaskRow`, `formatTaskView`, `formatJson`,
-  `formatNdjson`, `formatPaginatedJson`, `formatDueDate`, `formatPriority`,
-  `formatError`, `formatErrorJson`, `printDryRun`
+  `formatNdjson`, `formatPaginatedJson`, `processJsonItem` (essential-field
+  picker used by JSON callers that build composite payloads), `formatDueDate`,
+  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
   `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
   `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,
-  `resolveFolderRef`, `resolveAppRef`, `parseTodoistUrl`, `classifyTodoistUrl`
+  `resolveFolderRef`, `resolveAppRef`, `resolveGoalRef`, `parseTodoistUrl`,
+  `classifyTodoistUrl`
 - **`urls.ts`** — `taskUrl`, `projectUrl`, `labelUrl`, `sectionUrl`,
   `commentUrl`, `filterUrl`
 - **`task-list.ts`** — `fetchProjects`, `filterByWorkspaceOrPersonal`,

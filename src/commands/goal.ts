@@ -1,8 +1,9 @@
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { getApi, type Project } from '../lib/api/core.js'
+import { getApi } from '../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
-import { isAccessible } from '../lib/global-args.js'
+import { CliError } from '../lib/errors.js'
+import { isAccessible, isQuiet } from '../lib/global-args.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatJson,
@@ -12,11 +13,11 @@ import {
     formatProgressBar,
     formatTaskRow,
     printDryRun,
+    processJsonItem,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
-import { resolveGoalRef } from '../lib/refs.js'
-import { resolveWorkspaceRef } from '../lib/refs.js'
-import { resolveTaskRef } from '../lib/refs.js'
+import { resolveGoalRef, resolveTaskRef, resolveWorkspaceRef } from '../lib/refs.js'
+import { fetchProjects } from '../lib/task-list.js'
 
 function formatOwnerType(ownerType: string): string {
     return ownerType === 'WORKSPACE' ? 'Workspace' : 'User'
@@ -97,20 +98,21 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
     )
 
     if (options.json) {
-        const goalJson = JSON.parse(formatJson(goal, 'goal', options.full))
-        const tasksJson = JSON.parse(
-            formatPaginatedJson({ results: tasks, nextCursor }, 'task', options.full),
+        const goalJson = processJsonItem(goal, 'goal', options.full)
+        const taskResults = tasks.map((t) => processJsonItem(t, 'task', options.full))
+        console.log(
+            JSON.stringify(
+                { goal: goalJson, tasks: { results: taskResults, nextCursor } },
+                null,
+                2,
+            ),
         )
-        console.log(JSON.stringify({ goal: goalJson, tasks: tasksJson }, null, 2))
         return
     }
 
     if (options.ndjson) {
         console.log(
-            JSON.stringify({
-                _type: 'goal',
-                ...JSON.parse(formatJson(goal, 'goal', options.full)),
-            }),
+            JSON.stringify({ _type: 'goal', ...processJsonItem(goal, 'goal', options.full) }),
         )
         console.log(formatPaginatedNdjson({ results: tasks, nextCursor }, 'task', options.full))
         return
@@ -136,11 +138,7 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
         return
     }
 
-    const { results: projects } = await api.getProjects()
-    const projectMap = new Map<string, Project>()
-    for (const p of projects) {
-        projectMap.set(p.id, p)
-    }
+    const projectMap = await fetchProjects(api)
 
     const collaboratorCache = new CollaboratorCache()
     await collaboratorCache.preload(api, tasks, projectMap)
@@ -153,7 +151,7 @@ async function viewGoal(ref: string, options: PaginatedViewOptions): Promise<voi
             cache: collaboratorCache,
         })
         console.log(
-            formatTaskRow({
+            await formatTaskRow({
                 task,
                 projectName: projectMap.get(task.projectId)?.name,
                 assignee: assignee ?? undefined,
@@ -209,6 +207,11 @@ async function createGoal(options: CreateOptions): Promise<void> {
         return
     }
 
+    if (isQuiet()) {
+        console.log(goal.id)
+        return
+    }
+
     console.log(`Created: ${goal.name}`)
     console.log(chalk.dim(`ID: ${goal.id}`))
 }
@@ -227,8 +230,14 @@ interface UpdateOptions {
 async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
     const { name, description, deadline, responsible, json, dryRun } = options
 
-    if (!name && !description && !deadline && !responsible) {
-        throw new Error(
+    if (
+        name === undefined &&
+        description === undefined &&
+        deadline === undefined &&
+        responsible === undefined
+    ) {
+        throw new CliError(
+            'INVALID_ARGUMENT',
             'No update fields specified. Use --name, --description, --deadline, or --responsible.',
         )
     }
@@ -248,10 +257,10 @@ async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
     const goal = await resolveGoalRef(api, ref)
 
     const args: Record<string, string | null | undefined> = {}
-    if (name) args.name = name
-    if (description) args.description = description
-    if (deadline) args.deadline = deadline
-    if (responsible) args.responsibleUid = responsible
+    if (name !== undefined) args.name = name
+    if (description !== undefined) args.description = description
+    if (deadline !== undefined) args.deadline = deadline
+    if (responsible !== undefined) args.responsibleUid = responsible
 
     const updated = await api.updateGoal(goal.id, args)
 
@@ -259,6 +268,8 @@ async function updateGoal(ref: string, options: UpdateOptions): Promise<void> {
         console.log(formatJson(updated, 'goal'))
         return
     }
+
+    if (isQuiet()) return
 
     console.log(`Updated: ${goal.name} → ${updated.name}`)
 }
@@ -284,6 +295,7 @@ async function deleteGoal(
     }
 
     await api.deleteGoal(goal.id)
+    if (isQuiet()) return
     console.log(`Deleted goal: ${goal.name}`)
 }
 
@@ -293,6 +305,7 @@ async function completeGoal(ref: string): Promise<void> {
     const api = await getApi()
     const goal = await resolveGoalRef(api, ref)
     await api.completeGoal(goal.id)
+    if (isQuiet()) return
     console.log(`Completed: ${goal.name}`)
 }
 
@@ -300,6 +313,7 @@ async function uncompleteGoal(ref: string): Promise<void> {
     const api = await getApi()
     const goal = await resolveGoalRef(api, ref)
     await api.uncompleteGoal(goal.id)
+    if (isQuiet()) return
     console.log(`Reopened: ${goal.name}`)
 }
 
@@ -307,19 +321,25 @@ async function uncompleteGoal(ref: string): Promise<void> {
 
 async function linkGoal(ref: string, options: { task: string }): Promise<void> {
     const api = await getApi()
-    const goal = await resolveGoalRef(api, ref)
-    const task = await resolveTaskRef(api, options.task)
+    const [goal, task] = await Promise.all([
+        resolveGoalRef(api, ref),
+        resolveTaskRef(api, options.task),
+    ])
 
     await api.linkTaskToGoal({ goalId: goal.id, taskId: task.id })
+    if (isQuiet()) return
     console.log(`Linked task "${task.content}" to goal "${goal.name}"`)
 }
 
 async function unlinkGoal(ref: string, options: { task: string }): Promise<void> {
     const api = await getApi()
-    const goal = await resolveGoalRef(api, ref)
-    const task = await resolveTaskRef(api, options.task)
+    const [goal, task] = await Promise.all([
+        resolveGoalRef(api, ref),
+        resolveTaskRef(api, options.task),
+    ])
 
     await api.unlinkTaskFromGoal({ goalId: goal.id, taskId: task.id })
+    if (isQuiet()) return
     console.log(`Unlinked task "${task.content}" from goal "${goal.name}"`)
 }
 
