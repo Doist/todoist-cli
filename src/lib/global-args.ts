@@ -131,6 +131,7 @@ export const shouldDisableSpinner = createSpinnerGate({
     envVar: 'TD_SPINNER',
     getArgs: store.get,
 })
+<<<<<<< HEAD
 
 /**
  * Remove `--user <ref>` / `--user=<ref>` from an argv array so commander —
@@ -164,3 +165,5 @@ export function stripUserFlag(argv: string[]): string[] {
     }
     return out
 }
+=======
+>>>>>>> origin/main

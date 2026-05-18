@@ -1,6 +1,9 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { Command } from 'commander'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -11,6 +14,19 @@ import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
+
+let attachmentTmpDir: string
+let attachmentFilePath: string
+
+beforeAll(async () => {
+    attachmentTmpDir = await mkdtemp(join(tmpdir(), 'td-comment-test-'))
+    attachmentFilePath = join(attachmentTmpDir, 'file.pdf')
+    await writeFile(attachmentFilePath, 'fake pdf bytes')
+})
+
+afterAll(async () => {
+    await rm(attachmentTmpDir, { recursive: true, force: true })
+})
 
 function createProgram() {
     const program = new Command()
@@ -332,10 +348,14 @@ describe('comment add with attachment', () => {
             '--content',
             'See attached',
             '--file',
-            '/path/to/file.pdf',
+            attachmentFilePath,
         ])
 
-        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.file).toBeInstanceOf(Blob)
+        expect(callArg.fileName).toBe('file.pdf')
+        expect(await (callArg.file as Blob).text()).toBe('fake pdf bytes')
+
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',
             content: 'See attached',
@@ -348,6 +368,64 @@ describe('comment add with attachment', () => {
         })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Attached: test.pdf'))
         consoleSpy.mockRestore()
+    })
+
+    it('forwards --file-name to api.uploadFile as the attachment filename', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockApi.addComment.mockResolvedValue({
+            id: 'comment-new',
+            content: 'See attached',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--content',
+            'See attached',
+            '--file',
+            attachmentFilePath,
+            '--file-name',
+            'custom-name.pdf',
+        ])
+
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.fileName).toBe('custom-name.pdf')
+        // Override wins over basename(--file).
+        expect(callArg.fileName).not.toBe('file.pdf')
+        consoleSpy.mockRestore()
+    })
+
+    it('returns FILE_NOT_FOUND when the --file path does not exist', async () => {
+        const program = createProgram()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'comment',
+                'add',
+                'id:task-1',
+                '--content',
+                'See attached',
+                '--file',
+                join(attachmentTmpDir, 'does-not-exist.pdf'),
+            ]),
+        ).rejects.toMatchObject({
+            code: 'FILE_NOT_FOUND',
+        })
+        // File validation runs before any API/auth work — if a future
+        // change reorders that, `getApi` would record a call and this
+        // assertion would catch the regression.
+        expect(mockGetApi).not.toHaveBeenCalled()
+        expect(mockApi.uploadFile).not.toHaveBeenCalled()
     })
 
     it('works without --file flag', async () => {
@@ -1089,10 +1167,12 @@ describe('project comment add', () => {
             '--content',
             'See attached',
             '--file',
-            '/path/to/file.pdf',
+            attachmentFilePath,
         ])
 
-        expect(mockApi.uploadFile).toHaveBeenCalledWith({ file: '/path/to/file.pdf' })
+        const callArg = mockApi.uploadFile.mock.calls[0][0]
+        expect(callArg.file).toBeInstanceOf(Blob)
+        expect(callArg.fileName).toBe('file.pdf')
         expect(mockApi.addComment).toHaveBeenCalledWith({
             projectId: 'proj-1',
             content: 'See attached',

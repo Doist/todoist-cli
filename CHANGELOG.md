@@ -1,3 +1,24 @@
+<<<<<<< HEAD
+=======
+## [1.64.0](https://github.com/Doist/todoist-cli/compare/v1.63.2...v1.64.0) (2026-05-15)
+
+### Features
+
+* **auth:** adopt cli-core 0.12.0 multi-user TokenStore contract ([#340](https://github.com/Doist/todoist-cli/issues/340)) ([6b4e7f7](https://github.com/Doist/todoist-cli/commit/6b4e7f732c1d734084489ce849e8c3e6df009b32))
+
+## [1.63.2](https://github.com/Doist/todoist-cli/compare/v1.63.1...v1.63.2) (2026-05-14)
+
+### Bug Fixes
+
+* **comment:** make `comment add --file` actually upload the file ([#337](https://github.com/Doist/todoist-cli/issues/337)) ([48aa467](https://github.com/Doist/todoist-cli/commit/48aa467035318fdb28b049eb6534133df120b5ea))
+
+## [1.63.1](https://github.com/Doist/todoist-cli/compare/v1.63.0...v1.63.1) (2026-05-13)
+
+### Bug Fixes
+
+* forward arrayBuffer on tracked-fetch wrapper for binary attachments ([#338](https://github.com/Doist/todoist-cli/issues/338)) ([8ca5598](https://github.com/Doist/todoist-cli/commit/8ca559855c0e4d8cfa7f8ede1f6c89324f008f8d))
+
+>>>>>>> origin/main
 ## [1.63.0](https://github.com/Doist/todoist-cli/compare/v1.62.2...v1.63.0) (2026-05-12)
 
 ### Features

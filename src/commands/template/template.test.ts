@@ -1,8 +1,12 @@
 import fs from 'node:fs'
+import { open } from 'node:fs/promises'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
+vi.mock('node:fs/promises', () => ({
+    open: vi.fn(),
+}))
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
@@ -170,8 +174,10 @@ describe('template', () => {
 
     describe('create', () => {
         beforeEach(() => {
-            vi.mocked(fs.existsSync).mockReturnValue(true)
-            vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('template content'))
+            vi.mocked(open).mockResolvedValue({ close: vi.fn() } as unknown as Awaited<
+                ReturnType<typeof open>
+            >)
+            vi.mocked(fs.openAsBlob).mockResolvedValue(new Blob([Buffer.from('template content')]))
         })
 
         it('creates project from template file', async () => {
@@ -197,15 +203,46 @@ describe('template', () => {
                 '/tmp/template.csv',
             ])
 
-            expect(mockApi.createProjectFromTemplate).toHaveBeenCalledWith({
+            const createArg = mockApi.createProjectFromTemplate.mock.calls[0][0]
+            expect(createArg).toMatchObject({
                 name: 'My Project',
-                file: Buffer.from('template content'),
                 fileName: 'template.csv',
                 workspaceId: undefined,
             })
+            expect(createArg.file).toBeInstanceOf(Blob)
+            expect(await (createArg.file as Blob).text()).toBe('template content')
             expect(consoleSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Created project: My Project'),
             )
+        })
+
+        it('forwards --file-name to api.createProjectFromTemplate (overrides basename)', async () => {
+            const program = createProgram()
+            mockApi.createProjectFromTemplate.mockResolvedValue({
+                status: 'ok',
+                projectId: 'new-proj-1',
+                templateType: 'project',
+                projects: [],
+                sections: [],
+                tasks: [],
+                comments: [],
+            })
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'template',
+                'create',
+                '--name',
+                'My Project',
+                '--file',
+                '/tmp/template.csv',
+                '--file-name',
+                'override.csv',
+            ])
+
+            const createArg = mockApi.createProjectFromTemplate.mock.calls[0][0]
+            expect(createArg.fileName).toBe('override.csv')
         })
 
         it('resolves workspace ref when --workspace is provided', async () => {
@@ -294,7 +331,9 @@ describe('template', () => {
 
         it('errors when file does not exist', async () => {
             const program = createProgram()
-            vi.mocked(fs.existsSync).mockReturnValue(false)
+            vi.mocked(open).mockRejectedValue(
+                Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
+            )
 
             await expect(
                 program.parseAsync([
@@ -308,13 +347,20 @@ describe('template', () => {
                     '/tmp/nonexistent.csv',
                 ]),
             ).rejects.toThrow('not found')
+            // File validation runs before any API/ref work — if a
+            // future change reorders that, these mocks would record a
+            // call and this test would catch the regression.
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveWorkspaceRef).not.toHaveBeenCalled()
         })
     })
 
     describe('import-file', () => {
         beforeEach(() => {
-            vi.mocked(fs.existsSync).mockReturnValue(true)
-            vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('template content'))
+            vi.mocked(open).mockResolvedValue({ close: vi.fn() } as unknown as Awaited<
+                ReturnType<typeof open>
+            >)
+            vi.mocked(fs.openAsBlob).mockResolvedValue(new Blob([Buffer.from('template content')]))
         })
 
         it('imports template file into project', async () => {
@@ -339,12 +385,41 @@ describe('template', () => {
             ])
 
             expect(mockResolveProjectRef).toHaveBeenCalledWith(mockApi, 'Work')
-            expect(mockApi.importTemplateIntoProject).toHaveBeenCalledWith({
+            const importArg = mockApi.importTemplateIntoProject.mock.calls[0][0]
+            expect(importArg).toMatchObject({
                 projectId: fixtures.projects.work.id,
-                file: Buffer.from('template content'),
                 fileName: 'template.csv',
             })
+            expect(importArg.file).toBeInstanceOf(Blob)
+            expect(await (importArg.file as Blob).text()).toBe('template content')
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1 tasks'))
+        })
+
+        it('forwards --file-name to api.importTemplateIntoProject (overrides basename)', async () => {
+            const program = createProgram()
+            mockApi.importTemplateIntoProject.mockResolvedValue({
+                status: 'ok',
+                templateType: 'project',
+                projects: [],
+                sections: [],
+                tasks: [],
+                comments: [],
+            })
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'template',
+                'import-file',
+                'Work',
+                '--file',
+                '/tmp/template.csv',
+                '--file-name',
+                'override.csv',
+            ])
+
+            const importArg = mockApi.importTemplateIntoProject.mock.calls[0][0]
+            expect(importArg.fileName).toBe('override.csv')
         })
 
         it('outputs JSON with --json', async () => {
@@ -390,6 +465,30 @@ describe('template', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
             expect(mockApi.importTemplateIntoProject).not.toHaveBeenCalled()
+        })
+
+        it('errors with FILE_NOT_FOUND when the --file path does not exist', async () => {
+            const program = createProgram()
+            vi.mocked(open).mockRejectedValue(
+                Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
+            )
+
+            await expect(
+                program.parseAsync([
+                    'node',
+                    'td',
+                    'template',
+                    'import-file',
+                    'Work',
+                    '--file',
+                    '/tmp/nonexistent.csv',
+                ]),
+            ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+            // File validation runs before any API/ref work — if a
+            // future change reorders that, these mocks would record a
+            // call and this test would catch the regression.
+            expect(mockGetApi).not.toHaveBeenCalled()
+            expect(mockResolveProjectRef).not.toHaveBeenCalled()
         })
     })
 

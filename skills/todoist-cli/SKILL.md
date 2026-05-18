@@ -5,7 +5,11 @@ compatibility: "Requires the td CLI (@doist/todoist-cli) to be installed and aut
 license: MIT
 metadata:
   author: Doist
+<<<<<<< HEAD
   version: "1.63.0"
+=======
+  version: "1.64.0"
+>>>>>>> origin/main
 ---
 
 # Todoist CLI (td)
@@ -255,6 +259,7 @@ td goal unlink "Ship v2" --task "Buy milk"   # Unlink a task from a goal
 td comment list "Plan sprint"
 td comment list "Roadmap" --project
 td comment add "Plan sprint" --content "See attached" --file ./report.pdf
+td comment add "Plan sprint" --content "See attached" --file ./report.pdf --file-name "Quarterly report.pdf"
 td comment update id:123 --content "Updated text"
 td comment delete id:123 --yes
 td comment browse id:123
@@ -299,7 +304,9 @@ td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 td template export-file "Roadmap" --output template.csv
 td template export-url "Roadmap"
 td template create --name "New Project" --file template.csv --workspace "Acme"
+td template create --name "New Project" --file template.csv --file-name "Q2 plan.csv"
 td template import-file "Roadmap" --file template.csv
+td template import-file "Roadmap" --file template.csv --file-name "Q2 plan.csv"
 td template import-id "Roadmap" --template-id product-launch --locale fr
 ```
 

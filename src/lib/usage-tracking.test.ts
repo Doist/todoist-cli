@@ -67,7 +67,11 @@ describe('usage tracking', () => {
         const secondHeaders = captured[1].headers as Record<string, string>
         expect(firstHeaders.authorization).toBe('Bearer token')
         expect(firstHeaders['doist-platform']).toBe('cli')
+<<<<<<< HEAD
         expect(firstHeaders['doist-version']).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
+=======
+        expect(firstHeaders['doist-version']).toMatch(/^\d+\.\d+\.\d+$/)
+>>>>>>> origin/main
         expect(firstHeaders['cli-command']).toBe('today')
         expect(firstHeaders['session-id']).toBe(secondHeaders['session-id'])
         expect(firstHeaders['request-id']).not.toBe(secondHeaders['request-id'])

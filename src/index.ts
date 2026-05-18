@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { BaseCliError, CliError } from './lib/errors.js'
+<<<<<<< HEAD
 import {
     getRequestedUserRef,
     isJsonMode,
@@ -10,6 +12,9 @@ import {
     isRawMode,
     stripUserFlag,
 } from './lib/global-args.js'
+=======
+import { getRequestedUserRef, isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
+>>>>>>> origin/main
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'

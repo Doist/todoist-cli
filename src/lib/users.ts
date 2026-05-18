@@ -1,19 +1,8 @@
 import type { Config, StoredUser } from './config.js'
 import { CliError } from './errors.js'
 
-/**
- * Reference shape accepted by `--user` and `td user` subcommands: an exact
- * Todoist user id, or a Todoist account email (case-insensitive).
- */
-export type UserRef = string
-
-export interface FindUserResult {
-    user: StoredUser
-    index: number
-}
-
 export class UserNotFoundError extends CliError {
-    constructor(ref: UserRef) {
+    constructor(ref: string) {
         super(
             'USER_NOT_FOUND',
             `No stored user matches "${ref}". Use \`td user list\` to see authenticated accounts.`,
@@ -43,43 +32,48 @@ export function getStoredUsers(config: Config): StoredUser[] {
     return Array.isArray(config.users) ? config.users : []
 }
 
-export function findUserByRef(config: Config, ref: UserRef): FindUserResult | null {
-    const users = getStoredUsers(config)
-    const trimmed = ref.trim()
-    if (!trimmed) return null
-
-    // Exact id match first (ids are numeric strings; case-sensitive)
-    const byId = users.findIndex((u) => u.id === trimmed)
-    if (byId !== -1) return { user: users[byId], index: byId }
-
-    // Email match — case-insensitive
-    const lower = trimmed.toLowerCase()
-    const byEmail = users.findIndex((u) => u.email.toLowerCase() === lower)
-    if (byEmail !== -1) return { user: users[byEmail], index: byEmail }
-
-    return null
+export function getDefaultUserId(config: Config): string | undefined {
+    return config.user?.defaultUser
 }
 
-export function requireUserByRef(config: Config, ref: UserRef): FindUserResult {
+/**
+ * Single source of truth for `--user <ref>` matching: exact id, or
+ * case-insensitive email. Both `findUserByRef` (config-driven path) and
+ * `auth-store.ts`'s cli-core `matchAccount` (keyring-store path) delegate
+ * here so the two routes can't drift.
+ */
+export function matchUserRef(user: { id: string; email: string }, ref: string): boolean {
+    const trimmed = ref.trim()
+    if (!trimmed) return false
+    if (user.id === trimmed) return true
+    return user.email.toLowerCase() === trimmed.toLowerCase()
+}
+
+/**
+ * Resolve a user ref against the on-disk config. Returns `null` on miss;
+ * the call sites that need to fail loudly wrap with `requireUserByRef`.
+ */
+export function findUserByRef(
+    config: Config,
+    ref: string,
+): { user: StoredUser; index: number } | null {
+    const users = getStoredUsers(config)
+    const idx = users.findIndex((u) => matchUserRef(u, ref))
+    return idx !== -1 ? { user: users[idx], index: idx } : null
+}
+
+export function requireUserByRef(config: Config, ref: string): { user: StoredUser; index: number } {
     const found = findUserByRef(config, ref)
     if (!found) throw new UserNotFoundError(ref)
     return found
 }
 
-export function getDefaultUserId(config: Config): string | undefined {
-    return config.user?.defaultUser
-}
+// ---------------------------------------------------------------------------
+// Pure mutators — driven by the `UserRecordStore` adapter in `user-records.ts`.
+// Kept here (not inlined) so the on-disk config layout has one set of array +
+// default-pointer manipulators across the codebase.
+// ---------------------------------------------------------------------------
 
-export function getDefaultUser(config: Config): StoredUser | null {
-    const id = getDefaultUserId(config)
-    if (!id) return null
-    return getStoredUsers(config).find((u) => u.id === id) ?? null
-}
-
-/**
- * Replace or append a user record. Returns a new config and whether the user
- * was already present (so callers can show "replaced" vs "added" messages).
- */
 export function upsertStoredUser(
     config: Config,
     next: StoredUser,
@@ -87,28 +81,26 @@ export function upsertStoredUser(
     const users = getStoredUsers(config).slice()
     const idx = users.findIndex((u) => u.id === next.id)
     const replaced = idx !== -1
-    if (replaced) {
-        users[idx] = next
-    } else {
-        users.push(next)
-    }
+    if (replaced) users[idx] = next
+    else users.push(next)
     return { config: { ...config, users }, replaced }
 }
 
 export function removeStoredUser(config: Config, id: string): Config {
     const users = getStoredUsers(config).filter((u) => u.id !== id)
     const next: Config = { ...config, users }
-    if (next.user?.defaultUser === id) {
-        const { defaultUser: _, ...restUser } = next.user
-        next.user = Object.keys(restUser).length === 0 ? undefined : restUser
-        if (next.user === undefined) {
-            const { user: _u, ...rest } = next
-            return rest
-        }
-    }
+    if (next.user?.defaultUser === id) return clearDefaultUser(next)
     return next
 }
 
 export function setDefaultUser(config: Config, id: string): Config {
     return { ...config, user: { ...config.user, defaultUser: id } }
+}
+
+export function clearDefaultUser(config: Config): Config {
+    if (!config.user) return config
+    const { defaultUser: _d, ...restUser } = config.user
+    if (Object.keys(restUser).length > 0) return { ...config, user: restUser }
+    const { user: _u, ...rest } = config
+    return rest
 }
