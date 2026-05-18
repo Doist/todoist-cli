@@ -1,8 +1,11 @@
+import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import { formatDuration } from './duration.js'
-import type { CliError, ErrorType } from './errors.js'
+import { type BaseCliError, type ErrorType } from './errors.js'
+
+type AnyCliError = BaseCliError<string>
 import { isAccessible } from './global-args.js'
 import { renderMarkdown } from './markdown.js'
 import {
@@ -373,17 +376,11 @@ export function formatJson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return JSON.stringify(data, null, 2)
-    }
+    if (!type) return formatJsonCore(data)
     if (Array.isArray(data)) {
-        return JSON.stringify(
-            data.map((item) => processItem(item, type, full, showUrl)),
-            null,
-            2,
-        )
+        return formatJsonCore(data.map((item) => processItem(item, type, full, showUrl)))
     }
-    return JSON.stringify(processItem(data, type, full, showUrl), null, 2)
+    return formatJsonCore(processItem(data, type, full, showUrl))
 }
 
 export function formatNdjson<T extends object>(
@@ -392,14 +389,12 @@ export function formatNdjson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return items.map((item) => JSON.stringify(item)).join('\n')
-    }
-    return items.map((item) => JSON.stringify(processItem(item, type, full, showUrl))).join('\n')
+    if (!type) return formatNdjsonCore(items)
+    return formatNdjsonCore(items.map((item) => processItem(item, type, full, showUrl)))
 }
 
 function resolveErrorParts(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): { code: string; message: string; hints: string[] | undefined; type: ErrorType } {
@@ -414,10 +409,10 @@ function resolveErrorParts(
     }
 }
 
-export function formatError(error: CliError): string
+export function formatError(error: AnyCliError): string
 export function formatError(code: string, message: string, hints?: string[]): string
 export function formatError(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): string {
@@ -433,10 +428,10 @@ export function formatError(
     return color(lines.join('\n'))
 }
 
-export function formatErrorJson(error: CliError): string
+export function formatErrorJson(error: AnyCliError): string
 export function formatErrorJson(code: string, message: string, hints?: string[]): string
 export function formatErrorJson(
-    codeOrError: string | CliError,
+    codeOrError: string | AnyCliError,
     message?: string,
     hints?: string[],
 ): string {
@@ -457,11 +452,9 @@ export function formatPaginatedJson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    if (!type) {
-        return JSON.stringify(data, null, 2)
-    }
+    if (!type) return formatJson(data)
     const results = data.results.map((item) => processItem(item, type, full, showUrl))
-    return JSON.stringify({ results, nextCursor: data.nextCursor }, null, 2)
+    return formatJson({ results, nextCursor: data.nextCursor })
 }
 
 export function formatPaginatedNdjson<T extends object>(
@@ -470,18 +463,19 @@ export function formatPaginatedNdjson<T extends object>(
     full = false,
     showUrl = false,
 ): string {
-    const lines = data.results.map((item) => {
-        if (!type) {
-            return JSON.stringify(item)
-        }
-        return JSON.stringify(processItem(item, type, full, showUrl))
-    })
-
-    if (data.nextCursor) {
-        lines.push(JSON.stringify({ _meta: true, nextCursor: data.nextCursor }))
+    if (!data.nextCursor) {
+        // No cursor: route directly through the local NDJSON wrapper. The
+        // typed branch processes inline (one walk + serialize), the untyped
+        // branch passes `data.results` through with no copy.
+        return formatNdjson(data.results, type, full, showUrl)
     }
-
-    return lines.join('\n')
+    // With cursor: materialize once (processing if a type was passed) and
+    // append the cursor meta record before serialization.
+    const items: object[] = type
+        ? data.results.map((item) => processItem(item, type, full, showUrl))
+        : [...data.results]
+    items.push({ _meta: true, nextCursor: data.nextCursor })
+    return formatNdjson(items)
 }
 
 export function formatNextCursorFooter(nextCursor: string | null): string {

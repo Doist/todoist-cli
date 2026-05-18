@@ -1,10 +1,24 @@
+import { formatJson, formatNdjson, printEmpty } from '@doist/cli-core'
 import chalk from 'chalk'
-import { listStoredUsers, readConfig } from '../../lib/auth.js'
+import { listStoredUsers, readConfig, type StoredUser } from '../../lib/auth.js'
 import { isAccessible } from '../../lib/global-args.js'
 import { getDefaultUserId } from '../../lib/users.js'
 
 export interface ListUsersOptions {
     json?: boolean
+    ndjson?: boolean
+}
+
+function projectUser(u: StoredUser, defaultId: string | undefined) {
+    return {
+        id: u.id,
+        email: u.email,
+        isDefault: u.id === defaultId,
+        authMode: u.auth_mode,
+        authScope: u.auth_scope,
+        authFlags: u.auth_flags,
+        storage: u.api_token ? 'config-file' : 'secure-store',
+    }
 }
 
 export async function listUsersCommand(options: ListUsersOptions): Promise<void> {
@@ -12,27 +26,21 @@ export async function listUsersCommand(options: ListUsersOptions): Promise<void>
     const config = await readConfig()
     const defaultId = getDefaultUserId(config)
 
-    if (options.json) {
-        console.log(
-            JSON.stringify(
-                users.map((u) => ({
-                    id: u.id,
-                    email: u.email,
-                    isDefault: u.id === defaultId,
-                    authMode: u.auth_mode,
-                    authScope: u.auth_scope,
-                    authFlags: u.auth_flags,
-                    storage: u.api_token ? 'config-file' : 'secure-store',
-                })),
-                null,
-                2,
-            ),
-        )
+    if (users.length === 0) {
+        printEmpty({
+            options,
+            message: chalk.dim('No stored Todoist accounts. Run `td auth login` to add one.'),
+        })
         return
     }
 
-    if (users.length === 0) {
-        console.log(chalk.dim('No stored Todoist accounts. Run `td auth login` to add one.'))
+    if (options.json) {
+        console.log(formatJson(users.map((u) => projectUser(u, defaultId))))
+        return
+    }
+
+    if (options.ndjson) {
+        console.log(formatNdjson(users.map((u) => projectUser(u, defaultId))))
         return
     }
 

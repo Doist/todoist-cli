@@ -57,9 +57,9 @@ export function buildUsageTrackingHeaders(commandPath?: string): Record<string, 
         'doist-platform': 'cli',
         'doist-version': CLI_VERSION,
         'doist-os': getDoistOs(),
-        'X-TD-Request-Id': randomUUID(),
-        'X-TD-Session-Id': SESSION_ID,
-        'X-TD-CLI-Command': normalizedCommandPath ?? 'unknown',
+        'request-id': randomUUID(),
+        'session-id': SESSION_ID,
+        'cli-command': normalizedCommandPath ?? 'unknown',
     }
 
     return headers
@@ -101,6 +101,7 @@ function toCustomFetchResponse(response: Response): CustomFetchResponse {
         headers: Object.fromEntries(response.headers.entries()),
         text: () => response.text(),
         json: () => response.json(),
+        arrayBuffer: () => response.arrayBuffer(),
     }
 }
 

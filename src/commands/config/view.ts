@@ -1,3 +1,4 @@
+import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
 import chalk from 'chalk'
 import {
     type AuthMetadata,
@@ -7,9 +8,10 @@ import {
     type StoredUser,
     TOKEN_ENV_VAR,
 } from '../../lib/auth.js'
-import { type Config, CONFIG_PATH, readConfigStrict } from '../../lib/config.js'
-import { SECURE_STORE_DESCRIPTION, SecureStoreUnavailableError } from '../../lib/secure-store.js'
+import { type Config, getConfigPath, readConfigStrict } from '../../lib/config.js'
 import { getDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
+
+const SECURE_STORE_DESCRIPTION = 'system credential manager'
 
 export interface ViewConfigOptions {
     json?: boolean
@@ -99,7 +101,7 @@ function formatConfigView(
     defaultUserId: string | undefined,
 ): string {
     const lines: string[] = []
-    lines.push(`${chalk.dim('Config file:')} ${CONFIG_PATH}`)
+    lines.push(`${chalk.dim('Config file:')} ${getConfigPath()}`)
     lines.push('')
 
     // Active-user line: who would the next command run as?
@@ -214,7 +216,9 @@ export async function viewConfig(options: ViewConfigOptions): Promise<void> {
     const defaultUserId = getDefaultUserId(config)
 
     if (read.state === 'missing' && token.state === 'missing' && users.length === 0) {
-        console.log(`${chalk.dim('Config file:')} ${CONFIG_PATH} ${chalk.dim('(not created yet)')}`)
+        console.log(
+            `${chalk.dim('Config file:')} ${getConfigPath()} ${chalk.dim('(not created yet)')}`,
+        )
         return
     }
 

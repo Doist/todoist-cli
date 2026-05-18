@@ -22,7 +22,8 @@ eslint/prettier) · semantic-release on merge to `main`.
 ├─ skills/todoist-cli/    # Generated SKILL.md (from src/lib/skills/content.ts)
 ├─ .github/workflows/     # test.yml, lint.yml, release.yml, check-skill-sync.yml,
 │                         # check-semantic-pull-request.yml, update-todoist-sdk.yml,
-│                         # issue-automation.yml, request-reviews.yml
+│                         # issue-automation.yml, request-reviews.yml,
+│                         # sync-next-with-main.yml
 ├─ AGENTS.md              # Prescriptive rules (build cmds, skill-sync, JSON flag)
 ├─ CODEBASE.md            # This file — descriptive map
 ├─ CLAUDE.md              # One-liner forward to AGENTS.md
@@ -52,11 +53,9 @@ src/
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
 │  │                      # notifications, reminders, stats, user-settings, uploads)
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
-├─ test-support/
-│  ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
-│  └─ fixtures.ts         # Sample task/project/label/section fixtures
-└─ types/
-   └─ marked-terminal-renderer.d.ts  # Type declarations for marked-terminal-renderer
+└─ test-support/
+   ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
+   └─ fixtures.ts         # Sample task/project/label/section fixtures
 ```
 
 ## Architecture flow
@@ -119,14 +118,28 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
   `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`
-- **`auth.ts`** — `getApiToken()`, `probeApiToken()`, `saveApiToken()`,
-  `clearApiToken()`, `NoTokenError`, `AuthProbeResult`
+- **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
+  `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
+  write/clear paths go through `auth-store.ts`.
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
-  `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`
-- **`secure-store.ts`** — `@napi-rs/keyring` wrapper (OS credential manager)
-- **`oauth-server.ts` / `oauth.ts` / `oauth-scopes.ts` / `pkce.ts`** — OAuth flow
+  `stripLegacyAuthFields`, `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`.
+- **`auth-provider.ts`** — `createTodoistAuthProvider()`: cli-core PKCE
+  provider with Todoist `validateToken` (builds `auth_mode` / `auth_scope` /
+  `auth_flags` from `getUser`).
+- **`auth-store.ts`** — `createTodoistTokenStore()` (cli-core
+  `createKeyringTokenStore` wired to the `UserRecordStore` adapter),
+  persisted identifier constants (`SERVICE_NAME`, `LEGACY_ACCOUNT`,
+  `accountForUser`), and `toTodoistAccount()` mapper.
+- **`user-records.ts`** — `UserRecordStore<TodoistAccount>` adapter over
+  the config file. REPLACE-not-merge `upsert`; `ensureV2` on every write.
+- **`migrate-auth.ts`** — postinstall v1 → v2 migration; thin wrapper
+  around cli-core's `migrateLegacyAuth` with the Todoist callbacks.
+- **`auth-html.ts`** — branded HTML pages for the cli-core OAuth callback
+  (`renderAuthSuccessPage` / `renderAuthErrorPage`)
+- **`oauth-scopes.ts`** — opt-in OAuth scope registry, `parseScopesOption`,
+  `extractAdditionalScopes`, `resolveAuthScope`, `formatScopesHelp`
 - **`output.ts`** — `formatTaskRow`, `formatTaskView`, `formatJson`,
   `formatNdjson`, `formatPaginatedJson`, `formatDueDate`, `formatPriority`,
   `formatError`, `formatErrorJson`, `printDryRun`
@@ -154,8 +167,12 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`permissions.ts`** — collaborator permission parsing
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
-- **`usage-tracking.ts`** — request markers (`User-Agent`, `doist-*`,
-  `X-TD-*`, including `X-TD-CLI-Command`), session/request ids, command path
+- **`local-file.ts`** — `openLocalFileAsBlob()`: file-backed `Blob` for
+  multipart uploads (used by `comment add --file`, `template create
+--file`, `template import-file`). Maps fs errors to `FILE_NOT_FOUND` /
+  `FILE_READ_ERROR` CliErrors.
+- **`usage-tracking.ts`** — request/session metadata headers, CLI command
+  attribution, tracked fetch wrappers
 - **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
 
@@ -192,17 +209,25 @@ All live in `src/lib/refs.ts`:
 
 ## Auth & token storage
 
-Token lookup order (see `src/lib/auth.ts` — `getApiToken()` / `probeApiToken()`):
+`@doist/cli-core/auth` owns the keyring, multi-user `TokenStore`, OAuth flow,
+and the `login` / `logout` / `status` / `token view` registrars. todoist-cli
+supplies a `UserRecordStore<TodoistAccount>` adapter (`user-records.ts`) over
+its config file plus a Todoist-specific `validateToken` (`auth-provider.ts`).
 
-1. `TODOIST_API_TOKEN` env var
-2. `~/.config/todoist-cli/config.json` (`{ "api_token": "..." }`) — migrated
-   into secure-store on first read when present
-3. OS credential manager via `src/lib/secure-store.ts`
+Read path (`auth.ts` — `resolveActiveUser` / `getApiToken` / `probeApiToken`):
+env `TODOIST_API_TOKEN` first, then a config-derived target user, then either
+`StoredUser.api_token` (plaintext keyring-offline fallback) or cli-core's
+`createSecureStore` for the keyring slot.
 
-`td auth login` runs a full OAuth PKCE flow (`src/lib/oauth-server.ts`,
-`DEFAULT_PORT = 8765` with a small fallback range, browser launch). Scopes
-are opt-in: `--read-only` for a read-only token,
-`--additional-scopes=app-management,backups` to broaden.
+Write/clear/list all route through `createTodoistTokenStore()`; commands never
+write the config directly. `auth logout` and `auth token view` use
+`withUserRefAware` (`commands/auth/store-wrap.ts`) to substitute the
+global `--user <ref>` that `index.ts` strips from argv before commander runs.
+
+v1 → v2 migration (`migrate-auth.ts` → cli-core's `migrateLegacyAuth`) runs
+from `postinstall.ts`. Gate is `config.config_version === CONFIG_VERSION`,
+which survives logout so a reinstall over a logged-out v2 install can't
+re-migrate a stale legacy slot.
 
 ## Testing
 
@@ -212,6 +237,11 @@ are opt-in: `--read-only` for a read-only token,
   vitest-mocked versions of every SDK method. Use factories from
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
 - **Pattern:** mock `getApi` via `vi.mock`, then `program.parseAsync(['node','td','<cmd>',…])`.
+- **`@doist/cli-core` inlining:** `vitest.config.ts` lists `@doist/cli-core` in
+  `server.deps.inline` so `vi.doMock('node:fs/promises', …)` /
+  `vi.doMock('node:os', …)` reach cli-core's compiled imports. Without it
+  vitest treats the package as external and Node's native resolver bypasses
+  the mock substitution, breaking the `auth` / `migrate-auth` suites.
 
 ## Build & release
 
@@ -227,6 +257,14 @@ are opt-in: `--read-only` for a read-only token,
 - **Release:** semantic-release on merge to `main` (`.github/workflows/release.yml`).
   Commits must follow Conventional Commits — enforced by
   `check-semantic-pull-request.yml`.
+- **Prerelease sync:** `sync-next-with-main.yml` opens (or updates) a
+  `chore: merge main into next` PR whenever `main` is ahead of `next`. Runs
+  on push to `main`, daily at 09:00 UTC, and `workflow_dispatch`. Clean
+  merges go through the standard PR CI; conflicts are committed with
+  markers and surfaced in the PR body for manual resolution. Idempotent —
+  skips reruns when the existing sync branch already merges the current
+  `main`/`next` tips, and refuses to overwrite branches whose HEAD was not
+  authored by the bot.
 
 ## Skill content flow
 
@@ -263,7 +301,10 @@ file, or a token stored in the OS credential manager via `td auth login`.
 - Mutating commands (`add`/`create`/`update`): always support `--json`
   emitting `formatJson(result, entityType)` — see AGENTS.md
 - User-facing errors: throw `CliError(code, message, hints?)` from
-  `src/lib/errors.ts`; global `parseAsync().catch` in `src/index.ts` renders it
+  `src/lib/errors.ts`; the global `parseAsync().catch` in `src/index.ts`
+  renders it. The same handler also catches `BaseCliError` (re-exported
+  from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers
+  route through the same path
 - Global flags handled in `src/lib/global-args.ts` — check `isJsonMode()` etc.
   before printing
 

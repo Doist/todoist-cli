@@ -1,3 +1,4 @@
+import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -7,27 +8,36 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
         ...actual,
         listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
-        setDefaultUserId: vi.fn(),
-        removeUserById: vi.fn(),
         resolveActiveUser: vi.fn(),
+    }
+})
+
+const setDefaultMock = vi.fn()
+const clearMock = vi.fn()
+const lastClearMock = vi.fn<() => unknown>()
+vi.mock('../../lib/auth-store.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
+    return {
+        ...actual,
+        createTodoistTokenStore: () => ({
+            active: vi.fn(),
+            list: vi.fn().mockResolvedValue([]),
+            set: vi.fn(),
+            setDefault: setDefaultMock,
+            clear: clearMock,
+            getLastStorageResult: vi.fn(),
+            getLastClearResult: lastClearMock,
+        }),
     }
 })
 
 vi.mock('chalk')
 
-import {
-    listStoredUsers,
-    readConfig,
-    removeUserById,
-    resolveActiveUser,
-    setDefaultUserId,
-} from '../../lib/auth.js'
+import { listStoredUsers, readConfig, resolveActiveUser } from '../../lib/auth.js'
 import { registerUserCommand } from './index.js'
 
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
-const mockSetDefaultUserId = vi.mocked(setDefaultUserId)
-const mockRemoveUserById = vi.mocked(removeUserById)
 const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 
 function createProgram() {
@@ -54,11 +64,14 @@ describe('user command', () => {
     })
 
     describe('list', () => {
-        it('prints a hint when no users are stored', async () => {
-            mockListStoredUsers.mockResolvedValue([])
-            await createProgram().parseAsync(['node', 'td', 'user', 'list'])
-
-            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('No stored Todoist accounts')
+        describeEmptyMachineOutput('empty machine output contract', {
+            setup: () => {
+                mockListStoredUsers.mockResolvedValue([])
+            },
+            run: async (extraArgs) => {
+                await createProgram().parseAsync(['node', 'td', 'user', 'list', ...extraArgs])
+            },
+            humanMessage: /No stored Todoist accounts/,
         })
 
         it('marks the default user', async () => {
@@ -78,6 +91,29 @@ describe('user command', () => {
             expect(lines).toContain('a@b.c')
             expect(lines).toContain('d@e.f')
             expect(lines).toContain('default')
+        })
+
+        it('emits one JSON value per line for --ndjson with stored accounts', async () => {
+            mockListStoredUsers.mockResolvedValue([
+                { id: '1', email: 'a@b.c', auth_mode: 'read-write' },
+                { id: '2', email: 'd@e.f', auth_mode: 'read-only' },
+            ])
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '2' },
+                users: [],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'user', 'list', '--ndjson'])
+
+            const output = consoleSpy.mock.calls[0][0] as string
+            const lines = output.split('\n')
+            expect(lines).toHaveLength(2)
+            const first = JSON.parse(lines[0])
+            const second = JSON.parse(lines[1])
+            expect(first).toMatchObject({ id: '1', email: 'a@b.c', isDefault: false })
+            expect(second).toMatchObject({ id: '2', email: 'd@e.f', isDefault: true })
+            expect(output.endsWith('\n')).toBe(false) // no trailing newline within payload
         })
 
         it('outputs JSON when --json given', async () => {
@@ -108,6 +144,10 @@ describe('user command', () => {
     })
 
     describe('use', () => {
+        beforeEach(() => {
+            setDefaultMock.mockReset().mockResolvedValue(undefined)
+        })
+
         it('sets the default user by id', async () => {
             mockReadConfig.mockResolvedValue({
                 config_version: 2,
@@ -116,18 +156,22 @@ describe('user command', () => {
 
             await createProgram().parseAsync(['node', 'td', 'user', 'use', '111'])
 
-            expect(mockSetDefaultUserId).toHaveBeenCalledWith('111')
+            expect(setDefaultMock).toHaveBeenCalledWith('111')
         })
 
         it('rejects an unknown ref', async () => {
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                users: [{ id: '111', email: 'a@b.c' }],
-            })
+            // `td user use` routes directly through `store.setDefault(ref)`
+            // now; cli-core's `KeyringTokenStore` throws
+            // `CliError('ACCOUNT_NOT_FOUND', …)` on miss — the test stub
+            // mirrors that contract so the command propagates correctly.
+            const { CliError } = await import('../../lib/errors.js')
+            setDefaultMock.mockRejectedValueOnce(
+                new CliError('ACCOUNT_NOT_FOUND', 'No stored account matches "nope".'),
+            )
 
             await expect(
                 createProgram().parseAsync(['node', 'td', 'user', 'use', 'nope']),
-            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+            ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
         })
 
         it('default subcommand is an alias of use', async () => {
@@ -138,7 +182,7 @@ describe('user command', () => {
 
             await createProgram().parseAsync(['node', 'td', 'user', 'default', '111'])
 
-            expect(mockSetDefaultUserId).toHaveBeenCalledWith('111')
+            expect(setDefaultMock).toHaveBeenCalledWith('111')
         })
     })
 
@@ -181,17 +225,21 @@ describe('user command', () => {
     })
 
     describe('remove', () => {
+        beforeEach(() => {
+            clearMock.mockReset().mockResolvedValue(undefined)
+            lastClearMock.mockReset().mockReturnValue({ storage: 'secure-store' })
+        })
+
         it('removes the user by id and clears default', async () => {
             mockReadConfig.mockResolvedValue({
                 config_version: 2,
                 user: { defaultUser: '111' },
                 users: [{ id: '111', email: 'a@b.c' }],
             })
-            mockRemoveUserById.mockResolvedValue({ storage: 'secure-store' })
 
             await createProgram().parseAsync(['node', 'td', 'user', 'remove', '111'])
 
-            expect(mockRemoveUserById).toHaveBeenCalledWith('111')
+            expect(clearMock).toHaveBeenCalledWith('111')
             expect(consoleSpy.mock.calls.flat().join('\n')).toContain('Cleared default')
         })
 
@@ -204,7 +252,7 @@ describe('user command', () => {
             await expect(
                 createProgram().parseAsync(['node', 'td', 'user', 'remove', 'nope']),
             ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
-            expect(mockRemoveUserById).not.toHaveBeenCalled()
+            expect(clearMock).not.toHaveBeenCalled()
         })
     })
 })

@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { parseOrderArg } from '../../lib/order.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
 import { archiveProject } from './archive.js'
@@ -18,6 +19,7 @@ import { listProjects } from './list.js'
 import { moveProject } from './move.js'
 import { showPermissions } from './permissions.js'
 import { showProjectProgress } from './progress.js'
+import { reorderProject } from './reorder.js'
 import { unarchiveProject } from './unarchive.js'
 import { updateProject } from './update.js'
 import { viewProject } from './view.js'
@@ -126,6 +128,8 @@ Examples:
         .option('--no-favorite', 'Remove from favorites')
         .option('--folder <ref>', 'Move into a folder by name or id:xxx (workspace projects only)')
         .option('--no-folder', 'Remove from folder (workspace projects only)')
+        .option('--parent <ref>', 'Re-nest under a personal parent project (name or id:xxx)')
+        .option('--no-parent', 'Move to top level (no parent)')
         .addOption(
             withCaseInsensitiveChoices(
                 new Option('--view-style <style>', 'View style (list, board, or calendar)'),
@@ -192,6 +196,30 @@ Examples:
                 return
             }
             return moveProject(ref, options)
+        })
+
+    const reorderCmd = project
+        .command('reorder [ref]')
+        .description('Reorder a personal project among its siblings')
+        .option('--before <ref>', 'Place before this sibling (name or id:xxx)')
+        .option('--after <ref>', 'Place after this sibling (name or id:xxx)')
+        .option('--position <n>', 'Move to a 0-indexed position among siblings', parseOrderArg)
+        .option('--json', 'Output the new ordering as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td project reorder "Roadmap" --before "Marketing"
+  td project reorder "Roadmap" --after "Marketing"
+  td project reorder "Roadmap" --position 0`,
+        )
+        .action((ref, options) => {
+            if (!ref) {
+                reorderCmd.help()
+                return
+            }
+            return reorderProject(ref, options)
         })
 
     project

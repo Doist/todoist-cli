@@ -1,15 +1,10 @@
 #!/usr/bin/env node
 
+import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
-import { CliError } from './lib/errors.js'
-import {
-    getRequestedUserRef,
-    isJsonMode,
-    isNdjsonMode,
-    isRawMode,
-    stripUserFlag,
-} from './lib/global-args.js'
+import { BaseCliError, CliError } from './lib/errors.js'
+import { getRequestedUserRef, isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
@@ -290,7 +285,7 @@ initializeLogger()
 program
     .parseAsync()
     .catch((err: Error) => {
-        if (err instanceof CliError) {
+        if (err instanceof BaseCliError) {
             console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
         } else {
             console.error(

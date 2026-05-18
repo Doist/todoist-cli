@@ -13,7 +13,7 @@ export interface UpdateOptions {
     due?: string | false
     deadline?: string | false
     priority?: string
-    labels?: string
+    labels?: string | false
     description?: string
     stdin?: boolean
     assignee?: string
@@ -44,7 +44,11 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
         args.deadlineDate = options.deadline
     }
     if (options.priority) args.priority = parsePriority(options.priority)
-    if (options.labels) args.labels = options.labels.split(',').map((l) => l.trim())
+    if (options.labels === false) {
+        args.labels = []
+    } else if (options.labels) {
+        args.labels = options.labels.split(',').map((l) => l.trim())
+    }
 
     if (options.stdin && options.description !== undefined) {
         throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --description and --stdin')
@@ -89,7 +93,7 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
             Due: args.dueString ?? undefined,
             Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
-            Labels: options.labels,
+            Labels: options.labels === false ? '(remove all)' : options.labels,
             Assignee: options.assignee,
             Unassign: options.unassign ? 'yes' : undefined,
             Duration: options.duration,

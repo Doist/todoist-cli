@@ -5,7 +5,7 @@ compatibility: "Requires the td CLI (@doist/todoist-cli) to be installed and aut
 license: MIT
 metadata:
   author: Doist
-  version: "1.60.3"
+  version: "1.64.0"
 ---
 
 # Todoist CLI (td)
@@ -40,10 +40,19 @@ td auth login --read-only --additional-scopes=app-management
 td auth login --additional-scopes=backups
 td auth login --read-only --additional-scopes=backups
 td auth login --additional-scopes=app-management,backups
+td auth login --callback-port 9000           # override the OAuth callback port
+td auth login --json                         # emit the new account record as JSON
+td auth login --ndjson                       # one-line newline-delimited JSON
 td auth token
 td auth status
+td auth status --json                        # full status payload as JSON (--ndjson also supported)
+TOKEN=$(td auth token view)
+TOKEN=$(td auth token view --user you@example.com)
 td auth logout
+td auth logout --json                        # emits `{"ok": true}` (--ndjson is silent)
 ```
+
+`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. Across all three, keyring-fallback warnings are written to stderr so stdout stays parseable. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy).
 
 Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separated). Run `td auth login --help` for the full list. Currently supported:
 
@@ -54,6 +63,8 @@ Combine freely with `--read-only` to keep data access read-only while still gran
 
 Tokens are stored in the OS credential manager when available, with fallback to `~/.config/todoist-cli/config.json`. `TODOIST_API_TOKEN` takes precedence over stored credentials.
 
+`td auth token view` writes the stored token to stdout for use in scripts. **Always capture it into a shell variable** (e.g. `TOKEN=$(td auth token view)`) — never invoke it bare in an agent transcript or piped to a shell that echoes its output, since that would leak the secret. Honors `--user <id|email>` for multi-account installs and refuses when `TODOIST_API_TOKEN` is set in the environment (the token is already available there).
+
 ## Multi-user
 
 The CLI can hold credentials for multiple Todoist accounts at once.
@@ -61,6 +72,7 @@ The CLI can hold credentials for multiple Todoist accounts at once.
 ```bash
 td auth login                       # adds the account; first one becomes default
 td user list                        # all stored accounts (with default marker)
+td user list --json                 # array of accounts with auth metadata (--ndjson also supported)
 td user use <id|email>              # set the default account (alias: td user default)
 td user current                     # show the active account
 td user remove <id|email>           # delete an account (and its token)
@@ -74,7 +86,7 @@ Resolution order: `--user <ref>` > `user.defaultUser` from config > the only sto
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
 - Task lifecycle: `td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
-- Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/join/browse/collaborators/permissions`
+- Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
 - Goals: `td goal list/view/create/update/delete/complete/uncomplete/link/unlink`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td folder ...`, `td workspace ...`
@@ -134,7 +146,7 @@ Choosing between `task add` and `task quickadd`:
 Useful task flags:
 - `--stdin` on `task add` reads the task description from stdin; on `task quickadd` (and the top-level `td add`) it reads the full natural-language text from stdin.
 - `--parent`, `--section`, `--project`, `--workspace`, `--assignee`, `--labels`, `--due`, `--deadline`, `--duration`, and `--priority` cover most task workflows.
-- `td task complete --forever` stops recurrence; `td task update --no-due` clears the due date and `--no-deadline` clears deadlines; `td task move --no-parent` and `--no-section` detach from hierarchy.
+- `td task complete --forever` stops recurrence; `td task update --no-due` clears the due date, `--no-deadline` clears deadlines, and `--no-labels` removes all labels; `td task move --no-parent` and `--no-section` detach from hierarchy.
 
 ### Projects And Workspaces
 ```bash
@@ -147,6 +159,15 @@ td project create --name "New Project" --color blue
 td project update "Roadmap" --favorite
 td project update "Roadmap" --folder "Engineering"
 td project update "Roadmap" --no-folder
+td project update "Roadmap" --parent "Engineering"
+td project update "Roadmap" --no-parent
+td project update "Roadmap" --parent "Engineering" --json
+td project update "Roadmap" --parent "Engineering" --dry-run
+td project reorder "Roadmap" --before "Marketing"
+td project reorder "Roadmap" --after "Marketing"
+td project reorder "Roadmap" --position 0
+td project reorder "Roadmap" --position 2 --json
+td project reorder "Roadmap" --before "Marketing" --dry-run
 td project archive "Roadmap"
 td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes
@@ -234,6 +255,7 @@ td goal unlink "Ship v2" --task "Buy milk"   # Unlink a task from a goal
 td comment list "Plan sprint"
 td comment list "Roadmap" --project
 td comment add "Plan sprint" --content "See attached" --file ./report.pdf
+td comment add "Plan sprint" --content "See attached" --file ./report.pdf --file-name "Quarterly report.pdf"
 td comment update id:123 --content "Updated text"
 td comment delete id:123 --yes
 td comment browse id:123
@@ -267,6 +289,7 @@ td reminder location get id:456
 td hc
 td hc --help
 td hc locale --set-default pt-br
+td hc search "filters" --ndjson     # one article per line for scripts (--json also supported)
 td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 ```
 
@@ -277,7 +300,9 @@ td hc view https://www.todoist.com/help/articles/introduction-to-filters-V98wIH
 td template export-file "Roadmap" --output template.csv
 td template export-url "Roadmap"
 td template create --name "New Project" --file template.csv --workspace "Acme"
+td template create --name "New Project" --file template.csv --file-name "Q2 plan.csv"
 td template import-file "Roadmap" --file template.csv
+td template import-file "Roadmap" --file template.csv --file-name "Q2 plan.csv"
 td template import-id "Roadmap" --template-id product-launch --locale fr
 ```
 
@@ -338,9 +363,10 @@ td doctor --offline
 td doctor --json
 
 td update --check
+td update --check --json
 td update --channel
 td update switch --stable
-td update switch --pre-release
+td update switch --pre-release --json
 
 td changelog --count 10
 ```

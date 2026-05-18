@@ -1,3 +1,4 @@
+import { printEmpty } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 
@@ -10,6 +11,11 @@ export async function listApps(options: ListAppsOptions = {}): Promise<void> {
     const api = await getApi()
     const apps = await api.getApps()
 
+    if (apps.length === 0) {
+        printEmpty({ options, message: 'No apps found.' })
+        return
+    }
+
     if (options.json) {
         console.log(JSON.stringify(apps, null, 2))
         return
@@ -17,11 +23,6 @@ export async function listApps(options: ListAppsOptions = {}): Promise<void> {
 
     if (options.ndjson) {
         console.log(apps.map((app) => JSON.stringify(app)).join('\n'))
-        return
-    }
-
-    if (apps.length === 0) {
-        console.log('No apps found.')
         return
     }
 

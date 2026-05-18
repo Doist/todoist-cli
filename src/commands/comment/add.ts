@@ -1,8 +1,8 @@
-import { basename } from 'node:path'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
+import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
@@ -11,6 +11,7 @@ interface AddOptions {
     content?: string
     stdin?: boolean
     file?: string
+    fileName?: string
     project?: boolean
     json?: boolean
     dryRun?: boolean
@@ -31,6 +32,17 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         content = options.content
     } else {
         throw new CliError('MISSING_CONTENT', 'Content is required: use --content or --stdin')
+    }
+
+    let attachmentFile: Blob | undefined
+    let attachmentFileName: string | undefined
+    if (options.file) {
+        const opened = await openLocalFileAsBlob({
+            file: options.file,
+            fileName: options.fileName,
+        })
+        attachmentFile = opened.blob
+        attachmentFileName = opened.fileName
     }
 
     if (options.dryRun) {
@@ -66,14 +78,17 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
           }
         | undefined
 
-    if (options.file) {
-        const uploadResult = await api.uploadFile({ file: options.file })
+    if (attachmentFile && attachmentFileName) {
+        const uploadResult = await api.uploadFile({
+            file: attachmentFile,
+            fileName: attachmentFileName,
+        })
         if (!uploadResult.fileUrl) {
             throw new CliError('UPLOAD_FAILED', 'Upload succeeded but no file URL was returned')
         }
         attachment = {
             fileUrl: uploadResult.fileUrl,
-            fileName: uploadResult.fileName ?? basename(options.file),
+            fileName: uploadResult.fileName ?? attachmentFileName,
             fileType: uploadResult.fileType ?? undefined,
             resourceType: uploadResult.resourceType,
         }

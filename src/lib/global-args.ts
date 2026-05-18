@@ -1,214 +1,133 @@
 /**
- * Centralized, type-safe parsing of global CLI flags.
+ * Per-CLI extension of `@doist/cli-core`'s global-args parser.
  *
- * Replaces scattered `process.argv.includes()` checks with a single parse
- * that correctly handles grouped short flags (e.g., `-vq`), repeated flags
- * (e.g., `-vvv`), and avoids false-positives from option values.
- *
- * The result is lazily cached on first access — safe to call before or after
- * Commander's `parseAsync()` since it reads `process.argv` directly.
+ * Layers todoist-cli's `--user <ref>` and `--raw` flags on top of the
+ * canonical shape (`--json`, `--ndjson`, `--quiet`/`-q`, `--verbose`/`-v`,
+ * `--accessible`, `--no-spinner`, `--progress-jsonl`).
  */
 
-export interface GlobalArgs {
-    json: boolean
-    ndjson: boolean
-    quiet: boolean
-    verbose: 0 | 1 | 2 | 3 | 4
-    accessible: boolean
-    noSpinner: boolean
+import {
+    createAccessibleGate,
+    createGlobalArgsStore,
+    createSpinnerGate,
+    type GlobalArgs,
+    parseGlobalArgs as parseCoreGlobalArgs,
+} from '@doist/cli-core'
+
+export type TdGlobalArgs = GlobalArgs & {
     raw: boolean
-    progressJsonl: string | true | false // false = absent, true = present without path, string = path
-    user: string | undefined // --user <ref> — selects which stored Todoist account to use
+    /** --user <ref> — selects which stored Todoist account to use. */
+    user: string | undefined
 }
 
-const SHORT_FLAGS: Record<string, keyof GlobalArgs> = {
-    q: 'quiet',
-    v: 'verbose',
+/** Back-compat alias — todoist-cli historically exported `GlobalArgs`. */
+export type { TdGlobalArgs as GlobalArgs }
+
+type LocalFlags = {
+    user: string | undefined
+    raw: boolean
+    /** Set when `--progress-jsonl <path>` (space form) supplied a value. */
+    progressJsonlPath: string | undefined
+}
+
+function parseTdLocalFlags(argv: string[]): LocalFlags {
+    let user: string | undefined
+    let raw = false
+    let progressJsonlPath: string | undefined
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i]
+        if (arg === '--') break
+        if (arg === '--raw') {
+            raw = true
+        } else if (arg === '--user') {
+            // Only consume the next arg as the value when it doesn't look
+            // like another flag — `td --user --json ...` should leave `user`
+            // undefined so commander surfaces a usage error rather than
+            // silently swallowing `--json` as the user ref.
+            if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+                i++
+                user = argv[i]
+            }
+        } else if (arg.startsWith('--user=')) {
+            user = arg.slice('--user='.length)
+        } else if (
+            arg === '--progress-jsonl' &&
+            i + 1 < argv.length &&
+            !argv[i + 1].startsWith('-')
+        ) {
+            // Commander's `--progress-jsonl [path]` declaration accepts the
+            // space-separated form, so the pre-commander parser has to too —
+            // otherwise the path is silently dropped and the tracker writes
+            // to stderr while commander stores the path. cli-core 0.5.0
+            // intentionally drops this form (cross-CLI it can swallow
+            // positionals); todoist-cli keeps it because the flag is global,
+            // not subcommand-attached.
+            i++
+            progressJsonlPath = argv[i]
+        }
+    }
+    return { user, raw, progressJsonlPath }
 }
 
 /**
- * Parse well-known global flags from an argv array.
+ * Parse well-known global flags from an argv array. Pure — pass an explicit
+ * array for testing, or omit to read `process.argv.slice(2)`.
  *
- * Pure function — pass an explicit array for testing, or omit to use
- * `process.argv.slice(2)`.
+ * `--progress-jsonl` supports `--progress-jsonl` (bare → stderr),
+ * `--progress-jsonl=<path>`, and `--progress-jsonl <path>` (space form),
+ * mirroring commander's `[path]` declaration.
  */
-export function parseGlobalArgs(argv?: string[]): GlobalArgs {
+export function parseGlobalArgs(argv?: string[]): TdGlobalArgs {
     const args = argv ?? process.argv.slice(2)
-
-    const result: GlobalArgs = {
-        json: false,
-        ndjson: false,
-        quiet: false,
-        verbose: 0,
-        accessible: false,
-        noSpinner: false,
-        raw: false,
-        progressJsonl: false,
-        user: undefined,
+    const base = parseCoreGlobalArgs(args)
+    const { user, raw, progressJsonlPath } = parseTdLocalFlags(args)
+    return {
+        ...base,
+        user,
+        raw,
+        progressJsonl: progressJsonlPath !== undefined ? progressJsonlPath : base.progressJsonl,
     }
-
-    for (let i = 0; i < args.length; i++) {
-        const arg = args[i]
-
-        // Standard CLI terminator — everything after is positional
-        if (arg === '--') break
-
-        // Long flags
-        if (arg === '--json') {
-            result.json = true
-        } else if (arg === '--ndjson') {
-            result.ndjson = true
-        } else if (arg === '--quiet') {
-            result.quiet = true
-        } else if (arg === '--verbose') {
-            result.verbose = Math.min(result.verbose + 1, 4) as GlobalArgs['verbose']
-        } else if (arg === '--accessible') {
-            result.accessible = true
-        } else if (arg === '--no-spinner') {
-            result.noSpinner = true
-        } else if (arg === '--raw') {
-            result.raw = true
-        } else if (arg === '--user' || arg.startsWith('--user=')) {
-            if (arg.includes('=')) {
-                result.user = arg.slice(arg.indexOf('=') + 1)
-            } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
-                // Only consume the next arg as the value when it doesn't look
-                // like another flag — `td --user --json ...` should leave
-                // `result.user` undefined so commander surfaces a usage error
-                // rather than silently swallowing `--json` as the user ref.
-                i++
-                result.user = args[i]
-            }
-        } else if (arg === '--progress-jsonl' || arg.startsWith('--progress-jsonl=')) {
-            if (arg.includes('=')) {
-                // --progress-jsonl=path
-                result.progressJsonl = arg.slice(arg.indexOf('=') + 1)
-            } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
-                // --progress-jsonl path (next arg is a value, not a flag)
-                i++
-                result.progressJsonl = args[i]
-            } else {
-                // --progress-jsonl (no value — output to stderr)
-                result.progressJsonl = true
-            }
-        } else if (arg.length > 1 && arg[0] === '-' && arg[1] !== '-') {
-            // Short flag group: -v, -vq, -vvv, etc.
-            for (let j = 1; j < arg.length; j++) {
-                const ch = arg[j]
-                const mapped = SHORT_FLAGS[ch]
-                if (mapped === 'verbose') {
-                    result.verbose = Math.min(result.verbose + 1, 4) as GlobalArgs['verbose']
-                } else if (mapped === 'quiet') {
-                    result.quiet = true
-                }
-                // Unknown short flags are silently ignored — they belong to
-                // Commander or subcommands.
-            }
-        }
-    }
-
-    return result
 }
 
-// ---------------------------------------------------------------------------
-// Cached singleton
-// ---------------------------------------------------------------------------
-
-let cached: GlobalArgs | null = null
-
-function getGlobalArgs(): GlobalArgs {
-    if (!cached) {
-        cached = parseGlobalArgs()
-    }
-    return cached
-}
+const store = createGlobalArgsStore<TdGlobalArgs>(() => parseGlobalArgs())
 
 /** Clear the cached parse result. Call in test teardown. */
-export function resetGlobalArgs(): void {
-    cached = null
-}
-
-// ---------------------------------------------------------------------------
-// Query functions — drop-in replacements for the old process.argv checks
-// ---------------------------------------------------------------------------
+export const resetGlobalArgs = store.reset
 
 export function isJsonMode(): boolean {
-    return getGlobalArgs().json
+    return store.get().json
 }
 
 export function isNdjsonMode(): boolean {
-    return getGlobalArgs().ndjson
+    return store.get().ndjson
 }
 
 export function isQuiet(): boolean {
-    return getGlobalArgs().quiet
-}
-
-export function isAccessible(): boolean {
-    return process.env.TD_ACCESSIBLE === '1' || getGlobalArgs().accessible
+    return store.get().quiet
 }
 
 export function isRawMode(): boolean {
-    return getGlobalArgs().raw
+    return store.get().raw
 }
 
-export function getVerboseLevel(): GlobalArgs['verbose'] {
-    return getGlobalArgs().verbose
+export function getVerboseLevel(): TdGlobalArgs['verbose'] {
+    return store.get().verbose
 }
 
 export function getProgressJsonlPath(): string | true | false {
-    return getGlobalArgs().progressJsonl
+    return store.get().progressJsonl
 }
 
 export function getRequestedUserRef(): string | undefined {
-    return getGlobalArgs().user
+    return store.get().user
 }
 
-/**
- * Remove `--user <ref>` / `--user=<ref>` from an argv array so commander —
- * which has no global-option attachment — never sees the flag at subcommand
- * level. Returns a new array; the original is not mutated. Stops at the `--`
- * terminator so positional args after it are preserved verbatim.
- */
-export function stripUserFlag(argv: string[]): string[] {
-    const out: string[] = []
-    let stopped = false
-    for (let i = 0; i < argv.length; i++) {
-        const arg = argv[i]
-        if (stopped) {
-            out.push(arg)
-            continue
-        }
-        if (arg === '--') {
-            stopped = true
-            out.push(arg)
-            continue
-        }
-        if (arg === '--user') {
-            // Consume the value too only when it doesn't look like another
-            // flag — keeps `td --user --json ...` from also stripping `--json`.
-            // Stays in lockstep with `parseGlobalArgs` above.
-            if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) i++
-            continue
-        }
-        if (arg.startsWith('--user=')) {
-            continue
-        }
-        out.push(arg)
-    }
-    return out
-}
+export const isAccessible = createAccessibleGate({
+    envVar: 'TD_ACCESSIBLE',
+    getArgs: store.get,
+})
 
-export function shouldDisableSpinner(): boolean {
-    if (process.env.TD_SPINNER === 'false') return true
-    if (process.env.CI) return true
-
-    const args = getGlobalArgs()
-    return (
-        args.json ||
-        args.ndjson ||
-        args.noSpinner ||
-        args.progressJsonl !== false ||
-        args.verbose > 0
-    )
-}
+export const shouldDisableSpinner = createSpinnerGate({
+    envVar: 'TD_SPINNER',
+    getArgs: store.get,
+})

@@ -1,16 +1,19 @@
 import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
+import { moveProjectParent } from '../../lib/api/projects-sync.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { resolveFolderByRef } from '../folder/helpers.js'
+import { isDescendantOf, loadPersonalProjects, resolvePersonalParent } from './helpers.js'
 
 export interface UpdateOptions {
     name?: string
     color?: ColorKey
     favorite?: boolean
     folder?: string | false
+    parent?: string | false
     viewStyle?: string
     json?: boolean
     dryRun?: boolean
@@ -50,7 +53,39 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
         }
     }
 
-    if (Object.keys(args).length === 0) {
+    let newParentId: string | null | undefined
+    let newParentName: string | undefined
+    if (options.parent !== undefined) {
+        if (isWorkspaceProject(project)) {
+            throw new CliError(
+                'WORKSPACE_NO_SUBPROJECTS',
+                'Workspace projects cannot be nested under another project.',
+                ['Sub-projects are only supported for personal projects.'],
+            )
+        }
+        const currentParentId = project.parentId ?? null
+        if (options.parent === false) {
+            if (currentParentId !== null) newParentId = null
+        } else {
+            const parentProject = await resolvePersonalParent(api, options.parent)
+            if (parentProject.id === project.id) {
+                throw new CliError('INVALID_OPTIONS', 'Cannot set a project as its own parent.')
+            }
+            if (parentProject.id !== currentParentId) {
+                const allPersonal = await loadPersonalProjects(api)
+                if (isDescendantOf(allPersonal, parentProject.id, project.id)) {
+                    throw new CliError(
+                        'INVALID_OPTIONS',
+                        `Cannot nest "${project.name}" under "${parentProject.name}": that would create a cycle.`,
+                    )
+                }
+                newParentId = parentProject.id
+                newParentName = parentProject.name
+            }
+        }
+    }
+
+    if (Object.keys(args).length === 0 && newParentId === undefined) {
         throw new CliError('NO_CHANGES', 'No changes specified.')
     }
 
@@ -66,17 +101,44 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
                     : args.folderId !== undefined
                       ? args.folderId
                       : undefined,
+            Parent:
+                newParentId === null
+                    ? '(none)'
+                    : newParentId !== undefined
+                      ? (newParentName ?? newParentId)
+                      : undefined,
             'View style': args.viewStyle,
         })
         return
     }
 
-    const updated = await api.updateProject(project.id, args)
+    let updatedName = project.name
+    if (Object.keys(args).length > 0) {
+        const updated = await api.updateProject(project.id, args)
+        updatedName = updated.name
+        if (options.json && newParentId === undefined) {
+            console.log(formatJson(updated, 'project'))
+            return
+        }
+    }
+
+    if (newParentId !== undefined) {
+        await moveProjectParent(project.id, newParentId)
+    }
 
     if (options.json) {
-        console.log(formatJson(updated, 'project'))
+        const refreshed = await resolveProjectRef(api, `id:${project.id}`)
+        console.log(formatJson(refreshed, 'project'))
         return
     }
 
-    if (!isQuiet()) console.log(`Updated: ${updated.name} (id:${project.id})`)
+    if (!isQuiet()) {
+        let msg = `Updated: ${updatedName} (id:${project.id})`
+        if (newParentId === null) {
+            msg += ' → moved to top level'
+        } else if (newParentId !== undefined) {
+            msg += ` → moved under "${newParentName}"`
+        }
+        console.log(msg)
+    }
 }
