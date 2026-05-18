@@ -1,11 +1,13 @@
 import { Command } from 'commander'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { parseOrderArg } from '../../lib/order.js'
 import { archiveSection } from './archive.js'
 import { browseSection } from './browse.js'
 import { createSection } from './create.js'
 import { deleteSection } from './delete.js'
 import { listSections } from './list.js'
+import { reorderSection } from './reorder.js'
 import { unarchiveSection } from './unarchive.js'
 import { updateSection } from './update.js'
 
@@ -83,6 +85,40 @@ export function registerSectionCommand(program: Command): void {
                 return
             }
             return updateSection(id, options)
+        })
+
+    const reorderCmd = section
+        .command('reorder [ref]')
+        .description('Reorder a section within a project')
+        .option('--section <ref>', 'Section name or id:xxx')
+        .option('--project <ref>', 'Project name or id:xxx (required)')
+        .option('--before <ref>', 'Place before this sibling section')
+        .option('--after <ref>', 'Place after this sibling section')
+        .option('--position <n>', 'Move to a 0-indexed position within the project', parseOrderArg)
+        .option('--json', 'Output the new ordering as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td section reorder "Review" --project "Roadmap" --before "Done"
+  td section reorder "Review" --project "Roadmap" --after "In Progress"
+  td section reorder --section "Review" --project "Roadmap" --position 0
+  td section reorder "Review" --project "Roadmap" --position 0`,
+        )
+        .action((ref, options) => {
+            if (ref && options.section) {
+                throw new CliError(
+                    'CONFLICTING_OPTIONS',
+                    'Cannot specify section both as argument and --section flag',
+                )
+            }
+            const sectionRef = ref || options.section
+            if (!sectionRef) {
+                reorderCmd.help()
+                return
+            }
+            return reorderSection(sectionRef, options)
         })
 
     const archiveCmd = section

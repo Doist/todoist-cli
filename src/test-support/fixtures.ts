@@ -165,6 +165,13 @@ export const fixtures = {
             sectionOrder: 3,
             url: 'https://todoist.com/app/section/sec-3',
         } as Section,
+        done: {
+            id: 'sec-4',
+            name: 'Done',
+            projectId: 'proj-work',
+            sectionOrder: 4,
+            url: 'https://todoist.com/app/section/sec-4',
+        } as Section,
     },
     labels: {
         urgent: {
