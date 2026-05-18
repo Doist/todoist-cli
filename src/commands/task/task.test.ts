@@ -2768,3 +2768,37 @@ describe('task (no args)', () => {
         stdoutSpy.mockRestore()
     })
 })
+
+describe('task add/update --due help text', () => {
+    async function captureHelp(args: string[]): Promise<string> {
+        const program = createProgram()
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+        await expect(program.parseAsync(['node', 'td', ...args])).rejects.toThrow()
+
+        const output = stdoutSpy.mock.calls.map((c) => String(c[0])).join('')
+        stdoutSpy.mockRestore()
+        return output
+    }
+
+    it('task add --help documents the verbatim caveat and points to quickadd', async () => {
+        const output = await captureHelp(['task', 'add', '--help'])
+
+        expect(output).toContain('--due')
+        expect(output).toContain('Notes:')
+        expect(output).toContain('sent verbatim')
+        expect(output).toContain('"starting <date>"')
+        expect(output).toContain('quick-add parser')
+    })
+
+    it('task update --help documents the verbatim caveat and refers back to task add --due', async () => {
+        const output = await captureHelp(['task', 'update', '--help'])
+
+        expect(output).toContain('--due')
+        expect(output).toContain('Notes:')
+        expect(output).toContain('sent verbatim')
+        expect(output).toContain('"starting <date>"')
+        expect(output).toContain('same caveats as')
+        expect(output).toContain('"task add --due"')
+    })
+})

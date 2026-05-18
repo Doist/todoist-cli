@@ -235,8 +235,7 @@ Notes:
 Notes:
   --due is sent verbatim as the task's due_string, with the same caveats as
   "task add --due": the server's due_string parser does not unpack some more
-  complex clauses (i.e. "starting <date>"). To move the next occurrence of a
-  recurring task without changing its recurrence rule, use \`td task reschedule\`.`,
+  complex clauses (i.e. "starting <date>").`,
         )
 
     const moveCmd = task
