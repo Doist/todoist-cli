@@ -5,24 +5,33 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-vi.mock('../../lib/api/sections-sync.js', () => ({
-    reorderSections: vi.fn().mockResolvedValue(undefined),
-}))
-
 import { getApi } from '../../lib/api/core.js'
-import { reorderSections } from '../../lib/api/sections-sync.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerSectionCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
-const mockReorderSections = vi.mocked(reorderSections)
 
 function createProgram() {
     const program = new Command()
     program.exitOverride()
     registerSectionCommand(program)
     return program
+}
+
+function expectSectionReorderCommand(
+    mockApi: MockApi,
+    sections: Array<{ id: string; sectionOrder: number }>,
+) {
+    expect(mockApi.sync).toHaveBeenCalledTimes(1)
+    expect(mockApi.sync).toHaveBeenCalledWith({
+        commands: [
+            expect.objectContaining({
+                type: 'section_reorder',
+                args: { sections },
+            }),
+        ],
+    })
 }
 
 describe('section list', () => {
@@ -338,7 +347,7 @@ describe('section reorder', () => {
             '0',
         ])
 
-        expect(mockReorderSections).toHaveBeenCalledWith([
+        expectSectionReorderCommand(mockApi, [
             { id: 'sec-3', sectionOrder: 1 },
             { id: 'sec-1', sectionOrder: 2 },
             { id: 'sec-2', sectionOrder: 3 },
@@ -419,7 +428,7 @@ describe('section reorder', () => {
             '0',
         ])
 
-        expect(mockReorderSections).toHaveBeenCalledWith([
+        expectSectionReorderCommand(mockApi, [
             { id: 'sec-3', sectionOrder: 1 },
             { id: 'sec-1', sectionOrder: 2 },
             { id: 'sec-2', sectionOrder: 3 },
@@ -442,11 +451,53 @@ describe('section reorder', () => {
             '999',
         ])
 
-        expect(mockReorderSections).toHaveBeenCalledWith([
+        expectSectionReorderCommand(mockApi, [
             { id: 'sec-2', sectionOrder: 1 },
             { id: 'sec-3', sectionOrder: 2 },
             { id: 'sec-4', sectionOrder: 3 },
             { id: 'sec-1', sectionOrder: 4 },
+        ])
+    })
+
+    it('loads all section pages before reordering', async () => {
+        const program = createProgram()
+        mockApi.getSections
+            .mockResolvedValueOnce({
+                results: [fixtures.sections.planning, fixtures.sections.inProgress],
+                nextCursor: 'next-page',
+            })
+            .mockResolvedValueOnce({
+                results: [fixtures.sections.review, fixtures.sections.done],
+                nextCursor: null,
+            })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'reorder',
+            'Review',
+            '--project',
+            'id:proj-work',
+            '--position',
+            '0',
+        ])
+
+        expect(mockApi.getSections).toHaveBeenNthCalledWith(1, {
+            projectId: 'proj-work',
+            cursor: undefined,
+            limit: 200,
+        })
+        expect(mockApi.getSections).toHaveBeenNthCalledWith(2, {
+            projectId: 'proj-work',
+            cursor: 'next-page',
+            limit: 200,
+        })
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-3', sectionOrder: 1 },
+            { id: 'sec-1', sectionOrder: 2 },
+            { id: 'sec-2', sectionOrder: 3 },
+            { id: 'sec-4', sectionOrder: 4 },
         ])
     })
 
@@ -465,7 +516,7 @@ describe('section reorder', () => {
             'In Progress',
         ])
 
-        expect(mockReorderSections).toHaveBeenCalledWith([
+        expectSectionReorderCommand(mockApi, [
             { id: 'sec-1', sectionOrder: 1 },
             { id: 'sec-4', sectionOrder: 2 },
             { id: 'sec-2', sectionOrder: 3 },
@@ -488,7 +539,7 @@ describe('section reorder', () => {
             'Review',
         ])
 
-        expect(mockReorderSections).toHaveBeenCalledWith([
+        expectSectionReorderCommand(mockApi, [
             { id: 'sec-2', sectionOrder: 1 },
             { id: 'sec-3', sectionOrder: 2 },
             { id: 'sec-1', sectionOrder: 3 },
@@ -514,7 +565,7 @@ describe('section reorder', () => {
         ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
-    it('--dry-run does not call reorderSections', async () => {
+    it('--dry-run previews the new ordering without syncing', async () => {
         const program = createProgram()
 
         await program.parseAsync([
@@ -530,8 +581,16 @@ describe('section reorder', () => {
             '--dry-run',
         ])
 
-        expect(mockReorderSections).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would reorder "Planning"'))
+        expect(mockApi.sync).not.toHaveBeenCalled()
+        const logLines = (consoleSpy.mock.calls as unknown[][]).map((call) => call[0])
+        expect(logLines).toEqual([
+            'Would reorder "Planning": position 0 → 2',
+            'New section order:',
+            '    0: In Progress (id:sec-2)',
+            '    1: Review (id:sec-3)',
+            '  → 2: Planning (id:sec-1)',
+            '    3: Done (id:sec-4)',
+        ])
     })
 
     it('no-ops when target already has the requested position', async () => {
@@ -549,7 +608,34 @@ describe('section reorder', () => {
             '1',
         ])
 
-        expect(mockReorderSections).not.toHaveBeenCalled()
+        expect(mockApi.sync).not.toHaveBeenCalled()
+    })
+
+    it('--json on a no-op outputs the current ordering', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'reorder',
+            'In Progress',
+            '--project',
+            'id:proj-work',
+            '--position',
+            '1',
+            '--json',
+        ])
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledTimes(1)
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed).toEqual([
+            { id: 'sec-1', name: 'Planning', position: 0 },
+            { id: 'sec-2', name: 'In Progress', position: 1 },
+            { id: 'sec-3', name: 'Review', position: 2 },
+            { id: 'sec-4', name: 'Done', position: 3 },
+        ])
     })
 
     it('--json outputs the new ordering', async () => {

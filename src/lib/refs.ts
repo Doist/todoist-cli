@@ -125,13 +125,21 @@ function fuzzyMatchInList<T extends { id: string }>(
     context?: string,
 ): T | null {
     const lower = ref.toLowerCase()
-    const exact = items.find((item) => getName(item).toLowerCase() === lower)
-    if (exact) return exact
+    const suffix = context ? ` ${context}` : ''
+
+    const exact = items.filter((item) => getName(item).toLowerCase() === lower)
+    if (exact.length === 1) return exact[0]
+    if (exact.length > 1) {
+        throw new CliError(
+            `AMBIGUOUS_${entityType.toUpperCase()}`,
+            `Multiple ${entityType}s match "${ref}" exactly${suffix}:`,
+            exact.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
+        )
+    }
 
     const partial = items.filter((item) => getName(item).toLowerCase().includes(lower))
     if (partial.length === 1) return partial[0]
     if (partial.length > 1) {
-        const suffix = context ? ` ${context}` : ''
         throw new CliError(
             `AMBIGUOUS_${entityType.toUpperCase()}`,
             `Multiple ${entityType}s match "${ref}"${suffix}:`,
@@ -142,7 +150,7 @@ function fuzzyMatchInList<T extends { id: string }>(
     return null
 }
 
-function resolveFromList<T extends { id: string }>(
+export function resolveFromList<T extends { id: string }>(
     ref: string,
     items: T[],
     getName: (item: T) => string,
@@ -162,7 +170,7 @@ function resolveFromList<T extends { id: string }>(
         )
     }
 
-    const match = fuzzyMatchInList(ref, items, getName, entityType)
+    const match = fuzzyMatchInList(ref, items, getName, entityType, context)
     if (match) return match
 
     if (looksLikeRawId(ref)) {

@@ -103,8 +103,8 @@ export function registerSectionCommand(program: Command): void {
 Examples:
   td section reorder "Review" --project "Roadmap" --before "Done"
   td section reorder "Review" --project "Roadmap" --after "In Progress"
-  td section reorder --section "Review" --project "Roadmap" --position 0
-  td section reorder "Review" --project "Roadmap" --position 0`,
+  td section reorder --section "Review" --project "Roadmap" --position 0 --dry-run
+  td section reorder "Review" --project "Roadmap" --position 2 --json`,
         )
         .action((ref, options) => {
             if (ref && options.section) {

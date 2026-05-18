@@ -4,8 +4,8 @@ import { reorderSections } from '../../lib/api/sections-sync.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson } from '../../lib/output.js'
-import { paginate } from '../../lib/pagination.js'
-import { extractId, isIdRef, looksLikeRawId, resolveProjectId } from '../../lib/refs.js'
+import { resolveFromList, resolveProjectId } from '../../lib/refs.js'
+import { validateReorderPlacement } from '../../lib/reorder.js'
 
 export type ReorderSectionOptions = {
     section?: string
@@ -18,11 +18,20 @@ export type ReorderSectionOptions = {
 }
 
 async function loadProjectSections(api: TodoistApi, projectId: string): Promise<Section[]> {
-    const { results } = await paginate(
-        (cursor, limit) => api.getSections({ projectId, cursor: cursor ?? undefined, limit }),
-        { limit: Number.MAX_SAFE_INTEGER },
-    )
-    return results
+    const sections: Section[] = []
+    let cursor: string | null = null
+
+    do {
+        const { results, nextCursor } = await api.getSections({
+            projectId,
+            cursor: cursor ?? undefined,
+            limit: 200,
+        })
+        sections.push(...results)
+        cursor = nextCursor ?? null
+    } while (cursor)
+
+    return sections
 }
 
 function resolveSectionFromList(sections: Section[], ref: string): Section {
@@ -30,42 +39,7 @@ function resolveSectionFromList(sections: Section[], ref: string): Section {
         throw new CliError('INVALID_SECTION', 'section reference cannot be empty.')
     }
 
-    if (isIdRef(ref)) {
-        const id = extractId(ref)
-        const match = sections.find((section) => section.id === id)
-        if (!match) {
-            throw new CliError('SECTION_NOT_FOUND', `Section id:${id} not found in project.`)
-        }
-        return match
-    }
-
-    const lower = ref.toLowerCase()
-    const exact = sections.filter((section) => section.name.toLowerCase() === lower)
-    if (exact.length === 1) return exact[0]
-    if (exact.length > 1) {
-        throw new CliError(
-            'AMBIGUOUS_SECTION',
-            `Multiple sections match "${ref}" exactly in project:`,
-            exact.slice(0, 5).map((section) => `"${section.name}" (id:${section.id})`),
-        )
-    }
-
-    const partial = sections.filter((section) => section.name.toLowerCase().includes(lower))
-    if (partial.length === 1) return partial[0]
-    if (partial.length > 1) {
-        throw new CliError(
-            'AMBIGUOUS_SECTION',
-            `Multiple sections match "${ref}" in project:`,
-            partial.slice(0, 5).map((section) => `"${section.name}" (id:${section.id})`),
-        )
-    }
-
-    if (looksLikeRawId(ref)) {
-        const byId = sections.find((section) => section.id === ref)
-        if (byId) return byId
-    }
-
-    throw new CliError('SECTION_NOT_FOUND', `Section "${ref}" not found in project.`)
+    return resolveFromList(ref, sections, (section) => section.name, 'section', 'in project')
 }
 
 export async function reorderSection(ref: string, options: ReorderSectionOptions): Promise<void> {
@@ -75,21 +49,7 @@ export async function reorderSection(ref: string, options: ReorderSectionOptions
         ])
     }
 
-    const flagCount = [options.before, options.after, options.position].filter(
-        (value) => value !== undefined,
-    ).length
-    if (flagCount === 0) {
-        throw new CliError(
-            'INVALID_OPTIONS',
-            'Specify exactly one of --before <ref>, --after <ref>, or --position <n>.',
-        )
-    }
-    if (flagCount > 1) {
-        throw new CliError(
-            'INVALID_OPTIONS',
-            '--before, --after, and --position are mutually exclusive.',
-        )
-    }
+    validateReorderPlacement(options)
 
     const api = await getApi()
     const projectId = await resolveProjectId(api, options.project)
@@ -141,10 +101,10 @@ export async function reorderSection(ref: string, options: ReorderSectionOptions
     }))
 
     if (options.dryRun) {
-        console.log(`Would reorder "${target.name}": position ${oldIndex} -> ${newIndex}`)
+        console.log(`Would reorder "${target.name}": position ${oldIndex} → ${newIndex}`)
         console.log('New section order:')
         for (let index = 0; index < newOrder.length; index++) {
-            const marker = newOrder[index].id === target.id ? '>' : ' '
+            const marker = newOrder[index].id === target.id ? '→' : ' '
             console.log(`  ${marker} ${index}: ${newOrder[index].name} (id:${newOrder[index].id})`)
         }
         return
@@ -159,7 +119,7 @@ export async function reorderSection(ref: string, options: ReorderSectionOptions
 
     if (!isQuiet()) {
         console.log(
-            `Reordered "${target.name}" (id:${target.id}): position ${oldIndex} -> ${newIndex} of ${sections.length - 1}.`,
+            `Reordered "${target.name}" (id:${target.id}): position ${oldIndex} → ${newIndex} of ${sections.length - 1}.`,
         )
     }
 }

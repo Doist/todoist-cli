@@ -5,6 +5,7 @@ import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
+import { validateReorderPlacement } from '../../lib/reorder.js'
 import { loadPersonalProjects, resolvePersonalFromList } from './helpers.js'
 
 export type ReorderOptions = {
@@ -16,21 +17,7 @@ export type ReorderOptions = {
 }
 
 export async function reorderProject(ref: string, options: ReorderOptions): Promise<void> {
-    const flagCount = [options.before, options.after, options.position].filter(
-        (v) => v !== undefined,
-    ).length
-    if (flagCount === 0) {
-        throw new CliError(
-            'INVALID_OPTIONS',
-            'Specify exactly one of --before <ref>, --after <ref>, or --position <n>.',
-        )
-    }
-    if (flagCount > 1) {
-        throw new CliError(
-            'INVALID_OPTIONS',
-            '--before, --after, and --position are mutually exclusive.',
-        )
-    }
+    validateReorderPlacement(options)
 
     const api = await getApi()
     const target = await resolveProjectRef(api, ref)
