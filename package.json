@@ -73,6 +73,6 @@
     "oxlint": "1.63.0",
     "semantic-release": "25.0.3",
     "typescript": "6.0.3",
-    "vitest": "4.1.5"
+    "vitest": "4.1.6"
   }
 }
