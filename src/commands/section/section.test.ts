@@ -1,11 +1,12 @@
 import { Command } from 'commander'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
 import { getApi } from '../../lib/api/core.js'
+import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { registerSectionCommand } from './index.js'
 
@@ -16,6 +17,21 @@ function createProgram() {
     program.exitOverride()
     registerSectionCommand(program)
     return program
+}
+
+function expectSectionReorderCommand(
+    mockApi: MockApi,
+    sections: Array<{ id: string; sectionOrder: number }>,
+) {
+    expect(mockApi.sync).toHaveBeenCalledTimes(1)
+    expect(mockApi.sync).toHaveBeenCalledWith({
+        commands: [
+            expect.objectContaining({
+                type: 'section_reorder',
+                args: { sections },
+            }),
+        ],
+    })
 }
 
 describe('section list', () => {
@@ -261,6 +277,338 @@ describe('section update --json', () => {
         expect(parsed.name).toBe('New Name')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
         consoleSpy.mockRestore()
+    })
+})
+
+describe('section reorder', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    const sections = [
+        fixtures.sections.planning,
+        fixtures.sections.inProgress,
+        fixtures.sections.review,
+        fixtures.sections.done,
+    ]
+    const reorderCommandArgs = ['node', 'td', 'section', 'reorder'] as const
+    const projectArgs = ['--project', 'id:proj-work'] as const
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+        mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getProject.mockResolvedValue(fixtures.projects.work)
+        mockApi.getSections.mockImplementation(async () => ({
+            results: [...sections],
+            nextCursor: null,
+        }))
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+        consoleSpy.mockRestore()
+    })
+
+    it('requires --project', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([...reorderCommandArgs, 'Review', '--position', '0']),
+        ).rejects.toHaveProperty('code', 'MISSING_PROJECT')
+    })
+
+    it('throws when no placement flag is provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([...reorderCommandArgs, 'Review', ...projectArgs]),
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
+    })
+
+    it('accepts --section instead of positional ref', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            '--section',
+            'Review',
+            ...projectArgs,
+            '--position',
+            '0',
+        ])
+
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-3', sectionOrder: 1 },
+            { id: 'sec-1', sectionOrder: 2 },
+            { id: 'sec-2', sectionOrder: 3 },
+            { id: 'sec-4', sectionOrder: 4 },
+        ])
+    })
+
+    it('errors when both positional and --section are provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                ...reorderCommandArgs,
+                'Review',
+                '--section',
+                'Done',
+                ...projectArgs,
+                '--position',
+                '0',
+            ]),
+        ).rejects.toThrow('Cannot specify section both as argument and --section flag')
+    })
+
+    it('throws when more than one placement flag is provided', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                ...reorderCommandArgs,
+                'Review',
+                ...projectArgs,
+                '--before',
+                'Done',
+                '--position',
+                '0',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
+    })
+
+    it('rejects non-integer --position values', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                ...reorderCommandArgs,
+                'Review',
+                ...projectArgs,
+                '--position',
+                '1.5',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_ORDER')
+    })
+
+    it('--position 0 moves target to first', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Review',
+            ...projectArgs,
+            '--position',
+            '0',
+        ])
+
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-3', sectionOrder: 1 },
+            { id: 'sec-1', sectionOrder: 2 },
+            { id: 'sec-2', sectionOrder: 3 },
+            { id: 'sec-4', sectionOrder: 4 },
+        ])
+        const logLines = (consoleSpy.mock.calls as unknown[][]).map((call) => call[0])
+        expect(logLines).toEqual([
+            'Reordered "Review" (id:sec-3): position 2 → 0 of 3.',
+            'New section order:',
+            '  → 0: Review (id:sec-3)',
+            '    1: Planning (id:sec-1)',
+            '    2: In Progress (id:sec-2)',
+            '    3: Done (id:sec-4)',
+        ])
+    })
+
+    it('--position clamps to last when out of range', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Planning',
+            ...projectArgs,
+            '--position',
+            '999',
+        ])
+
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-2', sectionOrder: 1 },
+            { id: 'sec-3', sectionOrder: 2 },
+            { id: 'sec-4', sectionOrder: 3 },
+            { id: 'sec-1', sectionOrder: 4 },
+        ])
+    })
+
+    it('loads all section pages before reordering', async () => {
+        const program = createProgram()
+        mockApi.getSections
+            .mockResolvedValueOnce({
+                results: [fixtures.sections.planning, fixtures.sections.inProgress],
+                nextCursor: 'next-page',
+            })
+            .mockResolvedValueOnce({
+                results: [fixtures.sections.review, fixtures.sections.done],
+                nextCursor: null,
+            })
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Review',
+            ...projectArgs,
+            '--position',
+            '0',
+        ])
+
+        expect(mockApi.getSections).toHaveBeenNthCalledWith(1, {
+            projectId: 'proj-work',
+            cursor: undefined,
+            limit: 200,
+        })
+        expect(mockApi.getSections).toHaveBeenNthCalledWith(2, {
+            projectId: 'proj-work',
+            cursor: 'next-page',
+            limit: 200,
+        })
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-3', sectionOrder: 1 },
+            { id: 'sec-1', sectionOrder: 2 },
+            { id: 'sec-2', sectionOrder: 3 },
+            { id: 'sec-4', sectionOrder: 4 },
+        ])
+    })
+
+    it('--before places target immediately before sibling', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Done',
+            ...projectArgs,
+            '--before',
+            'In Progress',
+        ])
+
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-1', sectionOrder: 1 },
+            { id: 'sec-4', sectionOrder: 2 },
+            { id: 'sec-2', sectionOrder: 3 },
+            { id: 'sec-3', sectionOrder: 4 },
+        ])
+    })
+
+    it('--after places target immediately after sibling', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Planning',
+            ...projectArgs,
+            '--after',
+            'Review',
+        ])
+
+        expectSectionReorderCommand(mockApi, [
+            { id: 'sec-2', sectionOrder: 1 },
+            { id: 'sec-3', sectionOrder: 2 },
+            { id: 'sec-1', sectionOrder: 3 },
+            { id: 'sec-4', sectionOrder: 4 },
+        ])
+    })
+
+    it('rejects relative placement against itself', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                ...reorderCommandArgs,
+                'Review',
+                ...projectArgs,
+                '--before',
+                'Review',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
+    })
+
+    it('--dry-run previews the new ordering without syncing', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Planning',
+            ...projectArgs,
+            '--position',
+            '2',
+            '--dry-run',
+        ])
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+        const logLines = (consoleSpy.mock.calls as unknown[][]).map((call) => call[0])
+        expect(logLines).toEqual([
+            'Would reorder "Planning": position 0 → 2',
+            'New section order:',
+            '    0: In Progress (id:sec-2)',
+            '    1: Review (id:sec-3)',
+            '  → 2: Planning (id:sec-1)',
+            '    3: Done (id:sec-4)',
+        ])
+    })
+
+    it('no-ops when target already has the requested position', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'In Progress',
+            ...projectArgs,
+            '--position',
+            '1',
+        ])
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+    })
+
+    it('--json on a no-op outputs the current ordering', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'In Progress',
+            ...projectArgs,
+            '--position',
+            '1',
+            '--json',
+        ])
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledTimes(1)
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed).toEqual([
+            { id: 'sec-1', name: 'Planning', position: 0 },
+            { id: 'sec-2', name: 'In Progress', position: 1 },
+            { id: 'sec-3', name: 'Review', position: 2 },
+            { id: 'sec-4', name: 'Done', position: 3 },
+        ])
+    })
+
+    it('--json outputs the new ordering', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            ...reorderCommandArgs,
+            'Review',
+            ...projectArgs,
+            '--position',
+            '0',
+            '--json',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledTimes(1)
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed).toEqual([
+            { id: 'sec-3', name: 'Review', position: 0 },
+            { id: 'sec-1', name: 'Planning', position: 1 },
+            { id: 'sec-2', name: 'In Progress', position: 2 },
+            { id: 'sec-4', name: 'Done', position: 3 },
+        ])
     })
 })
 

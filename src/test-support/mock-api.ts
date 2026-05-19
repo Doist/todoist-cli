@@ -11,6 +11,7 @@ export type MockApi = {
 
 export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
     return {
+        sync: vi.fn().mockResolvedValue({}),
         // Tasks
         getTasks: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getTask: vi.fn(),

@@ -542,6 +542,18 @@ describe('resolveSectionId', () => {
         expect(result).toBe('sec-1')
     })
 
+    it('throws on ambiguous exact name match', async () => {
+        const api = createMockApi({
+            getSections: vi.fn().mockResolvedValue({
+                results: [...sections, { id: 'sec-5', name: 'Planning' }],
+            }),
+        })
+
+        await expect(resolveSectionId(api, 'planning', 'proj-1')).rejects.toThrow(
+            'Multiple sections match "planning" exactly in project',
+        )
+    })
+
     it('resolves partial name match when unique', async () => {
         const api = createMockApi({
             getSections: vi.fn().mockResolvedValue({ results: sections }),

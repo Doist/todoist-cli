@@ -150,8 +150,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
   `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
   `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,
-  `resolveFolderRef`, `resolveAppRef`, `resolveGoalRef`, `parseTodoistUrl`,
-  `classifyTodoistUrl`
+  `resolveFolderRef`, `resolveAppRef`, `resolveGoalRef`, `resolveFromList`,
+  `parseTodoistUrl`, `classifyTodoistUrl`
+- **`reorder.ts`** — `validateReorderPlacement()` for shared
+  `--before` / `--after` / `--position` validation.
 - **`urls.ts`** — `taskUrl`, `projectUrl`, `labelUrl`, `sectionUrl`,
   `commentUrl`, `filterUrl`
 - **`task-list.ts`** — `fetchProjects`, `filterByWorkspaceOrPersonal`,

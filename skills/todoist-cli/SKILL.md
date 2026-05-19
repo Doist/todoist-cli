@@ -223,6 +223,10 @@ td section list --search "Planning"
 td section list --search "Planning" --project "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
 td section update id:123 --name "Done"
+td section reorder "Review" --project "Roadmap" --before "Done"
+td section reorder "Review" --project "Roadmap" --after "In Progress"
+td section reorder --section "Review" --project "Roadmap" --position 0 --dry-run
+td section reorder "Review" --project "Roadmap" --position 2 --json
 td section archive id:123
 td section unarchive id:123
 td section delete id:123 --yes
