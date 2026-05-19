@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import { getReminderById } from '../../lib/api/reminders.js'
 import { formatJson } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
-import { formatReminderTime } from './helpers.js'
+import { type TimeReminder, formatReminderTime, formatUrgentBadge } from './helpers.js'
 
 interface GetOptions {
     json?: boolean
@@ -11,7 +11,7 @@ interface GetOptions {
 
 export async function getReminderCmd(reminderId: string, options: GetOptions): Promise<void> {
     const id = lenientIdRef(reminderId, 'reminder')
-    const reminder = await getReminderById(id)
+    const reminder = (await getReminderById(id)) as TimeReminder
 
     if (options.json) {
         console.log(formatJson(reminder, 'reminder', options.full))
@@ -20,13 +20,8 @@ export async function getReminderCmd(reminderId: string, options: GetOptions): P
 
     const idStr = chalk.dim(reminder.id)
     const type = chalk.cyan('[time]')
-    const time = formatReminderTime(
-        reminder as {
-            type: 'relative' | 'absolute'
-            minuteOffset?: number
-            due?: { date: string }
-        },
-    )
-    console.log(`${idStr}  ${type} ${time}`)
+    const time = formatReminderTime(reminder)
+    const urgent = formatUrgentBadge(reminder.isUrgent)
+    console.log(`${idStr}  ${type}${urgent} ${time}`)
     console.log(chalk.dim(`Task: ${reminder.itemId}`))
 }

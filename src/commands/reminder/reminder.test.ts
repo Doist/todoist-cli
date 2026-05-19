@@ -298,6 +298,32 @@ describe('reminder list', () => {
         ).rejects.toThrow('--cursor requires --type')
     })
 
+    it('shows [urgent] badge for urgent reminders', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getReminders.mockResolvedValue({
+            results: [
+                {
+                    id: 'rem-1',
+                    notifyUid: 'user-1',
+                    itemId: 'task-1',
+                    type: 'relative',
+                    minuteOffset: 30,
+                    isUrgent: true,
+                    isDeleted: false,
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getLocationReminders.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'reminder', 'list'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
+        consoleSpy.mockRestore()
+    })
+
     it('does not show task context when filtered by task', async () => {
         const program = createProgram()
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -616,6 +642,31 @@ describe('reminder add', () => {
             ]),
         ).rejects.toThrow('Cannot specify task both as argument and --task flag')
     })
+
+    it('passes --urgent through and shows [urgent] in output', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
+        mockAddReminder.mockResolvedValue('rem-new')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'add',
+            'id:task-1',
+            '--at',
+            '2024-01-15 10:00',
+            '--urgent',
+        ])
+
+        expect(mockAddReminder).toHaveBeenCalledWith(
+            expect.objectContaining({ itemId: 'task-1', isUrgent: true }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
+        consoleSpy.mockRestore()
+    })
 })
 
 describe('reminder update', () => {
@@ -677,6 +728,77 @@ describe('reminder update', () => {
                 '1h',
             ]),
         ).rejects.toHaveProperty('code', 'INVALID_REF')
+    })
+
+    it('toggles urgency alone without --before or --at', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockUpdateReminder.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'reminder', 'update', 'id:rem-1', '--no-urgent'])
+
+        expect(mockUpdateReminder).toHaveBeenCalledWith(
+            'rem-1',
+            expect.objectContaining({ isUrgent: false }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Updated reminder: marked not urgent (id:rem-1)')
+        consoleSpy.mockRestore()
+    })
+
+    it('shows [urgent] in confirmation when time and --urgent are combined', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockUpdateReminder.mockResolvedValue(undefined)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'update',
+            'id:rem-1',
+            '--before',
+            '1h',
+            '--urgent',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1h before due'))
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
+        consoleSpy.mockRestore()
+    })
+
+    it('outputs JSON with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockUpdateReminder.mockResolvedValue(undefined)
+        mockGetReminderById.mockResolvedValue({
+            id: 'rem-1',
+            notifyUid: 'user-1',
+            itemId: 'task-1',
+            type: 'relative',
+            minuteOffset: 60,
+            isUrgent: true,
+            isDeleted: false,
+            // biome-ignore lint/suspicious/noExplicitAny: mock
+        } as any)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'reminder',
+            'update',
+            'id:rem-1',
+            '--urgent',
+            '--json',
+        ])
+
+        const firstCall = consoleSpy.mock.calls[0]?.[0] as string
+        const parsed = JSON.parse(firstCall)
+        expect(parsed.id).toBe('rem-1')
+        expect(parsed.isUrgent).toBe(true)
+        consoleSpy.mockRestore()
     })
 })
 
@@ -875,6 +997,49 @@ describe('reminder get', () => {
         await expect(
             program.parseAsync(['node', 'td', 'reminder', 'get', 'not-a-valid-id!']),
         ).rejects.toMatchObject({ code: 'INVALID_REF' })
+    })
+
+    it('shows [urgent] badge for urgent reminders', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockGetReminderById.mockResolvedValue({
+            id: 'rem-1',
+            notifyUid: 'user-1',
+            itemId: 'task-1',
+            type: 'relative',
+            minuteOffset: 30,
+            isUrgent: true,
+            isDeleted: false,
+            // biome-ignore lint/suspicious/noExplicitAny: mock
+        } as any)
+
+        await program.parseAsync(['node', 'td', 'reminder', 'get', 'id:rem-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
+        consoleSpy.mockRestore()
+    })
+
+    it('includes isUrgent in default --json output', async () => {
+        const program = createProgram()
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        mockGetReminderById.mockResolvedValue({
+            id: 'rem-1',
+            notifyUid: 'user-1',
+            itemId: 'task-1',
+            type: 'relative',
+            minuteOffset: 30,
+            isUrgent: true,
+            isDeleted: false,
+            // biome-ignore lint/suspicious/noExplicitAny: mock
+        } as any)
+
+        await program.parseAsync(['node', 'td', 'reminder', 'get', 'id:rem-1', '--json'])
+
+        const firstCall = consoleSpy.mock.calls[0]?.[0] as string
+        expect(firstCall).toContain('"isUrgent": true')
+        consoleSpy.mockRestore()
     })
 })
 
