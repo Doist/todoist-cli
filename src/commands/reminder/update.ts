@@ -1,15 +1,20 @@
-import { updateReminder as apiUpdateReminder, type ReminderDue } from '../../lib/api/reminders.js'
+import {
+    updateReminder as apiUpdateReminder,
+    getReminderById,
+    type ReminderDue,
+} from '../../lib/api/reminders.js'
 import { formatDuration, parseDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
-import { parseDateTime } from './helpers.js'
+import { formatUrgentBadge, parseDateTime } from './helpers.js'
 
 interface UpdateOptions {
     before?: string
     at?: string
     urgent?: boolean
+    json?: boolean
     dryRun?: boolean
 }
 
@@ -53,11 +58,20 @@ export async function updateReminderCmd(reminderId: string, options: UpdateOptio
 
     await apiUpdateReminder(id, { minuteOffset, due, isUrgent: options.urgent })
 
+    if (options.json) {
+        const reminder = await getReminderById(id)
+        console.log(formatJson(reminder, 'reminder'))
+        return
+    }
+
     if (!isQuiet()) {
+        const urgent = formatUrgentBadge(options.urgent)
         if (minuteOffset !== undefined) {
-            console.log(`Updated reminder: ${formatDuration(minuteOffset)} before due (id:${id})`)
+            console.log(
+                `Updated reminder: ${formatDuration(minuteOffset)} before due${urgent} (id:${id})`,
+            )
         } else if (due) {
-            console.log(`Updated reminder: at ${due.date.replace('T', ' ')} (id:${id})`)
+            console.log(`Updated reminder: at ${due.date.replace('T', ' ')}${urgent} (id:${id})`)
         } else if (options.urgent !== undefined) {
             const state = options.urgent ? 'urgent' : 'not urgent'
             console.log(`Updated reminder: marked ${state} (id:${id})`)

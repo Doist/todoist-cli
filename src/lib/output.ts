@@ -207,7 +207,14 @@ const COMMENT_ESSENTIAL_FIELDS = [
     'fileAttachment',
     'hasAttachment',
 ] as const
-const REMINDER_ESSENTIAL_FIELDS = ['id', 'itemId', 'type', 'due', 'minuteOffset'] as const
+const REMINDER_ESSENTIAL_FIELDS = [
+    'id',
+    'itemId',
+    'type',
+    'due',
+    'minuteOffset',
+    'isUrgent',
+] as const
 const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
     'id',
     'itemId',

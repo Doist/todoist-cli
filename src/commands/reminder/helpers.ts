@@ -11,6 +11,10 @@ import { CliError } from '../../lib/errors.js'
 
 export type ReminderTypeFilter = 'time' | 'location'
 
+// `td reminder get` and time-only `list` rows never return location reminders,
+// so we narrow the SDK union once and reuse it across both commands.
+export type TimeReminder = Extract<Reminder, { type: 'absolute' | 'relative' }>
+
 interface ReminderLike {
     type: Reminder['type']
     minuteOffset?: number
@@ -19,7 +23,7 @@ interface ReminderLike {
 }
 
 export function formatUrgentBadge(isUrgent: boolean | undefined): string {
-    return isUrgent ? chalk.red('[urgent]') : ''
+    return isUrgent ? ` ${chalk.red('[urgent]')}` : ''
 }
 
 export function formatReminderTime(reminder: ReminderLike): string {

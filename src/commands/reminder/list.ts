@@ -8,6 +8,7 @@ import { paginate } from '../../lib/pagination.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import {
     type ReminderTypeFilter,
+    type TimeReminder,
     formatLocationReminderRow,
     formatReminderTime,
     formatUrgentBadge,
@@ -118,16 +119,13 @@ export async function listReminders(
 
     const showTask = !taskId
 
-    for (const reminder of reminders) {
+    for (const reminder of reminders as TimeReminder[]) {
         const id = chalk.dim(reminder.id)
         const type = chalk.cyan('[time]')
         const time = formatReminderTime(reminder)
-        const urgent = formatUrgentBadge(
-            'isUrgent' in reminder ? (reminder.isUrgent as boolean | undefined) : undefined,
-        )
-        const urgentSegment = urgent ? ` ${urgent}` : ''
+        const urgent = formatUrgentBadge(reminder.isUrgent)
         const task = showTask ? chalk.dim(` (task:${reminder.itemId})`) : ''
-        console.log(`${id}  ${type}${urgentSegment} ${time}${task}`)
+        console.log(`${id}  ${type}${urgent} ${time}${task}`)
     }
 
     for (const loc of locationReminders) {

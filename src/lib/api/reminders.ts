@@ -91,7 +91,21 @@ export interface UpdateReminderArgs {
 
 export async function updateReminder(id: string, args: UpdateReminderArgs): Promise<void> {
     const api = await getApi()
-    const type = args.minuteOffset !== undefined ? ('relative' as const) : ('absolute' as const)
+    // The sync command's `type` is a discriminated literal, so for urgency-only
+    // patches we read the existing reminder to preserve its type — otherwise a
+    // relative reminder would silently be re-tagged as absolute.
+    let type: 'absolute' | 'relative'
+    if (args.minuteOffset !== undefined) {
+        type = 'relative'
+    } else if (args.due !== undefined) {
+        type = 'absolute'
+    } else {
+        const existing = await api.getReminder(id)
+        if (existing.type !== 'absolute' && existing.type !== 'relative') {
+            throw new Error(`Cannot update non-time reminder ${id} via 'reminder update'`)
+        }
+        type = existing.type
+    }
     await api.sync({
         commands: [
             createCommand('reminder_update', {
