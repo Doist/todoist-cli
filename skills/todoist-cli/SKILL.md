@@ -275,7 +275,9 @@ td notification read --all --yes
 td reminder list "Plan sprint"
 td reminder list --type time
 td reminder add "Plan sprint" --before 30m
+td reminder add "Plan sprint" --at "2026-06-01 09:00" --urgent  # iOS full-screen alarm
 td reminder update id:123 --before 1h
+td reminder update id:123 --no-urgent  # toggle urgency without changing time
 td reminder delete id:123 --yes
 td reminder get id:123
 td reminder location add "Plan sprint" --name "Office" --lat 40.7128 --long -74.0060 --trigger on_enter --radius 100  # radius in meters

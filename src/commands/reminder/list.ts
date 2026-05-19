@@ -10,6 +10,7 @@ import {
     type ReminderTypeFilter,
     formatLocationReminderRow,
     formatReminderTime,
+    formatUrgentBadge,
 } from './helpers.js'
 
 interface ListOptions extends PaginatedViewOptions {
@@ -121,8 +122,12 @@ export async function listReminders(
         const id = chalk.dim(reminder.id)
         const type = chalk.cyan('[time]')
         const time = formatReminderTime(reminder)
+        const urgent = formatUrgentBadge(
+            'isUrgent' in reminder ? (reminder.isUrgent as boolean | undefined) : undefined,
+        )
+        const urgentSegment = urgent ? ` ${urgent}` : ''
         const task = showTask ? chalk.dim(` (task:${reminder.itemId})`) : ''
-        console.log(`${id}  ${type} ${time}${task}`)
+        console.log(`${id}  ${type}${urgentSegment} ${time}${task}`)
     }
 
     for (const loc of locationReminders) {

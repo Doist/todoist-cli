@@ -15,6 +15,7 @@ import { parseDateTime } from './helpers.js'
 interface AddOptions {
     before?: string
     at?: string
+    urgent?: boolean
     json?: boolean
     dryRun?: boolean
 }
@@ -69,6 +70,7 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
             Task: task.content,
             Before: options.before,
             At: options.at,
+            Urgent: options.urgent === undefined ? undefined : String(options.urgent),
         })
         return
     }
@@ -77,6 +79,7 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
         itemId: task.id,
         minuteOffset,
         due,
+        isUrgent: options.urgent,
     })
 
     if (options.json) {
@@ -86,6 +89,7 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
             type: minuteOffset !== undefined ? 'relative' : 'absolute',
             minuteOffset,
             due,
+            isUrgent: options.urgent,
             isDeleted: false,
         }
         console.log(formatJson(reminder, 'reminder'))
@@ -97,10 +101,11 @@ export async function addReminder(taskRef: string, options: AddOptions): Promise
         return
     }
 
+    const urgentSuffix = options.urgent ? ` ${chalk.red('[urgent]')}` : ''
     if (minuteOffset !== undefined) {
-        console.log(`Added reminder: ${formatDuration(minuteOffset)} before due`)
+        console.log(`Added reminder: ${formatDuration(minuteOffset)} before due${urgentSuffix}`)
     } else if (due) {
-        console.log(`Added reminder: at ${due.date.replace('T', ' ')}`)
+        console.log(`Added reminder: at ${due.date.replace('T', ' ')}${urgentSuffix}`)
     }
     console.log(chalk.dim(`ID: ${reminderId}`))
 }

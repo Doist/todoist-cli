@@ -57,6 +57,8 @@ export function registerReminderCommand(program: Command): void {
         .option('--task <ref>', 'Task reference (name or id:xxx)')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
+        .option('--urgent', 'Mark reminder as urgent (iOS full-screen alarm)')
+        .option('--no-urgent', 'Mark reminder as not urgent')
         .option('--json', 'Output the created reminder as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action(
@@ -65,6 +67,7 @@ export function registerReminderCommand(program: Command): void {
                 options: {
                     before?: string
                     at?: string
+                    urgent?: boolean
                     json?: boolean
                     dryRun?: boolean
                     task?: string
@@ -90,6 +93,8 @@ export function registerReminderCommand(program: Command): void {
         .description('Update a reminder')
         .option('--before <duration>', 'Time before due (e.g., 30m, 1h)')
         .option('--at <datetime>', 'Specific time (e.g., 2024-01-15 10:00)')
+        .option('--urgent', 'Mark reminder as urgent (iOS full-screen alarm)')
+        .option('--no-urgent', 'Mark reminder as not urgent')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {

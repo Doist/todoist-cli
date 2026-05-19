@@ -20,6 +20,7 @@ export interface Reminder {
     type: 'absolute' | 'relative' | 'location'
     due?: ReminderDue
     minuteOffset?: number
+    isUrgent?: boolean
     isDeleted: boolean
 }
 
@@ -31,6 +32,7 @@ function toReminder(r: SdkReminder): Reminder {
         due: 'due' in r && r.due ? (r.due as ReminderDue) : undefined,
         minuteOffset:
             'minuteOffset' in r ? (r as { minuteOffset: number }).minuteOffset : undefined,
+        isUrgent: 'isUrgent' in r ? (r.isUrgent as boolean | undefined) : undefined,
         isDeleted: r.isDeleted,
     }
 }
@@ -53,6 +55,7 @@ export interface AddReminderArgs {
     itemId: string
     minuteOffset?: number
     due?: ReminderDue
+    isUrgent?: boolean
 }
 
 export async function addReminder(args: AddReminderArgs): Promise<string> {
@@ -70,6 +73,7 @@ export async function addReminder(args: AddReminderArgs): Promise<string> {
                     ...pickDefined({
                         minuteOffset: args.minuteOffset,
                         due: args.due,
+                        isUrgent: args.isUrgent,
                     }),
                 },
                 tempId,
@@ -82,6 +86,7 @@ export async function addReminder(args: AddReminderArgs): Promise<string> {
 export interface UpdateReminderArgs {
     minuteOffset?: number
     due?: ReminderDue
+    isUrgent?: boolean
 }
 
 export async function updateReminder(id: string, args: UpdateReminderArgs): Promise<void> {
@@ -95,6 +100,7 @@ export async function updateReminder(id: string, args: UpdateReminderArgs): Prom
                 ...pickDefined({
                     minuteOffset: args.minuteOffset,
                     due: args.due,
+                    isUrgent: args.isUrgent,
                 }),
             }),
         ],

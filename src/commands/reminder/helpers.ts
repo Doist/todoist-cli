@@ -4,6 +4,7 @@ import {
     type LocationTrigger,
     type Reminder,
 } from '@doist/todoist-sdk'
+import chalk from 'chalk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
@@ -14,6 +15,11 @@ interface ReminderLike {
     type: Reminder['type']
     minuteOffset?: number
     due?: { date: string }
+    isUrgent?: boolean
+}
+
+export function formatUrgentBadge(isUrgent: boolean | undefined): string {
+    return isUrgent ? chalk.red('[urgent]') : ''
 }
 
 export function formatReminderTime(reminder: ReminderLike): string {
