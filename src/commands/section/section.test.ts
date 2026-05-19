@@ -290,6 +290,8 @@ describe('section reorder', () => {
         fixtures.sections.review,
         fixtures.sections.done,
     ]
+    const reorderCommandArgs = ['node', 'td', 'section', 'reorder'] as const
+    const projectArgs = ['--project', 'id:proj-work'] as const
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -311,7 +313,7 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync(['node', 'td', 'section', 'reorder', 'Review', '--position', '0']),
+            program.parseAsync([...reorderCommandArgs, 'Review', '--position', '0']),
         ).rejects.toHaveProperty('code', 'MISSING_PROJECT')
     })
 
@@ -319,15 +321,7 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await expect(
-            program.parseAsync([
-                'node',
-                'td',
-                'section',
-                'reorder',
-                'Review',
-                '--project',
-                'id:proj-work',
-            ]),
+            program.parseAsync([...reorderCommandArgs, 'Review', ...projectArgs]),
         ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
     })
 
@@ -335,14 +329,10 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             '--section',
             'Review',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '0',
         ])
@@ -360,15 +350,11 @@ describe('section reorder', () => {
 
         await expect(
             program.parseAsync([
-                'node',
-                'td',
-                'section',
-                'reorder',
+                ...reorderCommandArgs,
                 'Review',
                 '--section',
                 'Done',
-                '--project',
-                'id:proj-work',
+                ...projectArgs,
                 '--position',
                 '0',
             ]),
@@ -380,13 +366,9 @@ describe('section reorder', () => {
 
         await expect(
             program.parseAsync([
-                'node',
-                'td',
-                'section',
-                'reorder',
+                ...reorderCommandArgs,
                 'Review',
-                '--project',
-                'id:proj-work',
+                ...projectArgs,
                 '--before',
                 'Done',
                 '--position',
@@ -400,13 +382,9 @@ describe('section reorder', () => {
 
         await expect(
             program.parseAsync([
-                'node',
-                'td',
-                'section',
-                'reorder',
+                ...reorderCommandArgs,
                 'Review',
-                '--project',
-                'id:proj-work',
+                ...projectArgs,
                 '--position',
                 '1.5',
             ]),
@@ -417,13 +395,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Review',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '0',
         ])
@@ -434,19 +408,24 @@ describe('section reorder', () => {
             { id: 'sec-2', sectionOrder: 3 },
             { id: 'sec-4', sectionOrder: 4 },
         ])
+        const logLines = (consoleSpy.mock.calls as unknown[][]).map((call) => call[0])
+        expect(logLines).toEqual([
+            'Reordered "Review" (id:sec-3): position 2 → 0 of 3.',
+            'New section order:',
+            '  → 0: Review (id:sec-3)',
+            '    1: Planning (id:sec-1)',
+            '    2: In Progress (id:sec-2)',
+            '    3: Done (id:sec-4)',
+        ])
     })
 
     it('--position clamps to last when out of range', async () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Planning',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '999',
         ])
@@ -472,13 +451,9 @@ describe('section reorder', () => {
             })
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Review',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '0',
         ])
@@ -505,13 +480,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Done',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--before',
             'In Progress',
         ])
@@ -528,13 +499,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Planning',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--after',
             'Review',
         ])
@@ -552,13 +519,9 @@ describe('section reorder', () => {
 
         await expect(
             program.parseAsync([
-                'node',
-                'td',
-                'section',
-                'reorder',
+                ...reorderCommandArgs,
                 'Review',
-                '--project',
-                'id:proj-work',
+                ...projectArgs,
                 '--before',
                 'Review',
             ]),
@@ -569,13 +532,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Planning',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '2',
             '--dry-run',
@@ -597,13 +556,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'In Progress',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '1',
         ])
@@ -615,13 +570,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'In Progress',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '1',
             '--json',
@@ -642,13 +593,9 @@ describe('section reorder', () => {
         const program = createProgram()
 
         await program.parseAsync([
-            'node',
-            'td',
-            'section',
-            'reorder',
+            ...reorderCommandArgs,
             'Review',
-            '--project',
-            'id:proj-work',
+            ...projectArgs,
             '--position',
             '0',
             '--json',

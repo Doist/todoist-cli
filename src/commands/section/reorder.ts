@@ -102,11 +102,7 @@ export async function reorderSection(ref: string, options: ReorderSectionOptions
 
     if (options.dryRun) {
         console.log(`Would reorder "${target.name}": position ${oldIndex} → ${newIndex}`)
-        console.log('New section order:')
-        for (let index = 0; index < newOrder.length; index++) {
-            const marker = newOrder[index].id === target.id ? '→' : ' '
-            console.log(`  ${marker} ${index}: ${newOrder[index].name} (id:${newOrder[index].id})`)
-        }
+        printNewSectionOrder(newOrder, target.id)
         return
     }
 
@@ -121,6 +117,15 @@ export async function reorderSection(ref: string, options: ReorderSectionOptions
         console.log(
             `Reordered "${target.name}" (id:${target.id}): position ${oldIndex} → ${newIndex} of ${sections.length - 1}.`,
         )
+        printNewSectionOrder(newOrder, target.id)
+    }
+}
+
+function printNewSectionOrder(newOrder: Section[], targetId: string): void {
+    console.log('New section order:')
+    for (let index = 0; index < newOrder.length; index++) {
+        const marker = newOrder[index].id === targetId ? '→' : ' '
+        console.log(`  ${marker} ${index}: ${newOrder[index].name} (id:${newOrder[index].id})`)
     }
 }
 
