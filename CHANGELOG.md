@@ -1,3 +1,9 @@
+## [1.67.0](https://github.com/Doist/todoist-cli/compare/v1.66.0...v1.67.0) (2026-05-19)
+
+### Features
+
+* **reminder:** support urgent reminders (iOS 26) ([#351](https://github.com/Doist/todoist-cli/issues/351)) ([9ca0da5](https://github.com/Doist/todoist-cli/commit/9ca0da551b27232218d1d386bd4343e16a8e14af))
+
 ## [1.66.0](https://github.com/Doist/todoist-cli/compare/v1.65.0...v1.66.0) (2026-05-19)
 
 ### Features
