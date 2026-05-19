@@ -1,3 +1,9 @@
+## [1.66.0](https://github.com/Doist/todoist-cli/compare/v1.65.0...v1.66.0) (2026-05-19)
+
+### Features
+
+* add section reorder command ([#349](https://github.com/Doist/todoist-cli/issues/349)) ([fc87e70](https://github.com/Doist/todoist-cli/commit/fc87e7038865485c4e6bf1be7b8c337de60a3063))
+
 ## [1.65.0](https://github.com/Doist/todoist-cli/compare/v1.64.0...v1.65.0) (2026-05-18)
 
 ### Features
