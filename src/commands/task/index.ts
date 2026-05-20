@@ -163,9 +163,7 @@ Examples:
 Notes:
   --due is sent verbatim as the task's due_string. The server's due_string
   parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but
-  does not unpack some more complex clauses (i.e. "starting <date>"). For complex
-  natural-language input, prefer using quickadd, which routes through Todoist's
-  quick-add parser.`,
+  does not unpack some more complex clauses (i.e. "starting <date>").`,
         )
 
     const quickaddCmd = task

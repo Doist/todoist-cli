@@ -2781,14 +2781,13 @@ describe('task add/update --due help text', () => {
         return output
     }
 
-    it('task add --help documents the verbatim caveat and points to quickadd', async () => {
+    it('task add --help documents the verbatim caveat for --due', async () => {
         const output = await captureHelp(['task', 'add', '--help'])
 
         expect(output).toContain('--due')
         expect(output).toContain('Notes:')
         expect(output).toContain('sent verbatim')
         expect(output).toContain('"starting <date>"')
-        expect(output).toContain('quick-add parser')
     })
 
     it('task update --help documents the verbatim caveat and refers back to task add --due', async () => {
