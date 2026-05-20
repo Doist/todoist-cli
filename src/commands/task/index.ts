@@ -115,7 +115,7 @@ Examples:
         .command('add [content]')
         .description('Add a task')
         .option('--content <text>', 'Task content (legacy, prefer positional argument)')
-        .option('--due <date>', 'Due date (natural language or YYYY-MM-DD)')
+        .option('--due <date>', 'Due date (YYYY-MM-DD or simple natural language; see Notes below)')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .addOption(
             withCaseInsensitiveChoices(
@@ -157,6 +157,14 @@ Examples:
             }
             return addTask({ ...options, content })
         })
+        .addHelpText(
+            'after',
+            `
+Notes:
+  --due is sent verbatim as the task's due_string. The server's due_string
+  parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but
+  does not unpack some more complex clauses (i.e. "starting <date>").`,
+        )
 
     const quickaddCmd = task
         .command('quickadd [text]')
@@ -179,7 +187,10 @@ Examples:
         .command('update [ref]')
         .description('Update a task')
         .option('--content <text>', 'New content')
-        .option('--due <date>', 'New due date')
+        .option(
+            '--due <date>',
+            'New due date (YYYY-MM-DD or simple natural language; see Notes below)',
+        )
         .option('--no-due', 'Remove due date')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--no-deadline', 'Remove deadline')
@@ -216,6 +227,14 @@ Examples:
             }
             return updateTask(ref, options)
         })
+        .addHelpText(
+            'after',
+            `
+Notes:
+  --due is sent verbatim as the task's due_string, with the same caveats as
+  "task add --due": the server's due_string parser does not unpack some more
+  complex clauses (i.e. "starting <date>").`,
+        )
 
     const moveCmd = task
         .command('move [ref]')
