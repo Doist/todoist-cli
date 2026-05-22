@@ -6,6 +6,9 @@
 
 A command-line interface for Todoist.
 
+> [!NOTE]
+> If you have come here after upgrading your `todoist-cli` package in homebrew and is not what you were expecting, you may have been using what is now [`todoist-cli-go`](https://formulae.brew.sh/formula/todoist-cli-go). 
+
 ## Installation
 
 > ```bash
