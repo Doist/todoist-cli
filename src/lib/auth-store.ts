@@ -64,15 +64,21 @@ export type TodoistTokenStore = KeyringTokenStore<TodoistAccount>
  * `UserRecordStore` adapter. Two Todoist-specific overlays on top of the
  * defaults:
  *
- *   - `active()` short-circuits to `null` when `TODOIST_API_TOKEN` is set.
- *     The env var is the canonical override across the CLI; without this
- *     short-circuit, `td auth status` would render the stored account while
- *     `getAuthMetadata()` reports `source: 'env'` (wrong account, right
- *     diagnostic).
+ *   - `active()` / `activeBundle()` short-circuit to `null` when
+ *     `TODOIST_API_TOKEN` is set. The env var is the canonical override
+ *     across the CLI; without this short-circuit, `td auth status` would
+ *     render the stored account while `getAuthMetadata()` reports
+ *     `source: 'env'` (wrong account, right diagnostic). Both read paths must
+ *     honour it so the bundle-aware `fetchLive` path agrees with `active()`.
  *   - `accountForUser` / `matchAccount` are passed explicitly. `matchAccount`
  *     delegates to `matchUserRef` so the keyring-store path and the
  *     config-driven `findUserByRef` path share one matcher (case-insensitive
  *     email + trim).
+ *
+ * Built with `Object.assign(Object.create(inner), …)` (the same pattern as
+ * `withUserRefAware()`) so every method other than the two env-aware reads is
+ * inherited from `inner` via the prototype chain — a future cli-core method
+ * addition resolves automatically instead of being silently dropped.
  */
 export function createTodoistTokenStore(): TodoistTokenStore {
     const inner = createKeyringTokenStore<TodoistAccount>({
@@ -83,21 +89,11 @@ export function createTodoistTokenStore(): TodoistTokenStore {
         matchAccount: (account: TodoistAccount, ref: AccountRef) =>
             matchUserRef({ id: account.id, email: account.email }, ref),
     })
-    return {
-        active: async (ref) => {
-            if (process.env[TOKEN_ENV_VAR]) return null
-            return inner.active(ref)
-        },
-        set: (account, token) => inner.set(account, token),
-        setBundle: (account, bundle, options) => inner.setBundle(account, bundle, options),
-        activeBundle: async (ref) => {
-            if (process.env[TOKEN_ENV_VAR]) return null
-            return inner.activeBundle(ref)
-        },
-        clear: (ref) => inner.clear(ref),
-        list: () => inner.list(),
-        setDefault: (ref) => inner.setDefault(ref),
-        getLastStorageResult: () => inner.getLastStorageResult(),
-        getLastClearResult: () => inner.getLastClearResult(),
+    function envTokenSet(): boolean {
+        return Boolean(process.env[TOKEN_ENV_VAR])
     }
+    return Object.assign(Object.create(inner) as TodoistTokenStore, {
+        active: async (ref?: AccountRef) => (envTokenSet() ? null : inner.active(ref)),
+        activeBundle: async (ref?: AccountRef) => (envTokenSet() ? null : inner.activeBundle(ref)),
+    })
 }
