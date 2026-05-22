@@ -1,9 +1,10 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { type BillingViewOptions, formatListing, outputMachine } from './format.js'
+import { type BillingViewOptions, formatListing, outputMachine, resolveLocale } from './format.js'
 
 export async function viewPlan(options: BillingViewOptions = {}): Promise<void> {
     const api = await getApi()
+    const locale = await resolveLocale(api, options)
     const details = await api.getProPlanDetails()
 
     if (outputMachine(details, options)) return
@@ -17,7 +18,7 @@ export async function viewPlan(options: BillingViewOptions = {}): Promise<void> 
         console.log('')
         console.log(chalk.bold('  Prices'))
         for (const listing of details.priceList) {
-            console.log(`    ${formatListing(listing)}`)
+            console.log(`    ${formatListing(listing, locale)}`)
         }
     }
 }

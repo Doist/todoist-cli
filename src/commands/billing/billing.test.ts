@@ -12,6 +12,7 @@ vi.mock('../../lib/api/core.js', async (importOriginal) => {
 import { getApi } from '../../lib/api/core.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { resolveLocale } from './format.js'
 import { registerBillingCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -30,6 +31,7 @@ describe('billing subscription', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getUser.mockResolvedValue({ lang: 'en' })
     })
 
     it('is the default subcommand and renders the subscription summary', async () => {
@@ -41,6 +43,8 @@ describe('billing subscription', () => {
         await program.parseAsync(['node', 'td', 'billing'])
 
         expect(mockApi.getSubscriptionInfo).toHaveBeenCalledTimes(1)
+        // Human output resolves the user's locale for money formatting.
+        expect(mockApi.getUser).toHaveBeenCalledTimes(1)
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Plan:               pro')
         expect(output).toContain('Status:             autorenew')
@@ -60,6 +64,8 @@ describe('billing subscription', () => {
 
         const output = consoleSpy.mock.calls[0][0] as string
         expect(JSON.parse(output)).toEqual(fixtures.billing.subscription)
+        // Machine output dumps the raw payload, so it must not pay for getUser.
+        expect(mockApi.getUser).not.toHaveBeenCalled()
         consoleSpy.mockRestore()
     })
 
@@ -106,6 +112,7 @@ describe('billing plan', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getUser.mockResolvedValue({ lang: 'en' })
     })
 
     it('renders pro plan details', async () => {
@@ -143,6 +150,7 @@ describe('billing prices', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getUser.mockResolvedValue({ lang: 'en' })
     })
 
     it('renders pro and teams price listings', async () => {
@@ -168,6 +176,7 @@ describe('billing pricing', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
+        mockApi.getUser.mockResolvedValue({ lang: 'en' })
     })
 
     it('formats minor-unit numbers as money and lists version entries', async () => {
@@ -196,5 +205,25 @@ describe('billing pricing', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('pro (USD): $4/mo, $29/yr')
         consoleSpy.mockRestore()
+    })
+})
+
+describe('resolveLocale', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = createMockApi()
+    })
+
+    it('maps the user language to a BCP-47 tag (pt_BR → pt-BR)', async () => {
+        mockApi.getUser.mockResolvedValue({ lang: 'pt_BR' })
+        expect(await resolveLocale(mockApi, {})).toBe('pt-BR')
+    })
+
+    it('skips the getUser fetch for machine output', async () => {
+        expect(await resolveLocale(mockApi, { json: true })).toBeUndefined()
+        expect(await resolveLocale(mockApi, { ndjson: true })).toBeUndefined()
+        expect(mockApi.getUser).not.toHaveBeenCalled()
     })
 })

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { type BillingViewOptions, formatMoney, outputMachine } from './format.js'
+import { type BillingViewOptions, formatMoney, outputMachine, resolveLocale } from './format.js'
 
 interface PricingOptions extends BillingViewOptions {
     formatted?: boolean
@@ -8,6 +8,7 @@ interface PricingOptions extends BillingViewOptions {
 
 export async function viewPricing(options: PricingOptions = {}): Promise<void> {
     const api = await getApi()
+    const locale = await resolveLocale(api, options)
     const pricing = await api.getPricing({ formatted: options.formatted })
 
     if (outputMachine(pricing, options)) return
@@ -30,8 +31,8 @@ export async function viewPricing(options: PricingOptions = {}): Promise<void> {
         console.log(chalk.bold(`  ${version}`))
         for (const [plan, currencies] of Object.entries(plans)) {
             for (const [currency, terms] of Object.entries(currencies)) {
-                const monthly = formatTerm(terms.monthly, currency)
-                const yearly = formatTerm(terms.yearly, currency)
+                const monthly = formatTerm(terms.monthly, currency, locale)
+                const yearly = formatTerm(terms.yearly, currency, locale)
                 console.log(`    ${plan} (${currency.toUpperCase()}): ${monthly}/mo, ${yearly}/yr`)
             }
         }
@@ -42,6 +43,6 @@ export async function viewPricing(options: PricingOptions = {}): Promise<void> {
  * Pricing amounts are minor units (numbers) by default, or pre-formatted
  * localized strings when the endpoint is called with `--formatted`.
  */
-function formatTerm(value: number | string, currency: string): string {
-    return typeof value === 'number' ? formatMoney(value, currency) : value
+function formatTerm(value: number | string, currency: string, locale?: string): string {
+    return typeof value === 'number' ? formatMoney(value, currency, locale) : value
 }

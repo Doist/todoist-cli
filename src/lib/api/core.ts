@@ -109,6 +109,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
         updateApp: { text: 'Updating app...', color: 'yellow' },
+        // Billing — all billing reads share one label so a command that also
+        // fetches the user (for locale) reads as a single spinner.
+        getSubscriptionInfo: { text: 'Loading billing...', color: 'blue' },
+        getProPlanDetails: { text: 'Loading billing...', color: 'blue' },
+        getPrices: { text: 'Loading billing...', color: 'blue' },
+        getPricing: { text: 'Loading billing...', color: 'blue' },
         // Folders
         getFolders: { text: 'Loading folders...', color: 'blue' },
         getFolder: { text: 'Loading folder...', color: 'blue' },
