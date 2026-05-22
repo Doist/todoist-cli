@@ -4,13 +4,11 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../lib/api/core.js'
+import { setupApiMock } from '../test-support/api-mock.js'
 import { fixtures } from '../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerGoalCommand } from './goal.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerGoalCommand)
@@ -21,8 +19,7 @@ describe('goal list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows "No goals found" when empty', async () => {
@@ -75,8 +72,7 @@ describe('goal view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows goal details and linked tasks', async () => {
@@ -144,8 +140,7 @@ describe('goal create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates a goal', async () => {
@@ -192,8 +187,7 @@ describe('goal update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates name', async () => {
@@ -306,8 +300,7 @@ describe('goal delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows dry-run without --yes', async () => {
@@ -349,8 +342,7 @@ describe('goal complete/uncomplete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('completes a goal', async () => {

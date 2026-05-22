@@ -9,7 +9,8 @@ vi.mock('../../lib/api/core.js', () => ({
 }))
 
 import { getApi } from '../../lib/api/core.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerCommentCommand } from './index.js'
 
@@ -37,8 +38,7 @@ describe('comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves task and lists comments', async () => {
@@ -130,8 +130,7 @@ describe('comment add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds comment to task', async () => {
@@ -184,8 +183,7 @@ describe('comment delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -236,8 +234,7 @@ describe('comment update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -322,8 +319,7 @@ describe('comment add with attachment', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('uploads file and attaches to comment', async () => {
@@ -459,8 +455,7 @@ describe('comment list with attachments', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows [file] marker for comments with attachments', async () => {
@@ -578,8 +573,7 @@ describe('comment view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -851,8 +845,7 @@ describe('project comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists comments on a project with --project flag', async () => {
@@ -905,8 +898,7 @@ describe('comment add with --stdin', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reads content from stdin with --stdin flag', async () => {
@@ -999,8 +991,7 @@ describe('comment add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created comment as JSON', async () => {
@@ -1068,8 +1059,7 @@ describe('comment update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated comment as JSON', async () => {
@@ -1111,8 +1101,7 @@ describe('project comment add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds comment to project with --project flag', async () => {
@@ -1189,8 +1178,7 @@ describe('comment --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('comment add --dry-run previews without calling API', async () => {

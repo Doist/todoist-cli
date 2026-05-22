@@ -5,12 +5,12 @@ vi.mock('../lib/api/core.js', () => ({
     getCurrentUserId: vi.fn(),
 }))
 
-import { getApi, getCurrentUserId } from '../lib/api/core.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { getCurrentUserId } from '../lib/api/core.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerActivityCommand } from './activity.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockGetCurrentUserId = vi.mocked(getCurrentUserId)
 
 function createProgram() {
@@ -23,8 +23,7 @@ describe('activity command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockGetCurrentUserId.mockResolvedValue('user-123')
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })

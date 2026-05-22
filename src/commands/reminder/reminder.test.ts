@@ -16,7 +16,6 @@ vi.mock('../../lib/api/reminders.js', () => ({
     deleteLocationReminder: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import {
     addLocationReminder,
     addReminder,
@@ -30,10 +29,10 @@ import {
 } from '../../lib/api/reminders.js'
 import { registerReminderCommand } from './index.js'
 
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchReminders = vi.mocked(fetchReminders)
 const mockAddReminder = vi.mocked(addReminder)
 const mockUpdateReminder = vi.mocked(updateReminder)
@@ -53,8 +52,7 @@ describe('reminder list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists reminders for a task', async () => {
@@ -354,8 +352,7 @@ describe('reminder add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created reminder as JSON with --before', async () => {
@@ -421,8 +418,7 @@ describe('reminder add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds reminder with --before offset', async () => {
@@ -873,8 +869,7 @@ describe('reminder --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reminder add --dry-run previews without calling API', async () => {
@@ -1045,8 +1040,7 @@ describe('reminder location add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     function setupTask() {

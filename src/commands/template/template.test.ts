@@ -20,8 +20,9 @@ vi.mock('../../lib/refs.js', async (importOriginal) => {
 
 import { getApi } from '../../lib/api/core.js'
 import { resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerTemplateCommand } from './index.js'
 
@@ -39,8 +40,7 @@ describe('template', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockResolveProjectRef.mockResolvedValue(fixtures.projects.work)
     })

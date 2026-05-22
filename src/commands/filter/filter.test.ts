@@ -11,14 +11,13 @@ vi.mock('../../lib/api/filters.js', () => ({
     deleteFilter: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
 import { makeFilter } from '../../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerFilterCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 const mockAddFilter = vi.mocked(addFilter)
 const mockUpdateFilter = vi.mocked(updateFilter)
@@ -470,8 +469,7 @@ describe('filter show', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows tasks matching filter', async () => {
@@ -644,8 +642,7 @@ describe('filter view (alias)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('works via "view" subcommand', async () => {
@@ -696,8 +693,7 @@ describe('filter URL resolution', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves filter by URL in view command', async () => {

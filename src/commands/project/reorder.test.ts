@@ -9,13 +9,12 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
     reorderProjects: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { reorderProjects } from '../../lib/api/projects-sync.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockReorderProjects = vi.mocked(reorderProjects)
 
 function createProgram() {
@@ -41,8 +40,7 @@ describe('project reorder', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

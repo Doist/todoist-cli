@@ -5,12 +5,10 @@ vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../lib/api/core.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerAttachmentCommand } from './attachment.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerAttachmentCommand)
@@ -59,8 +57,7 @@ describe('attachment view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('calls api.viewAttachment with the URL', async () => {

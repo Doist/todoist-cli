@@ -16,6 +16,7 @@ vi.mock('../../lib/browser.js', () => ({
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
@@ -24,8 +25,6 @@ const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerProjectCommand)
@@ -37,8 +36,7 @@ describe('project list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -176,8 +174,7 @@ describe('project archived', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -257,8 +254,7 @@ describe('project view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -470,8 +466,7 @@ describe('project list grouping', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -627,8 +622,7 @@ describe('project collaborators', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -803,8 +797,7 @@ describe('project delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows dry-run without --yes', async () => {
@@ -899,8 +892,7 @@ describe('project create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1025,8 +1017,7 @@ describe('project create --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1068,8 +1059,7 @@ describe('project archive', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1131,8 +1121,7 @@ describe('project unarchive', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1194,8 +1183,7 @@ describe('project browse', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1235,8 +1223,7 @@ describe('project move', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -1585,8 +1572,7 @@ describe('project --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('project create --dry-run previews without calling API', async () => {
@@ -1996,8 +1982,7 @@ describe('project progress', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -2058,8 +2043,7 @@ describe('project health', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -2156,8 +2140,7 @@ describe('project health-context', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -2230,8 +2213,7 @@ describe('project activity-stats', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -2352,8 +2334,7 @@ describe('project analyze-health', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

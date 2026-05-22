@@ -8,13 +8,12 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
     moveProjectParent: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockMoveProjectParent = vi.mocked(moveProjectParent)
 
 function createProgram() {
@@ -27,8 +26,7 @@ describe('project update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -217,8 +215,7 @@ describe('project update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 
@@ -261,8 +258,7 @@ describe('project update --parent / --no-parent', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

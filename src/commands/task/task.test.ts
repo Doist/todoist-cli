@@ -11,13 +11,13 @@ vi.mock('../../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-import { completeTaskForever, getApi, rescheduleTask } from '../../lib/api/core.js'
+import { completeTaskForever, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockCompleteTaskForever = vi.mocked(completeTaskForever)
 const mockRescheduleTask = vi.mocked(rescheduleTask)
 const mockOpenInBrowser = vi.mocked(openInBrowser)
@@ -31,8 +31,7 @@ describe('task move command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('throws error when no destination flags provided', async () => {
@@ -264,8 +263,7 @@ describe('task view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves task by name and shows details', async () => {
@@ -365,8 +363,7 @@ describe('task complete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('marks task as complete', async () => {
@@ -484,8 +481,7 @@ describe('task uncomplete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reopens completed task', async () => {
@@ -537,8 +533,7 @@ describe('task delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows dry-run without --yes', async () => {
@@ -575,8 +570,7 @@ describe('task add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates task with positional content', async () => {
@@ -1018,8 +1012,7 @@ describe('task update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates task content', async () => {
@@ -1159,8 +1152,7 @@ describe('task list --label', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('filters tasks by label', async () => {
@@ -1272,8 +1264,7 @@ describe('task list --parent', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('filters subtasks by parent id', async () => {
@@ -1398,8 +1389,7 @@ describe('task add --assignee', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates task with assignee using id:', async () => {
@@ -1457,8 +1447,7 @@ describe('task update --assignee', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates task with assignee using id:', async () => {
@@ -1518,8 +1507,7 @@ describe('task add --deadline', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates task with deadline', async () => {
@@ -1592,8 +1580,7 @@ describe('task update --deadline', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates task with deadline', async () => {
@@ -1644,8 +1631,7 @@ describe('task update --no-due', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('removes due date with --no-due', async () => {
@@ -1673,8 +1659,7 @@ describe('task update --no-labels', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('removes all labels with --no-labels', async () => {
@@ -1727,8 +1712,7 @@ describe('task add/update --uncompletable', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates task with isUncompletable=true when --uncompletable flag is passed', async () => {
@@ -1827,8 +1811,7 @@ describe('task add/update --order', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates task with order=0 when --order 0 is passed', async () => {
@@ -1991,8 +1974,7 @@ describe('task list --filter', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('uses getTasksByFilter when --filter is provided', async () => {
@@ -2128,8 +2110,7 @@ describe('task browse', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('opens task in browser by name', async () => {
@@ -2169,8 +2150,7 @@ describe('task add with --stdin', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reads description from stdin with --stdin flag', async () => {
@@ -2250,8 +2230,7 @@ describe('task update with --stdin', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reads description from stdin with --stdin flag', async () => {
@@ -2350,8 +2329,7 @@ describe('task add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created task as JSON', async () => {
@@ -2399,8 +2377,7 @@ describe('task update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated task as JSON', async () => {
@@ -2444,8 +2421,7 @@ describe('task reschedule', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reschedules a task with a new date', async () => {
@@ -2595,8 +2571,7 @@ describe('task --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('task add --dry-run previews without calling API', async () => {

@@ -15,14 +15,13 @@ vi.mock('../../lib/config.js', () => ({
     writeConfig: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerWorkspaceCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 const mockReadConfig = vi.mocked(readConfig)
@@ -56,13 +55,11 @@ const mockWorkspaces = [
 ]
 
 describe('workspace list', () => {
-    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -134,13 +131,11 @@ describe('workspace list', () => {
 })
 
 describe('workspace view', () => {
-    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -245,8 +240,7 @@ describe('workspace projects', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
@@ -447,8 +441,7 @@ describe('workspace users', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -662,8 +655,7 @@ describe('workspace insights', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces as never)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -785,8 +777,7 @@ describe('workspace create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -899,8 +890,7 @@ describe('workspace update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -1020,8 +1010,7 @@ describe('workspace delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -1069,8 +1058,7 @@ describe('workspace user-tasks', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockApi.getWorkspaceUsers.mockResolvedValue({
             workspaceUsers: [
@@ -1208,8 +1196,7 @@ describe('workspace activity', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -1262,8 +1249,7 @@ describe('workspace use (default workspace)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})

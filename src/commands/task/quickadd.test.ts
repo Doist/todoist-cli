@@ -10,14 +10,13 @@ vi.mock('../../lib/stdin.js', () => ({
     readStdin: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { readStdin } from '../../lib/stdin.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
@@ -30,8 +29,7 @@ describe('task quickadd command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         resetGlobalArgs()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('calls quickAddTask with positional text', async () => {

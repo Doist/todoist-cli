@@ -9,13 +9,12 @@ vi.mock('../../lib/auth.js', () => ({
     getAuthMetadata: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerBackupCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
@@ -27,8 +26,7 @@ describe('backup list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockGetAuthMetadata.mockResolvedValue({
             authMode: 'read-write',
             authScope: 'data:read_write,data:delete,project:delete,backups:read',
@@ -171,8 +169,7 @@ describe('backup download', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockGetAuthMetadata.mockResolvedValue({
             authMode: 'read-write',
             authScope: 'data:read_write,data:delete,project:delete,backups:read',

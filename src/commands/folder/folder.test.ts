@@ -9,13 +9,12 @@ vi.mock('../../lib/api/workspaces.js', () => ({
     fetchWorkspaceFolders: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerFolderCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 
@@ -49,8 +48,7 @@ describe('folder list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -123,8 +121,7 @@ describe('folder create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
@@ -255,8 +252,7 @@ describe('folder update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
@@ -342,8 +338,7 @@ describe('folder delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
@@ -393,8 +388,7 @@ describe('folder view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
@@ -469,8 +463,7 @@ describe('folder workspace auto-detection', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])

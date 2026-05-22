@@ -5,12 +5,10 @@ vi.mock('../lib/api/core.js', () => ({
     getCurrentUserId: vi.fn().mockResolvedValue('current-user-123'),
 }))
 
-import { getApi } from '../lib/api/core.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerUpcomingCommand } from './upcoming.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerUpcomingCommand)
@@ -28,8 +26,7 @@ describe('upcoming command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

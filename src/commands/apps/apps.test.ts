@@ -18,14 +18,14 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
     }
 })
 
-import { getApi, wrapApiError } from '../../lib/api/core.js'
+import { wrapApiError } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerAppsCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
@@ -82,8 +82,7 @@ describe('apps list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists apps with displayName (id:N), Client ID, and a description line', async () => {
@@ -154,8 +153,7 @@ describe('apps view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves id:N directly via getApp without listing', async () => {
@@ -399,8 +397,7 @@ describe('apps view — enriched fields', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.getAppSecrets.mockResolvedValue(SECRETS)
         mockApi.getAppVerificationToken.mockResolvedValue(VERIFICATION)
@@ -575,8 +572,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('errors when both --add- and --remove-oauth-redirect are passed', async () => {

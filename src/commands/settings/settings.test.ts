@@ -24,8 +24,9 @@ import {
     type UserSettings,
     updateUserSettings,
 } from '../../lib/api/user-settings.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
 import { makeFilter } from '../../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import {
     DATE_FORMAT_CHOICES,
@@ -141,8 +142,7 @@ describe('settings view - start page name resolution', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves project name in text output', async () => {

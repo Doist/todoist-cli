@@ -4,12 +4,10 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerLabelCommand } from './index.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerLabelCommand)
@@ -20,8 +18,7 @@ describe('label list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists all labels', async () => {
@@ -99,8 +96,7 @@ describe('label list --search', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('searches labels by name', async () => {
@@ -173,8 +169,7 @@ describe('label rename-shared', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('renames a shared label', async () => {
@@ -274,8 +269,7 @@ describe('label remove-shared', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('removes a shared label with --yes', async () => {
@@ -352,8 +346,7 @@ describe('label create --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created label as JSON', async () => {
@@ -383,8 +376,7 @@ describe('label update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated label as JSON', async () => {
@@ -427,8 +419,7 @@ describe('label create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates label with name', async () => {
@@ -515,8 +506,7 @@ describe('label delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows dry-run without --yes', async () => {
@@ -602,8 +592,7 @@ describe('label update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates label name', async () => {
@@ -777,8 +766,7 @@ describe('label URL resolution', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves label by URL in delete command', async () => {
@@ -874,8 +862,7 @@ describe('label view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows label metadata and tasks', async () => {
@@ -1038,8 +1025,7 @@ describe('shared labels', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     describe('label list', () => {
@@ -1246,8 +1232,7 @@ describe('label --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('label create --dry-run previews without calling API', async () => {

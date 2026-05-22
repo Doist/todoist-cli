@@ -21,14 +21,13 @@ vi.mock('../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
+import { setupApiMock } from '../test-support/api-mock.js'
 import { makeFilter } from '../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerViewCommand } from './view.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 
 function createProgram() {
@@ -41,8 +40,7 @@ describe('view command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     })
 

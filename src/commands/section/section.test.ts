@@ -4,13 +4,11 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerSectionCommand } from './index.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
     return createTestProgram(registerSectionCommand)
@@ -36,8 +34,7 @@ describe('section list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves project and lists sections', async () => {
@@ -199,8 +196,7 @@ describe('section create --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created section as JSON', async () => {
@@ -241,8 +237,7 @@ describe('section update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated section as JSON', async () => {
@@ -292,8 +287,7 @@ describe('section reorder', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockApi.getProject.mockResolvedValue(fixtures.projects.work)
         mockApi.getSections.mockImplementation(async () => ({
             results: [...sections],
@@ -614,8 +608,7 @@ describe('section create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates section in project', async () => {
@@ -675,8 +668,7 @@ describe('section delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -737,8 +729,7 @@ describe('section update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -787,8 +778,7 @@ describe('section --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('section create --dry-run previews without calling API', async () => {
@@ -895,8 +885,7 @@ describe('section archive', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -956,8 +945,7 @@ describe('section unarchive', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
