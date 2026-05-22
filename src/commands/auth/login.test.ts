@@ -101,8 +101,6 @@ describe('attachTodoistLoginCommand: onSuccess output formatting', () => {
     })
 
     afterEach(() => {
-        consoleSpy.mockRestore()
-        errorSpy.mockRestore()
         capturedAttachOptions.length = 0
     })
 

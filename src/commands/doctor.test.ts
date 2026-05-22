@@ -132,7 +132,6 @@ describe('doctor command', () => {
     })
 
     afterEach(() => {
-        consoleSpy.mockRestore()
         process.exitCode = undefined
         if (originalProcessVersion) {
             Object.defineProperty(process, 'version', originalProcessVersion)

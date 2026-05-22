@@ -117,8 +117,6 @@ describe('auth command', () => {
     })
 
     afterEach(() => {
-        consoleSpy.mockRestore()
-        errorSpy.mockRestore()
         process.exitCode = undefined
     })
 
