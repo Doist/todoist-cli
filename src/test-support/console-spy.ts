@@ -8,3 +8,11 @@ export function mockConsoleLog(): MockInstance {
 export function mockConsoleError(): MockInstance {
     return vi.spyOn(console, 'error').mockImplementation(() => {})
 }
+
+export function mockProcessStdout(): MockInstance {
+    return vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+}
+
+export function mockProcessStderr(): MockInstance {
+    return vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+}

@@ -12,7 +12,7 @@ vi.mock('../../lib/config.js', () => ({
 
 import { openInBrowser } from '../../lib/browser.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerHelpCenterCommand } from './index.js'
 
@@ -482,7 +482,7 @@ describe('hc command', () => {
     })
 
     it('outputs the raw HTML body with --html', async () => {
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
         fetchSpy.mockResolvedValue(
             createJsonResponse({
                 article: {

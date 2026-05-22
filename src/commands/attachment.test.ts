@@ -6,7 +6,11 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
+import {
+    mockConsoleLog,
+    mockProcessStderr,
+    mockProcessStdout,
+} from '../test-support/console-spy.js'
 import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerAttachmentCommand } from './attachment.js'
@@ -62,8 +66,8 @@ describe('attachment view', () => {
     })
 
     it('calls api.viewAttachment with the URL', async () => {
-        vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-        vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        mockProcessStdout()
+        mockProcessStderr()
         mockApi.viewAttachment.mockResolvedValue(
             createMockResponse({ contentType: 'text/plain', body: 'hello' }),
         )
@@ -82,8 +86,8 @@ describe('attachment view', () => {
 
     describe('text files', () => {
         it('outputs text content to stdout without trailing newline', async () => {
-            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-            const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            const stdoutSpy = mockProcessStdout()
+            const stderrSpy = mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'Hello, world!' }),
             )
@@ -103,8 +107,8 @@ describe('attachment view', () => {
         })
 
         it('handles JSON files as text', async () => {
-            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            const stdoutSpy = mockProcessStdout()
+            mockProcessStderr()
             const jsonContent = '{"key": "value"}'
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'application/json', body: jsonContent }),
@@ -126,7 +130,7 @@ describe('attachment view', () => {
     describe('image files', () => {
         it('outputs base64 for PNG files', async () => {
             const consoleSpy = mockConsoleLog()
-            const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            const stderrSpy = mockProcessStderr()
             const imageData = new Uint8Array([137, 80, 78, 71]).buffer
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'image/png', body: imageData }),
@@ -150,7 +154,7 @@ describe('attachment view', () => {
     describe('binary files', () => {
         it('outputs base64 for PDF files', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             const pdfData = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'application/pdf', body: pdfData }),
@@ -173,7 +177,7 @@ describe('attachment view', () => {
     describe('--json output', () => {
         it('returns JSON with utf-8 encoding for text files', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'hello world' }),
             )
@@ -201,7 +205,7 @@ describe('attachment view', () => {
 
         it('returns JSON with base64 encoding for binary files', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             const pdfData = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'application/pdf', body: pdfData }),
@@ -231,7 +235,7 @@ describe('attachment view', () => {
     describe('content-type handling', () => {
         it('strips charset from content-type', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({
                     contentType: 'text/plain; charset=utf-8',
@@ -255,7 +259,7 @@ describe('attachment view', () => {
 
         it('falls back to URL extension when content-type is application/octet-stream', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({
                     contentType: 'application/octet-stream',
@@ -343,7 +347,7 @@ describe('attachment view', () => {
     describe('charset handling', () => {
         it('uses declared charset for text decoding', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({
                     contentType: 'text/plain; charset=utf-8',
@@ -368,7 +372,7 @@ describe('attachment view', () => {
 
         it('reports declared charset in encoding field', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({
                     contentType: 'text/plain; charset=iso-8859-1',
@@ -394,7 +398,7 @@ describe('attachment view', () => {
     describe('filename handling', () => {
         it('decodes URL-encoded filenames', async () => {
             const consoleSpy = mockConsoleLog()
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'content' }),
             )
@@ -416,8 +420,8 @@ describe('attachment view', () => {
 
     describe('default subcommand', () => {
         it('td attachment <url> works as td attachment view <url>', async () => {
-            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-            vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+            mockProcessStdout()
+            mockProcessStderr()
             mockApi.viewAttachment.mockResolvedValue(
                 createMockResponse({ contentType: 'text/plain', body: 'content' }),
             )

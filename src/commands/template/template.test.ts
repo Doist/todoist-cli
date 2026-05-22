@@ -21,7 +21,7 @@ vi.mock('../../lib/refs.js', async (importOriginal) => {
 import { getApi } from '../../lib/api/core.js'
 import { resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
@@ -50,7 +50,7 @@ describe('template', () => {
         it('exports template as CSV to stdout', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('task,priority\nBuy milk,4')
-            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            const stdoutSpy = mockProcessStdout()
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', 'Work'])
 
@@ -87,7 +87,7 @@ describe('template', () => {
         it('passes --relative-dates flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            mockProcessStdout()
 
             await program.parseAsync([
                 'node',
@@ -118,7 +118,7 @@ describe('template', () => {
         it('accepts --project flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            mockProcessStdout()
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', '--project', 'Work'])
 

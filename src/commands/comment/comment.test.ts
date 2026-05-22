@@ -10,7 +10,11 @@ vi.mock('../../lib/api/core.js', () => ({
 
 import { getApi } from '../../lib/api/core.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import {
+    mockConsoleLog,
+    mockProcessStderr,
+    mockProcessStdout,
+} from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerCommentCommand } from './index.js'
@@ -708,7 +712,7 @@ describe('comment view', () => {
     it('writes image hint to stderr when --json is used with an image attachment', async () => {
         const program = createProgram()
         const consoleSpy = mockConsoleLog()
-        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        const stderrSpy = mockProcessStderr()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -737,7 +741,7 @@ describe('comment view', () => {
     it('does not write to stderr when --json is used with a non-image attachment', async () => {
         const program = createProgram()
         mockConsoleLog()
-        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        const stderrSpy = mockProcessStderr()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -1199,7 +1203,7 @@ describe('comment --dry-run', () => {
 describe('comment (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'comment'])

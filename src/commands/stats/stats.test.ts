@@ -6,7 +6,7 @@ vi.mock('../../lib/api/stats.js', () => ({
 }))
 
 import { fetchProductivityStats, updateGoals } from '../../lib/api/stats.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerStatsCommand } from './index.js'
 
@@ -172,7 +172,7 @@ describe('stats goals', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'goals'])
@@ -239,7 +239,7 @@ describe('stats vacation', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'vacation'])

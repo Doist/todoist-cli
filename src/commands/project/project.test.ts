@@ -17,7 +17,7 @@ import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
@@ -1187,7 +1187,7 @@ describe('project move', () => {
 
     it('shows help when no ref provided', async () => {
         const program = createProgram()
-        vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'project', 'move'])
@@ -1500,7 +1500,7 @@ describe('project move', () => {
 describe('project (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'project'])

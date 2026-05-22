@@ -14,7 +14,7 @@ vi.mock('../../lib/browser.js', () => ({
 import { completeTaskForever, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
@@ -2631,7 +2631,7 @@ describe('task --dry-run', () => {
 describe('task (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'task'])
@@ -2648,7 +2648,7 @@ describe('task (no args)', () => {
 describe('task add/update --due help text', () => {
     async function captureHelp(args: string[]): Promise<string> {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         await expect(program.parseAsync(['node', 'td', ...args])).rejects.toThrow()
 

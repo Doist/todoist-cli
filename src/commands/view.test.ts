@@ -23,7 +23,7 @@ vi.mock('../lib/browser.js', () => ({
 
 import { fetchFilters } from '../lib/api/filters.js'
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
+import { mockConsoleLog, mockProcessStdout } from '../test-support/console-spy.js'
 import { makeFilter } from '../test-support/fixtures.js'
 import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
@@ -314,7 +314,7 @@ describe('view command', () => {
 
     it('shows route mapping and passthrough examples in view help', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         await expect(program.parseAsync(['node', 'td', 'view', '--help'])).rejects.toThrow()
         const help = stdoutSpy.mock.calls.map((call) => String(call[0])).join('')
