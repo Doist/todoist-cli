@@ -119,4 +119,22 @@ describe('resolveAuthScope', () => {
             resolveAuthScope({ readOnly: true, additionalScopes: ['app-management'] }),
         ).toContain('dev:app_console')
     })
+
+    it('composes a mixed read-only scope set in canonical order', () => {
+        // The higher-value case: --read-only --additional-scopes=app-management,billing.
+        // parseScopesOption canonicalises the order; resolveAuthScope must then
+        // emit the read-only base + each scope's read-only variant where it has one.
+        const flags = parseScopesOption('billing,app-management')
+        expect(flags).toEqual(['app-management', 'billing'])
+        expect(resolveAuthScope({ readOnly: true, additionalScopes: flags })).toBe(
+            'data:read,dev:app_console,billing:read',
+        )
+    })
+
+    it('composes the same mixed set as read-write by default', () => {
+        const flags = parseScopesOption('billing,app-management')
+        expect(resolveAuthScope({ additionalScopes: flags })).toBe(
+            'data:read_write,data:delete,project:delete,dev:app_console,billing:read_write',
+        )
+    })
 })

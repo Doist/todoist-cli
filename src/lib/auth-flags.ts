@@ -12,10 +12,14 @@ import { AUTH_FLAG_ORDER, type AuthFlag } from './config.js'
  *
  * When `metadata.authFlags` is missing (older configs, env-var tokens,
  * manual `td auth token` logins) we treat it as "no flags" — the base login.
+ * We still honour a read-only `authMode` even when `auth_flags` is unset
+ * (migrated v1 configs), so the suggested command keeps the user read-only
+ * rather than silently widening them to read-write.
  */
 export function buildReloginCommand(metadata: AuthMetadata, requiredFlag: AuthFlag): string {
     const existing = metadata.authFlags ?? []
     const merged = new Set<AuthFlag>([...existing, requiredFlag])
+    if (metadata.authMode === 'read-only') merged.add('read-only')
     const orderedFlags = AUTH_FLAG_ORDER.filter((flag) => merged.has(flag))
     const parts = ['td auth login']
     if (orderedFlags.includes('read-only')) {

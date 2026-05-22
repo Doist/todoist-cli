@@ -29,6 +29,15 @@ describe('buildReloginCommand', () => {
         )
     })
 
+    it('honours a read-only authMode even when authFlags is unset (migrated v1 config)', () => {
+        expect(
+            buildReloginCommand(
+                metadata({ authMode: 'read-only', authFlags: undefined }),
+                'billing',
+            ),
+        ).toBe('td auth login --read-only --additional-scopes=billing')
+    })
+
     it('does not duplicate the required flag if it is already present', () => {
         expect(buildReloginCommand(metadata({ authFlags: ['backups'] }), 'backups')).toBe(
             'td auth login --additional-scopes=backups',

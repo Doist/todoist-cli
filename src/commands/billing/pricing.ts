@@ -22,6 +22,10 @@ export async function viewPricing(options: PricingOptions = {}): Promise<void> {
     console.log(`  Session Business:   ${sessionBiz}`)
 
     for (const [version, plans] of Object.entries(versions)) {
+        // Version entries are objects (plan → currency → terms); skip any
+        // future top-level scalar metadata the SDK might add so it isn't
+        // rendered as if it were a pricing version.
+        if (typeof plans !== 'object' || plans === null) continue
         console.log('')
         console.log(chalk.bold(`  ${version}`))
         for (const [plan, currencies] of Object.entries(plans)) {
