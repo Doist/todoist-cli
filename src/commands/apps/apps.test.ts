@@ -22,6 +22,7 @@ import { wrapApiError } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerAppsCommand } from './index.js'
@@ -87,7 +88,7 @@ describe('apps list', () => {
 
     it('lists apps with displayName (id:N), Client ID, and a description line', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
 
@@ -100,7 +101,6 @@ describe('apps list', () => {
         expect(output).toContain('Client ID: client-xyz')
         // App B has no description → fallback string
         expect(output).toContain('(no description)')
-        consoleSpy.mockRestore()
     })
 
     describeEmptyMachineOutput('empty machine output contract', {
@@ -116,7 +116,7 @@ describe('apps list', () => {
 
     it('outputs full JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApps.mockResolvedValue([APP_A])
 
@@ -128,12 +128,11 @@ describe('apps list', () => {
         expect(parsed[0].id).toBe('9909')
         expect(parsed[0].displayName).toBe('Todoist for VS Code')
         expect(parsed[0].oauthRedirectUri).toBe('vscode://doist.todoist-vs-code/auth-complete')
-        consoleSpy.mockRestore()
     })
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
 
@@ -144,7 +143,6 @@ describe('apps list', () => {
         expect(lines).toHaveLength(2)
         expect(JSON.parse(lines[0]).id).toBe('9909')
         expect(JSON.parse(lines[1]).id).toBe('9910')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -158,7 +156,7 @@ describe('apps view', () => {
 
     it('resolves id:N directly via getApp without listing', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -166,12 +164,11 @@ describe('apps view', () => {
 
         expect(mockApi.getApp).toHaveBeenCalledWith('9909')
         expect(mockApi.getApps).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('resolves a raw numeric id via getApp directly (no listing roundtrip)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -179,12 +176,11 @@ describe('apps view', () => {
 
         expect(mockApi.getApp).toHaveBeenCalledWith('9909')
         expect(mockApi.getApps).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('resolves a name via fuzzy match then re-fetches via getApp to enrich with userCount', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
@@ -207,24 +203,22 @@ describe('apps view', () => {
         expect(output).toContain('OAuth redirect:     vscode://doist.todoist-vs-code/auth-complete')
         expect(output).toContain('Token scopes:       data:read, data:read_write')
         expect(output).toContain('Helps you manage tasks from VS Code')
-        consoleSpy.mockRestore()
     })
 
     it('does not call getApp twice on id:N (no redundant detail fetch)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         expect(mockApi.getApp).toHaveBeenCalledTimes(1)
-        consoleSpy.mockRestore()
     })
 
     it('shows fallback strings for null fields and (none) for empty token scopes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
 
@@ -235,7 +229,6 @@ describe('apps view', () => {
         expect(output).toContain('OAuth redirect:     (none)')
         expect(output).toContain('Token scopes:       data:read')
         expect(output).toContain('(no description)')
-        consoleSpy.mockRestore()
     })
 
     it('throws AMBIGUOUS_APP when a substring matches multiple apps', async () => {
@@ -289,7 +282,7 @@ describe('apps view', () => {
 
     it('treats `td apps <ref>` as `td apps view <ref>` (implicit default subcommand)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -299,7 +292,6 @@ describe('apps view', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Todoist for VS Code')
         expect(output).toContain('ID:                 9909')
-        consoleSpy.mockRestore()
     })
 
     it('does not attempt getApp() for alphanumeric refs (avoids the 400 from the apps endpoint)', async () => {
@@ -315,7 +307,7 @@ describe('apps view', () => {
 
     it('renders a multi-URI JSON-array oauthRedirectUri as separate indented lines', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,
@@ -330,12 +322,11 @@ describe('apps view', () => {
         expect(output).toContain('                      https://b.example/cb')
         // Raw JSON-array blob should not leak into the plain renderer.
         expect(output).not.toContain('["https://a.example/cb"')
-        consoleSpy.mockRestore()
     })
 
     it('treats empty-string serviceUrl/oauthRedirectUri the same as null', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,
@@ -348,12 +339,11 @@ describe('apps view', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Service URL:        (none)')
         expect(output).toContain('OAuth redirect:     (none)')
-        consoleSpy.mockRestore()
     })
 
     it('outputs full JSON of AppWithUserCount with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -364,12 +354,11 @@ describe('apps view', () => {
         expect(parsed.id).toBe('9909')
         expect(parsed.userCount).toBe(42)
         expect(parsed.appTokenScopes).toEqual(['data:read', 'data:read_write'])
-        consoleSpy.mockRestore()
     })
 
     it('outputs single-line JSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -378,7 +367,6 @@ describe('apps view', () => {
         const output = consoleSpy.mock.calls[0][0] as string
         expect(output.split('\n')).toHaveLength(1)
         expect(JSON.parse(output).id).toBe('9909')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -408,7 +396,7 @@ describe('apps view — enriched fields', () => {
 
     it('only fetches webhook by default (no secret-bearing endpoints touched)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
@@ -420,12 +408,11 @@ describe('apps view — enriched fields', () => {
         expect(mockApi.getAppVerificationToken).not.toHaveBeenCalled()
         expect(mockApi.getAppTestToken).not.toHaveBeenCalled()
         expect(mockApi.getAppDistributionToken).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('fires all five enrichment calls with --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--include-secrets'])
 
@@ -434,12 +421,11 @@ describe('apps view — enriched fields', () => {
         expect(mockApi.getAppTestToken).toHaveBeenCalledWith('9909')
         expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
-        consoleSpy.mockRestore()
     })
 
     it('shows Client ID by default and hides the four sensitive credential lines', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
@@ -457,12 +443,11 @@ describe('apps view — enriched fields', () => {
         expect(output).not.toContain('dist-jkl')
         // Webhook line is still shown (callback URL is user-supplied, not a secret)
         expect(output).toContain('Webhook:            (not configured)')
-        consoleSpy.mockRestore()
     })
 
     it('reveals every sensitive value with --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
 
@@ -476,12 +461,11 @@ describe('apps view — enriched fields', () => {
         expect(output).toContain('Distribution token: dist-jkl')
         // No hidden placeholders remain
         expect(output).not.toContain('pass --include-secrets')
-        consoleSpy.mockRestore()
     })
 
     it('renders webhook details when configured', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
 
@@ -491,12 +475,11 @@ describe('apps view — enriched fields', () => {
         expect(output).toContain('Webhook:            active — https://example.com/hook')
         expect(output).toContain('Webhook events:     item:added, item:completed')
         expect(output).toContain('Webhook version:    1')
-        consoleSpy.mockRestore()
     })
 
     it('keeps (not created) for a null test token even with --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: null })
 
@@ -504,12 +487,11 @@ describe('apps view — enriched fields', () => {
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Test token:         (not created)')
-        consoleSpy.mockRestore()
     })
 
     it('includes clientId but omits sensitive credential keys from --json by default', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
 
@@ -527,12 +509,11 @@ describe('apps view — enriched fields', () => {
             status: 'active',
             callbackUrl: 'https://example.com/hook',
         })
-        consoleSpy.mockRestore()
     })
 
     it('includes every sensitive field in --json --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
 
@@ -552,18 +533,16 @@ describe('apps view — enriched fields', () => {
         expect(parsed.verificationToken).toBe('verify-ghi')
         expect(parsed.distributionToken).toBe('dist-jkl')
         expect(parsed.testToken).toEqual({ accessToken: 'test-mno' })
-        consoleSpy.mockRestore()
     })
 
     it('emits webhook: null in --json when the app has no webhook configured', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.webhook).toBeNull()
-        consoleSpy.mockRestore()
     })
 })
 
@@ -624,7 +603,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('does not validate the URI on --remove (lets users clean up legacy malformed data)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         // App's stored URI is malformed but we want to let the user remove it.
         mockApi.getApp.mockResolvedValue({
@@ -645,12 +624,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         ])
 
         expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
-        consoleSpy.mockRestore()
     })
 
     it('adds a new redirect URI to an app that has one (serializes as JSON array)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -676,12 +654,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Added OAuth redirect URI to Todoist for VS Code')
         expect(output).toContain('https://example.com/cb')
-        consoleSpy.mockRestore()
     })
 
     it('adds a first redirect URI to an app that has none (serializes as plain string)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -702,7 +679,6 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         expect(mockApi.updateApp).toHaveBeenCalledWith('9910', {
             oauthRedirectUri: 'https://example.com/cb',
         })
-        consoleSpy.mockRestore()
     })
 
     it('rejects adding a URI that is already set', async () => {
@@ -726,7 +702,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('add --dry-run previews without calling updateApp', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -745,12 +721,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('[dry-run]')
         expect(output).toContain('https://example.com/cb')
-        consoleSpy.mockRestore()
     })
 
     it('remove exits without error when URI is not present on the app', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -769,12 +744,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('is not an OAuth redirect URI')
         expect(output).toContain('nothing to remove')
-        consoleSpy.mockRestore()
     })
 
     it('remove no-op with --json outputs the unchanged app as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -795,7 +769,6 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('9909')
         expect(parsed.oauthRedirectUri).toBe('vscode://doist.todoist-vs-code/auth-complete')
-        consoleSpy.mockRestore()
     })
 
     it('remove without --yes and with --json throws CONFIRMATION_REQUIRED instead of printing a preview', async () => {
@@ -820,7 +793,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove requires --yes; without it prints preview and does not call updateApp', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -838,12 +811,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Would remove OAuth redirect URI')
         expect(output).toContain('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('remove with --yes clears oauthRedirectUri to null when removing the only URI', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, oauthRedirectUri: null })
@@ -862,12 +834,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Removed OAuth redirect URI from Todoist for VS Code')
-        consoleSpy.mockRestore()
     })
 
     it('add with --json outputs only the essential app fields via the shared formatter', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -896,12 +867,11 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         // Essential-fields filter drops noisy/secondary keys.
         expect(parsed).not.toHaveProperty('iconSm')
         expect(parsed).not.toHaveProperty('userId')
-        consoleSpy.mockRestore()
     })
 
     it('remove with --yes writes the remaining URIs when multiple were set', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,
@@ -927,7 +897,6 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
             oauthRedirectUri: 'https://b.example/cb',
         })
-        consoleSpy.mockRestore()
     })
 })
 

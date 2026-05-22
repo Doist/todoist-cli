@@ -74,6 +74,7 @@ import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
+import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
 import { createMockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerAuthCommand } from './index.js'
@@ -109,8 +110,8 @@ describe('auth command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
+        errorSpy = mockConsoleError()
         mockListStoredUsers.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
     })
@@ -172,13 +173,12 @@ describe('auth command', () => {
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
             stubProbeApiForUser()
-            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(mockRl.question).toHaveBeenCalled()
             expect(setMock).toHaveBeenCalledWith(expect.anything(), 'interactive_token_456')
-            writeSpy.mockRestore()
         })
 
         it('shows error when interactive input is empty', async () => {
@@ -191,13 +191,12 @@ describe('auth command', () => {
                 _writeToOutput: vi.fn(),
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
-            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(setMock).not.toHaveBeenCalled()
             expect(errorSpy).toHaveBeenCalledWith('Error:', 'No token provided')
-            writeSpy.mockRestore()
         })
 
         it('surfaces config-file fallback warning', async () => {
@@ -537,7 +536,6 @@ describe('auth command', () => {
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
-                stdoutWrite.mockRestore()
             }
         })
 

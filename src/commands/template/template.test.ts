@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { open } from 'node:fs/promises'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
 vi.mock('node:fs/promises', () => ({
@@ -21,6 +21,7 @@ vi.mock('../../lib/refs.js', async (importOriginal) => {
 import { getApi } from '../../lib/api/core.js'
 import { resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
@@ -41,12 +42,8 @@ describe('template', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
         mockResolveProjectRef.mockResolvedValue(fixtures.projects.work)
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
     })
 
     describe('export-file', () => {
@@ -63,7 +60,6 @@ describe('template', () => {
                 useRelativeDates: undefined,
             })
             expect(stdoutSpy).toHaveBeenCalledWith('task,priority\nBuy milk,4')
-            stdoutSpy.mockRestore()
         })
 
         it('writes template to file with --output', async () => {
@@ -91,7 +87,7 @@ describe('template', () => {
         it('passes --relative-dates flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync([
                 'node',
@@ -106,7 +102,6 @@ describe('template', () => {
                 projectId: fixtures.projects.work.id,
                 useRelativeDates: true,
             })
-            stdoutSpy.mockRestore()
         })
 
         it('outputs JSON with --json', async () => {
@@ -123,12 +118,11 @@ describe('template', () => {
         it('accepts --project flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', '--project', 'Work'])
 
             expect(mockResolveProjectRef).toHaveBeenCalledWith(mockApi, 'Work')
-            stdoutSpy.mockRestore()
         })
     })
 

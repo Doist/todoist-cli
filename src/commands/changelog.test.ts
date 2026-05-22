@@ -5,6 +5,7 @@ vi.mock('node:fs/promises')
 
 import { readFile } from 'node:fs/promises'
 import packageJson from '../../package.json' with { type: 'json' }
+import { mockConsoleLog } from '../test-support/console-spy.js'
 import { registerChangelogCommand } from './changelog.js'
 
 const mockReadFile = vi.mocked(readFile)
@@ -26,7 +27,7 @@ describe('changelog wrapper', () => {
     let logSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-        logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        logSpy = mockConsoleLog()
     })
 
     afterEach(() => {

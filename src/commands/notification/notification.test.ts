@@ -17,6 +17,7 @@ import {
     markNotificationUnread,
     rejectInvitation,
 } from '../../lib/api/notifications.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerNotificationCommand } from './index.js'
 
@@ -66,7 +67,7 @@ describe('notification list', () => {
 
     it('lists notifications', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite(), createItemAssigned()])
 
@@ -74,24 +75,22 @@ describe('notification list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('share_invitation_sent'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('item_assigned'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No notifications." when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([])
 
         await program.parseAsync(['node', 'td', 'notification', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No notifications.')
-        consoleSpy.mockRestore()
     })
 
     it('filters unread with --unread', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -102,12 +101,11 @@ describe('notification list', () => {
 
         expect(consoleSpy).toHaveBeenCalledTimes(1)
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('share_invitation_sent'))
-        consoleSpy.mockRestore()
     })
 
     it('filters read with --read', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -119,12 +117,11 @@ describe('notification list', () => {
         const output = consoleSpy.mock.calls[0][0]
         expect(output).toContain('item_assigned')
         expect(output).not.toContain('share_invitation_sent')
-        consoleSpy.mockRestore()
     })
 
     it('filters by type with --type', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -138,12 +135,11 @@ describe('notification list', () => {
         expect(output).toContain('id:n2')
         expect(output).not.toContain('id:n1')
         expect(output).not.toContain('id:n3')
-        consoleSpy.mockRestore()
     })
 
     it('filters by multiple types with --type', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -164,7 +160,6 @@ describe('notification list', () => {
         expect(output).toContain('id:n2')
         expect(output).toContain('id:n3')
         expect(output).not.toContain('id:n1')
-        consoleSpy.mockRestore()
     })
 
     it('throws when both --read and --unread specified', async () => {
@@ -177,7 +172,7 @@ describe('notification list', () => {
 
     it('respects --offset', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -200,12 +195,11 @@ describe('notification list', () => {
         expect(output).toContain('id:n2')
         expect(output).not.toContain('id:n1')
         expect(output).not.toContain('id:n3')
-        consoleSpy.mockRestore()
     })
 
     it('respects --limit', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -219,12 +213,11 @@ describe('notification list', () => {
         expect(output).toContain('id:n1')
         expect(output).toContain('id:n2')
         expect(output).not.toContain('id:n3')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -235,12 +228,11 @@ describe('notification list', () => {
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].type).toBe('share_invitation_sent')
         expect(parsed.results[0].invitationSecret).toBeUndefined()
-        consoleSpy.mockRestore()
     })
 
     it('outputs NDJSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -252,12 +244,11 @@ describe('notification list', () => {
         const output = consoleSpy.mock.calls[0][0]
         const lines = output.split('\n')
         expect(lines).toHaveLength(2)
-        consoleSpy.mockRestore()
     })
 
     it('does not expose invitationSecret in JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -266,7 +257,6 @@ describe('notification list', () => {
         const output = consoleSpy.mock.calls[0][0]
         expect(output).not.toContain('invitationSecret')
         expect(output).not.toContain('secret-abc')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -277,19 +267,18 @@ describe('notification view', () => {
 
     it('implicit view: td notification <ref> behaves like td notification view <ref>', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
         await program.parseAsync(['node', 'td', 'notification', 'id:notif-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('share_invitation_sent'))
-        consoleSpy.mockRestore()
     })
 
     it('shows notification details', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -298,12 +287,11 @@ describe('notification view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('share_invitation_sent'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Jane'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Project X'))
-        consoleSpy.mockRestore()
     })
 
     it('shows actions for share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -312,12 +300,11 @@ describe('notification view', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Actions:')
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('td notification accept'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('td notification reject'))
-        consoleSpy.mockRestore()
     })
 
     it('does not show actions for non-invitation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createItemAssigned()])
 
@@ -325,12 +312,11 @@ describe('notification view', () => {
 
         const calls = consoleSpy.mock.calls.map((c) => c[0])
         expect(calls).not.toContainEqual('Actions:')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -340,7 +326,6 @@ describe('notification view', () => {
         const parsed = JSON.parse(output)
         expect(parsed.type).toBe('share_invitation_sent')
         expect(parsed.invitationSecret).toBeUndefined()
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-existent notification', async () => {
@@ -361,7 +346,7 @@ describe('notification accept', () => {
 
     it('accepts share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockAccept.mockResolvedValue(undefined)
@@ -372,7 +357,6 @@ describe('notification accept', () => {
         expect(mockAccept).toHaveBeenCalledWith('inv-123', 'secret-abc')
         expect(mockMarkRead).toHaveBeenCalledWith('notif-1')
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Accepted invitation'))
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-invitation type', async () => {
@@ -403,7 +387,7 @@ describe('notification reject', () => {
 
     it('rejects share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockReject.mockResolvedValue(undefined)
@@ -414,7 +398,6 @@ describe('notification reject', () => {
         expect(mockReject).toHaveBeenCalledWith('inv-123', 'secret-abc')
         expect(mockMarkRead).toHaveBeenCalledWith('notif-1')
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Rejected invitation'))
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-invitation type', async () => {
@@ -435,7 +418,7 @@ describe('notification read', () => {
 
     it('marks single notification as read', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockMarkRead.mockResolvedValue(undefined)
@@ -444,12 +427,11 @@ describe('notification read', () => {
 
         expect(mockMarkRead).toHaveBeenCalledWith('notif-1')
         expect(consoleSpy).toHaveBeenCalledWith('Marked as read. (id:notif-1)')
-        consoleSpy.mockRestore()
     })
 
     it('warns without --yes for --all', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'notification', 'read', '--all'])
 
@@ -457,12 +439,11 @@ describe('notification read', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             'Use --all --yes to mark all notifications as read.',
         )
-        consoleSpy.mockRestore()
     })
 
     it('marks all as read with --all --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -474,7 +455,6 @@ describe('notification read', () => {
 
         expect(mockMarkAllRead).toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Marked 2 notifications as read.')
-        consoleSpy.mockRestore()
     })
 
     it('throws when no id and no --all', async () => {
@@ -493,7 +473,7 @@ describe('notification unread', () => {
 
     it('marks notification as unread', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite({ isUnread: false })])
         mockMarkUnread.mockResolvedValue(undefined)
@@ -502,7 +482,6 @@ describe('notification unread', () => {
 
         expect(mockMarkUnread).toHaveBeenCalledWith('notif-1')
         expect(consoleSpy).toHaveBeenCalledWith('Marked as unread.')
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-existent notification', async () => {

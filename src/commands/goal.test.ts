@@ -5,6 +5,7 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../test-support/api-mock.js'
+import { mockConsoleLog } from '../test-support/console-spy.js'
 import { fixtures } from '../test-support/fixtures.js'
 import { type MockApi } from '../test-support/mock-api.js'
 import { createTestProgram } from '../test-support/program.js'
@@ -24,17 +25,16 @@ describe('goal list', () => {
 
     it('shows "No goals found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'goal', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No goals found.')
-        consoleSpy.mockRestore()
     })
 
     it('lists goals with progress', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoals.mockResolvedValue({
             results: [fixtures.goals.shipV2, fixtures.goals.learnRust],
@@ -45,12 +45,11 @@ describe('goal list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Ship v2'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Learn Rust'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoals.mockResolvedValue({
             results: [fixtures.goals.shipV2],
@@ -63,7 +62,6 @@ describe('goal list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('Ship v2')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -77,7 +75,7 @@ describe('goal view', () => {
 
     it('shows goal details and linked tasks', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({
@@ -96,12 +94,11 @@ describe('goal view', () => {
         const rendered = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n')
         expect(rendered).toContain('Buy milk')
         expect(rendered).not.toContain('[object Promise]')
-        consoleSpy.mockRestore()
     })
 
     it('includes description in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -118,12 +115,11 @@ describe('goal view', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.goal.description).toBe('Launch the new version')
-        consoleSpy.mockRestore()
     })
 
     it('is the default subcommand', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -131,7 +127,6 @@ describe('goal view', () => {
         await program.parseAsync(['node', 'td', 'goal', `id:${fixtures.goals.shipV2.id}`])
 
         expect(mockApi.getGoal).toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 })
 
@@ -145,7 +140,7 @@ describe('goal create', () => {
 
     it('creates a goal', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.addGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -153,12 +148,11 @@ describe('goal create', () => {
 
         expect(mockApi.addGoal).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ship v2' }))
         expect(consoleSpy).toHaveBeenCalledWith('Created: Ship v2')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.addGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -167,18 +161,16 @@ describe('goal create', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.name).toBe('Ship v2')
-        consoleSpy.mockRestore()
     })
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'goal', 'create', '--name', 'Ship v2', '--dry-run'])
 
         expect(mockApi.addGoal).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create goal'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -192,7 +184,7 @@ describe('goal update', () => {
 
     it('updates name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, name: 'Ship v3' })
@@ -212,12 +204,11 @@ describe('goal update', () => {
             expect.objectContaining({ name: 'Ship v3' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Ship v2 → Ship v3')
-        consoleSpy.mockRestore()
     })
 
     it('clears description with empty string', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, description: '' })
@@ -235,7 +226,6 @@ describe('goal update', () => {
         expect(mockApi.updateGoal).toHaveBeenCalledWith(fixtures.goals.shipV2.id, {
             description: '',
         })
-        consoleSpy.mockRestore()
     })
 
     it('throws CliError when no update fields specified', async () => {
@@ -252,7 +242,7 @@ describe('goal update', () => {
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -267,12 +257,11 @@ describe('goal update', () => {
 
         expect(mockApi.updateGoal).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update goal'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, name: 'Ship v3' })
@@ -291,7 +280,6 @@ describe('goal update', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.name).toBe('Ship v3')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -305,7 +293,7 @@ describe('goal delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -313,12 +301,11 @@ describe('goal delete', () => {
 
         expect(mockApi.deleteGoal).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete goal: Ship v2')
-        consoleSpy.mockRestore()
     })
 
     it('deletes with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.deleteGoal.mockResolvedValue(true)
@@ -333,7 +320,6 @@ describe('goal delete', () => {
         ])
 
         expect(mockApi.deleteGoal).toHaveBeenCalledWith(fixtures.goals.shipV2.id)
-        consoleSpy.mockRestore()
     })
 })
 
@@ -347,7 +333,7 @@ describe('goal complete/uncomplete', () => {
 
     it('completes a goal', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.completeGoal.mockResolvedValue({ ...fixtures.goals.shipV2, isCompleted: true })
@@ -362,12 +348,11 @@ describe('goal complete/uncomplete', () => {
 
         expect(mockApi.completeGoal).toHaveBeenCalledWith(fixtures.goals.shipV2.id)
         expect(consoleSpy).toHaveBeenCalledWith('Completed: Ship v2')
-        consoleSpy.mockRestore()
     })
 
     it('uncompletes a goal', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.learnRust)
         mockApi.uncompleteGoal.mockResolvedValue({
@@ -385,6 +370,5 @@ describe('goal complete/uncomplete', () => {
 
         expect(mockApi.uncompleteGoal).toHaveBeenCalledWith(fixtures.goals.learnRust.id)
         expect(consoleSpy).toHaveBeenCalledWith('Reopened: Learn Rust')
-        consoleSpy.mockRestore()
     })
 })

@@ -1,5 +1,5 @@
 import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth.js')>()
@@ -33,6 +33,7 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
 vi.mock('chalk')
 
 import { listStoredUsers, readConfig, resolveActiveUser } from '../../lib/auth.js'
+import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerUserCommand } from './index.js'
 
@@ -46,18 +47,12 @@ function createProgram() {
 
 describe('user command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
-    let errorSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
+        mockConsoleError()
         mockReadConfig.mockResolvedValue({})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
-        errorSpy.mockRestore()
     })
 
     describe('list', () => {

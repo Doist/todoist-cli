@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -10,6 +10,7 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
 
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
@@ -27,11 +28,7 @@ describe('project update', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('updates project name', async () => {
@@ -216,11 +213,7 @@ describe('project update --json', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('outputs updated project as JSON', async () => {
@@ -259,11 +252,7 @@ describe('project update --parent / --no-parent', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('re-parents under another personal project (sync only, no updateProject)', async () => {

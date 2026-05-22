@@ -13,6 +13,7 @@ vi.mock('../../lib/api/filters.js', () => ({
 
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
@@ -34,7 +35,7 @@ describe('filter list', () => {
 
     it('lists all filters', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work tasks', query: '@work' }),
@@ -45,24 +46,22 @@ describe('filter list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work tasks'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Urgent'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No filters found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([])
 
         await program.parseAsync(['node', 'td', 'filter', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No filters found.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -74,12 +73,11 @@ describe('filter list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('Work')
-        consoleSpy.mockRestore()
     })
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -91,7 +89,6 @@ describe('filter list', () => {
         const output = consoleSpy.mock.calls[0][0]
         const lines = output.split('\n')
         expect(lines).toHaveLength(2)
-        consoleSpy.mockRestore()
     })
 })
 
@@ -102,7 +99,7 @@ describe('filter create --json', () => {
 
     it('outputs created filter as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockAddFilter.mockResolvedValue({
             id: 'filter-new',
@@ -133,7 +130,6 @@ describe('filter create --json', () => {
         expect(parsed.name).toBe('My Filter')
         expect(parsed.query).toBe('today')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -144,7 +140,7 @@ describe('filter create', () => {
 
     it('creates filter with name and query', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Work', query: '@work' }),
@@ -165,12 +161,11 @@ describe('filter create', () => {
             expect.objectContaining({ name: 'Work', query: '@work' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Created: Work')
-        consoleSpy.mockRestore()
     })
 
     it('creates filter with --color', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Urgent', query: 'p1', color: 'red' }),
@@ -192,12 +187,11 @@ describe('filter create', () => {
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Urgent', query: 'p1', color: 'red' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('creates filter with --favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Important', query: 'p1 | p2', isFavorite: true }),
@@ -218,12 +212,11 @@ describe('filter create', () => {
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Important', isFavorite: true }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('shows filter ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-xyz', name: 'Test', query: 'today' }),
@@ -241,7 +234,6 @@ describe('filter create', () => {
         ])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('id:filter-xyz'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -252,7 +244,7 @@ describe('filter delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -263,12 +255,11 @@ describe('filter delete', () => {
         expect(mockDeleteFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete: Work')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes by name with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -279,12 +270,11 @@ describe('filter delete', () => {
 
         expect(mockDeleteFilter).toHaveBeenCalledWith('filter-1')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted: Work (id:filter-1)')
-        consoleSpy.mockRestore()
     })
 
     it('deletes by id: prefix with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -294,7 +284,6 @@ describe('filter delete', () => {
         await program.parseAsync(['node', 'td', 'filter', 'delete', 'id:filter-123', '--yes'])
 
         expect(mockDeleteFilter).toHaveBeenCalledWith('filter-123')
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-existent filter', async () => {
@@ -315,7 +304,7 @@ describe('filter update', () => {
 
     it('updates filter name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Old Name', query: '@work' }),
@@ -336,12 +325,11 @@ describe('filter update', () => {
             name: 'New Name',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name (id:filter-1)')
-        consoleSpy.mockRestore()
     })
 
     it('updates filter query', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -361,12 +349,11 @@ describe('filter update', () => {
         expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
             query: '@work & p1',
         })
-        consoleSpy.mockRestore()
     })
 
     it('updates filter color and favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -388,12 +375,11 @@ describe('filter update', () => {
             color: 'red',
             isFavorite: true,
         })
-        consoleSpy.mockRestore()
     })
 
     it('removes favorite with --no-favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work', isFavorite: true }),
@@ -405,12 +391,11 @@ describe('filter update', () => {
         expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
             isFavorite: false,
         })
-        consoleSpy.mockRestore()
     })
 
     it('updates by id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -430,7 +415,6 @@ describe('filter update', () => {
         expect(mockUpdateFilter).toHaveBeenCalledWith('filter-123', {
             color: 'blue',
         })
-        consoleSpy.mockRestore()
     })
 
     it('throws when no changes specified', async () => {
@@ -474,7 +458,7 @@ describe('filter show', () => {
 
     it('shows tasks matching filter', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -505,12 +489,11 @@ describe('filter show', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task 1'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No tasks match this filter" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Empty', query: 'nonexistent' }),
@@ -524,12 +507,11 @@ describe('filter show', () => {
         await program.parseAsync(['node', 'td', 'filter', 'show', 'Empty'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No tasks match this filter.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -554,12 +536,11 @@ describe('filter show', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].content).toBe('Task 1')
-        consoleSpy.mockRestore()
     })
 
     it('shows filter by id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -575,7 +556,6 @@ describe('filter show', () => {
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
             expect.objectContaining({ query: '@work' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-existent filter', async () => {
@@ -590,7 +570,7 @@ describe('filter show', () => {
 
     it('resolves partial name match', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work Tasks', query: '@work' }),
@@ -606,7 +586,6 @@ describe('filter show', () => {
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
             expect.objectContaining({ query: '@work' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('throws for ambiguous partial match', async () => {
@@ -647,7 +626,7 @@ describe('filter view (alias)', () => {
 
     it('works via "view" subcommand', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -663,12 +642,11 @@ describe('filter view (alias)', () => {
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
             expect.objectContaining({ query: '@work' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('defaults to view subcommand (td filter <ref>)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -684,7 +662,6 @@ describe('filter view (alias)', () => {
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
             expect.objectContaining({ query: '@work' }),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -698,7 +675,7 @@ describe('filter URL resolution', () => {
 
     it('resolves filter by URL in view command', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
@@ -720,12 +697,11 @@ describe('filter URL resolution', () => {
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(
             expect.objectContaining({ query: '@work' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('resolves filter by URL in delete command', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
@@ -742,7 +718,6 @@ describe('filter URL resolution', () => {
         ])
 
         expect(mockDeleteFilter).toHaveBeenCalledWith('filter1')
-        consoleSpy.mockRestore()
     })
 
     it('throws entity type mismatch for task URL in filter command', async () => {
@@ -782,7 +757,6 @@ describe('filter (no args)', () => {
         expect(output).toContain('delete')
         expect(output).toContain('update')
         expect(output).toContain('view')
-        stdoutSpy.mockRestore()
     })
 })
 
@@ -793,7 +767,7 @@ describe('filter --dry-run', () => {
 
     it('filter create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -809,12 +783,11 @@ describe('filter --dry-run', () => {
 
         expect(mockAddFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create filter'))
-        consoleSpy.mockRestore()
     })
 
     it('filter delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),
@@ -824,12 +797,11 @@ describe('filter --dry-run', () => {
 
         expect(mockDeleteFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete filter'))
-        consoleSpy.mockRestore()
     })
 
     it('filter update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),
@@ -848,6 +820,5 @@ describe('filter --dry-run', () => {
 
         expect(mockUpdateFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update filter'))
-        consoleSpy.mockRestore()
     })
 })

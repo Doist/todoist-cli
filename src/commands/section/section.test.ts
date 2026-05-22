@@ -1,10 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
@@ -39,7 +40,7 @@ describe('section list', () => {
 
     it('resolves project and lists sections', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -60,12 +61,11 @@ describe('section list', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planning'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('In Progress'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No sections" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getSections.mockResolvedValue({ results: [], nextCursor: null })
@@ -73,12 +73,11 @@ describe('section list', () => {
         await program.parseAsync(['node', 'td', 'section', 'list', 'id:proj-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No sections.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getSections.mockResolvedValue({
@@ -92,12 +91,11 @@ describe('section list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('Planning')
-        consoleSpy.mockRestore()
     })
 
     it('accepts --project flag instead of positional arg', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -110,7 +108,6 @@ describe('section list', () => {
         expect(mockApi.getSections).toHaveBeenCalledWith(
             expect.objectContaining({ projectId: 'proj-1' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('errors when both positional and --project are provided', async () => {
@@ -123,7 +120,7 @@ describe('section list', () => {
 
     it('searches sections by name with --search', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchSections.mockResolvedValue({
             results: [
@@ -140,12 +137,11 @@ describe('section list', () => {
         )
         expect(mockApi.getSections).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Planning'))
-        consoleSpy.mockRestore()
     })
 
     it('searches sections scoped to a project with --search and --project', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -170,12 +166,11 @@ describe('section list', () => {
         expect(mockApi.searchSections).toHaveBeenCalledWith(
             expect.objectContaining({ query: 'Plan', projectId: 'proj-1' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --search and --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchSections.mockResolvedValue({
             results: [{ id: 'sec-1', name: 'Planning', projectId: 'proj-1' }],
@@ -187,7 +182,6 @@ describe('section list', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.results[0].name).toBe('Planning')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -201,7 +195,7 @@ describe('section create --json', () => {
 
     it('outputs created section as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addSection.mockResolvedValue({
@@ -228,7 +222,6 @@ describe('section create --json', () => {
         expect(parsed.id).toBe('sec-new')
         expect(parsed.name).toBe('New Section')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -242,7 +235,7 @@ describe('section update --json', () => {
 
     it('outputs updated section as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Old Name', projectId: 'proj-1' })
         mockApi.updateSection.mockResolvedValue({
@@ -268,7 +261,6 @@ describe('section update --json', () => {
         expect(parsed.id).toBe('sec-1')
         expect(parsed.name).toBe('New Name')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -293,11 +285,7 @@ describe('section reorder', () => {
             results: [...sections],
             nextCursor: null,
         }))
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('requires --project', async () => {
@@ -613,7 +601,7 @@ describe('section create', () => {
 
     it('creates section in project', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -637,12 +625,11 @@ describe('section create', () => {
             projectId: 'proj-1',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Created: Review')
-        consoleSpy.mockRestore()
     })
 
     it('shows section ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addSection.mockResolvedValue({ id: 'sec-xyz', name: 'Test' })
@@ -659,7 +646,6 @@ describe('section create', () => {
         ])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('sec-xyz'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -681,7 +667,7 @@ describe('section delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'My Section' })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -691,12 +677,11 @@ describe('section delete', () => {
         expect(mockApi.deleteSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete section: My Section')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes section with id: prefix and --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-123', name: 'My Section' })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -706,7 +691,6 @@ describe('section delete', () => {
 
         expect(mockApi.deleteSection).toHaveBeenCalledWith('sec-123')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted section: My Section (id:sec-123)')
-        consoleSpy.mockRestore()
     })
 
     it('fails when section has uncompleted tasks', async () => {
@@ -750,7 +734,7 @@ describe('section update', () => {
 
     it('updates section name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Old Name' })
         mockApi.updateSection.mockResolvedValue({ id: 'sec-1', name: 'New Name' })
@@ -769,7 +753,6 @@ describe('section update', () => {
             name: 'New Name',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name → New Name (id:sec-1)')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -783,7 +766,7 @@ describe('section --dry-run', () => {
 
     it('section create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -799,12 +782,11 @@ describe('section --dry-run', () => {
 
         expect(mockApi.addSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create section'))
-        consoleSpy.mockRestore()
     })
 
     it('section delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -818,12 +800,11 @@ describe('section --dry-run', () => {
 
         expect(mockApi.deleteSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete section'))
-        consoleSpy.mockRestore()
     })
 
     it('section update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -838,12 +819,11 @@ describe('section --dry-run', () => {
 
         expect(mockApi.updateSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update section'))
-        consoleSpy.mockRestore()
     })
 
     it('section archive --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -857,12 +837,11 @@ describe('section --dry-run', () => {
 
         expect(mockApi.archiveSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would archive section'))
-        consoleSpy.mockRestore()
     })
 
     it('section unarchive --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -876,7 +855,6 @@ describe('section --dry-run', () => {
 
         expect(mockApi.unarchiveSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would unarchive section'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -898,7 +876,7 @@ describe('section archive', () => {
 
     it('archives section with id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -917,12 +895,11 @@ describe('section archive', () => {
 
         expect(mockApi.archiveSection).toHaveBeenCalledWith('sec-123')
         expect(consoleSpy).toHaveBeenCalledWith('Archived: My Section (id:sec-123)')
-        consoleSpy.mockRestore()
     })
 
     it('shows message for already archived section', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -936,7 +913,6 @@ describe('section archive', () => {
 
         expect(mockApi.archiveSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Section already archived.')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -958,7 +934,7 @@ describe('section unarchive', () => {
 
     it('unarchives section with id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -977,12 +953,11 @@ describe('section unarchive', () => {
 
         expect(mockApi.unarchiveSection).toHaveBeenCalledWith('sec-123')
         expect(consoleSpy).toHaveBeenCalledWith('Unarchived: My Section (id:sec-123)')
-        consoleSpy.mockRestore()
     })
 
     it('shows message for non-archived section', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -996,6 +971,5 @@ describe('section unarchive', () => {
 
         expect(mockApi.unarchiveSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Section is not archived.')
-        consoleSpy.mockRestore()
     })
 })

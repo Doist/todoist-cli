@@ -12,6 +12,7 @@ vi.mock('../../lib/config.js', () => ({
 
 import { openInBrowser } from '../../lib/browser.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerHelpCenterCommand } from './index.js'
 
@@ -35,7 +36,7 @@ describe('hc command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
         fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
         mockReadConfig.mockResolvedValue({})
@@ -497,7 +498,6 @@ describe('hc command', () => {
         await program.parseAsync(['node', 'td', 'hc', 'view', 'id:205348301', '--html'])
 
         expect(stdoutSpy).toHaveBeenCalledWith('<p>Full <strong>HTML</strong> body.</p>')
-        stdoutSpy.mockRestore()
     })
 
     it('returns normalized article JSON with --json', async () => {

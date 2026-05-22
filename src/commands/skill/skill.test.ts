@@ -12,6 +12,7 @@ vi.mock('../../lib/skills/update-installed.js', () => ({
 import { createInstaller } from '../../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../../lib/skills/update-installed.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerSkillCommand } from './index.js'
 
@@ -24,11 +25,7 @@ describe('skill command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     describe('list subcommand', () => {

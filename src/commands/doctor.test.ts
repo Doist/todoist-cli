@@ -71,6 +71,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
 import { TodoistApi } from '@doist/todoist-sdk'
 import { NoTokenError, probeApiToken } from '../lib/auth.js'
 import { readConfig } from '../lib/config.js'
+import { mockConsoleLog } from '../test-support/console-spy.js'
 import { createTestProgram } from '../test-support/program.js'
 import { registerDoctorCommand } from './doctor.js'
 
@@ -98,7 +99,7 @@ describe('doctor command', () => {
     let originalProcessVersion: PropertyDescriptor | undefined
 
     beforeEach(() => {
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
         vi.clearAllMocks()
         vi.unstubAllGlobals()
         process.exitCode = undefined

@@ -13,6 +13,7 @@ vi.mock('../../lib/stdin.js', () => ({
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
@@ -34,7 +35,7 @@ describe('task quickadd command', () => {
 
     it('calls quickAddTask with positional text', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -45,12 +46,11 @@ describe('task quickadd command', () => {
         await program.parseAsync(['node', 'td', 'task', 'quickadd', 'Buy milk tomorrow p1'])
 
         expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk tomorrow p1' })
-        consoleSpy.mockRestore()
     })
 
     it('works via qa alias', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -61,12 +61,11 @@ describe('task quickadd command', () => {
         await program.parseAsync(['node', 'td', 'task', 'qa', 'Buy milk'])
 
         expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk' })
-        consoleSpy.mockRestore()
     })
 
     it('reads text from stdin with --stdin', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
         mockApi.quickAddTask.mockResolvedValue({
@@ -79,7 +78,6 @@ describe('task quickadd command', () => {
 
         expect(mockReadStdin).toHaveBeenCalled()
         expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk tomorrow' })
-        consoleSpy.mockRestore()
     })
 
     it('errors when both text and --stdin are provided', async () => {
@@ -120,18 +118,17 @@ describe('task quickadd command', () => {
 
     it('--dry-run skips API call and prints preview', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'task', 'qa', 'Buy milk', '--dry-run'])
 
         expect(mockApi.quickAddTask).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would quick add task'))
-        consoleSpy.mockRestore()
     })
 
     it('--json outputs task as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -144,12 +141,11 @@ describe('task quickadd command', () => {
         const output = consoleSpy.mock.calls[0][0] as string
         expect(() => JSON.parse(output)).not.toThrow()
         expect(JSON.parse(output)).toMatchObject({ id: 'task-1', content: 'Buy milk' })
-        consoleSpy.mockRestore()
     })
 
     it('displays due date when present', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -160,6 +156,5 @@ describe('task quickadd command', () => {
         await program.parseAsync(['node', 'td', 'task', 'qa', 'Meeting tomorrow'])
 
         expect(consoleSpy).toHaveBeenCalledWith('Due: tomorrow')
-        consoleSpy.mockRestore()
     })
 })
