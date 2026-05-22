@@ -89,6 +89,11 @@ export function createTodoistTokenStore(): TodoistTokenStore {
             return inner.active(ref)
         },
         set: (account, token) => inner.set(account, token),
+        setBundle: (account, bundle, options) => inner.setBundle(account, bundle, options),
+        activeBundle: async (ref) => {
+            if (process.env[TOKEN_ENV_VAR]) return null
+            return inner.activeBundle(ref)
+        },
         clear: (ref) => inner.clear(ref),
         list: () => inner.list(),
         setDefault: (ref) => inner.setDefault(ref),
