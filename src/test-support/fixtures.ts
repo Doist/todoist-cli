@@ -402,6 +402,16 @@ export const fixtures = {
             sessionBiz: 'v25',
             v25: { pro: { usd: { monthly: '$4', yearly: '$29' } } },
         } as unknown as PricingResponse,
+        // Carries an extra top-level field the view must treat as metadata, not
+        // a pricing version.
+        pricingWithMetadata: {
+            latestPro: 'v25',
+            latestBiz: 'v25',
+            sessionPro: 'v25',
+            sessionBiz: 'v25',
+            revision: 3,
+            v25: { pro: { usd: { monthly: 400, yearly: 2900 } } },
+        } as unknown as PricingResponse,
     },
 }
 

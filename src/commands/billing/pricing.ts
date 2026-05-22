@@ -8,7 +8,9 @@ interface PricingOptions extends BillingViewOptions {
 
 export async function viewPricing(options: PricingOptions = {}): Promise<void> {
     const api = await getApi()
-    const locale = await resolveLocale(api, options)
+    // `--formatted` returns pre-localized strings, so locale (and the getUser
+    // fetch it costs) is only needed for the numeric formatting branch.
+    const locale = options.formatted ? undefined : await resolveLocale(api, options)
     const pricing = await api.getPricing({ formatted: options.formatted })
 
     if (outputMachine(pricing, options)) return
@@ -23,10 +25,10 @@ export async function viewPricing(options: PricingOptions = {}): Promise<void> {
     console.log(`  Session Business:   ${sessionBiz}`)
 
     for (const [version, plans] of Object.entries(versions)) {
-        // Version entries are objects (plan → currency → terms); skip any
-        // future top-level scalar metadata the SDK might add so it isn't
-        // rendered as if it were a pricing version.
-        if (typeof plans !== 'object' || plans === null) continue
+        // Only render keys that look like version pointers (v1, v25, …). Any
+        // other top-level field the SDK might add — scalar or object — is
+        // metadata, not a pricing version, and must not be rendered as one.
+        if (!/^v\d+/.test(version)) continue
         console.log('')
         console.log(chalk.bold(`  ${version}`))
         for (const [plan, currencies] of Object.entries(plans)) {

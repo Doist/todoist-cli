@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/api/core.js')>()
@@ -24,11 +24,27 @@ function createProgram() {
     return program
 }
 
+// Manage the console.log spy via hooks so a failing assertion can't skip the
+// restore and leave console muted (and errors hidden) for later tests.
+let consoleSpy: ReturnType<typeof vi.spyOn>
+
+function consoleOutput(): string {
+    return consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
+}
+
+beforeEach(() => {
+    vi.clearAllMocks()
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+})
+
+afterEach(() => {
+    consoleSpy.mockRestore()
+})
+
 describe('billing subscription', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
-        vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockApi.getUser.mockResolvedValue({ lang: 'en' })
@@ -36,7 +52,6 @@ describe('billing subscription', () => {
 
     it('is the default subcommand and renders the subscription summary', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         // No subcommand given → default subscription
@@ -45,19 +60,17 @@ describe('billing subscription', () => {
         expect(mockApi.getSubscriptionInfo).toHaveBeenCalledTimes(1)
         // Human output resolves the user's locale for money formatting.
         expect(mockApi.getUser).toHaveBeenCalledTimes(1)
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleOutput()
         expect(output).toContain('Plan:               pro')
         expect(output).toContain('Status:             autorenew')
         expect(output).toContain('Activation:         stripe')
         expect(output).toContain('Expires:            2026-12-31')
         expect(output).toContain('$6/mo')
         expect(output).toContain('https://billing.stripe.com/portal/abc')
-        consoleSpy.mockRestore()
     })
 
     it('outputs the raw payload with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         await program.parseAsync(['node', 'td', 'billing', 'subscription', '--json'])
@@ -66,12 +79,10 @@ describe('billing subscription', () => {
         expect(JSON.parse(output)).toEqual(fixtures.billing.subscription)
         // Machine output dumps the raw payload, so it must not pay for getUser.
         expect(mockApi.getUser).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('outputs single-line JSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         await program.parseAsync(['node', 'td', 'billing', 'subscription', '--ndjson'])
@@ -79,12 +90,10 @@ describe('billing subscription', () => {
         const output = consoleSpy.mock.calls[0][0] as string
         expect(output).not.toContain('\n')
         expect(JSON.parse(output)).toEqual(fixtures.billing.subscription)
-        consoleSpy.mockRestore()
     })
 
     it('renders a free plan with no price gracefully', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getSubscriptionInfo.mockResolvedValue({
             ...fixtures.billing.subscription,
             status: 'none',
@@ -98,10 +107,9 @@ describe('billing subscription', () => {
 
         await program.parseAsync(['node', 'td', 'billing'])
 
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleOutput()
         expect(output).toContain('Plan:               free')
         expect(output).toContain('Price:              (none)')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -109,7 +117,6 @@ describe('billing plan', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
-        vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockApi.getUser.mockResolvedValue({ lang: 'en' })
@@ -117,21 +124,18 @@ describe('billing plan', () => {
 
     it('renders pro plan details', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getProPlanDetails.mockResolvedValue(fixtures.billing.proPlanDetails)
 
         await program.parseAsync(['node', 'td', 'billing', 'plan'])
 
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleOutput()
         expect(output).toContain('Status:             Active')
         expect(output).toContain('Downgrade at:       (none)')
         expect(output).toContain('monthly: $6')
-        consoleSpy.mockRestore()
     })
 
     it('outputs the raw payload with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getProPlanDetails.mockResolvedValue(fixtures.billing.proPlanDetails)
 
         await program.parseAsync(['node', 'td', 'billing', 'plan', '--json'])
@@ -139,7 +143,6 @@ describe('billing plan', () => {
         expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual(
             fixtures.billing.proPlanDetails,
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -147,7 +150,6 @@ describe('billing prices', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
-        vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockApi.getUser.mockResolvedValue({ lang: 'en' })
@@ -155,17 +157,15 @@ describe('billing prices', () => {
 
     it('renders pro and teams price listings', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getPrices.mockResolvedValue(fixtures.billing.prices)
 
         await program.parseAsync(['node', 'td', 'billing', 'prices'])
 
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleOutput()
         expect(output).toContain('Pro')
         expect(output).toContain('yearly: $60')
         expect(output).toContain('Teams')
         expect(output).toContain('monthly: $8')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -173,7 +173,6 @@ describe('billing pricing', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
-        vi.clearAllMocks()
         mockApi = createMockApi()
         mockGetApi.mockResolvedValue(mockApi)
         mockApi.getUser.mockResolvedValue({ lang: 'en' })
@@ -181,30 +180,39 @@ describe('billing pricing', () => {
 
     it('formats minor-unit numbers as money and lists version entries', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         mockApi.getPricing.mockResolvedValue(fixtures.billing.pricing)
 
         await program.parseAsync(['node', 'td', 'billing', 'pricing'])
 
         expect(mockApi.getPricing).toHaveBeenCalledWith({ formatted: undefined })
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        const output = consoleOutput()
         expect(output).toContain('Latest Pro:         v25')
         expect(output).toContain('v25')
         expect(output).toContain('pro (USD): $4/mo, $29/yr')
-        consoleSpy.mockRestore()
     })
 
-    it('passes --formatted through and prints pre-formatted strings as-is', async () => {
+    it('does not render non-version metadata keys as pricing versions', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi.getPricing.mockResolvedValue(fixtures.billing.pricingWithMetadata)
+
+        await program.parseAsync(['node', 'td', 'billing', 'pricing'])
+
+        const output = consoleOutput()
+        expect(output).not.toContain('revision')
+        // The real version block is still rendered.
+        expect(output).toContain('pro (USD): $4/mo, $29/yr')
+    })
+
+    it('passes --formatted through, prints strings as-is, and skips the locale fetch', async () => {
+        const program = createProgram()
         mockApi.getPricing.mockResolvedValue(fixtures.billing.pricingFormatted)
 
         await program.parseAsync(['node', 'td', 'billing', 'pricing', '--formatted'])
 
         expect(mockApi.getPricing).toHaveBeenCalledWith({ formatted: true })
-        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('pro (USD): $4/mo, $29/yr')
-        consoleSpy.mockRestore()
+        // Formatted strings ignore locale, so the getUser fetch is skipped.
+        expect(mockApi.getUser).not.toHaveBeenCalled()
+        expect(consoleOutput()).toContain('pro (USD): $4/mo, $29/yr')
     })
 })
 
@@ -212,7 +220,6 @@ describe('resolveLocale', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
-        vi.clearAllMocks()
         mockApi = createMockApi()
     })
 
