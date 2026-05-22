@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/config.js', () => ({
@@ -22,6 +21,7 @@ import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
 import { listStoredUsers, NoTokenError, probeApiToken } from '../../lib/auth.js'
 import { type Config, readConfigStrict } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerConfigCommand } from './index.js'
 
 const mockReadConfigStrict = vi.mocked(readConfigStrict)
@@ -29,10 +29,7 @@ const mockProbeApiToken = vi.mocked(probeApiToken)
 const mockListStoredUsers = vi.mocked(listStoredUsers)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerConfigCommand(program)
-    return program
+    return createTestProgram(registerConfigCommand)
 }
 
 const fullConfig: Config = {

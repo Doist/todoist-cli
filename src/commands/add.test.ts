@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -12,16 +11,14 @@ vi.mock('../lib/stdin.js', () => ({
 import { getApi } from '../lib/api/core.js'
 import { readStdin } from '../lib/stdin.js'
 import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerAddCommand } from './add.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerAddCommand(program)
-    return program
+    return createTestProgram(registerAddCommand)
 }
 
 describe('add command', () => {

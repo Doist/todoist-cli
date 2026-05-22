@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/stats.js', () => ({
@@ -7,16 +6,14 @@ vi.mock('../../lib/api/stats.js', () => ({
 }))
 
 import { fetchProductivityStats, updateGoals } from '../../lib/api/stats.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerStatsCommand } from './index.js'
 
 const mockFetchProductivityStats = vi.mocked(fetchProductivityStats)
 const mockUpdateGoals = vi.mocked(updateGoals)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerStatsCommand(program)
-    return program
+    return createTestProgram(registerStatsCommand)
 }
 
 const defaultStats = {

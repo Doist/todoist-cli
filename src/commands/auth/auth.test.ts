@@ -75,6 +75,7 @@ import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { createMockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerAuthCommand } from './index.js'
 import { attachTodoistStatusCommand } from './status.js'
 
@@ -99,10 +100,7 @@ function stubProbeApiForUser(user = TEST_USER) {
 }
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerAuthCommand(program)
-    return program
+    return createTestProgram(registerAuthCommand)
 }
 
 describe('auth command', () => {

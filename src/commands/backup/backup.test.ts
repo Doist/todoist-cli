@@ -1,5 +1,4 @@
 import fs from 'node:fs'
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -13,16 +12,14 @@ vi.mock('../../lib/auth.js', () => ({
 import { getApi } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerBackupCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerBackupCommand(program)
-    return program
+    return createTestProgram(registerBackupCommand)
 }
 
 describe('backup list', () => {

@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -16,6 +15,7 @@ import { getApi } from '../../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerFilterCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -25,10 +25,7 @@ const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerFilterCommand(program)
-    return program
+    return createTestProgram(registerFilterCommand)
 }
 
 describe('filter list', () => {

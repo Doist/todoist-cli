@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -19,6 +18,7 @@ import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { preloadMarkdown } from '../lib/markdown.js'
 import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerTodayCommand } from './today.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -26,10 +26,7 @@ const mockPreloadMarkdown = vi.mocked(preloadMarkdown)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerTodayCommand(program)
-    return program
+    return createTestProgram(registerTodayCommand)
 }
 
 function getToday(): string {

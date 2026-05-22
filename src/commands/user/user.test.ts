@@ -1,5 +1,4 @@
 import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/auth.js', async (importOriginal) => {
@@ -34,6 +33,7 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
 vi.mock('chalk')
 
 import { listStoredUsers, readConfig, resolveActiveUser } from '../../lib/auth.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerUserCommand } from './index.js'
 
 const mockListStoredUsers = vi.mocked(listStoredUsers)
@@ -41,10 +41,7 @@ const mockReadConfig = vi.mocked(readConfig)
 const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerUserCommand(program)
-    return program
+    return createTestProgram(registerUserCommand)
 }
 
 describe('user command', () => {

@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -18,6 +17,7 @@ import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
@@ -28,10 +28,7 @@ const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerProjectCommand(program)
-    return program
+    return createTestProgram(registerProjectCommand)
 }
 
 describe('project list', () => {

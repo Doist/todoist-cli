@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -32,6 +31,7 @@ import {
 import { registerReminderCommand } from './index.js'
 
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockFetchReminders = vi.mocked(fetchReminders)
@@ -45,10 +45,7 @@ const mockUpdateLocationReminder = vi.mocked(updateLocationReminder)
 const mockDeleteLocationReminder = vi.mocked(deleteLocationReminder)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerReminderCommand(program)
-    return program
+    return createTestProgram(registerReminderCommand)
 }
 
 describe('reminder list', () => {

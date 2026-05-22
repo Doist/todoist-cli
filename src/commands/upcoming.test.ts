@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -8,15 +7,13 @@ vi.mock('../lib/api/core.js', () => ({
 
 import { getApi } from '../lib/api/core.js'
 import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerUpcomingCommand } from './upcoming.js'
 
 const mockGetApi = vi.mocked(getApi)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerUpcomingCommand(program)
-    return program
+    return createTestProgram(registerUpcomingCommand)
 }
 
 function getDateOffset(days: number): string {

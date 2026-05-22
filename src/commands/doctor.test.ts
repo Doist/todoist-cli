@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises'
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockWithSpinner, mockProgressTracker, mockLoadingSpinnerStart, mockLoadingSpinnerStop } =
@@ -72,6 +71,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
 import { TodoistApi } from '@doist/todoist-sdk'
 import { NoTokenError, probeApiToken } from '../lib/auth.js'
 import { readConfig } from '../lib/config.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerDoctorCommand } from './doctor.js'
 
 const mockReadFile = vi.mocked(readFile)
@@ -80,10 +80,7 @@ const mockProbeApiToken = vi.mocked(probeApiToken)
 const mockReadConfig = vi.mocked(readConfig)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerDoctorCommand(program)
-    return program
+    return createTestProgram(registerDoctorCommand)
 }
 
 function mockFetch(version: string) {

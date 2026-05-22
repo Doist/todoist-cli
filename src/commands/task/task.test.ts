@@ -1,5 +1,4 @@
 import { PassThrough } from 'node:stream'
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -15,6 +14,7 @@ vi.mock('../../lib/browser.js', () => ({
 import { completeTaskForever, getApi, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -23,10 +23,7 @@ const mockRescheduleTask = vi.mocked(rescheduleTask)
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerTaskCommand(program)
-    return program
+    return createTestProgram(registerTaskCommand)
 }
 
 describe('task move command', () => {

@@ -2,7 +2,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { Command } from 'commander'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -11,6 +10,7 @@ vi.mock('../../lib/api/core.js', () => ({
 
 import { getApi } from '../../lib/api/core.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -29,10 +29,7 @@ afterAll(async () => {
 })
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerCommentCommand(program)
-    return program
+    return createTestProgram(registerCommentCommand)
 }
 
 describe('comment list', () => {

@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/notifications.js', () => ({
@@ -18,6 +17,7 @@ import {
     markNotificationUnread,
     rejectInvitation,
 } from '../../lib/api/notifications.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerNotificationCommand } from './index.js'
 
 const mockFetchNotifications = vi.mocked(fetchNotifications)
@@ -28,10 +28,7 @@ const mockAccept = vi.mocked(acceptInvitation)
 const mockReject = vi.mocked(rejectInvitation)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerNotificationCommand(program)
-    return program
+    return createTestProgram(registerNotificationCommand)
 }
 
 function createShareInvite(overrides = {}) {

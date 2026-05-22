@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import { open } from 'node:fs/promises'
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
@@ -23,6 +22,7 @@ import { getApi } from '../../lib/api/core.js'
 import { resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerTemplateCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -30,10 +30,7 @@ const mockResolveProjectRef = vi.mocked(resolveProjectRef)
 const mockResolveWorkspaceRef = vi.mocked(resolveWorkspaceRef)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerTemplateCommand(program)
-    return program
+    return createTestProgram(registerTemplateCommand)
 }
 
 describe('template', () => {

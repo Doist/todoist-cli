@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -15,16 +14,14 @@ import { getApi } from '../../lib/api/core.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { readStdin } from '../../lib/stdin.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerTaskCommand(program)
-    return program
+    return createTestProgram(registerTaskCommand)
 }
 
 describe('task quickadd command', () => {

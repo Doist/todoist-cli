@@ -1,6 +1,5 @@
 import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { TodoistRequestError } from '@doist/todoist-sdk'
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', async (importOriginal) => {
@@ -23,16 +22,14 @@ import { getApi, wrapApiError } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerAppsCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerAppsCommand(program)
-    return program
+    return createTestProgram(registerAppsCommand)
 }
 
 const APP_A = {

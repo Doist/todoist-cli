@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -13,16 +12,14 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
 import { getApi } from '../../lib/api/core.js'
 import { reorderProjects } from '../../lib/api/projects-sync.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
 const mockReorderProjects = vi.mocked(reorderProjects)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerProjectCommand(program)
-    return program
+    return createTestProgram(registerProjectCommand)
 }
 
 describe('project reorder', () => {

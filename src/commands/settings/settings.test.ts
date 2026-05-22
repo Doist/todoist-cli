@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/user-settings.js', () => ({
@@ -27,6 +26,7 @@ import {
 } from '../../lib/api/user-settings.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import {
     DATE_FORMAT_CHOICES,
     DAY_CHOICES,
@@ -45,10 +45,7 @@ const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerSettingsCommand(program)
-    return program
+    return createTestProgram(registerSettingsCommand)
 }
 
 const defaultSettings: UserSettings = {
