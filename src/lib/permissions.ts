@@ -74,6 +74,12 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'getAppTestToken',
     'getAppDistributionToken',
     'getAppWebhook',
+    // Billing (gated by billing:read / billing:read_write scope). getSubscriptionInfo
+    // is a POST but read-only, so it must be listed explicitly.
+    'getSubscriptionInfo',
+    'getProPlanDetails',
+    'getPrices',
+    'getPricing',
     // Folders
     'getFolders',
     'getFolder',

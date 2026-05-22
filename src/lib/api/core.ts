@@ -212,6 +212,10 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getAppWebhook: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
+    getSubscriptionInfo: 'billing',
+    getProPlanDetails: 'billing',
+    getPrices: 'billing',
+    getPricing: 'billing',
 }
 
 const STANDARD_REMEDIATION =
@@ -224,7 +228,8 @@ async function getScopeRemediation(methodName: string | undefined): Promise<stri
     }
     const metadata = await getAuthMetadata()
     const command = buildReloginCommand(metadata, requiredFlag)
-    return `This command requires the ${oauthScopeFor(requiredFlag)} scope. Re-run \`${command}\` to grant it.`
+    const scope = oauthScopeFor(requiredFlag, metadata.authMode === 'read-only')
+    return `This command requires the ${scope} scope. Re-run \`${command}\` to grant it.`
 }
 
 export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {

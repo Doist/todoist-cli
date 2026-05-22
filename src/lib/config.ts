@@ -41,7 +41,7 @@ export interface UserConfig {
  * a new flag only requires appending it here and wiring it into the login
  * command; everything downstream stays consistent.
  */
-export const AUTH_FLAG_ORDER = ['read-only', 'app-management', 'backups'] as const
+export const AUTH_FLAG_ORDER = ['read-only', 'app-management', 'backups', 'billing'] as const
 export type AuthFlag = (typeof AUTH_FLAG_ORDER)[number]
 
 /**

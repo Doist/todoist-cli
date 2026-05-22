@@ -19,7 +19,7 @@ export type AuthScopeOptions = {
 export function resolveAuthScope(options: AuthScopeOptions): string {
     const parts = [options.readOnly ? READ_ONLY_SCOPES : READ_WRITE_SCOPES]
     for (const scope of options.additionalScopes ?? []) {
-        parts.push(oauthScopeFor(scope))
+        parts.push(oauthScopeFor(scope, options.readOnly))
     }
     return parts.join(',')
 }
@@ -36,6 +36,13 @@ export interface ScopeDefinition {
     readonly flag: AdditionalScopeFlag
     /** Raw OAuth scope string sent to the Todoist authorize endpoint. */
     readonly oauthScope: string
+    /**
+     * Scope to request instead of `oauthScope` when the login is `--read-only`.
+     * Lets a single flag map to a read-write grant by default and a narrower
+     * read grant under `--read-only` (e.g. billing). Omit when the scope does
+     * not vary by mode.
+     */
+    readonly readOnlyScope?: string
     /** One-line summary shown in `td auth login --help`. */
     readonly summary: string
 }
@@ -57,6 +64,12 @@ export const ADDITIONAL_SCOPES: readonly ScopeDefinition[] = [
         oauthScope: 'backups:read',
         summary: 'List and download your Todoist backups.',
     },
+    {
+        flag: 'billing',
+        oauthScope: 'billing:read_write',
+        readOnlyScope: 'billing:read',
+        summary: 'View your billing and subscription information.',
+    },
 ]
 
 const ADDITIONAL_SCOPE_FLAGS: ReadonlySet<AdditionalScopeFlag> = new Set(
@@ -67,13 +80,13 @@ export function isAdditionalScopeFlag(value: string): value is AdditionalScopeFl
     return ADDITIONAL_SCOPE_FLAGS.has(value as AdditionalScopeFlag)
 }
 
-export function oauthScopeFor(flag: AdditionalScopeFlag): string {
+export function oauthScopeFor(flag: AdditionalScopeFlag, readOnly = false): string {
     const def = ADDITIONAL_SCOPES.find((s) => s.flag === flag)
     if (!def) {
         // Unreachable — the AdditionalScopeFlag type is derived from ADDITIONAL_SCOPES.
         throw new Error(`Unknown additional scope: ${flag}`)
     }
-    return def.oauthScope
+    return readOnly && def.readOnlyScope ? def.readOnlyScope : def.oauthScope
 }
 
 /**
@@ -150,6 +163,7 @@ Examples:
   td auth login
   td auth login --read-only
   td auth login --additional-scopes=app-management
+  td auth login --additional-scopes=billing
   td auth login --read-only --additional-scopes=backups
   td auth login --additional-scopes=app-management,backups`
 }

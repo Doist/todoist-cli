@@ -84,6 +84,16 @@ td auth login --read-only
 
 In read-only mode, commands that change Todoist data (create/update/delete/complete/move/archive, etc.) are blocked by the CLI.
 
+Some commands need opt-in OAuth scopes, requested via `--additional-scopes=<list>` (comma-separated):
+
+```bash
+td auth login --additional-scopes=app-management   # td apps ...
+td auth login --additional-scopes=backups           # td backup ...
+td auth login --additional-scopes=billing           # td billing ...
+```
+
+Run `td auth login --help` for the full list. When a command fails for lack of a scope, the error suggests a re-login command that preserves whichever flags were originally used.
+
 ### Alternative methods
 
 **Manual token:** Get your API token from [Todoist Settings > Integrations > Developer](https://todoist.com/app/settings/integrations/developer):
