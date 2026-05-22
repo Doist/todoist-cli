@@ -1,5 +1,4 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -10,19 +9,17 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
     reorderProjects: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { reorderProjects } from '../../lib/api/projects-sync.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockReorderProjects = vi.mocked(reorderProjects)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerProjectCommand(program)
-    return program
+    return createTestProgram(registerProjectCommand)
 }
 
 describe('project reorder', () => {
@@ -44,13 +41,8 @@ describe('project reorder', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        mockApi = setupApiMock()
+        consoleSpy = mockConsoleLog()
     })
 
     function primeProjects(target: (typeof siblings)[number], all = siblings) {

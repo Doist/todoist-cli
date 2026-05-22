@@ -1,21 +1,17 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerCompletedCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
-
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerCompletedCommand(program)
-    return program
+    return createTestProgram(registerCompletedCommand)
 }
 
 function getToday(): string {
@@ -35,13 +31,8 @@ describe('completed command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        mockApi = setupApiMock()
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows completed tasks', async () => {

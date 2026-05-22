@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/user-settings.js', () => ({
@@ -25,8 +24,11 @@ import {
     type UserSettings,
     updateUserSettings,
 } from '../../lib/api/user-settings.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { makeFilter } from '../../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import {
     DATE_FORMAT_CHOICES,
     DAY_CHOICES,
@@ -45,10 +47,7 @@ const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerSettingsCommand(program)
-    return program
+    return createTestProgram(registerSettingsCommand)
 }
 
 const defaultSettings: UserSettings = {
@@ -74,7 +73,7 @@ describe('settings view', () => {
 
     it('displays settings in human-readable format', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings)
 
@@ -86,12 +85,11 @@ describe('settings view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('24h'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Monday'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Notifications'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag using human-friendly values', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings)
 
@@ -105,12 +103,11 @@ describe('settings view', () => {
         expect(parsed.startDay).toBe('monday')
         expect(parsed.theme).toBe('blueberry')
         expect(parsed.reminderPush).toBe(true)
-        consoleSpy.mockRestore()
     })
 
     it('formats 12h time format correctly', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -120,12 +117,11 @@ describe('settings view', () => {
         await program.parseAsync(['node', 'td', 'settings', 'view'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('12h'))
-        consoleSpy.mockRestore()
     })
 
     it('formats US date format correctly', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -135,7 +131,6 @@ describe('settings view', () => {
         await program.parseAsync(['node', 'td', 'settings', 'view'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('MM/DD/YYYY'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -144,13 +139,12 @@ describe('settings view - start page name resolution', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves project name in text output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -164,12 +158,11 @@ describe('settings view - start page name resolution', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('project?id=abc123 (My Project)'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('resolves project name in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -183,12 +176,11 @@ describe('settings view - start page name resolution', () => {
         const parsed = JSON.parse(output)
         expect(parsed.startPage).toBe('project?id=abc123')
         expect(parsed.startPageName).toBe('My Project')
-        consoleSpy.mockRestore()
     })
 
     it('resolves label name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -202,12 +194,11 @@ describe('settings view - start page name resolution', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('label?id=label-1 (Urgent)'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('resolves filter name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -224,12 +215,11 @@ describe('settings view - start page name resolution', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('filter?id=filter-1 (Work tasks)'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('does not call API for simple start page values', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
 
@@ -237,12 +227,11 @@ describe('settings view - start page name resolution', () => {
 
         expect(mockGetApi).not.toHaveBeenCalled()
         expect(mockFetchFilters).not.toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('has null startPageName in JSON for simple values', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
 
@@ -252,12 +241,11 @@ describe('settings view - start page name resolution', () => {
         const parsed = JSON.parse(output)
         expect(parsed.startPage).toBe('today')
         expect(parsed.startPageName).toBeNull()
-        consoleSpy.mockRestore()
     })
 
     it('gracefully handles API failure', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -272,7 +260,6 @@ describe('settings view - start page name resolution', () => {
         // Should show raw value without resolved name
         const output = consoleSpy.mock.calls[0][0] as string
         expect(output).not.toContain('project?id=abc123 (')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -283,7 +270,7 @@ describe('settings update', () => {
 
     it('updates timezone', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -300,132 +287,121 @@ describe('settings update', () => {
             timezone: 'America/New_York',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Settings updated.')
-        consoleSpy.mockRestore()
     })
 
     it('updates time format to 24h', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--time-format', '24'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: '24h' })
-        consoleSpy.mockRestore()
     })
 
     it('updates time format to 12h', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--time-format', '12'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ timeFormat: '12h' })
-        consoleSpy.mockRestore()
     })
 
     it('updates date format to US', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--date-format', 'us'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 'MM/DD/YYYY' })
-        consoleSpy.mockRestore()
     })
 
     it('updates date format to international', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--date-format', 'intl'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ dateFormat: 'DD/MM/YYYY' })
-        consoleSpy.mockRestore()
     })
 
     it('updates start day with day name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--start-day', 'Sunday'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 'Sunday' })
-        consoleSpy.mockRestore()
     })
 
     it('updates start day with short day name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--start-day', 'Mon'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ startDay: 'Monday' })
-        consoleSpy.mockRestore()
     })
 
     it('updates theme by name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--theme', 'kale'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ theme: 5 })
-        consoleSpy.mockRestore()
     })
 
     it('updates auto reminder', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--auto-reminder', '60'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ autoReminder: 60 })
-        consoleSpy.mockRestore()
     })
 
     it('updates notification settings', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--reminder-email', 'on'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ reminderEmail: true })
-        consoleSpy.mockRestore()
     })
 
     it('parses boolean values correctly', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
         await program.parseAsync(['node', 'td', 'settings', 'update', '--reminder-push', 'off'])
 
         expect(mockUpdateUserSettings).toHaveBeenCalledWith({ reminderPush: false })
-        consoleSpy.mockRestore()
     })
 
     it('updates multiple settings at once', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -447,12 +423,11 @@ describe('settings update', () => {
             timeFormat: '24h',
             reminderDesktop: true,
         })
-        consoleSpy.mockRestore()
     })
 
     it('shows help when no settings specified', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'settings', 'update'])
@@ -462,7 +437,6 @@ describe('settings update', () => {
         }
 
         expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
-        stdoutSpy.mockRestore()
     })
 
     it('errors on invalid time format', async () => {

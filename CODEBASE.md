@@ -55,6 +55,9 @@ src/
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
 └─ test-support/
    ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
+   ├─ api-mock.ts         # setupApiMock() — wires getApi() to a fresh mock API
+   ├─ program.ts          # createTestProgram(register) — Commander test harness
+   ├─ console-spy.ts      # mockConsoleLog/Error + mockProcessStdout/Stderr spies
    └─ fixtures.ts         # Sample task/project/label/section fixtures
 ```
 
@@ -242,7 +245,16 @@ re-migrate a stale legacy slot.
 - **Mocks:** `src/test-support/mock-api.ts` — `createMockApi()` returns
   vitest-mocked versions of every SDK method. Use factories from
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
-- **Pattern:** mock `getApi` via `vi.mock`, then `program.parseAsync(['node','td','<cmd>',…])`.
+- **Helpers:** `setupApiMock()` (`api-mock.ts`) creates a mock API and wires
+  `getApi()` to it; `createTestProgram(register)` (`program.ts`) builds the
+  Commander harness; `mockConsoleLog`/`mockConsoleError` and
+  `mockProcessStdout`/`mockProcessStderr` (`console-spy.ts`) spy on output.
+- **Pattern:** still `vi.mock('…/api/core.js')` (hoisted) per file, then in
+  `beforeEach` `mockApi = setupApiMock()`; build with
+  `createTestProgram(registerXCommand)` and run
+  `program.parseAsync(['node','td','<cmd>',…])`.
+- **Auto-restore:** `vitest.config.ts` sets `restoreMocks: true`, so spies are
+  restored between tests automatically — do NOT add manual `.mockRestore()`.
 - **`@doist/cli-core` inlining:** `vitest.config.ts` lists `@doist/cli-core` in
   `server.deps.inline` so `vi.doMock('node:fs/promises', …)` /
   `vi.doMock('node:os', …)` reach cli-core's compiled imports. Without it

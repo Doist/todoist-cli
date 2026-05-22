@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -17,7 +16,6 @@ vi.mock('../../lib/api/reminders.js', () => ({
     deleteLocationReminder: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import {
     addLocationReminder,
     addReminder,
@@ -29,11 +27,13 @@ import {
     updateLocationReminder,
     updateReminder,
 } from '../../lib/api/reminders.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { registerReminderCommand } from './index.js'
 
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchReminders = vi.mocked(fetchReminders)
 const mockAddReminder = vi.mocked(addReminder)
 const mockUpdateReminder = vi.mocked(updateReminder)
@@ -45,10 +45,7 @@ const mockUpdateLocationReminder = vi.mocked(updateLocationReminder)
 const mockDeleteLocationReminder = vi.mocked(deleteLocationReminder)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerReminderCommand(program)
-    return program
+    return createTestProgram(registerReminderCommand)
 }
 
 describe('reminder list', () => {
@@ -56,13 +53,12 @@ describe('reminder list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists reminders for a task', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({
@@ -99,12 +95,11 @@ describe('reminder list', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('30m before due'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('at 2024-01-15 10:00'))
-        consoleSpy.mockRestore()
     })
 
     it('lists all reminders when no task specified', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -128,12 +123,11 @@ describe('reminder list', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('15m before due'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('task:task-1'))
-        consoleSpy.mockRestore()
     })
 
     it('shows location reminders alongside time reminders', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
         mockApi.getLocationReminders.mockResolvedValue({
@@ -158,12 +152,11 @@ describe('reminder list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Office'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('on enter'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No reminders." when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
@@ -172,12 +165,11 @@ describe('reminder list', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'list', 'id:task-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No reminders.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getReminders.mockResolvedValue({
@@ -201,12 +193,11 @@ describe('reminder list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].minuteOffset).toBe(60)
-        consoleSpy.mockRestore()
     })
 
     it('accepts --task flag instead of positional arg', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
@@ -215,7 +206,6 @@ describe('reminder list', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'list', '--task', 'id:task-1'])
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
-        consoleSpy.mockRestore()
     })
 
     it('errors when both positional and --task are provided', async () => {
@@ -236,7 +226,7 @@ describe('reminder list', () => {
 
     it('filters to time-based reminders with --type time', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -257,12 +247,11 @@ describe('reminder list', () => {
         expect(mockApi.getReminders).toHaveBeenCalled()
         expect(mockApi.getLocationReminders).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('15m before due'))
-        consoleSpy.mockRestore()
     })
 
     it('filters to location reminders with --type location', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLocationReminders.mockResolvedValue({
             results: [
@@ -287,7 +276,6 @@ describe('reminder list', () => {
         expect(mockApi.getLocationReminders).toHaveBeenCalled()
         expect(mockApi.getReminders).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Home'))
-        consoleSpy.mockRestore()
     })
 
     it('errors when --cursor is used without --type', async () => {
@@ -300,7 +288,7 @@ describe('reminder list', () => {
 
     it('shows [urgent] badge for urgent reminders', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -321,12 +309,11 @@ describe('reminder list', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
-        consoleSpy.mockRestore()
     })
 
     it('does not show task context when filtered by task', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({
@@ -348,7 +335,6 @@ describe('reminder list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('10m before due'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('task:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -357,13 +343,12 @@ describe('reminder add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created reminder as JSON with --before', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -390,12 +375,11 @@ describe('reminder add --json', () => {
         expect(parsed.type).toBe('relative')
         expect(parsed.minuteOffset).toBe(30)
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Added reminder:'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs created reminder as JSON with --at', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -415,7 +399,6 @@ describe('reminder add --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('rem-new')
         expect(parsed.type).toBe('absolute')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -424,13 +407,12 @@ describe('reminder add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds reminder with --before offset', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -447,12 +429,11 @@ describe('reminder add', () => {
             due: undefined,
         })
         expect(consoleSpy).toHaveBeenCalledWith('Added reminder: 30m before due')
-        consoleSpy.mockRestore()
     })
 
     it('adds reminder with --at datetime', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -473,12 +454,11 @@ describe('reminder add', () => {
             due: { date: '2024-01-15T10:00:00' },
         })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('at 2024-01-15'))
-        consoleSpy.mockRestore()
     })
 
     it('parses hour durations', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -494,12 +474,11 @@ describe('reminder add', () => {
             minuteOffset: 60,
             due: undefined,
         })
-        consoleSpy.mockRestore()
     })
 
     it('shows ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -511,7 +490,6 @@ describe('reminder add', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'add', 'id:task-1', '--before', '15m'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('rem-xyz'))
-        consoleSpy.mockRestore()
     })
 
     it('errors when neither --before nor --at specified', async () => {
@@ -597,7 +575,7 @@ describe('reminder add', () => {
 
     it('accepts --task flag instead of positional arg', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -622,7 +600,6 @@ describe('reminder add', () => {
             minuteOffset: 30,
             due: undefined,
         })
-        consoleSpy.mockRestore()
     })
 
     it('errors when both positional and --task are provided for add', async () => {
@@ -645,7 +622,7 @@ describe('reminder add', () => {
 
     it('passes --urgent through and shows [urgent] in output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -665,7 +642,6 @@ describe('reminder add', () => {
             expect.objectContaining({ itemId: 'task-1', isUrgent: true }),
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -676,7 +652,7 @@ describe('reminder update', () => {
 
     it('updates reminder with new offset', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -687,12 +663,11 @@ describe('reminder update', () => {
             due: undefined,
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated reminder: 1h before due (id:rem-1)')
-        consoleSpy.mockRestore()
     })
 
     it('updates reminder with new datetime', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -711,7 +686,6 @@ describe('reminder update', () => {
             due: { date: '2024-01-16T09:00:00' },
         })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('at 2024-01-16'))
-        consoleSpy.mockRestore()
     })
 
     it('rejects plain text references', async () => {
@@ -732,7 +706,7 @@ describe('reminder update', () => {
 
     it('toggles urgency alone without --before or --at', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -743,12 +717,11 @@ describe('reminder update', () => {
             expect.objectContaining({ isUrgent: false }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Updated reminder: marked not urgent (id:rem-1)')
-        consoleSpy.mockRestore()
     })
 
     it('shows [urgent] in confirmation when time and --urgent are combined', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -765,12 +738,11 @@ describe('reminder update', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('1h before due'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateReminder.mockResolvedValue(undefined)
         mockGetReminderById.mockResolvedValue({
@@ -798,7 +770,6 @@ describe('reminder update', () => {
         const parsed = JSON.parse(firstCall)
         expect(parsed.id).toBe('rem-1')
         expect(parsed.isUrgent).toBe(true)
-        consoleSpy.mockRestore()
     })
 })
 
@@ -809,7 +780,7 @@ describe('reminder delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -826,12 +797,11 @@ describe('reminder delete', () => {
         expect(mockDeleteReminder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete reminder: 30m before due')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes reminder with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -848,7 +818,6 @@ describe('reminder delete', () => {
 
         expect(mockDeleteReminder).toHaveBeenCalledWith('rem-123')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted reminder: 1h before due (id:rem-123)')
-        consoleSpy.mockRestore()
     })
 
     it('rejects plain text references', async () => {
@@ -876,13 +845,12 @@ describe('reminder --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reminder add --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
 
@@ -899,12 +867,11 @@ describe('reminder --dry-run', () => {
 
         expect(mockAddReminder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add reminder'))
-        consoleSpy.mockRestore()
     })
 
     it('reminder delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -920,12 +887,11 @@ describe('reminder --dry-run', () => {
 
         expect(mockDeleteReminder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete reminder'))
-        consoleSpy.mockRestore()
     })
 
     it('reminder update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -940,7 +906,6 @@ describe('reminder --dry-run', () => {
 
         expect(mockUpdateReminder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update reminder'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -951,7 +916,7 @@ describe('reminder get', () => {
 
     it('fetches a time-based reminder by id', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -967,12 +932,11 @@ describe('reminder get', () => {
 
         expect(mockGetReminderById).toHaveBeenCalledWith('rem-1')
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('30m before due'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -989,7 +953,6 @@ describe('reminder get', () => {
         const firstCall = consoleSpy.mock.calls[0]?.[0] as string
         expect(firstCall).toContain('"id": "rem-1"')
         expect(firstCall).toContain('"type": "absolute"')
-        consoleSpy.mockRestore()
     })
 
     it('rejects invalid id ref', async () => {
@@ -1001,7 +964,7 @@ describe('reminder get', () => {
 
     it('shows [urgent] badge for urgent reminders', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -1017,12 +980,11 @@ describe('reminder get', () => {
         await program.parseAsync(['node', 'td', 'reminder', 'get', 'id:rem-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[urgent]'))
-        consoleSpy.mockRestore()
     })
 
     it('includes isUrgent in default --json output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -1039,7 +1001,6 @@ describe('reminder get', () => {
 
         const firstCall = consoleSpy.mock.calls[0]?.[0] as string
         expect(firstCall).toContain('"isUrgent": true')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1048,8 +1009,7 @@ describe('reminder location add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     function setupTask() {
@@ -1062,7 +1022,7 @@ describe('reminder location add', () => {
 
     it('adds a location reminder', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         setupTask()
 
         mockAddLocationReminder.mockResolvedValue({
@@ -1109,7 +1069,6 @@ describe('reminder location add', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Added location reminder: Grocery'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('requires --name', async () => {
@@ -1210,7 +1169,7 @@ describe('reminder location add', () => {
 
     it('--dry-run does not call the API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         setupTask()
 
         await program.parseAsync([
@@ -1235,7 +1194,6 @@ describe('reminder location add', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Would add location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1246,7 +1204,7 @@ describe('reminder location update', () => {
 
     it('updates a subset of fields', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateLocationReminder.mockResolvedValue({
             id: 'loc-1',
@@ -1277,7 +1235,6 @@ describe('reminder location update', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Updated location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('errors when no fields provided', async () => {
@@ -1289,7 +1246,7 @@ describe('reminder location update', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateLocationReminder.mockResolvedValue({
             id: 'loc-1',
@@ -1320,12 +1277,11 @@ describe('reminder location update', () => {
         const firstCall = consoleSpy.mock.calls[0]?.[0] as string
         expect(firstCall).toContain('"id": "loc-1"')
         expect(firstCall).toContain('"radius": 300')
-        consoleSpy.mockRestore()
     })
 
     it('--dry-run does not call the API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -1343,7 +1299,6 @@ describe('reminder location update', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Would update location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1370,7 +1325,7 @@ describe('reminder location delete', () => {
 
     it('requires --yes to delete', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockLocationReminder()
 
         await program.parseAsync(['node', 'td', 'reminder', 'location', 'delete', 'id:loc-1'])
@@ -1379,12 +1334,11 @@ describe('reminder location delete', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Would delete location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('deletes with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockLocationReminder()
 
         await program.parseAsync([
@@ -1401,12 +1355,11 @@ describe('reminder location delete', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Deleted location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockLocationReminder()
 
         await program.parseAsync([
@@ -1423,7 +1376,6 @@ describe('reminder location delete', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('Would delete location reminder'),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1434,7 +1386,7 @@ describe('reminder location get', () => {
 
     it('fetches a location reminder by id', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetLocationReminderById.mockResolvedValue({
             id: 'loc-1',
@@ -1454,12 +1406,11 @@ describe('reminder location get', () => {
 
         expect(mockGetLocationReminderById).toHaveBeenCalledWith('loc-1')
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Grocery'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockGetLocationReminderById.mockResolvedValue({
             id: 'loc-1',
@@ -1488,6 +1439,5 @@ describe('reminder location get', () => {
         const firstCall = consoleSpy.mock.calls[0]?.[0] as string
         expect(firstCall).toContain('"id": "loc-1"')
         expect(firstCall).toContain('"name": "Grocery"')
-        consoleSpy.mockRestore()
     })
 })

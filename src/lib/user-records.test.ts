@@ -5,7 +5,7 @@
  * adapter, so the REPLACE-not-merge contract, the legacy-fields strip, and
  * the default-pointer cleanup on remove all need direct coverage.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const TEST_HOME = '/tmp/todoist-cli-user-records-tests'
 const TEST_CONFIG_PATH = `${TEST_HOME}/.config/todoist-cli/config.json`
@@ -43,10 +43,6 @@ describe('createTodoistUserRecordStore', () => {
             const actual = await importOriginal<typeof import('@doist/cli-core')>()
             return { ...actual, getConfigPath: () => TEST_CONFIG_PATH }
         })
-    })
-
-    afterEach(() => {
-        vi.restoreAllMocks()
     })
 
     function setConfig(config: unknown): void {

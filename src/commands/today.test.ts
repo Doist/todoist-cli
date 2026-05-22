@@ -1,5 +1,4 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -15,21 +14,19 @@ vi.mock('../lib/markdown.js', () => ({
     renderMarkdown: vi.fn((text: string) => Promise.resolve(text)),
 }))
 
-import { getApi } from '../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { preloadMarkdown } from '../lib/markdown.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { mockConsoleLog } from '../test-support/console-spy.js'
+import { type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerTodayCommand } from './today.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockPreloadMarkdown = vi.mocked(preloadMarkdown)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerTodayCommand(program)
-    return program
+    return createTestProgram(registerTodayCommand)
 }
 
 function getToday(): string {
@@ -49,13 +46,8 @@ describe('today command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        mockApi = setupApiMock()
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows overdue tasks in Overdue section', async () => {

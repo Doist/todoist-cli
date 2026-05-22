@@ -1,23 +1,21 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getCurrentUserId: vi.fn(),
 }))
 
-import { getApi, getCurrentUserId } from '../lib/api/core.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { getCurrentUserId } from '../lib/api/core.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { mockConsoleLog } from '../test-support/console-spy.js'
+import { type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerActivityCommand } from './activity.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockGetCurrentUserId = vi.mocked(getCurrentUserId)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerActivityCommand(program)
-    return program
+    return createTestProgram(registerActivityCommand)
 }
 
 describe('activity command', () => {
@@ -26,14 +24,9 @@ describe('activity command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockGetCurrentUserId.mockResolvedValue('user-123')
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows activity events', async () => {

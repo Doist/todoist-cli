@@ -1,22 +1,18 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getCurrentUserId: vi.fn().mockResolvedValue('current-user-123'),
 }))
 
-import { getApi } from '../lib/api/core.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { mockConsoleError, mockConsoleLog } from '../test-support/console-spy.js'
+import { type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerUpcomingCommand } from './upcoming.js'
 
-const mockGetApi = vi.mocked(getApi)
-
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerUpcomingCommand(program)
-    return program
+    return createTestProgram(registerUpcomingCommand)
 }
 
 function getDateOffset(days: number): string {
@@ -31,13 +27,8 @@ describe('upcoming command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        mockApi = setupApiMock()
+        consoleSpy = mockConsoleLog()
     })
 
     it('defaults to 7 days', async () => {
@@ -268,12 +259,11 @@ describe('upcoming command', () => {
 
     it('rejects invalid days argument', async () => {
         const program = createProgram()
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const errorSpy = mockConsoleError()
 
         await program.parseAsync(['node', 'td', 'upcoming', 'invalid'])
 
         expect(errorSpy).toHaveBeenCalledWith('Days must be a positive number')
-        errorSpy.mockRestore()
     })
 
     it('uses server-side assignee scoping by default', async () => {

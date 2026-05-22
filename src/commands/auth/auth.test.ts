@@ -74,7 +74,13 @@ import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
+import {
+    mockConsoleError,
+    mockConsoleLog,
+    mockProcessStdout,
+} from '../../test-support/console-spy.js'
 import { createMockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerAuthCommand } from './index.js'
 import { attachTodoistStatusCommand } from './status.js'
 
@@ -99,10 +105,7 @@ function stubProbeApiForUser(user = TEST_USER) {
 }
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerAuthCommand(program)
-    return program
+    return createTestProgram(registerAuthCommand)
 }
 
 describe('auth command', () => {
@@ -111,15 +114,13 @@ describe('auth command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
+        errorSpy = mockConsoleError()
         mockListStoredUsers.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
     })
 
     afterEach(() => {
-        consoleSpy.mockRestore()
-        errorSpy.mockRestore()
         process.exitCode = undefined
     })
 
@@ -174,13 +175,12 @@ describe('auth command', () => {
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
             stubProbeApiForUser()
-            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            mockProcessStdout()
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(mockRl.question).toHaveBeenCalled()
             expect(setMock).toHaveBeenCalledWith(expect.anything(), 'interactive_token_456')
-            writeSpy.mockRestore()
         })
 
         it('shows error when interactive input is empty', async () => {
@@ -193,13 +193,12 @@ describe('auth command', () => {
                 _writeToOutput: vi.fn(),
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
-            const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            mockProcessStdout()
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(setMock).not.toHaveBeenCalled()
             expect(errorSpy).toHaveBeenCalledWith('Error:', 'No token provided')
-            writeSpy.mockRestore()
         })
 
         it('surfaces config-file fallback warning', async () => {
@@ -528,7 +527,7 @@ describe('auth command', () => {
             activeMock.mockResolvedValue({ token: 'stored-token-1234567', account })
 
             const program = createProgram()
-            const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+            const stdoutWrite = mockProcessStdout()
             const originalArgv = process.argv
             process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'token', 'view']
             resetGlobalArgs()
@@ -539,7 +538,6 @@ describe('auth command', () => {
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
-                stdoutWrite.mockRestore()
             }
         })
 

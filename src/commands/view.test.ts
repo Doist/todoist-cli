@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', async (importOriginal) => {
@@ -22,20 +21,18 @@ vi.mock('../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-import { getApi } from '../lib/api/core.js'
 import { fetchFilters } from '../lib/api/filters.js'
+import { setupApiMock } from '../test-support/api-mock.js'
+import { mockConsoleLog, mockProcessStdout } from '../test-support/console-spy.js'
 import { makeFilter } from '../test-support/fixtures.js'
-import { createMockApi, type MockApi } from '../test-support/mock-api.js'
+import { type MockApi } from '../test-support/mock-api.js'
+import { createTestProgram } from '../test-support/program.js'
 import { registerViewCommand } from './view.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchFilters = vi.mocked(fetchFilters)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerViewCommand(program)
-    return program
+    return createTestProgram(registerViewCommand)
 }
 
 describe('view command', () => {
@@ -44,9 +41,8 @@ describe('view command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockApi = setupApiMock()
+        consoleSpy = mockConsoleLog()
     })
 
     it('routes task URL to task view', async () => {
@@ -318,7 +314,7 @@ describe('view command', () => {
 
     it('shows route mapping and passthrough examples in view help', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         await expect(program.parseAsync(['node', 'td', 'view', '--help'])).rejects.toThrow()
         const help = stdoutSpy.mock.calls.map((call) => String(call[0])).join('')

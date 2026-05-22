@@ -1,5 +1,4 @@
-import { Command } from 'commander'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
@@ -16,23 +15,21 @@ vi.mock('../../lib/config.js', () => ({
     writeConfig: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerWorkspaceCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 const mockReadConfig = vi.mocked(readConfig)
 const mockWriteConfig = vi.mocked(writeConfig)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerWorkspaceCommand(program)
-    return program
+    return createTestProgram(registerWorkspaceCommand)
 }
 
 const mockWorkspaces = [
@@ -59,20 +56,14 @@ const mockWorkspaces = [
 ]
 
 describe('workspace list', () => {
-    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('lists all workspaces', async () => {
@@ -137,20 +128,14 @@ describe('workspace list', () => {
 })
 
 describe('workspace view', () => {
-    let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('resolves workspace by name', async () => {
@@ -248,18 +233,13 @@ describe('workspace projects', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
             { id: 'folder-2', name: 'Marketing', workspaceId: 'ws-1' },
         ])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('lists projects grouped by folder', async () => {
@@ -450,15 +430,10 @@ describe('workspace users', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('lists workspace users', async () => {
@@ -665,14 +640,9 @@ describe('workspace insights', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces as never)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows insights for workspace projects', async () => {
@@ -788,14 +758,9 @@ describe('workspace create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('creates a workspace with --name', async () => {
@@ -902,14 +867,9 @@ describe('workspace update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('updates an admin-owned workspace', async () => {
@@ -1023,14 +983,9 @@ describe('workspace delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('throws NOT_ADMIN on non-admin workspace (even on --dry-run)', async () => {
@@ -1072,8 +1027,7 @@ describe('workspace user-tasks', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockApi.getWorkspaceUsers.mockResolvedValue({
             workspaceUsers: [
@@ -1090,11 +1044,7 @@ describe('workspace user-tasks', () => {
             ],
             hasMore: false,
         })
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('resolves user by email and calls API', async () => {
@@ -1211,14 +1161,9 @@ describe('workspace activity', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('calls API with workspace id and passes through filters', async () => {
@@ -1265,17 +1210,12 @@ describe('workspace use (default workspace)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
         mockWriteConfig.mockResolvedValue(undefined)
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    })
-
-    afterEach(() => {
-        consoleSpy.mockRestore()
+        consoleSpy = mockConsoleLog()
     })
 
     it('stores the resolved workspace id under workspace.defaultWorkspace', async () => {

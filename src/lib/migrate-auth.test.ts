@@ -7,7 +7,7 @@ import type { MigrateAuthResult, MigrateLegacyAuthOptions } from '@doist/cli-cor
  * plaintext loader, the `/api/v1/user` identifier callback, and the
  * legacy-config cleanup hook.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TodoistAccount } from './auth-store.js'
 
 const TEST_HOME = '/tmp/todoist-cli-tests-migrate'
@@ -75,10 +75,6 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
                 ),
             }
         })
-    })
-
-    afterEach(() => {
-        vi.restoreAllMocks()
     })
 
     function setConfig(config: unknown): void {

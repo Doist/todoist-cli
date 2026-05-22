@@ -1,5 +1,4 @@
 import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
-import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/browser.js', () => ({
@@ -13,13 +12,12 @@ vi.mock('../../lib/config.js', () => ({
 
 import { openInBrowser } from '../../lib/browser.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerHelpCenterCommand } from './index.js'
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerHelpCenterCommand(program)
-    return program
+    return createTestProgram(registerHelpCenterCommand)
 }
 
 function createJsonResponse(body: unknown, status = 200, statusText = 'OK'): Response {
@@ -38,7 +36,7 @@ describe('hc command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
         fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
         mockReadConfig.mockResolvedValue({})
@@ -484,7 +482,7 @@ describe('hc command', () => {
     })
 
     it('outputs the raw HTML body with --html', async () => {
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
         fetchSpy.mockResolvedValue(
             createJsonResponse({
                 article: {
@@ -500,7 +498,6 @@ describe('hc command', () => {
         await program.parseAsync(['node', 'td', 'hc', 'view', 'id:205348301', '--html'])
 
         expect(stdoutSpy).toHaveBeenCalledWith('<p>Full <strong>HTML</strong> body.</p>')
-        stdoutSpy.mockRestore()
     })
 
     it('returns normalized article JSON with --json', async () => {

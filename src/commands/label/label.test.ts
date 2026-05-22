@@ -1,21 +1,17 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerLabelCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
-
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerLabelCommand(program)
-    return program
+    return createTestProgram(registerLabelCommand)
 }
 
 describe('label list', () => {
@@ -23,13 +19,12 @@ describe('label list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists all labels', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -43,24 +38,22 @@ describe('label list', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@home'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No labels found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'label', 'list'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No labels found.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: true }],
@@ -73,12 +66,11 @@ describe('label list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('urgent')
-        consoleSpy.mockRestore()
     })
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -93,7 +85,6 @@ describe('label list', () => {
         const output = consoleSpy.mock.calls[0][0]
         const lines = output.split('\n')
         expect(lines).toHaveLength(2)
-        consoleSpy.mockRestore()
     })
 })
 
@@ -102,13 +93,12 @@ describe('label list --search', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('searches labels by name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
@@ -120,12 +110,11 @@ describe('label list --search', () => {
         expect(mockApi.searchLabels).toHaveBeenCalledWith(expect.objectContaining({ query: 'bug' }))
         expect(mockApi.getLabels).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@bugfix'))
-        consoleSpy.mockRestore()
     })
 
     it('includes matching shared labels in search results', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
         mockApi.getSharedLabels.mockResolvedValue({
@@ -137,12 +126,11 @@ describe('label list --search', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-bug'))
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@team-review'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs search results as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
@@ -155,19 +143,17 @@ describe('label list --search', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('bugfix')
-        consoleSpy.mockRestore()
     })
 
     it('shows "No labels found" when search has no results', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
 
         await program.parseAsync(['node', 'td', 'label', 'list', '--search', 'nonexistent'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No labels found.')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -176,13 +162,12 @@ describe('label rename-shared', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('renames a shared label', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -203,12 +188,11 @@ describe('label rename-shared', () => {
             newName: 'newname',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Renamed: @oldname → @newname')
-        consoleSpy.mockRestore()
     })
 
     it('strips @ prefix from name', async () => {
         const program = createProgram()
-        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -232,7 +216,7 @@ describe('label rename-shared', () => {
 
     it('previews rename with --dry-run', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -251,12 +235,11 @@ describe('label rename-shared', () => {
 
         expect(mockApi.renameSharedLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
-        consoleSpy.mockRestore()
     })
 
     it('throws when shared label not found', async () => {
         const program = createProgram()
-        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         await expect(
             program.parseAsync([
@@ -277,13 +260,12 @@ describe('label remove-shared', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('removes a shared label with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -293,12 +275,11 @@ describe('label remove-shared', () => {
 
         expect(mockApi.removeSharedLabel).toHaveBeenCalledWith({ name: 'oldname' })
         expect(consoleSpy).toHaveBeenCalledWith('Removed shared label: @oldname')
-        consoleSpy.mockRestore()
     })
 
     it('strips @ prefix from name', async () => {
         const program = createProgram()
-        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -311,7 +292,7 @@ describe('label remove-shared', () => {
 
     it('shows confirmation prompt without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -322,12 +303,11 @@ describe('label remove-shared', () => {
         expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would remove shared label: @oldname')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('previews removal with --dry-run', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -337,12 +317,11 @@ describe('label remove-shared', () => {
 
         expect(mockApi.removeSharedLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[dry-run]'))
-        consoleSpy.mockRestore()
     })
 
     it('throws when shared label not found', async () => {
         const program = createProgram()
-        vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         await expect(
             program.parseAsync(['node', 'td', 'label', 'remove-shared', 'nonexistent', '--yes']),
@@ -355,13 +334,12 @@ describe('label create --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created label as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -377,7 +355,6 @@ describe('label create --json', () => {
         expect(parsed.id).toBe('label-new')
         expect(parsed.name).toBe('work')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -386,13 +363,12 @@ describe('label update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated label as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work', color: 'charcoal', isFavorite: false }],
@@ -421,7 +397,6 @@ describe('label update --json', () => {
         expect(parsed.id).toBe('label-1')
         expect(parsed.name).toBe('renamed')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -430,13 +405,12 @@ describe('label create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('creates label with name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.addLabel.mockResolvedValue({ id: 'label-new', name: 'work' })
 
@@ -444,12 +418,11 @@ describe('label create', () => {
 
         expect(mockApi.addLabel).toHaveBeenCalledWith(expect.objectContaining({ name: 'work' }))
         expect(consoleSpy).toHaveBeenCalledWith('Created: @work')
-        consoleSpy.mockRestore()
     })
 
     it('creates label with --color', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -471,12 +444,11 @@ describe('label create', () => {
         expect(mockApi.addLabel).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'urgent', color: 'red' }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('creates label with --favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -497,19 +469,17 @@ describe('label create', () => {
         expect(mockApi.addLabel).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'important', isFavorite: true }),
         )
-        consoleSpy.mockRestore()
     })
 
     it('shows label ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.addLabel.mockResolvedValue({ id: 'label-xyz', name: 'test' })
 
         await program.parseAsync(['node', 'td', 'label', 'create', '--name', 'test'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('label-xyz'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -518,13 +488,12 @@ describe('label delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent' }],
@@ -536,12 +505,11 @@ describe('label delete', () => {
         expect(mockApi.deleteLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete: @urgent')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes by name with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent' }],
@@ -553,12 +521,11 @@ describe('label delete', () => {
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-1')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent (id:label-1)')
-        consoleSpy.mockRestore()
     })
 
     it('deletes by id: prefix with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-123', name: 'urgent' }],
@@ -570,12 +537,11 @@ describe('label delete', () => {
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-123')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted: @urgent (id:label-123)')
-        consoleSpy.mockRestore()
     })
 
     it('handles @-prefixed name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'home' }],
@@ -586,7 +552,6 @@ describe('label delete', () => {
         await program.parseAsync(['node', 'td', 'label', 'delete', '@home', '--yes'])
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label-1')
-        consoleSpy.mockRestore()
     })
 
     it('throws for non-existent label', async () => {
@@ -605,13 +570,12 @@ describe('label update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('updates label name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'old-name' }],
@@ -633,12 +597,11 @@ describe('label update', () => {
             name: 'new-name',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated: @old-name → @new-name (id:label-1)')
-        consoleSpy.mockRestore()
     })
 
     it('updates label color and favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work' }],
@@ -666,12 +629,11 @@ describe('label update', () => {
             color: 'red',
             isFavorite: true,
         })
-        consoleSpy.mockRestore()
     })
 
     it('removes favorite with --no-favorite', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work', isFavorite: true }],
@@ -688,12 +650,11 @@ describe('label update', () => {
         expect(mockApi.updateLabel).toHaveBeenCalledWith('label-1', {
             isFavorite: false,
         })
-        consoleSpy.mockRestore()
     })
 
     it('updates by id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-123', name: 'existing' }],
@@ -718,12 +679,11 @@ describe('label update', () => {
         expect(mockApi.updateLabel).toHaveBeenCalledWith('label-123', {
             color: 'blue',
         })
-        consoleSpy.mockRestore()
     })
 
     it('handles @-prefixed name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'home' }],
@@ -740,7 +700,6 @@ describe('label update', () => {
         expect(mockApi.updateLabel).toHaveBeenCalledWith('label-1', {
             color: 'green',
         })
-        consoleSpy.mockRestore()
     })
 
     it('throws when no changes specified', async () => {
@@ -780,13 +739,12 @@ describe('label URL resolution', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves label by URL in delete command', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent' }],
@@ -804,12 +762,11 @@ describe('label URL resolution', () => {
         ])
 
         expect(mockApi.deleteLabel).toHaveBeenCalledWith('label1')
-        consoleSpy.mockRestore()
     })
 
     it('resolves label by URL in update command', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent' }],
@@ -828,7 +785,6 @@ describe('label URL resolution', () => {
         ])
 
         expect(mockApi.updateLabel).toHaveBeenCalledWith('label1', { color: 'blue' })
-        consoleSpy.mockRestore()
     })
 
     it('throws entity type mismatch for task URL in label command', async () => {
@@ -877,13 +833,12 @@ describe('label view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows label metadata and tasks', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -915,12 +870,11 @@ describe('label view', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Fix bug'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No tasks with this label" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'unused', color: 'red', isFavorite: false }],
@@ -935,12 +889,11 @@ describe('label view', () => {
         await program.parseAsync(['node', 'td', 'label', 'view', 'unused'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No tasks with this label.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -966,12 +919,11 @@ describe('label view', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].content).toBe('Fix bug')
-        consoleSpy.mockRestore()
     })
 
     it('defaults to view subcommand (td label <ref>)', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -986,12 +938,11 @@ describe('label view', () => {
         await program.parseAsync(['node', 'td', 'label', 'urgent'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
-        consoleSpy.mockRestore()
     })
 
     it('resolves label by URL in view command', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -1012,12 +963,11 @@ describe('label view', () => {
         ])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@urgent'))
-        consoleSpy.mockRestore()
     })
 
     it('shows favorite indicator', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: true }],
@@ -1032,7 +982,6 @@ describe('label view', () => {
         await program.parseAsync(['node', 'td', 'label', 'view', 'urgent'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Favorite'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1041,14 +990,13 @@ describe('shared labels', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     describe('label list', () => {
         it('shows shared labels after personal labels', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -1067,12 +1015,11 @@ describe('shared labels', () => {
             expect(urgentIdx).toBeGreaterThanOrEqual(0)
             expect(sharedIdx).toBeGreaterThan(urgentIdx)
             expect(calls[sharedIdx]).toContain('(shared)')
-            consoleSpy.mockRestore()
         })
 
         it('shows only shared labels when no personal labels exist', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1084,12 +1031,11 @@ describe('shared labels', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-review'))
             expect(consoleSpy).not.toHaveBeenCalledWith('No labels found.')
-            consoleSpy.mockRestore()
         })
 
         it('fetches shared labels with omitPersonal: true', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({ results: [], nextCursor: null })
@@ -1099,12 +1045,11 @@ describe('shared labels', () => {
             expect(mockApi.getSharedLabels).toHaveBeenCalledWith(
                 expect.objectContaining({ omitPersonal: true }),
             )
-            consoleSpy.mockRestore()
         })
 
         it('includes sharedLabels array in JSON output', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -1121,14 +1066,13 @@ describe('shared labels', () => {
             const parsed = JSON.parse(output)
             expect(parsed.sharedLabels).toEqual(['team-review', 'external'])
             expect(parsed.results[0].name).toBe('urgent')
-            consoleSpy.mockRestore()
         })
     })
 
     describe('label view', () => {
         it('resolves shared-only label by name', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1143,12 +1087,11 @@ describe('shared labels', () => {
                 expect.objectContaining({ query: '@team-review' }),
             )
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('@team-review'))
-            consoleSpy.mockRestore()
         })
 
         it('prefers personal label over shared with same name', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'review', color: 'blue', isFavorite: false }],
@@ -1162,12 +1105,11 @@ describe('shared labels', () => {
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('label-1'))
             // Should NOT call getSharedLabels (personal match found first)
             expect(mockApi.getSharedLabels).not.toHaveBeenCalled()
-            consoleSpy.mockRestore()
         })
 
         it('shows "shared label" type for shared-only labels', async () => {
             const program = createProgram()
-            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+            const consoleSpy = mockConsoleLog()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1179,7 +1121,6 @@ describe('shared labels', () => {
             await program.parseAsync(['node', 'td', 'label', 'view', 'team-review'])
 
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('shared label'))
-            consoleSpy.mockRestore()
         })
     })
 
@@ -1225,7 +1166,7 @@ describe('shared labels', () => {
 describe('label (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'label'])
@@ -1240,7 +1181,6 @@ describe('label (no args)', () => {
         expect(output).toContain('update')
         expect(output).toContain('view')
         expect(output).toContain('Examples:')
-        stdoutSpy.mockRestore()
     })
 })
 
@@ -1249,24 +1189,22 @@ describe('label --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('label create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync(['node', 'td', 'label', 'create', '--name', 'urgent', '--dry-run'])
 
         expect(mockApi.addLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create label'))
-        consoleSpy.mockRestore()
     })
 
     it('label delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -1286,12 +1224,11 @@ describe('label --dry-run', () => {
 
         expect(mockApi.deleteLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete label'))
-        consoleSpy.mockRestore()
     })
 
     it('label update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -1320,6 +1257,5 @@ describe('label --dry-run', () => {
 
         expect(mockApi.updateLabel).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update label'))
-        consoleSpy.mockRestore()
     })
 })

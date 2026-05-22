@@ -2,7 +2,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { Command } from 'commander'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -10,7 +9,14 @@ vi.mock('../../lib/api/core.js', () => ({
 }))
 
 import { getApi } from '../../lib/api/core.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import {
+    mockConsoleLog,
+    mockProcessStderr,
+    mockProcessStdout,
+} from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -29,10 +35,7 @@ afterAll(async () => {
 })
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerCommentCommand(program)
-    return program
+    return createTestProgram(registerCommentCommand)
 }
 
 describe('comment list', () => {
@@ -40,13 +43,12 @@ describe('comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('resolves task and lists comments', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getComments.mockResolvedValue({
@@ -72,12 +74,11 @@ describe('comment list', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Remember organic'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Got it'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No comments" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({ results: [], nextCursor: null })
@@ -85,12 +86,11 @@ describe('comment list', () => {
         await program.parseAsync(['node', 'td', 'comment', 'list', 'id:task-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No comments.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -106,12 +106,11 @@ describe('comment list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].content).toBe('Note')
-        consoleSpy.mockRestore()
     })
 
     it('resolves task by name', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk' }],
@@ -124,7 +123,6 @@ describe('comment list', () => {
         expect(mockApi.getComments).toHaveBeenCalledWith(
             expect.objectContaining({ taskId: 'task-1' }),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -133,13 +131,12 @@ describe('comment add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds comment to task', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -162,12 +159,11 @@ describe('comment add', () => {
             content: 'Get 2%',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Added comment to "Buy milk"')
-        consoleSpy.mockRestore()
     })
 
     it('shows comment ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.addComment.mockResolvedValue({
@@ -178,7 +174,6 @@ describe('comment add', () => {
         await program.parseAsync(['node', 'td', 'comment', 'add', 'id:task-1', '--content', 'Note'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('comment-xyz'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -187,8 +182,7 @@ describe('comment delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -201,7 +195,7 @@ describe('comment delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-1',
@@ -213,12 +207,11 @@ describe('comment delete', () => {
         expect(mockApi.deleteComment).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete comment: Test comment')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes comment with id: prefix and --yes', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -230,7 +223,6 @@ describe('comment delete', () => {
 
         expect(mockApi.deleteComment).toHaveBeenCalledWith('comment-123')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted comment: Test comment (id:comment-123)')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -239,8 +231,7 @@ describe('comment update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -261,7 +252,7 @@ describe('comment update', () => {
 
     it('updates comment content', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -286,12 +277,11 @@ describe('comment update', () => {
             content: 'New content',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated comment: Old content (id:comment-123)')
-        consoleSpy.mockRestore()
     })
 
     it('truncates long content in output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         const longContent = 'A'.repeat(60)
         mockApi.getComment.mockResolvedValue({
@@ -316,7 +306,6 @@ describe('comment update', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             `Updated comment: ${'A'.repeat(50)}... (id:comment-123)`,
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -325,13 +314,12 @@ describe('comment add with attachment', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('uploads file and attaches to comment', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -367,12 +355,11 @@ describe('comment add with attachment', () => {
             },
         })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Attached: test.pdf'))
-        consoleSpy.mockRestore()
     })
 
     it('forwards --file-name to api.uploadFile as the attachment filename', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -398,7 +385,6 @@ describe('comment add with attachment', () => {
         expect(callArg.fileName).toBe('custom-name.pdf')
         // Override wins over basename(--file).
         expect(callArg.fileName).not.toBe('file.pdf')
-        consoleSpy.mockRestore()
     })
 
     it('returns FILE_NOT_FOUND when the --file path does not exist', async () => {
@@ -430,7 +416,7 @@ describe('comment add with attachment', () => {
 
     it('works without --file flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -453,7 +439,6 @@ describe('comment add with attachment', () => {
             taskId: 'task-1',
             content: 'Just text',
         })
-        consoleSpy.mockRestore()
     })
 })
 
@@ -462,13 +447,12 @@ describe('comment list with attachments', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('shows [file] marker for comments with attachments', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -490,12 +474,11 @@ describe('comment list with attachments', () => {
         await program.parseAsync(['node', 'td', 'comment', 'list', 'id:task-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[file]'))
-        consoleSpy.mockRestore()
     })
 
     it('truncates long content to default 3 lines', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -516,12 +499,11 @@ describe('comment list with attachments', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Line 2'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Line 3'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('...'))
-        consoleSpy.mockRestore()
     })
 
     it('respects --lines flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -540,12 +522,11 @@ describe('comment list with attachments', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Line 1'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('...'))
-        consoleSpy.mockRestore()
     })
 
     it('includes hasAttachment in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -572,7 +553,6 @@ describe('comment list with attachments', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results[0].hasAttachment).toBe(true)
         expect(parsed.results[1].hasAttachment).toBe(false)
-        consoleSpy.mockRestore()
     })
 })
 
@@ -581,8 +561,7 @@ describe('comment view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('rejects plain text references', async () => {
@@ -595,7 +574,7 @@ describe('comment view', () => {
 
     it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -607,12 +586,11 @@ describe('comment view', () => {
         await program.parseAsync(['node', 'td', 'comment', 'id:comment-123'])
 
         expect(mockApi.getComment).toHaveBeenCalledWith('comment-123')
-        consoleSpy.mockRestore()
     })
 
     it('shows full comment content', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -627,12 +605,11 @@ describe('comment view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(
             'Full content here\nWith multiple lines\nNo truncation',
         )
-        consoleSpy.mockRestore()
     })
 
     it('shows attachment details', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -657,12 +634,11 @@ describe('comment view', () => {
         )
         const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
         expect(output).not.toContain('Hint:')
-        consoleSpy.mockRestore()
     })
 
     it('shows image-attachment hint steering agents away from direct download', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -684,12 +660,11 @@ describe('comment view', () => {
             "image attachment — fetch via 'td attachment view <url>' if needed",
         )
         expect(output).toContain('do not download and Read directly')
-        consoleSpy.mockRestore()
     })
 
     it('shows image-attachment hint when only fileName signals the image type', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -709,12 +684,11 @@ describe('comment view', () => {
         const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
         expect(output).toContain('Hint:')
         expect(output).toContain('image attachment')
-        consoleSpy.mockRestore()
     })
 
     it('omits image hint when fileUrl is missing even if fileType is an image type', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -733,13 +707,12 @@ describe('comment view', () => {
 
         const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
         expect(output).not.toContain('Hint:')
-        consoleSpy.mockRestore()
     })
 
     it('writes image hint to stderr when --json is used with an image attachment', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        const consoleSpy = mockConsoleLog()
+        const stderrSpy = mockProcessStderr()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -763,15 +736,12 @@ describe('comment view', () => {
         const stderr = stderrSpy.mock.calls.map((call) => String(call[0])).join('')
         expect(stderr).toContain('Hint:')
         expect(stderr).toContain('image attachment')
-
-        stderrSpy.mockRestore()
-        consoleSpy.mockRestore()
     })
 
     it('does not write to stderr when --json is used with a non-image attachment', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        mockConsoleLog()
+        const stderrSpy = mockProcessStderr()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -790,14 +760,11 @@ describe('comment view', () => {
 
         const stderr = stderrSpy.mock.calls.map((call) => String(call[0])).join('')
         expect(stderr).not.toContain('Hint:')
-
-        stderrSpy.mockRestore()
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -815,12 +782,11 @@ describe('comment view', () => {
         expect(parsed.id).toBe('comment-123')
         expect(parsed.content).toBe('Test content')
         expect(parsed.postedAt).toBe('2026-01-08T10:00:00.000Z')
-        consoleSpy.mockRestore()
     })
 
     it('outputs full JSON with --json --full', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -845,7 +811,6 @@ describe('comment view', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.extraField).toBe('extra')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -854,13 +819,12 @@ describe('project comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('lists comments on a project with --project flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getComments.mockResolvedValue({
@@ -881,12 +845,11 @@ describe('project comment list', () => {
             expect.objectContaining({ projectId: 'proj-1' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Project note'))
-        consoleSpy.mockRestore()
     })
 
     it('resolves project by name with --project flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -899,7 +862,6 @@ describe('project comment list', () => {
         expect(mockApi.getComments).toHaveBeenCalledWith(
             expect.objectContaining({ projectId: 'proj-1' }),
         )
-        consoleSpy.mockRestore()
     })
 })
 
@@ -908,16 +870,15 @@ describe('comment add with --stdin', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('reads content from stdin with --stdin flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         const mockStdin = new PassThrough()
-        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -941,8 +902,6 @@ describe('comment add with --stdin', () => {
             taskId: 'task-1',
             content: 'Multiline\ncontent here',
         })
-        consoleSpy.mockRestore()
-        stdinSpy.mockRestore()
     })
 
     it('errors when both --content and --stdin are provided', async () => {
@@ -966,10 +925,10 @@ describe('comment add with --stdin', () => {
 
     it('works with multiline content from stdin', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         const mockStdin = new PassThrough()
-        const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
         mockApi.addComment.mockResolvedValue({ id: 'comment-new', content: 'line1\nline2\nline3' })
@@ -992,8 +951,6 @@ describe('comment add with --stdin', () => {
             taskId: 'task-1',
             content: 'line1\nline2\nline3',
         })
-        consoleSpy.mockRestore()
-        stdinSpy.mockRestore()
     })
 })
 
@@ -1002,13 +959,12 @@ describe('comment add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs created comment as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -1035,12 +991,11 @@ describe('comment add --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('comment-new')
         expect(parsed.content).toBe('Test note')
-        consoleSpy.mockRestore()
     })
 
     it('does not print plain-text confirmation with --json', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -1062,7 +1017,6 @@ describe('comment add --json', () => {
         ])
 
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Added comment to'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1071,13 +1025,12 @@ describe('comment update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('outputs updated comment as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -1105,7 +1058,6 @@ describe('comment update --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('comment-123')
         expect(parsed.content).toBe('New content')
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1114,13 +1066,12 @@ describe('project comment add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('adds comment to project with --project flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addComment.mockResolvedValue({
@@ -1144,12 +1095,11 @@ describe('project comment add', () => {
             content: 'Project note',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Added comment to "Work"')
-        consoleSpy.mockRestore()
     })
 
     it('adds comment with attachment to project', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addComment.mockResolvedValue({
@@ -1183,7 +1133,6 @@ describe('project comment add', () => {
                 resourceType: 'file',
             },
         })
-        consoleSpy.mockRestore()
     })
 })
 
@@ -1192,13 +1141,12 @@ describe('comment --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('comment add --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task' }],
@@ -1218,12 +1166,11 @@ describe('comment --dry-run', () => {
 
         expect(mockApi.addComment).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add comment'))
-        consoleSpy.mockRestore()
     })
 
     it('comment delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockApi.getComment.mockResolvedValue({ id: 'comment-1', content: 'Test comment' })
 
@@ -1231,12 +1178,11 @@ describe('comment --dry-run', () => {
 
         expect(mockApi.deleteComment).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete comment'))
-        consoleSpy.mockRestore()
     })
 
     it('comment update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         await program.parseAsync([
             'node',
@@ -1251,14 +1197,13 @@ describe('comment --dry-run', () => {
 
         expect(mockApi.updateComment).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update comment'))
-        consoleSpy.mockRestore()
     })
 })
 
 describe('comment (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'comment'])
@@ -1269,6 +1214,5 @@ describe('comment (no args)', () => {
         const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
         expect(output).toContain('Examples:')
         expect(output).toContain('td comment list "Plan sprint"')
-        stdoutSpy.mockRestore()
     })
 })

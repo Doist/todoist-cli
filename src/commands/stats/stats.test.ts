@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/stats.js', () => ({
@@ -7,16 +6,15 @@ vi.mock('../../lib/api/stats.js', () => ({
 }))
 
 import { fetchProductivityStats, updateGoals } from '../../lib/api/stats.js'
+import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerStatsCommand } from './index.js'
 
 const mockFetchProductivityStats = vi.mocked(fetchProductivityStats)
 const mockUpdateGoals = vi.mocked(updateGoals)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerStatsCommand(program)
-    return program
+    return createTestProgram(registerStatsCommand)
 }
 
 const defaultStats = {
@@ -53,7 +51,7 @@ describe('stats view', () => {
 
     it('displays stats in human-readable format', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -65,12 +63,11 @@ describe('stats view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Daily:'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Weekly:'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Completed:'))
-        consoleSpy.mockRestore()
     })
 
     it('shows vacation mode warning when enabled', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         const vacationStats = {
             ...defaultStats,
@@ -81,12 +78,11 @@ describe('stats view', () => {
         await program.parseAsync(['node', 'td', 'stats'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Vacation mode'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -99,12 +95,11 @@ describe('stats view', () => {
         expect(parsed.completedCount).toBe(4521)
         expect(parsed.goals.dailyGoal).toBe(5)
         expect(parsed.goals.currentDailyStreak.count).toBe(42)
-        consoleSpy.mockRestore()
     })
 
     it('outputs full JSON with --json --full flags', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -116,12 +111,11 @@ describe('stats view', () => {
         expect(parsed.daysItems).toBeDefined()
         expect(parsed.weekItems).toBeDefined()
         expect(parsed.goals.ignoreDays).toBeDefined()
-        consoleSpy.mockRestore()
     })
 
     it('shows streak information', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -130,7 +124,6 @@ describe('stats view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('streak:'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('42'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('best: 67'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -141,7 +134,7 @@ describe('stats goals', () => {
 
     it('updates daily goal', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -149,12 +142,11 @@ describe('stats goals', () => {
 
         expect(mockUpdateGoals).toHaveBeenCalledWith({ dailyGoal: 10 })
         expect(consoleSpy).toHaveBeenCalledWith('Goals updated.')
-        consoleSpy.mockRestore()
     })
 
     it('updates weekly goal', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -162,12 +154,11 @@ describe('stats goals', () => {
 
         expect(mockUpdateGoals).toHaveBeenCalledWith({ weeklyGoal: 50 })
         expect(consoleSpy).toHaveBeenCalledWith('Goals updated.')
-        consoleSpy.mockRestore()
     })
 
     it('updates both daily and weekly goals', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -177,12 +168,11 @@ describe('stats goals', () => {
             dailyGoal: 5,
             weeklyGoal: 25,
         })
-        consoleSpy.mockRestore()
     })
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'goals'])
@@ -191,7 +181,6 @@ describe('stats goals', () => {
         }
 
         expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
-        stdoutSpy.mockRestore()
     })
 
     it('errors on invalid daily goal', async () => {
@@ -218,7 +207,7 @@ describe('stats vacation', () => {
 
     it('enables vacation mode with --on', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -226,12 +215,11 @@ describe('stats vacation', () => {
 
         expect(mockUpdateGoals).toHaveBeenCalledWith({ vacationMode: true })
         expect(consoleSpy).toHaveBeenCalledWith('Vacation mode enabled.')
-        consoleSpy.mockRestore()
     })
 
     it('disables vacation mode with --off', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        const consoleSpy = mockConsoleLog()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -239,7 +227,6 @@ describe('stats vacation', () => {
 
         expect(mockUpdateGoals).toHaveBeenCalledWith({ vacationMode: false })
         expect(consoleSpy).toHaveBeenCalledWith('Vacation mode disabled.')
-        consoleSpy.mockRestore()
     })
 
     it('errors when both --on and --off specified', async () => {
@@ -252,7 +239,7 @@ describe('stats vacation', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stdoutSpy = mockProcessStdout()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'vacation'])
@@ -261,6 +248,5 @@ describe('stats vacation', () => {
         }
 
         expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
-        stdoutSpy.mockRestore()
     })
 })

@@ -1,4 +1,3 @@
-import { Command } from 'commander'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -10,20 +9,18 @@ vi.mock('../../lib/api/workspaces.js', () => ({
     fetchWorkspaceFolders: vi.fn(),
 }))
 
-import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import { mockConsoleLog } from '../../test-support/console-spy.js'
+import { type MockApi } from '../../test-support/mock-api.js'
+import { createTestProgram } from '../../test-support/program.js'
 import { registerFolderCommand } from './index.js'
 
-const mockGetApi = vi.mocked(getApi)
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
 
 function createProgram() {
-    const program = new Command()
-    program.exitOverride()
-    registerFolderCommand(program)
-    return program
+    return createTestProgram(registerFolderCommand)
 }
 
 const mockWorkspace = {
@@ -52,10 +49,9 @@ describe('folder list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
     })
 
     it('lists folders for a workspace', async () => {
@@ -72,7 +68,6 @@ describe('folder list', () => {
         )
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Engineering'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Design'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No folders found." when empty', async () => {
@@ -82,7 +77,6 @@ describe('folder list', () => {
         await program.parseAsync(['node', 'td', 'folder', 'list', 'Acme'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No folders found.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
@@ -98,7 +92,6 @@ describe('folder list', () => {
         const parsed = JSON.parse(output)
         expect(parsed.results).toBeDefined()
         expect(parsed.results[0].name).toBe('Engineering')
-        consoleSpy.mockRestore()
     })
 
     it('accepts --workspace flag instead of positional arg', async () => {
@@ -108,7 +101,6 @@ describe('folder list', () => {
         await program.parseAsync(['node', 'td', 'folder', 'list', '--workspace', 'Acme'])
 
         expect(mockApi.getFolders).toHaveBeenCalled()
-        consoleSpy.mockRestore()
     })
 
     it('errors when both positional and --workspace are provided', async () => {
@@ -126,10 +118,9 @@ describe('folder create', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
     })
 
     it('creates folder in workspace', async () => {
@@ -153,7 +144,6 @@ describe('folder create', () => {
             childOrder: undefined,
         })
         expect(consoleSpy).toHaveBeenCalledWith('Created: Engineering')
-        consoleSpy.mockRestore()
     })
 
     it('shows folder ID after creation', async () => {
@@ -171,7 +161,6 @@ describe('folder create', () => {
         ])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('folder-1'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs created folder as JSON with --json', async () => {
@@ -193,7 +182,6 @@ describe('folder create', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('folder-1')
         expect(parsed.name).toBe('Engineering')
-        consoleSpy.mockRestore()
     })
 
     it('shows dry-run preview with --dry-run', async () => {
@@ -212,7 +200,6 @@ describe('folder create', () => {
 
         expect(mockApi.addFolder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would create folder'))
-        consoleSpy.mockRestore()
     })
 
     it('rejects invalid --default-order', async () => {
@@ -258,13 +245,12 @@ describe('folder update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
     })
 
     it('updates folder name by id:xxx', async () => {
@@ -284,7 +270,6 @@ describe('folder update', () => {
 
         expect(mockApi.updateFolder).toHaveBeenCalledWith('folder-1', { name: 'Platform' })
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Engineering → Platform'))
-        consoleSpy.mockRestore()
     })
 
     it('outputs updated folder as JSON with --json', async () => {
@@ -306,7 +291,6 @@ describe('folder update', () => {
         const output = consoleSpy.mock.calls[0][0]
         const parsed = JSON.parse(output)
         expect(parsed.name).toBe('Platform')
-        consoleSpy.mockRestore()
     })
 
     it('errors with NO_CHANGES when no update flags provided', async () => {
@@ -335,7 +319,6 @@ describe('folder update', () => {
 
         expect(mockApi.updateFolder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update folder'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -345,13 +328,12 @@ describe('folder delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows confirmation prompt without --yes', async () => {
@@ -363,7 +345,6 @@ describe('folder delete', () => {
         expect(mockApi.deleteFolder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith('Would delete folder: Engineering')
         expect(consoleSpy).toHaveBeenCalledWith('Use --yes to confirm.')
-        consoleSpy.mockRestore()
     })
 
     it('deletes folder with --yes', async () => {
@@ -375,7 +356,6 @@ describe('folder delete', () => {
 
         expect(mockApi.deleteFolder).toHaveBeenCalledWith('folder-1')
         expect(consoleSpy).toHaveBeenCalledWith('Deleted: Engineering (id:folder-1)')
-        consoleSpy.mockRestore()
     })
 
     it('shows dry-run preview with --dry-run', async () => {
@@ -386,7 +366,6 @@ describe('folder delete', () => {
 
         expect(mockApi.deleteFolder).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would delete folder'))
-        consoleSpy.mockRestore()
     })
 })
 
@@ -396,13 +375,12 @@ describe('folder view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        consoleSpy = mockConsoleLog()
     })
 
     it('shows folder details and contained projects', async () => {
@@ -437,7 +415,6 @@ describe('folder view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Engineering'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Backend'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Frontend'))
-        consoleSpy.mockRestore()
     })
 
     it('shows "No projects in this folder." when empty', async () => {
@@ -448,7 +425,6 @@ describe('folder view', () => {
         await program.parseAsync(['node', 'td', 'folder', 'view', 'id:folder-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith('No projects in this folder.')
-        consoleSpy.mockRestore()
     })
 
     it('outputs JSON with --json flag', async () => {
@@ -463,7 +439,6 @@ describe('folder view', () => {
         expect(parsed.folder).toBeDefined()
         expect(parsed.folder.id).toBe('folder-1')
         expect(parsed.projects).toBeDefined()
-        consoleSpy.mockRestore()
     })
 })
 
@@ -472,8 +447,7 @@ describe('folder workspace auto-detection', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
@@ -481,7 +455,7 @@ describe('folder workspace auto-detection', () => {
 
     it('auto-detects single workspace for folder resolution', async () => {
         const program = createProgram()
-        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+        mockConsoleLog()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockApi.getFolder.mockResolvedValue(mockFolder)
         mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
@@ -489,7 +463,6 @@ describe('folder workspace auto-detection', () => {
         await program.parseAsync(['node', 'td', 'folder', 'view', 'Engineering'])
 
         expect(mockApi.getFolder).toHaveBeenCalledWith('folder-1')
-        consoleSpy.mockRestore()
     })
 
     it('errors when multiple workspaces and no --workspace', async () => {
