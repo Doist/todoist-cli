@@ -341,6 +341,13 @@ describe('auth command', () => {
                         return { token: 'snapshot_token', account: SNAPSHOT_ACCOUNT }
                     },
                     async set() {},
+                    async setBundle() {},
+                    async activeBundle() {
+                        return {
+                            account: SNAPSHOT_ACCOUNT,
+                            bundle: { accessToken: 'snapshot_token' },
+                        }
+                    },
                     async clear() {},
                     async list() {
                         return [{ account: SNAPSHOT_ACCOUNT, isDefault: true }]
