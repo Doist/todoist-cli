@@ -1,3 +1,9 @@
+## [1.68.0](https://github.com/Doist/todoist-cli/compare/v1.67.1...v1.68.0) (2026-05-23)
+
+### Features
+
+* **billing:** add billing commands and billing OAuth scope ([#356](https://github.com/Doist/todoist-cli/issues/356)) ([41ab8ba](https://github.com/Doist/todoist-cli/commit/41ab8ba4f0043773a697cf5e45eb819da7f56ded))
+
 ## [1.67.1](https://github.com/Doist/todoist-cli/compare/v1.67.0...v1.67.1) (2026-05-22)
 
 ### Bug Fixes
