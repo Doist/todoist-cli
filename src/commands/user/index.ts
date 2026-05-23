@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { createTodoistTokenStore } from '../../lib/auth-store.js'
+import { ACCOUNT_COMMAND_ALIASES } from './aliases.js'
 import { currentUserCommand } from './current.js'
 import { attachTodoistUserListCommand } from './list.js'
 import { removeUserCommand } from './remove.js'
@@ -10,7 +11,7 @@ export function registerUserCommand(program: Command): void {
     // existing scripts (and the docs that long said `td user …`) keep working.
     const account = program
         .command('accounts')
-        .aliases(['user', 'users'])
+        .aliases(ACCOUNT_COMMAND_ALIASES)
         .description('Manage stored Todoist accounts (multi-user)')
 
     // `list` and `use`/`default` delegate to cli-core's generic account

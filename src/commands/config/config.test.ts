@@ -266,6 +266,33 @@ describe('config view', () => {
         expect(output).toContain('read-only (data:read)')
     })
 
+    it('marks a lone account as default in pretty mode with no pinned defaultUser', async () => {
+        // Effective-default rule: a single stored account is implicitly the
+        // default, matching `accounts list` / `auth status` even with no pin.
+        presentConfig({
+            config_version: 2,
+            users: [{ id: '111', email: 'first@example.com', auth_mode: 'read-write' }],
+        })
+        mockListStoredUsers.mockResolvedValue([
+            { id: '111', email: 'first@example.com', auth_mode: 'read-write' },
+        ])
+        mockProbeApiToken.mockResolvedValue({
+            token: 'tdo_first_token_xxxx1111',
+            metadata: {
+                authMode: 'read-write',
+                source: 'secure-store',
+                userId: '111',
+                email: 'first@example.com',
+            },
+        })
+        const consoleSpy = mockConsoleLog()
+
+        await createProgram().parseAsync(['node', 'td', 'config', 'view'])
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+
+        expect(output).toContain('(default)')
+    })
+
     it('flags ambiguous resolution when multiple users with no default', async () => {
         presentConfig({
             config_version: 2,

@@ -3,6 +3,7 @@
 import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
+import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import { getRequestedUserRef, isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
@@ -128,7 +129,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>, str
     accounts: [
         'Manage stored Todoist accounts (multi-user)',
         async () => (await import('./commands/user/index.js')).registerUserCommand,
-        ['user', 'users'],
+        ACCOUNT_COMMAND_ALIASES,
     ],
     apps: [
         'Manage your registered Todoist developer apps',

@@ -108,7 +108,7 @@ describe('user command', () => {
             expect(lines).toContain('default')
         })
 
-        it('streams one JSON value per console.log for --ndjson with stored accounts', async () => {
+        it('streams one JSON value per line for --ndjson with stored accounts', async () => {
             listMock.mockResolvedValue([
                 { account: { id: '1', email: 'a@b.c', auth_mode: 'read-write' }, isDefault: false },
                 { account: { id: '2', email: 'd@e.f', auth_mode: 'read-only' }, isDefault: true },
@@ -237,7 +237,7 @@ describe('user command', () => {
             mockReadConfig.mockResolvedValue({
                 config_version: 2,
                 user: { defaultUser: '111' },
-                users: [],
+                users: [{ id: '111', email: 'a@b.c' }],
             })
 
             await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
@@ -259,6 +259,28 @@ describe('user command', () => {
             })
             mockReadConfig.mockResolvedValue({
                 config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
+
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('default')
+        })
+
+        it('ignores an orphaned defaultUser pointer and falls through to the sole account', async () => {
+            // `defaultUser` points at a removed account; the effective rule
+            // must drop the stale pin and treat the lone remaining account as
+            // default, matching `resolveActiveUser`'s fall-through.
+            mockResolveActiveUser.mockResolvedValue({
+                id: '111',
+                email: 'a@b.c',
+                token: 't',
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                user: { defaultUser: '999' },
                 users: [{ id: '111', email: 'a@b.c' }],
             })
 

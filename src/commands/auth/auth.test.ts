@@ -250,7 +250,29 @@ describe('auth command', () => {
                 authMode: 'read-write',
                 source: 'secure-store',
             })
-            mockReadConfig.mockResolvedValue({ user: { defaultUser: TEST_USER.id } })
+            mockReadConfig.mockResolvedValue({
+                user: { defaultUser: TEST_USER.id },
+                users: [{ id: TEST_USER.id, email: TEST_USER.email }],
+            })
+
+            await program.parseAsync(['node', 'td', 'auth', 'status'])
+
+            expect(consoleSpy).toHaveBeenCalledWith('✓ Authenticated (default)')
+        })
+
+        it('marks a lone account as default with no pinned defaultUser', async () => {
+            // Effective-default rule: a single stored account is implicitly the
+            // default, so the marker matches `accounts list` even with no pin.
+            const program = createProgram()
+            const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
+            mockGetApi.mockResolvedValue(mockApi)
+            mockGetAuthMetadata.mockResolvedValue({
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+            mockReadConfig.mockResolvedValue({
+                users: [{ id: TEST_USER.id, email: TEST_USER.email }],
+            })
 
             await program.parseAsync(['node', 'td', 'auth', 'status'])
 
@@ -287,7 +309,10 @@ describe('auth command', () => {
                 source: 'secure-store',
             })
             mockListStoredUsers.mockResolvedValue([{ id: TEST_USER.id, email: TEST_USER.email }])
-            mockReadConfig.mockResolvedValue({ user: { defaultUser: TEST_USER.id } })
+            mockReadConfig.mockResolvedValue({
+                user: { defaultUser: TEST_USER.id },
+                users: [{ id: TEST_USER.id, email: TEST_USER.email }],
+            })
 
             await program.parseAsync(['node', 'td', 'auth', 'status', '--json'])
 
@@ -370,7 +395,10 @@ describe('auth command', () => {
                 mockListStoredUsers.mockResolvedValue([
                     { id: TEST_USER.id, email: TEST_USER.email },
                 ])
-                mockReadConfig.mockResolvedValue({ user: { defaultUser: TEST_USER.id } })
+                mockReadConfig.mockResolvedValue({
+                    user: { defaultUser: TEST_USER.id },
+                    users: [{ id: TEST_USER.id, email: TEST_USER.email }],
+                })
             })
 
             it('renders text status from the snapshot (no --user override)', async () => {

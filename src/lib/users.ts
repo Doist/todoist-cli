@@ -50,9 +50,14 @@ export function getDefaultUserId(config: Config): string | undefined {
  * pin, or `doctor` diagnosing whether the pin resolves.
  */
 export function getEffectiveDefaultUserId(config: Config): string | undefined {
-    const pinned = getDefaultUserId(config)
-    if (pinned) return pinned
     const users = getStoredUsers(config)
+    const pinned = getDefaultUserId(config)
+    // A pinned pointer only counts when it resolves to a stored account —
+    // mirrors `resolveActiveUser`, which ignores an orphaned `defaultUser` and
+    // falls through to the sole stored account. Returning a stale id here would
+    // put `accounts current` / `auth status` back out of sync on a config whose
+    // `defaultUser` points at a removed account.
+    if (pinned && users.some((u) => u.id === pinned)) return pinned
     return users.length === 1 ? users[0]!.id : undefined
 }
 

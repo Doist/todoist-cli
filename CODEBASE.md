@@ -127,6 +127,12 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
   `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
   write/clear paths go through `auth-store.ts`.
+- **`users.ts`** — config-side account helpers shared across commands:
+  `matchUserRef`/`findUserByRef`/`requireUserByRef`, the stored-user mutators
+  (`upsert`/`remove`/`set`/`clearDefaultUser`), `getDefaultUserId` (raw pinned
+  pointer) and `getEffectiveDefaultUserId` (pinned-else-sole-account, used for
+  the `(default)` marker in `accounts list`/`current`, `auth status`,
+  `config view`).
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
