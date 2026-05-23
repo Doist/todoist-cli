@@ -39,6 +39,24 @@ export function getDefaultUserId(config: Config): string | undefined {
 }
 
 /**
+ * The account that resolves as default when no `--user` is given: the pinned
+ * `defaultUser`, or — when nothing is pinned — the sole stored account (a lone
+ * account is implicitly default). Mirrors cli-core's `TokenStore.list()`
+ * effective-default rule so the `(default)` marker is identical across
+ * `accounts list`, `accounts current`, `auth status`, and `config view`.
+ *
+ * `getDefaultUserId` (the raw pinned pointer) is still the right call where the
+ * pin itself matters — e.g. `accounts remove` deciding whether it cleared a
+ * pin, or `doctor` diagnosing whether the pin resolves.
+ */
+export function getEffectiveDefaultUserId(config: Config): string | undefined {
+    const pinned = getDefaultUserId(config)
+    if (pinned) return pinned
+    const users = getStoredUsers(config)
+    return users.length === 1 ? users[0]!.id : undefined
+}
+
+/**
  * Single source of truth for `--user <ref>` matching: exact id, or
  * case-insensitive email. Both `findUserByRef` (config-driven path) and
  * `auth-store.ts`'s cli-core `matchAccount` (keyring-store path) delegate

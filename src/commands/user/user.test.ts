@@ -116,11 +116,20 @@ describe('user command', () => {
 
             await createProgram().parseAsync(['node', 'td', 'accounts', 'list', '--ndjson'])
 
-            expect(consoleSpy).toHaveBeenCalledTimes(2)
-            const first = JSON.parse(consoleSpy.mock.calls[0][0] as string)
-            const second = JSON.parse(consoleSpy.mock.calls[1][0] as string)
-            expect(first).toMatchObject({ id: '1', email: 'a@b.c', isDefault: false })
-            expect(second).toMatchObject({ id: '2', email: 'd@e.f', isDefault: true })
+            const lines = (consoleSpy.mock.calls.flat().join('\n') as string)
+                .split('\n')
+                .filter((line) => line.length > 0)
+            expect(lines).toHaveLength(2)
+            expect(JSON.parse(lines[0]!)).toMatchObject({
+                id: '1',
+                email: 'a@b.c',
+                isDefault: false,
+            })
+            expect(JSON.parse(lines[1]!)).toMatchObject({
+                id: '2',
+                email: 'd@e.f',
+                isDefault: true,
+            })
         })
 
         it('outputs a {accounts, default} envelope when --json given', async () => {
@@ -165,7 +174,7 @@ describe('user command', () => {
         })
 
         it('rejects an unknown ref', async () => {
-            // `td user use` routes directly through `store.setDefault(ref)`
+            // `td accounts use` routes directly through `store.setDefault(ref)`
             // now; cli-core's `KeyringTokenStore` throws
             // `CliError('ACCOUNT_NOT_FOUND', …)` on miss — the test stub
             // mirrors that contract so the command propagates correctly.
@@ -189,6 +198,31 @@ describe('user command', () => {
 
             expect(setDefaultMock).toHaveBeenCalledWith('111')
         })
+
+        it('emits {ok, default} for --json, resolving the canonical default id', async () => {
+            // After setDefault the attacher re-reads list() to surface the
+            // account's canonical id as `default`.
+            listMock.mockResolvedValue([
+                { account: { id: '111', email: 'a@b.c' }, isDefault: true },
+            ])
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'use', 'a@b.c', '--json'])
+
+            expect(setDefaultMock).toHaveBeenCalledWith('a@b.c')
+            const payload = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+            expect(payload).toEqual({ ok: true, default: '111' })
+        })
+
+        it('is silent for --ndjson (success-action convention)', async () => {
+            listMock.mockResolvedValue([
+                { account: { id: '111', email: 'a@b.c' }, isDefault: true },
+            ])
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'use', '111', '--ndjson'])
+
+            expect(setDefaultMock).toHaveBeenCalledWith('111')
+            expect(consoleSpy).not.toHaveBeenCalled()
+        })
     })
 
     describe('current', () => {
@@ -211,6 +245,26 @@ describe('user command', () => {
             const out = consoleSpy.mock.calls.flat().join('\n')
             expect(out).toContain('a@b.c')
             expect(out).toContain('default')
+        })
+
+        it('marks a lone account as default even with no pinned defaultUser', async () => {
+            // Effective-default rule: a single stored account is implicitly the
+            // default, matching `accounts list`'s store-derived marker.
+            mockResolveActiveUser.mockResolvedValue({
+                id: '111',
+                email: 'a@b.c',
+                token: 't',
+                authMode: 'read-write',
+                source: 'secure-store',
+            })
+            mockReadConfig.mockResolvedValue({
+                config_version: 2,
+                users: [{ id: '111', email: 'a@b.c' }],
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
+
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('default')
         })
 
         it('says env when running on TODOIST_API_TOKEN', async () => {

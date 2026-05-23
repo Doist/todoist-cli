@@ -9,7 +9,7 @@ import {
     TOKEN_ENV_VAR,
 } from '../../lib/auth.js'
 import { type Config, getConfigPath, readConfigStrict } from '../../lib/config.js'
-import { getDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
+import { getEffectiveDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
 
 const SECURE_STORE_DESCRIPTION = 'system credential manager'
 
@@ -213,7 +213,7 @@ export async function viewConfig(options: ViewConfigOptions): Promise<void> {
 
     const token = await probeTokenPresence()
     const users = await listStoredUsers()
-    const defaultUserId = getDefaultUserId(config)
+    const defaultUserId = getEffectiveDefaultUserId(config)
 
     if (read.state === 'missing' && token.state === 'missing' && users.length === 0) {
         console.log(

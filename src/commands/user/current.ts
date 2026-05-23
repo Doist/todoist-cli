@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { readConfig, resolveActiveUser } from '../../lib/auth.js'
-import { getDefaultUserId } from '../../lib/users.js'
+import { getEffectiveDefaultUserId } from '../../lib/users.js'
 
 export interface CurrentUserOptions {
     json?: boolean
@@ -9,7 +9,7 @@ export interface CurrentUserOptions {
 export async function currentUserCommand(options: CurrentUserOptions): Promise<void> {
     const resolved = await resolveActiveUser()
     const config = await readConfig()
-    const defaultId = getDefaultUserId(config)
+    const defaultId = getEffectiveDefaultUserId(config)
     const isDefault = resolved.id === defaultId
 
     if (options.json) {

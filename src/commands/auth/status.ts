@@ -17,7 +17,7 @@ import {
     type StoredUser,
 } from '../../lib/auth.js'
 import { getRequestedUserRef } from '../../lib/global-args.js'
-import { getDefaultUserId } from '../../lib/users.js'
+import { getEffectiveDefaultUserId } from '../../lib/users.js'
 
 type StatusData = {
     user: { id: string; email: string; fullName: string }
@@ -50,7 +50,7 @@ async function gatherStatusData(token?: string): Promise<StatusData> {
         listStoredUsers(),
         readConfig(),
     ])
-    return { user, metadata, storedUsers, defaultUserId: getDefaultUserId(config) }
+    return { user, metadata, storedUsers, defaultUserId: getEffectiveDefaultUserId(config) }
 }
 
 function buildStatusText(data: StatusData): readonly string[] {
