@@ -137,6 +137,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage backups',
         async () => (await import('./commands/backup/index.js')).registerBackupCommand,
     ],
+    billing: [
+        'View billing and subscription information',
+        async () => (await import('./commands/billing/index.js')).registerBillingCommand,
+    ],
     stats: [
         'View productivity stats and karma',
         async () => (await import('./commands/stats/index.js')).registerStatsCommand,
@@ -257,6 +261,7 @@ if (process.argv[2] === 'completion-server') {
             // when output will be pretty-printed (not JSON/NDJSON/raw)
             const noMarkdownCommands = new Set([
                 'backup',
+                'billing',
                 'changelog',
                 'doctor',
                 'update',

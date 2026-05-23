@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CliError } from './errors.js'
-import { formatScopesHelp, parseScopesOption } from './oauth-scopes.js'
+import { formatScopesHelp, parseScopesOption, resolveAuthScope } from './oauth-scopes.js'
 
 describe('parseScopesOption', () => {
     it('parses a single scope', () => {
@@ -9,6 +9,10 @@ describe('parseScopesOption', () => {
 
     it('parses multiple comma-separated scopes', () => {
         expect(parseScopesOption('app-management,backups')).toEqual(['app-management', 'backups'])
+    })
+
+    it('parses the billing scope', () => {
+        expect(parseScopesOption('billing')).toEqual(['billing'])
     })
 
     it('trims whitespace around entries', () => {
@@ -88,5 +92,49 @@ describe('formatScopesHelp', () => {
         expect(help).toContain('--additional-scopes=app-management')
         expect(help).toContain('--additional-scopes=backups')
         expect(help).toContain('--additional-scopes=app-management,backups')
+    })
+
+    it('lists the billing scope', () => {
+        expect(formatScopesHelp()).toContain('billing')
+    })
+})
+
+describe('resolveAuthScope', () => {
+    it('grants billing:read_write by default', () => {
+        const scope = resolveAuthScope({ additionalScopes: ['billing'] })
+        expect(scope).toContain('data:read_write')
+        expect(scope).toContain('billing:read_write')
+    })
+
+    it('narrows billing to billing:read under --read-only', () => {
+        const scope = resolveAuthScope({ readOnly: true, additionalScopes: ['billing'] })
+        expect(scope).toContain('data:read')
+        expect(scope).toContain('billing:read')
+        expect(scope).not.toContain('billing:read_write')
+    })
+
+    it('leaves scopes without a read-only variant unchanged', () => {
+        // app-management has no readOnlyScope, so --read-only must not alter it.
+        expect(
+            resolveAuthScope({ readOnly: true, additionalScopes: ['app-management'] }),
+        ).toContain('dev:app_console')
+    })
+
+    it('composes a mixed read-only scope set in canonical order', () => {
+        // The higher-value case: --read-only --additional-scopes=app-management,billing.
+        // parseScopesOption canonicalises the order; resolveAuthScope must then
+        // emit the read-only base + each scope's read-only variant where it has one.
+        const flags = parseScopesOption('billing,app-management')
+        expect(flags).toEqual(['app-management', 'billing'])
+        expect(resolveAuthScope({ readOnly: true, additionalScopes: flags })).toBe(
+            'data:read,dev:app_console,billing:read',
+        )
+    })
+
+    it('composes the same mixed set as read-write by default', () => {
+        const flags = parseScopesOption('billing,app-management')
+        expect(resolveAuthScope({ additionalScopes: flags })).toBe(
+            'data:read_write,data:delete,project:delete,dev:app_console,billing:read_write',
+        )
     })
 })

@@ -46,7 +46,7 @@ src/
 │  ├─ goal.ts             # Flat command with subcommand registry inside
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
-│  │  backup/, apps/, stats/, completed/, auth/, settings/,
+│  │  backup/, apps/, billing/, stats/, completed/, auth/, settings/,
 │  │  config/, skill/, hc/, completion/, update/
 │  └─ *.test.ts           # Co-located tests
 ├─ lib/                   # Shared utilities. See catalog — don't reimplement.

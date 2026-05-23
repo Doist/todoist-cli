@@ -109,6 +109,12 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
         updateApp: { text: 'Updating app...', color: 'yellow' },
+        // Billing — all billing reads share one label so a command that also
+        // fetches the user (for locale) reads as a single spinner.
+        getSubscriptionInfo: { text: 'Loading billing...', color: 'blue' },
+        getProPlanDetails: { text: 'Loading billing...', color: 'blue' },
+        getPrices: { text: 'Loading billing...', color: 'blue' },
+        getPricing: { text: 'Loading billing...', color: 'blue' },
         // Folders
         getFolders: { text: 'Loading folders...', color: 'blue' },
         getFolder: { text: 'Loading folder...', color: 'blue' },
@@ -212,6 +218,10 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getAppWebhook: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
+    getSubscriptionInfo: 'billing',
+    getProPlanDetails: 'billing',
+    getPrices: 'billing',
+    getPricing: 'billing',
 }
 
 const STANDARD_REMEDIATION =
@@ -224,7 +234,8 @@ async function getScopeRemediation(methodName: string | undefined): Promise<stri
     }
     const metadata = await getAuthMetadata()
     const command = buildReloginCommand(metadata, requiredFlag)
-    return `This command requires the ${oauthScopeFor(requiredFlag)} scope. Re-run \`${command}\` to grant it.`
+    const scope = oauthScopeFor(requiredFlag, metadata.authMode === 'read-only')
+    return `This command requires the ${scope} scope. Re-run \`${command}\` to grant it.`
 }
 
 export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {

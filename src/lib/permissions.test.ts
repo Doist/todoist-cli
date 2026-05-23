@@ -88,6 +88,16 @@ describe('permissions', () => {
         expect(isMutatingApiMethod('sync')).toBe(false)
     })
 
+    it('treats billing read methods as non-mutating', () => {
+        // getSubscriptionInfo is a POST but read-only — it must be on the
+        // allowlist so the proxy never routes it through ensureWriteAllowed and
+        // blocks it under a data:read token.
+        expect(isMutatingApiMethod('getSubscriptionInfo')).toBe(false)
+        expect(isMutatingApiMethod('getProPlanDetails')).toBe(false)
+        expect(isMutatingApiMethod('getPrices')).toBe(false)
+        expect(isMutatingApiMethod('getPricing')).toBe(false)
+    })
+
     it('defaults to mutating for unknown methods', () => {
         expect(isMutatingApiMethod('brandNewApiMethod')).toBe(true)
     })

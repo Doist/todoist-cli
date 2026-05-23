@@ -1,4 +1,12 @@
-import type { Comment, Label, Task } from '@doist/todoist-sdk'
+import type {
+    Comment,
+    Label,
+    PricesResponse,
+    PricingResponse,
+    ProPlanDetails,
+    SubscriptionInfo,
+    Task,
+} from '@doist/todoist-sdk'
 import type { Project, Section } from '../lib/api/core.js'
 import type { Filter } from '../lib/api/filters.js'
 
@@ -329,6 +337,81 @@ export const fixtures = {
             email: 'test@example.com',
             inboxProjectId: 'proj-inbox',
         },
+    },
+    billing: {
+        subscription: {
+            status: 'autorenew',
+            plan: 'pro',
+            expirationDate: '2026-12-31',
+            activationMethod: 'stripe',
+            planPrice: {
+                amount: '600',
+                rawAmount: 600,
+                currency: 'USD',
+                billingCycle: 'monthly',
+                taxBehavior: 'exclusive',
+            },
+            billingPortalUrl: 'https://billing.stripe.com/portal/abc',
+            billingPortalSwitchToAnnualUrl: null,
+            hasBillingPortal: true,
+            hasBillingPortalSwitchToAnnual: false,
+            invoiceCreditBalance: { usd: 0 },
+            hasSwitchLegacyToCurrent: false,
+        } as SubscriptionInfo,
+        proPlanDetails: {
+            currentPlanStatus: 'Active',
+            downgradeAt: null,
+            priceList: [
+                {
+                    billingCycle: 'monthly',
+                    prices: [{ currency: 'USD', unitAmount: 600, taxBehavior: 'exclusive' }],
+                },
+            ],
+        } as ProPlanDetails,
+        prices: {
+            pro: [
+                {
+                    billingCycle: 'yearly',
+                    prices: [{ currency: 'USD', unitAmount: 6000, taxBehavior: 'exclusive' }],
+                },
+            ],
+            teams: [
+                {
+                    billingCycle: 'monthly',
+                    prices: [{ currency: 'USD', unitAmount: 800, taxBehavior: 'inclusive' }],
+                },
+            ],
+        } as PricesResponse,
+        pricing: {
+            latestPro: 'v25',
+            latestBiz: 'v25',
+            sessionPro: 'v25',
+            sessionBiz: 'v25',
+            v25: {
+                pro: { usd: { monthly: 400, yearly: 2900 } },
+                biz: { usd: { monthly: 800, yearly: 7200 } },
+            },
+            // PricingResponse's zod `.catchall` infers a string index signature
+            // that no literal can satisfy (every key would need to be a pricing
+            // version); cast through `unknown` like the SDK's own tests.
+        } as unknown as PricingResponse,
+        pricingFormatted: {
+            latestPro: 'v25',
+            latestBiz: 'v25',
+            sessionPro: 'v25',
+            sessionBiz: 'v25',
+            v25: { pro: { usd: { monthly: '$4', yearly: '$29' } } },
+        } as unknown as PricingResponse,
+        // Carries an extra top-level field the view must treat as metadata, not
+        // a pricing version.
+        pricingWithMetadata: {
+            latestPro: 'v25',
+            latestBiz: 'v25',
+            sessionPro: 'v25',
+            sessionBiz: 'v25',
+            revision: 3,
+            v25: { pro: { usd: { monthly: 400, yearly: 2900 } } },
+        } as unknown as PricingResponse,
     },
 }
 

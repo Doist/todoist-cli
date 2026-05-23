@@ -39,6 +39,7 @@ td auth login --additional-scopes=app-management
 td auth login --read-only --additional-scopes=app-management
 td auth login --additional-scopes=backups
 td auth login --read-only --additional-scopes=backups
+td auth login --additional-scopes=billing
 td auth login --additional-scopes=app-management,backups
 td auth login --callback-port 9000           # override the OAuth callback port
 td auth login --json                         # emit the new account record as JSON
@@ -58,6 +59,7 @@ Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separa
 
 - `app-management` — adds the `dev:app_console` scope (manage your registered Todoist apps — rotate secrets, edit webhooks, etc.). Required by `td apps list` and `td apps view`.
 - `backups` — adds the `backups:read` scope (list and download Todoist backups). Required by `td backup list` and `td backup download`.
+- `billing` — adds the `billing:read_write` scope, or `billing:read` when combined with `--read-only` (view subscription, plan, and pricing). Required by `td billing` subcommands.
 
 Combine freely with `--read-only` to keep data access read-only while still granting an opt-in scope (e.g. `td auth login --read-only --additional-scopes=backups`). When a command fails for lack of a scope, the error suggests a re-login command that preserves whichever flags were originally used.
 
@@ -96,6 +98,7 @@ Resolution order: `--user <ref>` > `user.defaultUser` from config > the only sto
 - Account and tooling: `td stats`, `td settings ...`, `td config view`, `td user ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
 - Developer apps: `td apps list/view` (requires `td auth login --additional-scopes=app-management`)
 - Backups: `td backup list/download` (requires `td auth login --additional-scopes=backups`)
+- Billing: `td billing subscription/plan/prices/pricing` (requires `td auth login --additional-scopes=billing`)
 
 ## References
 
@@ -344,6 +347,19 @@ The `apps` command surface manages the user's registered Todoist developer apps 
 `td apps update <ref> --add-oauth-redirect <url>` appends an OAuth redirect URI to the app, and `--remove-oauth-redirect <url>` takes one off (requires `--yes` to actually mutate, like `td task delete`). The two flags are mutually exclusive — pass one at a time. The URI is validated before any API call: `https://<host>`, `http(s)://localhost[:port][/path]`, `http(s)://127.0.0.1[:port][/path]`, or a custom-scheme URI (e.g. `myapp://callback`) are accepted; `javascript`, `data`, `file`, `vbscript`, and `ftp` custom schemes are rejected. Removals skip validation so users can clean up legacy malformed URIs. Adding a URI already set on the app fails with `ALREADY_EXISTS`; removing a URI that isn't on the app exits 0 with a message and makes no API call. Supports `--dry-run` and `--json`.
 
 The OAuth `client_id` is **public** and always shown. The four sensitive credentials — client secret, verification token, test access token, distribution token — are **hidden by default**. In plain mode each of those lines renders a `(hidden — pass --include-secrets to reveal)` hint; in `--json` / `--ndjson` the `clientSecret`, `verificationToken`, `distributionToken`, and `testToken` keys are omitted from the payload entirely. With `--include-secrets`, the values are rendered / emitted normally — in that mode a non-existent test token reads as `(not created)`. Webhook configuration is always included when configured (callback URL, event list, version); a missing webhook renders as `(not configured)` in plain output and `null` in JSON.
+
+### Billing
+```bash
+td billing                       # subscription (default subcommand)
+td billing subscription --json
+td billing plan
+td billing prices
+td billing pricing --formatted
+```
+
+The `billing` command surface is **read-only** and requires the `billing` OAuth scope — re-run `td auth login --additional-scopes=billing` to grant it. A normal login grants `billing:read_write`; adding `--read-only` narrows it to `billing:read`. Either satisfies these read commands. Without the scope, calls fail with a `MISSING_SCOPE` error whose hint preserves any previously used flags. All subcommands accept `--json` / `--ndjson`, which dump the raw SDK payload verbatim.
+
+`td billing subscription` (the default subcommand) shows the current plan, status, activation method, expiration date, plan price, invoice credit balance, and billing-portal URLs when present. `td billing plan` shows Pro plan status, downgrade date, and the per-cycle price list. `td billing prices` lists available Pro and Teams prices by billing cycle. `td billing pricing` shows current and legacy pricing keyed by version; `--formatted` returns localized price strings instead of minor-unit numbers.
 
 ### Settings, Stats, And Utilities
 ```bash
