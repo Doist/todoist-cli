@@ -5,8 +5,10 @@ export class UserNotFoundError extends CliError {
     constructor(ref: string) {
         super(
             'USER_NOT_FOUND',
-            `No stored user matches "${ref}". Use \`td user list\` to see authenticated accounts.`,
-            ['Run `td auth login` to add an account, or `td user list` to inspect existing ones'],
+            `No stored user matches "${ref}". Use \`td accounts list\` to see authenticated accounts.`,
+            [
+                'Run `td auth login` to add an account, or `td accounts list` to inspect existing ones',
+            ],
             'info',
         )
         this.name = 'UserNotFoundError'
@@ -20,7 +22,7 @@ export class NoUserSelectedError extends CliError {
             'Multiple Todoist accounts are stored. Specify which one to use.',
             [
                 'Pass `--user <id|email>` on the command, or',
-                'Set a default with `td user use <id|email>`',
+                'Set a default with `td accounts use <id|email>`',
             ],
             'info',
         )

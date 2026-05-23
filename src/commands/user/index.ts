@@ -1,45 +1,45 @@
 import { Command } from 'commander'
+import { createTodoistTokenStore } from '../../lib/auth-store.js'
 import { currentUserCommand } from './current.js'
-import { listUsersCommand } from './list.js'
+import { attachTodoistUserListCommand } from './list.js'
 import { removeUserCommand } from './remove.js'
-import { useUserCommand } from './use.js'
+import { attachTodoistUserUseCommand } from './use.js'
 
 export function registerUserCommand(program: Command): void {
-    const user = program.command('user').description('Manage stored Todoist accounts (multi-user)')
+    // Renamed from `user` to `accounts`; `user`/`users` stay as aliases so
+    // existing scripts (and the docs that long said `td user …`) keep working.
+    const account = program
+        .command('accounts')
+        .aliases(['user', 'users'])
+        .description('Manage stored Todoist accounts (multi-user)')
 
-    user.command('list')
-        .description('List all stored Todoist accounts')
-        .option('--json', 'Output as JSON')
-        .option('--ndjson', 'Output as newline-delimited JSON')
-        .action(listUsersCommand)
+    // `list` and `use`/`default` delegate to cli-core's generic account
+    // attachers (consuming `store.list()` / `store.setDefault()`); `current`
+    // and `remove` stay hand-rolled — cli-core ships no attacher for them.
+    const store = createTodoistTokenStore()
+    attachTodoistUserListCommand(account, store)
+    attachTodoistUserUseCommand(account, store)
 
-    user.command('use <ref>')
-        .description('Set the default account used when --user is not provided')
-        .action((ref: string) => useUserCommand(ref))
-
-    // `default` is an explicit alias for `use` — same behavior, different verb.
-    user.command('default <ref>')
-        .description('Alias of `td user use <ref>`')
-        .action((ref: string) => useUserCommand(ref))
-
-    user.command('current')
+    account
+        .command('current')
         .description('Show the active account (resolved from --user, default, or single login)')
         .option('--json', 'Output as JSON')
         .action(currentUserCommand)
 
-    user.command('remove <ref>')
+    account
+        .command('remove <ref>')
         .description('Remove a stored account (deletes its token and config entry)')
         .action((ref: string) => removeUserCommand(ref))
 
-    user.addHelpText(
+    account.addHelpText(
         'after',
         `
 Examples:
-  $ td auth login                 # add an account (sets it as default if first)
-  $ td user list                  # see all stored accounts
-  $ td user use scott@doist.com   # set default
-  $ td user current               # show the active account
+  $ td auth login                     # add an account (sets it as default if first)
+  $ td accounts list                  # see all stored accounts
+  $ td accounts use scott@doist.com   # set default
+  $ td accounts current               # show the active account
   $ td --user other@example.com task list   # one-off override
-  $ td user remove old@example.com`,
+  $ td accounts remove old@example.com`,
     )
 }

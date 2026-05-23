@@ -68,17 +68,19 @@ Tokens are stored in the OS credential manager when available, with fallback to 
 The CLI can hold credentials for multiple Todoist accounts at once.
 
 \`\`\`bash
-td auth login                       # adds the account; first one becomes default
-td user list                        # all stored accounts (with default marker)
-td user list --json                 # array of accounts with auth metadata (--ndjson also supported)
-td user use <id|email>              # set the default account (alias: td user default)
-td user current                     # show the active account
-td user remove <id|email>           # delete an account (and its token)
-td --user <id|email> task list      # one-off override for any command
-td auth logout --user <id|email>    # log out a specific account
+td auth login                          # adds the account; first one becomes default
+td accounts list                       # all stored accounts (with default marker)
+td accounts list --json                # { accounts: [...], default } envelope; --ndjson streams one account per line
+td accounts use <id|email>             # set the default account (alias: td accounts default; --json/--ndjson supported)
+td accounts current                    # show the active account
+td accounts remove <id|email>          # delete an account (and its token)
+td --user <id|email> task list         # one-off override for any command
+td auth logout --user <id|email>       # log out a specific account
 \`\`\`
 
-Resolution order: \`--user <ref>\` > \`user.defaultUser\` from config > the only stored account. With multiple accounts and no default, commands error and ask for \`--user\` (or \`td user use\`). \`<ref>\` matches an exact id or email (case-insensitive on email). \`TODOIST_API_TOKEN\` still bypasses the resolver entirely.
+\`td accounts\` is also available as \`td user\` / \`td users\` (back-compat aliases).
+
+Resolution order: \`--user <ref>\` > \`user.defaultUser\` from config > the only stored account. With multiple accounts and no default, commands error and ask for \`--user\` (or \`td accounts use\`). \`<ref>\` matches an exact id or email (case-insensitive on email). \`TODOIST_API_TOKEN\` still bypasses the resolver entirely.
 
 ## Quick Reference
 
@@ -91,7 +93,7 @@ Resolution order: \`--user <ref>\` > \`user.defaultUser\` from config > the only
 - Collaboration: \`td comment ...\`, \`td notification ...\`, \`td reminder ...\`
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Help Center: \`td hc locales/search/view\`
-- Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td user ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
+- Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td accounts ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
 - Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
 - Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
 - Billing: \`td billing subscription/plan/prices/pricing\` (requires \`td auth login --additional-scopes=billing\`)

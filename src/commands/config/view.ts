@@ -76,7 +76,7 @@ function renderTokenLine(token: TokenStatus, showToken: boolean): string {
             return chalk.dim(`unknown — ${token.reason}`)
         case 'ambiguous':
             return chalk.dim(
-                'multiple stored accounts; pass --user <id|email> or set a default with `td user use`',
+                'multiple stored accounts; pass --user <id|email> or set a default with `td accounts use`',
             )
         case 'missing':
             return formatValue(undefined)

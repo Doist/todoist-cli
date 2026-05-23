@@ -9,7 +9,7 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
     if (!ref) {
         throw new CliError(
             'MISSING_REF',
-            'Please provide a user id or email: `td user remove <id|email>`',
+            'Please provide a user id or email: `td accounts remove <id|email>`',
         )
     }
 
@@ -28,7 +28,9 @@ export async function removeUserCommand(ref: string | undefined): Promise<void> 
         console.log(chalk.green('✓'), `Removed ${user.email}`)
         if (wasDefault) {
             console.log(
-                chalk.dim('Cleared default account. Set a new one with `td user use <id|email>`.'),
+                chalk.dim(
+                    'Cleared default account. Set a new one with `td accounts use <id|email>`.',
+                ),
             )
         }
     }

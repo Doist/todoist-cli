@@ -84,7 +84,7 @@ function buildStatusText(data: StatusData): readonly string[] {
         }
         lines.push(
             chalk.dim(
-                'Use `td user use <id|email>` to switch default, or `--user <ref>` per command.',
+                'Use `td accounts use <id|email>` to switch default, or `--user <ref>` per command.',
             ),
         )
     }

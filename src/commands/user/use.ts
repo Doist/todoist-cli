@@ -1,22 +1,17 @@
-import chalk from 'chalk'
-import { createTodoistTokenStore } from '../../lib/auth-store.js'
-import { CliError } from '../../lib/errors.js'
-import { isQuiet } from '../../lib/global-args.js'
+import { attachAccountUseCommand } from '@doist/cli-core/auth'
+import type { Command } from 'commander'
+import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 
-export async function useUserCommand(ref: string | undefined): Promise<void> {
-    if (!ref) {
-        throw new CliError(
-            'MISSING_REF',
-            'Please provide a user id or email: `td user use <id|email>`',
-        )
-    }
-
-    // `store.setDefault(ref)` throws `CliError('ACCOUNT_NOT_FOUND', …)` on miss,
-    // which the top-level error handler renders as the standard "not found"
-    // message — no pre-check needed.
-    await createTodoistTokenStore().setDefault(ref)
-
-    if (!isQuiet()) {
-        console.log(chalk.green('✓'), `Default account set to ${ref}`)
-    }
+/**
+ * Attach `td accounts use <ref>` (alias `td accounts default <ref>`) via cli-core's
+ * generic `attachAccountUseCommand`, which calls `store.setDefault(ref)` and
+ * owns the success line / `--json` (`{ ok, default }`) / silent-`--ndjson`
+ * output. `setDefault`'s `CliError('ACCOUNT_NOT_FOUND', …)` on a ref miss
+ * propagates to the top-level handler unchanged.
+ */
+export function attachTodoistUserUseCommand(parent: Command, store: TodoistTokenStore): Command {
+    return attachAccountUseCommand<TodoistAccount>(parent, {
+        store,
+        description: 'Set the default account used when --user is not provided',
+    }).alias('default')
 }

@@ -1,17 +1,16 @@
-import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/auth.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth.js')>()
     return {
         ...actual,
-        listStoredUsers: vi.fn(),
         readConfig: vi.fn(),
         resolveActiveUser: vi.fn(),
     }
 })
 
 const setDefaultMock = vi.fn()
+const listMock = vi.fn()
 const clearMock = vi.fn()
 const lastClearMock = vi.fn<() => unknown>()
 vi.mock('../../lib/auth-store.js', async (importOriginal) => {
@@ -20,7 +19,7 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
         ...actual,
         createTodoistTokenStore: () => ({
             active: vi.fn(),
-            list: vi.fn().mockResolvedValue([]),
+            list: listMock,
             set: vi.fn(),
             setDefault: setDefaultMock,
             clear: clearMock,
@@ -32,12 +31,11 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
 
 vi.mock('chalk')
 
-import { listStoredUsers, readConfig, resolveActiveUser } from '../../lib/auth.js'
+import { readConfig, resolveActiveUser } from '../../lib/auth.js'
 import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
 import { createTestProgram } from '../../test-support/program.js'
 import { registerUserCommand } from './index.js'
 
-const mockListStoredUsers = vi.mocked(listStoredUsers)
 const mockReadConfig = vi.mocked(readConfig)
 const mockResolveActiveUser = vi.mocked(resolveActiveUser)
 
@@ -56,28 +54,53 @@ describe('user command', () => {
     })
 
     describe('list', () => {
-        describeEmptyMachineOutput('empty machine output contract', {
-            setup: () => {
-                mockListStoredUsers.mockResolvedValue([])
+        beforeEach(() => {
+            listMock.mockReset().mockResolvedValue([])
+        })
+
+        it.each([['user'], ['users']])(
+            'is reachable via the back-compat `%s` alias',
+            async (alias) => {
+                listMock.mockResolvedValue([
+                    { account: { id: '1', email: 'a@b.c' }, isDefault: true },
+                ])
+
+                await createProgram().parseAsync(['node', 'td', alias, 'list'])
+
+                expect(consoleSpy.mock.calls.flat().join('\n')).toContain('a@b.c')
             },
-            run: async (extraArgs) => {
-                await createProgram().parseAsync(['node', 'td', 'user', 'list', ...extraArgs])
-            },
-            humanMessage: /No stored Todoist accounts/,
+        )
+
+        describe('empty machine output', () => {
+            it('emits an empty {accounts, default} envelope for --json', async () => {
+                await createProgram().parseAsync(['node', 'td', 'accounts', 'list', '--json'])
+
+                const payload = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+                expect(payload).toEqual({ accounts: [], default: null })
+            })
+
+            it('emits nothing for --ndjson', async () => {
+                await createProgram().parseAsync(['node', 'td', 'accounts', 'list', '--ndjson'])
+
+                expect(consoleSpy).not.toHaveBeenCalled()
+            })
+
+            it('prints the empty-state message in human mode', async () => {
+                await createProgram().parseAsync(['node', 'td', 'accounts', 'list'])
+
+                expect(consoleSpy.mock.calls.flat().join('\n')).toMatch(
+                    /No stored Todoist accounts/,
+                )
+            })
         })
 
         it('marks the default user', async () => {
-            mockListStoredUsers.mockResolvedValue([
-                { id: '1', email: 'a@b.c' },
-                { id: '2', email: 'd@e.f' },
+            listMock.mockResolvedValue([
+                { account: { id: '1', email: 'a@b.c' }, isDefault: false },
+                { account: { id: '2', email: 'd@e.f' }, isDefault: true },
             ])
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '2' },
-                users: [],
-            })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'list'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'list'])
 
             const lines = consoleSpy.mock.calls.flat().join('\n')
             expect(lines).toContain('a@b.c')
@@ -85,59 +108,49 @@ describe('user command', () => {
             expect(lines).toContain('default')
         })
 
-        it('emits one JSON value per line for --ndjson with stored accounts', async () => {
-            mockListStoredUsers.mockResolvedValue([
-                { id: '1', email: 'a@b.c', auth_mode: 'read-write' },
-                { id: '2', email: 'd@e.f', auth_mode: 'read-only' },
+        it('streams one JSON value per console.log for --ndjson with stored accounts', async () => {
+            listMock.mockResolvedValue([
+                { account: { id: '1', email: 'a@b.c', auth_mode: 'read-write' }, isDefault: false },
+                { account: { id: '2', email: 'd@e.f', auth_mode: 'read-only' }, isDefault: true },
             ])
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '2' },
-                users: [],
-            })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'list', '--ndjson'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'list', '--ndjson'])
 
-            const output = consoleSpy.mock.calls[0][0] as string
-            const lines = output.split('\n')
-            expect(lines).toHaveLength(2)
-            const first = JSON.parse(lines[0])
-            const second = JSON.parse(lines[1])
+            expect(consoleSpy).toHaveBeenCalledTimes(2)
+            const first = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+            const second = JSON.parse(consoleSpy.mock.calls[1][0] as string)
             expect(first).toMatchObject({ id: '1', email: 'a@b.c', isDefault: false })
             expect(second).toMatchObject({ id: '2', email: 'd@e.f', isDefault: true })
-            expect(output.endsWith('\n')).toBe(false) // no trailing newline within payload
         })
 
-        it('outputs JSON when --json given', async () => {
-            mockListStoredUsers.mockResolvedValue([
-                { id: '1', email: 'a@b.c', auth_mode: 'read-write' },
+        it('outputs a {accounts, default} envelope when --json given', async () => {
+            listMock.mockResolvedValue([
+                { account: { id: '1', email: 'a@b.c', auth_mode: 'read-write' }, isDefault: true },
             ])
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '1' },
-                users: [],
-            })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'list', '--json'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'list', '--json'])
 
             const payload = JSON.parse(consoleSpy.mock.calls[0][0] as string)
-            expect(payload).toEqual([
-                {
-                    id: '1',
-                    email: 'a@b.c',
-                    isDefault: true,
-                    authMode: 'read-write',
-                    authScope: undefined,
-                    authFlags: undefined,
-                    storage: 'secure-store',
-                },
-            ])
+            expect(payload).toEqual({
+                accounts: [
+                    {
+                        id: '1',
+                        email: 'a@b.c',
+                        isDefault: true,
+                        authMode: 'read-write',
+                    },
+                ],
+                default: '1',
+            })
         })
     })
 
     describe('use', () => {
         beforeEach(() => {
             setDefaultMock.mockReset().mockResolvedValue(undefined)
+            // The attacher re-reads `store.list()` after `setDefault` to
+            // resolve the canonical default id for `--json` output.
+            listMock.mockReset().mockResolvedValue([])
         })
 
         it('sets the default user by id', async () => {
@@ -146,7 +159,7 @@ describe('user command', () => {
                 users: [{ id: '111', email: 'a@b.c' }],
             })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'use', '111'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'use', '111'])
 
             expect(setDefaultMock).toHaveBeenCalledWith('111')
         })
@@ -162,7 +175,7 @@ describe('user command', () => {
             )
 
             await expect(
-                createProgram().parseAsync(['node', 'td', 'user', 'use', 'nope']),
+                createProgram().parseAsync(['node', 'td', 'accounts', 'use', 'nope']),
             ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
         })
 
@@ -172,7 +185,7 @@ describe('user command', () => {
                 users: [{ id: '111', email: 'a@b.c' }],
             })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'default', '111'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'default', '111'])
 
             expect(setDefaultMock).toHaveBeenCalledWith('111')
         })
@@ -193,7 +206,7 @@ describe('user command', () => {
                 users: [],
             })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'current'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
 
             const out = consoleSpy.mock.calls.flat().join('\n')
             expect(out).toContain('a@b.c')
@@ -209,7 +222,7 @@ describe('user command', () => {
                 source: 'env',
             })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'current'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
 
             const out = consoleSpy.mock.calls.flat().join('\n')
             expect(out).toContain('TODOIST_API_TOKEN')
@@ -229,7 +242,7 @@ describe('user command', () => {
                 users: [{ id: '111', email: 'a@b.c' }],
             })
 
-            await createProgram().parseAsync(['node', 'td', 'user', 'remove', '111'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111'])
 
             expect(clearMock).toHaveBeenCalledWith('111')
             expect(consoleSpy.mock.calls.flat().join('\n')).toContain('Cleared default')
@@ -242,7 +255,7 @@ describe('user command', () => {
             })
 
             await expect(
-                createProgram().parseAsync(['node', 'td', 'user', 'remove', 'nope']),
+                createProgram().parseAsync(['node', 'td', 'accounts', 'remove', 'nope']),
             ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
             expect(clearMock).not.toHaveBeenCalled()
         })
