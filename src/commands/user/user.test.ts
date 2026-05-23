@@ -12,6 +12,7 @@ vi.mock('../../lib/auth.js', async (importOriginal) => {
 const setDefaultMock = vi.fn()
 const listMock = vi.fn()
 const clearMock = vi.fn()
+const activeAccountMock = vi.fn()
 const lastClearMock = vi.fn<() => unknown>()
 vi.mock('../../lib/auth-store.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
@@ -19,6 +20,7 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
         ...actual,
         createTodoistTokenStore: () => ({
             active: vi.fn(),
+            activeAccount: activeAccountMock,
             list: listMock,
             set: vi.fn(),
             setDefault: setDefaultMock,
@@ -226,18 +228,17 @@ describe('user command', () => {
     })
 
     describe('current', () => {
-        it('prints the active user', async () => {
-            mockResolveActiveUser.mockResolvedValue({
-                id: '111',
-                email: 'a@b.c',
-                token: 't',
-                authMode: 'read-write',
-                source: 'secure-store',
-            })
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '111' },
-                users: [{ id: '111', email: 'a@b.c' }],
+        beforeEach(() => {
+            // Default: store resolves nothing, so tests opt into a stored
+            // account explicitly and the env/legacy cases fall through to the
+            // `onNotAuthenticated` resolver.
+            activeAccountMock.mockReset().mockResolvedValue(null)
+        })
+
+        it('prints the active stored account with its default marker', async () => {
+            activeAccountMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c', auth_mode: 'read-write' },
+                isDefault: true,
             })
 
             await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
@@ -247,49 +248,26 @@ describe('user command', () => {
             expect(out).toContain('default')
         })
 
-        it('marks a lone account as default even with no pinned defaultUser', async () => {
-            // Effective-default rule: a single stored account is implicitly the
-            // default, matching `accounts list`'s store-derived marker.
-            mockResolveActiveUser.mockResolvedValue({
+        it('emits the stored account shape for --json', async () => {
+            activeAccountMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c', auth_mode: 'read-write' },
+                isDefault: true,
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current', '--json'])
+
+            expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toMatchObject({
                 id: '111',
                 email: 'a@b.c',
-                token: 't',
-                authMode: 'read-write',
                 source: 'secure-store',
-            })
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                users: [{ id: '111', email: 'a@b.c' }],
-            })
-
-            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
-
-            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('default')
-        })
-
-        it('ignores an orphaned defaultUser pointer and falls through to the sole account', async () => {
-            // `defaultUser` points at a removed account; the effective rule
-            // must drop the stale pin and treat the lone remaining account as
-            // default, matching `resolveActiveUser`'s fall-through.
-            mockResolveActiveUser.mockResolvedValue({
-                id: '111',
-                email: 'a@b.c',
-                token: 't',
+                isDefault: true,
                 authMode: 'read-write',
-                source: 'secure-store',
             })
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '999' },
-                users: [{ id: '111', email: 'a@b.c' }],
-            })
-
-            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
-
-            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('default')
         })
 
         it('says env when running on TODOIST_API_TOKEN', async () => {
+            // env short-circuits `activeAccount` (-> null), so `current` falls
+            // through to the resolver, which reports the env source.
             mockResolveActiveUser.mockResolvedValue({
                 id: 'env',
                 email: '',
@@ -300,40 +278,69 @@ describe('user command', () => {
 
             await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
 
-            const out = consoleSpy.mock.calls.flat().join('\n')
-            expect(out).toContain('TODOIST_API_TOKEN')
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('TODOIST_API_TOKEN')
+        })
+
+        it('reports legacy single-user credentials', async () => {
+            mockResolveActiveUser.mockResolvedValue({
+                id: 'legacy',
+                email: 'old@e.f',
+                token: 'legacytoken',
+                authMode: 'unknown',
+                source: 'config-file',
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current'])
+
+            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('legacy')
         })
     })
 
     describe('remove', () => {
         beforeEach(() => {
-            clearMock.mockReset().mockResolvedValue(undefined)
+            clearMock.mockReset()
             lastClearMock.mockReset().mockReturnValue({ storage: 'secure-store' })
         })
 
-        it('removes the user by id and clears default', async () => {
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                user: { defaultUser: '111' },
-                users: [{ id: '111', email: 'a@b.c' }],
+        it('removes the resolved account and notes the cleared default', async () => {
+            // The store resolves the ref, clears by canonical id, and reports
+            // whether it was the default.
+            clearMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c' },
+                wasDefault: true,
             })
 
-            await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111'])
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', 'a@b.c'])
 
-            expect(clearMock).toHaveBeenCalledWith('111')
-            expect(consoleSpy.mock.calls.flat().join('\n')).toContain('Cleared default')
+            expect(clearMock).toHaveBeenCalledWith('a@b.c')
+            const out = consoleSpy.mock.calls.flat().join('\n')
+            expect(out).toContain('Removed a@b.c')
+            expect(out).toContain('Cleared default')
         })
 
         it('rejects an unknown ref', async () => {
-            mockReadConfig.mockResolvedValue({
-                config_version: 2,
-                users: [{ id: '111', email: 'a@b.c' }],
-            })
+            // A `null` return from `clear()` means the ref matched nothing.
+            clearMock.mockResolvedValue(null)
 
             await expect(
                 createProgram().parseAsync(['node', 'td', 'accounts', 'remove', 'nope']),
-            ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
-            expect(clearMock).not.toHaveBeenCalled()
+            ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
+        })
+
+        it('surfaces a keyring-fallback warning to stderr', async () => {
+            clearMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c' },
+                wasDefault: false,
+            })
+            lastClearMock.mockReturnValue({
+                storage: 'config-file',
+                warning: 'Keyring unavailable; removed plaintext token instead.',
+            })
+            const errorSpy = mockConsoleError()
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111'])
+
+            expect(errorSpy.mock.calls.flat().join('\n')).toContain('Keyring unavailable')
         })
     })
 })

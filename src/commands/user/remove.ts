@@ -1,42 +1,37 @@
+import { attachAccountRemoveCommand } from '@doist/cli-core/auth'
 import chalk from 'chalk'
-import { createTodoistTokenStore } from '../../lib/auth-store.js'
-import { readConfig } from '../../lib/auth.js'
-import { CliError } from '../../lib/errors.js'
-import { isQuiet } from '../../lib/global-args.js'
-import { getDefaultUserId, requireUserByRef } from '../../lib/users.js'
+import type { Command } from 'commander'
+import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 
-export async function removeUserCommand(ref: string | undefined): Promise<void> {
-    if (!ref) {
-        throw new CliError(
-            'MISSING_REF',
-            'Please provide a user id or email: `td accounts remove <id|email>`',
-        )
-    }
-
-    // Resolve the ref against the on-disk config first so we can report
-    // "Removed <email>" + the "cleared default" hint with the user's actual
-    // email — the store's clear path is keyed by id, not email, and would
-    // silently no-op on miss (printing the wrong reassurance).
-    const config = await readConfig()
-    const { user } = requireUserByRef(config, ref)
-    const wasDefault = getDefaultUserId(config) === user.id
-
-    const store = createTodoistTokenStore()
-    await store.clear(user.id)
-
-    if (!isQuiet()) {
-        console.log(chalk.green('✓'), `Removed ${user.email}`)
-        if (wasDefault) {
-            console.log(
-                chalk.dim(
-                    'Cleared default account. Set a new one with `td accounts use <id|email>`.',
-                ),
-            )
-        }
-    }
-
-    const result = store.getLastClearResult()
-    if (result?.warning) {
-        console.error(chalk.yellow('Warning:'), result.warning)
-    }
+/**
+ * Attach `td accounts remove <ref>` via cli-core's `attachAccountRemoveCommand`.
+ *
+ * `store.clear(ref)` resolves the ref and deletes by the canonical `account.id`
+ * in one token-free step (so a record whose secret is unreadable stays
+ * removable), returning the removed account plus whether it was the default — a
+ * miss surfaces as `ACCOUNT_NOT_FOUND`. The Todoist hook surfaces the
+ * keyring-fallback warning that the `TokenStore.clear` contract can't carry.
+ */
+export function attachTodoistUserRemoveCommand(parent: Command, store: TodoistTokenStore): Command {
+    return attachAccountRemoveCommand<TodoistAccount>(parent, {
+        store,
+        description: 'Remove a stored account (deletes its token and config entry)',
+        renderText: ({ account, wasDefault }) => {
+            const lines = [`${chalk.green('✓')} Removed ${account.email ?? account.id}`]
+            if (wasDefault) {
+                lines.push(
+                    chalk.dim(
+                        'Cleared default account. Set a new one with `td accounts use <id|email>`.',
+                    ),
+                )
+            }
+            return lines
+        },
+        onRemoved: () => {
+            const result = store.getLastClearResult()
+            if (result?.warning) {
+                console.error(chalk.yellow('Warning:'), result.warning)
+            }
+        },
+    })
 }

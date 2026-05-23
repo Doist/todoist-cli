@@ -95,5 +95,10 @@ export function createTodoistTokenStore(): TodoistTokenStore {
     return Object.assign(Object.create(inner) as TodoistTokenStore, {
         active: async (ref?: AccountRef) => (envTokenSet() ? null : inner.active(ref)),
         activeBundle: async (ref?: AccountRef) => (envTokenSet() ? null : inner.activeBundle(ref)),
+        // `accounts current` resolves through `activeAccount`; short-circuit it
+        // on the env token too so env wins over a stored default (it routes to
+        // the command's `onNotAuthenticated` env branch), matching `active`.
+        activeAccount: async (ref?: AccountRef) =>
+            envTokenSet() ? null : inner.activeAccount(ref),
     })
 }

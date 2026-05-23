@@ -1,9 +1,9 @@
 import { Command } from 'commander'
 import { createTodoistTokenStore } from '../../lib/auth-store.js'
 import { ACCOUNT_COMMAND_ALIASES } from './aliases.js'
-import { currentUserCommand } from './current.js'
+import { attachTodoistUserCurrentCommand } from './current.js'
 import { attachTodoistUserListCommand } from './list.js'
-import { removeUserCommand } from './remove.js'
+import { attachTodoistUserRemoveCommand } from './remove.js'
 import { attachTodoistUserUseCommand } from './use.js'
 
 export function registerUserCommand(program: Command): void {
@@ -14,23 +14,13 @@ export function registerUserCommand(program: Command): void {
         .aliases(ACCOUNT_COMMAND_ALIASES)
         .description('Manage stored Todoist accounts (multi-user)')
 
-    // `list` and `use`/`default` delegate to cli-core's generic account
-    // attachers (consuming `store.list()` / `store.setDefault()`); `current`
-    // and `remove` stay hand-rolled — cli-core ships no attacher for them.
+    // All four subcommands delegate to cli-core's generic account attachers
+    // (list/use/current/remove), consuming the `TokenStore` contract directly.
     const store = createTodoistTokenStore()
     attachTodoistUserListCommand(account, store)
     attachTodoistUserUseCommand(account, store)
-
-    account
-        .command('current')
-        .description('Show the active account (resolved from --user, default, or single login)')
-        .option('--json', 'Output as JSON')
-        .action(currentUserCommand)
-
-    account
-        .command('remove <ref>')
-        .description('Remove a stored account (deletes its token and config entry)')
-        .action((ref: string) => removeUserCommand(ref))
+    attachTodoistUserCurrentCommand(account, store)
+    attachTodoistUserRemoveCommand(account, store)
 
     account.addHelpText(
         'after',
