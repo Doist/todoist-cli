@@ -1,3 +1,9 @@
+## [1.69.0](https://github.com/Doist/todoist-cli/compare/v1.68.0...v1.69.0) (2026-05-24)
+
+### Features
+
+* rename `td user` to `td accounts` and adopt cli-core account attachers ([#360](https://github.com/Doist/todoist-cli/issues/360)) ([73a0b77](https://github.com/Doist/todoist-cli/commit/73a0b771daa46f4fe3be4a303c91580f97c6b3d3))
+
 ## [1.68.0](https://github.com/Doist/todoist-cli/compare/v1.67.1...v1.68.0) (2026-05-23)
 
 ### Features
