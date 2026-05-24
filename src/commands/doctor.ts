@@ -175,7 +175,7 @@ async function checkAuthentication(offline: boolean): Promise<DoctorCheck> {
                 name: 'auth',
                 status: 'warn',
                 message:
-                    'Multiple stored Todoist accounts but no default. Set one with `td user use <id|email>` or pass --user.',
+                    'Multiple stored Todoist accounts but no default. Set one with `td accounts use <id|email>` or pass --user.',
             }
         }
 

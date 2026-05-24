@@ -4,9 +4,9 @@ import {
     createKeyringTokenStore,
     type KeyringTokenStore,
 } from '@doist/cli-core/auth'
-import { type AuthFlag, type AuthMode, getConfigPath } from './config.js'
+import { type AuthFlag, type AuthMode, getConfigPath, readConfig } from './config.js'
 import { createTodoistUserRecordStore } from './user-records.js'
-import { matchUserRef } from './users.js'
+import { getStoredUsers, matchUserRef } from './users.js'
 
 /**
  * Persisted identifiers for the keyring/config ABI. Shared with the read-side
@@ -95,5 +95,22 @@ export function createTodoistTokenStore(): TodoistTokenStore {
     return Object.assign(Object.create(inner) as TodoistTokenStore, {
         active: async (ref?: AccountRef) => (envTokenSet() ? null : inner.active(ref)),
         activeBundle: async (ref?: AccountRef) => (envTokenSet() ? null : inner.activeBundle(ref)),
+        // `accounts current` resolves through `activeAccount`; short-circuit it
+        // on the env token too so env wins over a stored default (it routes to
+        // the command's `onNotAuthenticated` env branch), matching `active`.
+        activeAccount: async (ref?: AccountRef) => {
+            if (envTokenSet()) return null
+            const resolved = await inner.activeAccount(ref)
+            if (!resolved) return null
+            // Annotate the token source so `accounts current --json` reports it
+            // accurately: a per-user `api_token` means the plaintext config-file
+            // fallback, otherwise the secure store. Only `current` consumes
+            // `activeAccount`, so this doesn't leak into `accounts list`.
+            const stored = getStoredUsers(await readConfig()).find(
+                (u) => u.id === resolved.account.id,
+            )
+            const source = stored?.api_token ? 'config-file' : 'secure-store'
+            return { ...resolved, account: { ...resolved.account, source } }
+        },
     })
 }

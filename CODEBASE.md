@@ -109,9 +109,10 @@ lives in `src/lib/skills/content.ts` (SKILL_CONTENT) — don't duplicate here.
 - **Notifications** — list/view/accept/reject/dismiss
 - **Productivity & activity** — `activity`, `stats`, `completed`
 - **Top-level views** — `today`, `upcoming`, `inbox`, `view` (URL router)
-- **Infra** — `auth` (login/logout/token/status), `settings`, `apps`,
-  `backup`, `attachment`, `hc` (Help Center), `skill`, `completion`, `update`,
-  `doctor`, `changelog`
+- **Infra** — `auth` (login/logout/token/status), `accounts`
+  (multi-user list/use/current/remove; aliases `user`/`users`), `settings`,
+  `apps`, `backup`, `attachment`, `hc` (Help Center), `skill`, `completion`,
+  `update`, `doctor`, `changelog`
 
 New subcommand? Copy a sibling in the target group, wire it in that group's
 `index.ts`, update `SKILL_CONTENT`, run `npm run sync:skill`. See AGENTS.md.
@@ -126,6 +127,12 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
   `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
   write/clear paths go through `auth-store.ts`.
+- **`users.ts`** — config-side account helpers shared across commands:
+  `matchUserRef`/`findUserByRef`/`requireUserByRef`, the stored-user mutators
+  (`upsert`/`remove`/`set`/`clearDefaultUser`), `getDefaultUserId` (raw pinned
+  pointer) and `getEffectiveDefaultUserId` (pinned-else-sole-account, used for
+  the `(default)` marker in `accounts list`/`current`, `auth status`,
+  `config view`).
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
@@ -219,9 +226,11 @@ All live in `src/lib/refs.ts`:
 ## Auth & token storage
 
 `@doist/cli-core/auth` owns the keyring, multi-user `TokenStore`, OAuth flow,
-and the `login` / `logout` / `status` / `token view` registrars. todoist-cli
-supplies a `UserRecordStore<TodoistAccount>` adapter (`user-records.ts`) over
-its config file plus a Todoist-specific `validateToken` (`auth-provider.ts`).
+and the `login` / `logout` / `status` / `token view` registrars, plus the
+`account list` / `account use` attachers that back `td accounts list` and
+`td accounts use` (`commands/user/{list,use}.ts`). todoist-cli supplies a
+`UserRecordStore<TodoistAccount>` adapter (`user-records.ts`) over its config
+file plus a Todoist-specific `validateToken` (`auth-provider.ts`).
 
 Read path (`auth.ts` — `resolveActiveUser` / `getApiToken` / `probeApiToken`):
 env `TODOIST_API_TOKEN` first, then a config-derived target user, then either

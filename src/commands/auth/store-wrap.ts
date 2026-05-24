@@ -39,7 +39,7 @@ export function withUserRefAware(store: TodoistTokenStore): TodoistTokenStore {
         clear: async (ref?: string) => {
             const targetRef = ref ?? getRequestedUserRef()
             if (targetRef !== undefined) await requireExists(targetRef)
-            await store.clear(targetRef)
+            return store.clear(targetRef)
         },
     })
 }

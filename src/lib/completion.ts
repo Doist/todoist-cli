@@ -193,17 +193,22 @@ export function getCompletions(
 }
 
 function getSubcommandCompletions(cmd: Command, prefix: string): CompletionItem[] {
-    return cmd.commands
-        .filter(
-            (c: Command) =>
-                !(c as Command & { _hidden?: boolean })._hidden &&
-                !HIDDEN_COMMAND_NAMES.has(c.name()),
-        )
-        .filter((c: Command) => c.name().startsWith(prefix))
-        .map((c: Command) => ({
-            name: c.name(),
-            description: c.description(),
-        }))
+    return (
+        cmd.commands
+            .filter(
+                (c: Command) =>
+                    !(c as Command & { _hidden?: boolean })._hidden &&
+                    !HIDDEN_COMMAND_NAMES.has(c.name()),
+            )
+            // Emit the canonical name and every alias as separate candidates, so a
+            // renamed command's back-compat aliases (e.g. `accounts` → `user`) and
+            // subcommand aliases (e.g. `use` → `default`) still tab-complete.
+            .flatMap((c: Command) =>
+                [c.name(), ...c.aliases()]
+                    .filter((name) => name.startsWith(prefix))
+                    .map((name) => ({ name, description: c.description() })),
+            )
+    )
 }
 
 function getOptionCompletions(

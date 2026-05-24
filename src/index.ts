@@ -3,6 +3,7 @@
 import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
+import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import { getRequestedUserRef, isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
@@ -34,7 +35,7 @@ program
     .option('-q, --quiet', 'Suppress success messages (create commands still print the ID)')
     .option(
         '--user <ref>',
-        'Run as a specific stored Todoist account (id or email). See `td user list`.',
+        'Run as a specific stored Todoist account (id or email). See `td accounts list`.',
     )
     .addHelpText(
         'after',
@@ -47,8 +48,8 @@ Note for AI/LLM agents:
   Use --user <id|email> on any command to act as a specific stored account.`,
     )
 
-// Lazy command registry: [description, loader]
-const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = {
+// Lazy command registry: [description, loader, aliases?]
+const commands: Record<string, [string, () => Promise<(p: Command) => void>, string[]?]> = {
     add: [
         'Quick add task with natural language (e.g., "Buy milk tomorrow p1 #Shopping")',
         async () => (await import('./commands/add.js')).registerAddCommand,
@@ -125,9 +126,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
         'Manage authentication',
         async () => (await import('./commands/auth/index.js')).registerAuthCommand,
     ],
-    user: [
+    accounts: [
         'Manage stored Todoist accounts (multi-user)',
         async () => (await import('./commands/user/index.js')).registerUserCommand,
+        ACCOUNT_COMMAND_ALIASES,
     ],
     apps: [
         'Manage your registered Todoist developer apps',
@@ -184,9 +186,18 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>]> = 
     ],
 }
 
+// Map every command token (canonical name + aliases) to its canonical key, so
+// the lazy dispatcher and completion can resolve an alias back to its loader.
+const commandAliases: Record<string, string> = {}
+for (const [name, [, , aliases]] of Object.entries(commands)) {
+    commandAliases[name] = name
+    for (const alias of aliases ?? []) commandAliases[alias] = name
+}
+
 // Register placeholders so --help lists all commands
-for (const [name, [description]] of Object.entries(commands)) {
-    program.command(name).description(description)
+for (const [name, [description, , aliases]] of Object.entries(commands)) {
+    const placeholder = program.command(name).description(description)
+    if (aliases) placeholder.aliases(aliases)
 }
 
 program.hook('preAction', (_thisCommand, actionCommand) => {
@@ -215,7 +226,7 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
             reportUserFlagError('--user requires a value: <id|email>.', [
                 'Example: td --user scott@doist.com task list',
             ])
-        } else if (Object.hasOwn(commands, ref)) {
+        } else if (Object.hasOwn(commandAliases, ref)) {
             reportUserFlagError(
                 `--user requires a value: <id|email>. Got "${ref}", which looks like a subcommand — did you forget the value?`,
                 [`Example: td --user scott@doist.com ${ref}`],
@@ -231,7 +242,8 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
 if (process.argv[2] === 'completion-server') {
     const { parseCompLine } = await import('./lib/completion.js')
     const compWords = parseCompLine(process.env.COMP_LINE ?? '')
-    const compCmd = compWords.find((w) => !w.startsWith('-') && w in commands)
+    const compToken = compWords.find((w) => !w.startsWith('-') && w in commandAliases)
+    const compCmd = compToken ? commandAliases[compToken] : undefined
 
     const toLoad = ['completion', ...(compCmd && compCmd !== 'completion' ? [compCmd] : [])]
     for (const name of toLoad) {
@@ -247,7 +259,10 @@ if (process.argv[2] === 'completion-server') {
 } else {
     // Find which command (if any) is being invoked — match only known command names
     // to avoid treating option values (e.g. --progress-jsonl /tmp/out) as commands
-    const commandName = process.argv.slice(2).find((a) => !a.startsWith('-') && a in commands)
+    const commandToken = process.argv
+        .slice(2)
+        .find((a) => !a.startsWith('-') && a in commandAliases)
+    const commandName = commandToken ? commandAliases[commandToken] : undefined
 
     if (commandName && commands[commandName]) {
         // Remove placeholder, load real command module, register it

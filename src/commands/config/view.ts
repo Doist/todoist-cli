@@ -9,7 +9,7 @@ import {
     TOKEN_ENV_VAR,
 } from '../../lib/auth.js'
 import { type Config, getConfigPath, readConfigStrict } from '../../lib/config.js'
-import { getDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
+import { getEffectiveDefaultUserId, NoUserSelectedError } from '../../lib/users.js'
 
 const SECURE_STORE_DESCRIPTION = 'system credential manager'
 
@@ -76,7 +76,7 @@ function renderTokenLine(token: TokenStatus, showToken: boolean): string {
             return chalk.dim(`unknown — ${token.reason}`)
         case 'ambiguous':
             return chalk.dim(
-                'multiple stored accounts; pass --user <id|email> or set a default with `td user use`',
+                'multiple stored accounts; pass --user <id|email> or set a default with `td accounts use`',
             )
         case 'missing':
             return formatValue(undefined)
@@ -213,7 +213,7 @@ export async function viewConfig(options: ViewConfigOptions): Promise<void> {
 
     const token = await probeTokenPresence()
     const users = await listStoredUsers()
-    const defaultUserId = getDefaultUserId(config)
+    const defaultUserId = getEffectiveDefaultUserId(config)
 
     if (read.state === 'missing' && token.state === 'missing' && users.length === 0) {
         console.log(

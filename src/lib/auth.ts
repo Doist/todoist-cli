@@ -17,7 +17,13 @@ import { accountForUser, SERVICE_NAME, TOKEN_ENV_VAR } from './auth-store.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
 import { CliError } from './errors.js'
 import { getRequestedUserRef } from './global-args.js'
-import { findUserByRef, getStoredUsers, NoUserSelectedError, UserNotFoundError } from './users.js'
+import {
+    findUserByRef,
+    getEffectiveDefaultUser,
+    getStoredUsers,
+    NoUserSelectedError,
+    UserNotFoundError,
+} from './users.js'
 
 export { TOKEN_ENV_VAR } from './auth-store.js'
 
@@ -76,7 +82,9 @@ export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<Re
         throw ref ? new UserNotFoundError(ref) : new NoTokenError()
     }
 
-    const target = ref ? (findUserByRef(config, ref)?.user ?? null) : pickDefault(config, users)
+    const target = ref
+        ? (findUserByRef(config, ref)?.user ?? null)
+        : (getEffectiveDefaultUser(config) ?? null)
     if (!target) {
         // ref miss when records exist, or multi-user no-default.
         throw ref ? new UserNotFoundError(ref) : new NoUserSelectedError()
@@ -92,19 +100,6 @@ export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<Re
         authFlags: target.auth_flags,
         source,
     }
-}
-
-function pickDefault(
-    config: { user?: { defaultUser?: string } },
-    users: StoredUser[],
-): StoredUser | null {
-    const defaultId = config.user?.defaultUser
-    if (defaultId) {
-        const found = users.find((u) => u.id === defaultId)
-        if (found) return found
-        // Default points at a missing user — fall through to single-user fallback.
-    }
-    return users.length === 1 ? users[0] : null
 }
 
 /** Bearer-only shortcut. Most call sites (SDK, uploads, stats) only need this. */

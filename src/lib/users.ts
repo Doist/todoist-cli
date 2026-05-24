@@ -4,9 +4,11 @@ import { CliError } from './errors.js'
 export class UserNotFoundError extends CliError {
     constructor(ref: string) {
         super(
-            'USER_NOT_FOUND',
-            `No stored user matches "${ref}". Use \`td user list\` to see authenticated accounts.`,
-            ['Run `td auth login` to add an account, or `td user list` to inspect existing ones'],
+            'ACCOUNT_NOT_FOUND',
+            `No stored account matches "${ref}". Use \`td accounts list\` to see authenticated accounts.`,
+            [
+                'Run `td auth login` to add an account, or `td accounts list` to inspect existing ones',
+            ],
             'info',
         )
         this.name = 'UserNotFoundError'
@@ -20,7 +22,7 @@ export class NoUserSelectedError extends CliError {
             'Multiple Todoist accounts are stored. Specify which one to use.',
             [
                 'Pass `--user <id|email>` on the command, or',
-                'Set a default with `td user use <id|email>`',
+                'Set a default with `td accounts use <id|email>`',
             ],
             'info',
         )
@@ -34,6 +36,33 @@ export function getStoredUsers(config: Config): StoredUser[] {
 
 export function getDefaultUserId(config: Config): string | undefined {
     return config.user?.defaultUser
+}
+
+/**
+ * The account that resolves as default when no `--user` is given: the pinned
+ * `defaultUser` when it points at a stored account, otherwise — falling through
+ * an orphaned pin — the sole stored account (a lone account is implicitly
+ * default), or `undefined` when neither applies.
+ *
+ * Single source of truth for the default-selection rule: `resolveActiveUser`
+ * (`auth.ts`) and `getEffectiveDefaultUserId` both call this so the active-user
+ * resolver and the `(default)` marker can't drift. `getDefaultUserId` (the raw
+ * pinned pointer) is still the right call where the pin itself matters — e.g.
+ * `doctor` diagnosing whether the pin resolves.
+ */
+export function getEffectiveDefaultUser(config: Config): StoredUser | undefined {
+    const users = getStoredUsers(config)
+    const pinned = getDefaultUserId(config)
+    if (pinned) {
+        const found = users.find((u) => u.id === pinned)
+        if (found) return found
+        // Pinned pointer is orphaned — fall through to the sole-account rule.
+    }
+    return users.length === 1 ? users[0] : undefined
+}
+
+export function getEffectiveDefaultUserId(config: Config): string | undefined {
+    return getEffectiveDefaultUser(config)?.id
 }
 
 /**

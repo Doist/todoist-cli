@@ -191,6 +191,26 @@ describe('getCompletions', () => {
             const commandNames = names(result)
             expect(commandNames).toContain('update')
         })
+
+        it('suggests command aliases alongside the canonical name', () => {
+            const program = new Command()
+            program.name('td')
+            const accounts = program
+                .command('accounts')
+                .aliases(['user', 'users'])
+                .description('Manage stored accounts')
+            accounts.command('use <ref>').alias('default').description('Set the default account')
+
+            const top = names(getCompletions(program, [''], ''))
+            expect(top).toEqual(expect.arrayContaining(['accounts', 'user', 'users']))
+
+            const sub = names(getCompletions(program, ['accounts', ''], ''))
+            expect(sub).toEqual(expect.arrayContaining(['use', 'default']))
+
+            const byPrefix = names(getCompletions(program, ['accounts', 'def'], 'def'))
+            expect(byPrefix).toContain('default')
+            expect(byPrefix).not.toContain('use')
+        })
     })
 
     describe('options', () => {
