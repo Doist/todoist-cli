@@ -4,8 +4,8 @@ import { CliError } from './errors.js'
 export class UserNotFoundError extends CliError {
     constructor(ref: string) {
         super(
-            'USER_NOT_FOUND',
-            `No stored user matches "${ref}". Use \`td accounts list\` to see authenticated accounts.`,
+            'ACCOUNT_NOT_FOUND',
+            `No stored account matches "${ref}". Use \`td accounts list\` to see authenticated accounts.`,
             [
                 'Run `td auth login` to add an account, or `td accounts list` to inspect existing ones',
             ],
@@ -40,24 +40,15 @@ export function getDefaultUserId(config: Config): string | undefined {
 
 /**
  * The account that resolves as default when no `--user` is given: the pinned
- * `defaultUser`, or — when nothing is pinned — the sole stored account (a lone
- * account is implicitly default). Mirrors cli-core's `TokenStore.list()`
- * effective-default rule so the `(default)` marker is identical across
- * `accounts list`, `accounts current`, `auth status`, and `config view`.
- *
- * `getDefaultUserId` (the raw pinned pointer) is still the right call where the
- * pin itself matters — e.g. `accounts remove` deciding whether it cleared a
- * pin, or `doctor` diagnosing whether the pin resolves.
- */
-/**
- * The account that resolves as default when no `--user` is given: the pinned
  * `defaultUser` when it points at a stored account, otherwise — falling through
  * an orphaned pin — the sole stored account (a lone account is implicitly
  * default), or `undefined` when neither applies.
  *
  * Single source of truth for the default-selection rule: `resolveActiveUser`
  * (`auth.ts`) and `getEffectiveDefaultUserId` both call this so the active-user
- * resolver and the `(default)` marker can't drift.
+ * resolver and the `(default)` marker can't drift. `getDefaultUserId` (the raw
+ * pinned pointer) is still the right call where the pin itself matters — e.g.
+ * `doctor` diagnosing whether the pin resolves.
  */
 export function getEffectiveDefaultUser(config: Config): StoredUser | undefined {
     const users = getStoredUsers(config)

@@ -521,7 +521,7 @@ describe('auth command', () => {
             try {
                 await expect(
                     program.parseAsync(['node', 'td', 'auth', 'logout']),
-                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+                ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
                 expect(clearMock).not.toHaveBeenCalled()
             } finally {
                 process.argv = originalArgv
@@ -584,7 +584,7 @@ describe('auth command', () => {
             try {
                 await expect(
                     program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
-                ).rejects.toHaveProperty('code', 'USER_NOT_FOUND')
+                ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
                 expect(activeMock).not.toHaveBeenCalled()
             } finally {
                 process.argv = originalArgv

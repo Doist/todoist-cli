@@ -265,6 +265,21 @@ describe('user command', () => {
             })
         })
 
+        it('reports the account source annotated by the store (config-file fallback)', async () => {
+            // The adapter's `activeAccount` annotates the resolved account with
+            // its real token source; `current --json` surfaces it verbatim.
+            activeAccountMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c', source: 'config-file' },
+                isDefault: true,
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current', '--json'])
+
+            expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toMatchObject({
+                source: 'config-file',
+            })
+        })
+
         it('says env when running on TODOIST_API_TOKEN', async () => {
             // env short-circuits `activeAccount` (-> null), so `current` falls
             // through to the resolver, which reports the env source.

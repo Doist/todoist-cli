@@ -14,8 +14,9 @@ import { projectAccount } from './project-account.js'
  * single-user sources live outside the store (so `activeAccount()` returns
  * `null` for them — env via the adapter's short-circuit, legacy because it has
  * no record), and are rendered in `onNotAuthenticated` via the read-side
- * resolver. The stored-case `--json` `source` is reported as `secure-store`;
- * the env/legacy sources are surfaced accurately by the fallback branch.
+ * resolver. The stored-case `--json` `source` is read off the account (the
+ * adapter's `activeAccount` annotates `secure-store` vs `config-file`); the
+ * env/legacy sources come from the fallback branch.
  */
 export function attachTodoistUserCurrentCommand(
     parent: Command,
@@ -30,7 +31,7 @@ export function attachTodoistUserCurrentCommand(
         },
         renderJson: ({ account, isDefault }) => ({
             ...projectAccount(account, isDefault),
-            source: 'secure-store',
+            source: (account.source as string | undefined) ?? 'secure-store',
         }),
         onNotAuthenticated: async ({ view }) => {
             // Nothing resolved in the store, so the active credential is
