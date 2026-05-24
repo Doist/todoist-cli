@@ -56,9 +56,9 @@ src/
 └─ test-support/
    ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
    ├─ api-mock.ts         # setupApiMock() — wires getApi() to a fresh mock API
-   ├─ program.ts          # createTestProgram(register) — Commander test harness
-   ├─ console-spy.ts      # mockConsoleLog/Error + mockProcessStdout/Stderr spies
    └─ fixtures.ts         # Sample task/project/label/section fixtures
+                          # (program harness + console/stream spies now come
+                          #  from @doist/cli-core/testing)
 ```
 
 ## Architecture flow
@@ -255,9 +255,9 @@ re-migrate a stale legacy slot.
   vitest-mocked versions of every SDK method. Use factories from
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
 - **Helpers:** `setupApiMock()` (`api-mock.ts`) creates a mock API and wires
-  `getApi()` to it; `createTestProgram(register)` (`program.ts`) builds the
-  Commander harness; `mockConsoleLog`/`mockConsoleError` and
-  `mockProcessStdout`/`mockProcessStderr` (`console-spy.ts`) spy on output.
+  `getApi()` to it. The Commander harness `createTestProgram(register)` and the
+  output spies `captureConsole(method?)` / `captureStream(stream?)` come from
+  the shared `@doist/cli-core/testing` subpath (not local files).
 - **Pattern:** still `vi.mock('…/api/core.js')` (hoisted) per file, then in
   `beforeEach` `mockApi = setupApiMock()`; build with
   `createTestProgram(registerXCommand)` and run
