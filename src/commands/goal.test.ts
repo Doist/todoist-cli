@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -5,10 +6,8 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
 import { fixtures } from '../test-support/fixtures.js'
 import { type MockApi } from '../test-support/mock-api.js'
-import { createTestProgram } from '../test-support/program.js'
 import { registerGoalCommand } from './goal.js'
 
 function createProgram() {
@@ -25,7 +24,7 @@ describe('goal list', () => {
 
     it('shows "No goals found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'goal', 'list'])
 
@@ -34,7 +33,7 @@ describe('goal list', () => {
 
     it('lists goals with progress', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoals.mockResolvedValue({
             results: [fixtures.goals.shipV2, fixtures.goals.learnRust],
@@ -49,7 +48,7 @@ describe('goal list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoals.mockResolvedValue({
             results: [fixtures.goals.shipV2],
@@ -75,7 +74,7 @@ describe('goal view', () => {
 
     it('shows goal details and linked tasks', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({
@@ -98,7 +97,7 @@ describe('goal view', () => {
 
     it('includes description in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -119,7 +118,7 @@ describe('goal view', () => {
 
     it('is the default subcommand', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -140,7 +139,7 @@ describe('goal create', () => {
 
     it('creates a goal', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -152,7 +151,7 @@ describe('goal create', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -165,7 +164,7 @@ describe('goal create', () => {
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'goal', 'create', '--name', 'Ship v2', '--dry-run'])
 
@@ -184,7 +183,7 @@ describe('goal update', () => {
 
     it('updates name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, name: 'Ship v3' })
@@ -208,7 +207,7 @@ describe('goal update', () => {
 
     it('clears description with empty string', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, description: '' })
@@ -242,7 +241,7 @@ describe('goal update', () => {
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -261,7 +260,7 @@ describe('goal update', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.updateGoal.mockResolvedValue({ ...fixtures.goals.shipV2, name: 'Ship v3' })
@@ -293,7 +292,7 @@ describe('goal delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
 
@@ -305,7 +304,7 @@ describe('goal delete', () => {
 
     it('deletes with --yes', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.deleteGoal.mockResolvedValue(true)
@@ -333,7 +332,7 @@ describe('goal complete/uncomplete', () => {
 
     it('completes a goal', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.shipV2)
         mockApi.completeGoal.mockResolvedValue({ ...fixtures.goals.shipV2, isCompleted: true })
@@ -352,7 +351,7 @@ describe('goal complete/uncomplete', () => {
 
     it('uncompletes a goal', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getGoal.mockResolvedValue(fixtures.goals.learnRust)
         mockApi.uncompleteGoal.mockResolvedValue({

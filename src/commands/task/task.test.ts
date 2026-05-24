@@ -1,4 +1,5 @@
 import { PassThrough } from 'node:stream'
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -14,9 +15,7 @@ vi.mock('../../lib/browser.js', () => ({
 import { completeTaskForever, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
 const mockCompleteTaskForever = vi.mocked(completeTaskForever)
@@ -52,7 +51,7 @@ describe('task move command', () => {
 
     it('moves task to project', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
@@ -81,7 +80,7 @@ describe('task move command', () => {
 
     it('moves task to section in current project', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
@@ -110,7 +109,7 @@ describe('task move command', () => {
 
     it('moves task to section in specified project', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
@@ -144,7 +143,7 @@ describe('task move command', () => {
 
     it('moves task to parent', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Child task', projectId: 'proj-1' }],
@@ -176,7 +175,7 @@ describe('task move command', () => {
 
     it('moves task to project root with --no-parent', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -200,7 +199,7 @@ describe('task move command', () => {
 
     it('moves task to project root with --no-section', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -224,7 +223,7 @@ describe('task move command', () => {
 
     it('moves task using id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -262,7 +261,7 @@ describe('task view', () => {
 
     it('resolves task by name and shows details', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -290,7 +289,7 @@ describe('task view', () => {
 
     it('resolves task by id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -309,7 +308,7 @@ describe('task view', () => {
 
     it('implicit view: td task <ref> behaves like td task view <ref>', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -328,7 +327,7 @@ describe('task view', () => {
 
     it('shows full metadata with --full flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -358,7 +357,7 @@ describe('task complete', () => {
 
     it('marks task as complete', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -375,7 +374,7 @@ describe('task complete', () => {
 
     it('shows message for already completed task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -391,7 +390,7 @@ describe('task complete', () => {
 
     it('resolves task by name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk', checked: false }],
@@ -406,7 +405,7 @@ describe('task complete', () => {
 
     it('blocks completion for uncompletable tasks', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -423,7 +422,7 @@ describe('task complete', () => {
 
     it('completes recurring task forever with --forever flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -442,7 +441,7 @@ describe('task complete', () => {
 
     it('warns when --forever used on non-recurring task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -470,7 +469,7 @@ describe('task uncomplete', () => {
 
     it('reopens completed task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -487,7 +486,7 @@ describe('task uncomplete', () => {
 
     it('shows message for non-completed task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -520,7 +519,7 @@ describe('task delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
 
@@ -533,7 +532,7 @@ describe('task delete', () => {
 
     it('deletes task with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
         mockApi.deleteTask.mockResolvedValue(undefined)
@@ -555,7 +554,7 @@ describe('task add', () => {
 
     it('creates task with positional content', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -573,7 +572,7 @@ describe('task add', () => {
 
     it('creates task with --content flag (backward compat)', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -607,7 +606,7 @@ describe('task add', () => {
 
     it('creates task with positional content and --due', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -625,7 +624,7 @@ describe('task add', () => {
 
     it('creates task with --priority', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -649,7 +648,7 @@ describe('task add', () => {
 
     it('creates task with --project (resolves name)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -696,7 +695,7 @@ describe('task add', () => {
 
     it('creates task with --section using id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -722,7 +721,7 @@ describe('task add', () => {
 
     it('resolves --section by name with digits when --project is provided', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -758,7 +757,7 @@ describe('task add', () => {
 
     it('creates task with --labels', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -784,7 +783,7 @@ describe('task add', () => {
 
     it('creates task with --description', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -810,7 +809,7 @@ describe('task add', () => {
 
     it('shows task ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-xyz',
@@ -825,7 +824,7 @@ describe('task add', () => {
 
     it('adds task with duration', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-1',
@@ -872,7 +871,7 @@ describe('task add', () => {
 
     it('creates subtask with id:xxx parent format', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'child-1',
@@ -898,7 +897,7 @@ describe('task add', () => {
 
     it('creates subtask with fuzzy parent name match', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -984,7 +983,7 @@ describe('task update', () => {
 
     it('updates task content', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Old content' })
         mockApi.updateTask.mockResolvedValue({
@@ -1010,7 +1009,7 @@ describe('task update', () => {
 
     it('updates task due date', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1032,7 +1031,7 @@ describe('task update', () => {
 
     it('updates task priority', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1044,7 +1043,7 @@ describe('task update', () => {
 
     it('updates task labels (replaces existing)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1066,7 +1065,7 @@ describe('task update', () => {
 
     it('resolves task by name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk' }],
@@ -1094,7 +1093,7 @@ describe('task update', () => {
 
     it('updates task duration', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1118,7 +1117,7 @@ describe('task list --label', () => {
 
     it('filters tasks by label', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -1154,7 +1153,7 @@ describe('task list --label', () => {
 
     it('filters tasks by multiple labels (OR)', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -1190,7 +1189,7 @@ describe('task list --label', () => {
 
     it('label filter is case-insensitive', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -1227,7 +1226,7 @@ describe('task list --parent', () => {
 
     it('filters subtasks by parent id', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'parent-1',
@@ -1274,7 +1273,7 @@ describe('task list --parent', () => {
 
     it('resolves parent by name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         // First call: resolveTaskRef uses getTasksByFilter to find parent by name
         mockApi.getTasksByFilter.mockResolvedValueOnce({
@@ -1311,7 +1310,7 @@ describe('task list --parent', () => {
 
     it('shows no tasks message when parent has no children', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'parent-1',
@@ -1349,7 +1348,7 @@ describe('task add --assignee', () => {
 
     it('creates task with assignee using id:', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work', isShared: true }],
@@ -1406,7 +1405,7 @@ describe('task update --assignee', () => {
 
     it('updates task with assignee using id:', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1437,7 +1436,7 @@ describe('task update --assignee', () => {
 
     it('unassigns task with --unassign flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1464,7 +1463,7 @@ describe('task add --deadline', () => {
 
     it('creates task with deadline', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1492,7 +1491,7 @@ describe('task add --deadline', () => {
 
     it('creates task with both due and deadline', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1535,7 +1534,7 @@ describe('task update --deadline', () => {
 
     it('updates task with deadline', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1557,7 +1556,7 @@ describe('task update --deadline', () => {
 
     it('removes deadline with --no-deadline', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1584,7 +1583,7 @@ describe('task update --no-due', () => {
 
     it('removes due date with --no-due', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1611,7 +1610,7 @@ describe('task update --no-labels', () => {
 
     it('removes all labels with --no-labels', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1629,7 +1628,7 @@ describe('task update --no-labels', () => {
 
     it('previews --no-labels with --dry-run without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -1662,7 +1661,7 @@ describe('task add/update --uncompletable', () => {
 
     it('creates task with isUncompletable=true when --uncompletable flag is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1688,7 +1687,7 @@ describe('task add/update --uncompletable', () => {
 
     it('does not set isUncompletable when no flag is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1706,7 +1705,7 @@ describe('task add/update --uncompletable', () => {
 
     it('updates task with isUncompletable=true when --uncompletable flag is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1718,7 +1717,7 @@ describe('task add/update --uncompletable', () => {
 
     it('updates task with isUncompletable=false when --completable flag is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1757,7 +1756,7 @@ describe('task add/update --order', () => {
 
     it('creates task with order=0 when --order 0 is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1773,7 +1772,7 @@ describe('task add/update --order', () => {
 
     it('creates task with order=5 when --order 5 is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1789,7 +1788,7 @@ describe('task add/update --order', () => {
 
     it('does not set order when no --order flag is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -1866,7 +1865,7 @@ describe('task add/update --order', () => {
 
     it('updates task with order=0 when --order 0 is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1878,7 +1877,7 @@ describe('task add/update --order', () => {
 
     it('updates task with order=3 when --order 3 is passed', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1890,7 +1889,7 @@ describe('task add/update --order', () => {
 
     it('does not set order when no --order flag is passed to update', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
@@ -1914,7 +1913,7 @@ describe('task list --filter', () => {
 
     it('uses getTasksByFilter when --filter is provided', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -1944,7 +1943,7 @@ describe('task list --filter', () => {
 
     it('does not use getTasksByFilter when --filter is not provided', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasks.mockResolvedValue({
             results: [
@@ -1971,7 +1970,7 @@ describe('task list --filter', () => {
 
     it('outputs JSON with --filter and --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -1996,7 +1995,7 @@ describe('task list --filter', () => {
 
     it('can combine --filter with other local filters like --priority', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [
@@ -2046,7 +2045,7 @@ describe('task browse', () => {
 
     it('opens task in browser by name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk', projectId: 'proj-1' }],
@@ -2060,7 +2059,7 @@ describe('task browse', () => {
 
     it('opens task in browser by id:', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-123',
@@ -2084,7 +2083,7 @@ describe('task add with --stdin', () => {
 
     it('reads description from stdin with --stdin flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -2125,7 +2124,7 @@ describe('task add with --stdin', () => {
 
     it('works with multiline description from stdin', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -2160,7 +2159,7 @@ describe('task update with --stdin', () => {
 
     it('reads description from stdin with --stdin flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -2213,7 +2212,7 @@ describe('task update with --stdin', () => {
 
     it('works with multiline description from stdin', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -2255,7 +2254,7 @@ describe('task add --json', () => {
 
     it('outputs created task as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2275,7 +2274,7 @@ describe('task add --json', () => {
 
     it('does not print plain-text confirmation with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2301,7 +2300,7 @@ describe('task update --json', () => {
 
     it('outputs updated task as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -2344,7 +2343,7 @@ describe('task reschedule', () => {
 
     it('reschedules a task with a new date', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
         mockApi.getTask
@@ -2364,7 +2363,7 @@ describe('task reschedule', () => {
 
     it('reschedules a recurring task and shows recurrence info', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const due = {
             date: '2026-03-15',
@@ -2388,7 +2387,7 @@ describe('task reschedule', () => {
 
     it('reschedules with a datetime', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const due = {
             date: '2026-03-15',
@@ -2423,7 +2422,7 @@ describe('task reschedule', () => {
 
     it('errors when task has no due date', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'No due', due: null })
 
@@ -2436,7 +2435,7 @@ describe('task reschedule', () => {
 
     it('errors on invalid date format', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
         mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
@@ -2450,7 +2449,7 @@ describe('task reschedule', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
         const updatedTask = {
@@ -2488,7 +2487,7 @@ describe('task --dry-run', () => {
 
     it('task add --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -2507,7 +2506,7 @@ describe('task --dry-run', () => {
 
     it('task update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Old content', projectId: 'proj-1' }],
@@ -2531,7 +2530,7 @@ describe('task --dry-run', () => {
 
     it('task complete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', checked: false }],
@@ -2546,7 +2545,7 @@ describe('task --dry-run', () => {
 
     it('task delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task' }],
@@ -2561,7 +2560,7 @@ describe('task --dry-run', () => {
 
     it('task delete --dry-run --yes still does not execute', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task' }],
@@ -2584,7 +2583,7 @@ describe('task --dry-run', () => {
 
     it('task move --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task', projectId: 'proj-1' }],
@@ -2608,7 +2607,7 @@ describe('task --dry-run', () => {
 
     it('task reschedule --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const due = { date: '2026-03-15', string: 'Mar 15', isRecurring: false }
         mockApi.getTask.mockResolvedValueOnce({ id: 'task-1', content: 'Task', due })
@@ -2631,7 +2630,7 @@ describe('task --dry-run', () => {
 describe('task (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'task'])
@@ -2648,7 +2647,7 @@ describe('task (no args)', () => {
 describe('task add/update --due help text', () => {
     async function captureHelp(args: string[]): Promise<string> {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         await expect(program.parseAsync(['node', 'td', ...args])).rejects.toThrow()
 

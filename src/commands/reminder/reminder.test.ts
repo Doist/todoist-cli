@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -27,13 +28,10 @@ import {
     updateLocationReminder,
     updateReminder,
 } from '../../lib/api/reminders.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { registerReminderCommand } from './index.js'
 
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
-
 const mockFetchReminders = vi.mocked(fetchReminders)
 const mockAddReminder = vi.mocked(addReminder)
 const mockUpdateReminder = vi.mocked(updateReminder)
@@ -58,7 +56,7 @@ describe('reminder list', () => {
 
     it('lists reminders for a task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({
@@ -99,7 +97,7 @@ describe('reminder list', () => {
 
     it('lists all reminders when no task specified', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -127,7 +125,7 @@ describe('reminder list', () => {
 
     it('shows location reminders alongside time reminders', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
         mockApi.getLocationReminders.mockResolvedValue({
@@ -156,7 +154,7 @@ describe('reminder list', () => {
 
     it('shows "No reminders." when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
@@ -169,7 +167,7 @@ describe('reminder list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getReminders.mockResolvedValue({
@@ -197,7 +195,7 @@ describe('reminder list', () => {
 
     it('accepts --task flag instead of positional arg', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({ results: [], nextCursor: null })
@@ -226,7 +224,7 @@ describe('reminder list', () => {
 
     it('filters to time-based reminders with --type time', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -251,7 +249,7 @@ describe('reminder list', () => {
 
     it('filters to location reminders with --type location', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLocationReminders.mockResolvedValue({
             results: [
@@ -288,7 +286,7 @@ describe('reminder list', () => {
 
     it('shows [urgent] badge for urgent reminders', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getReminders.mockResolvedValue({
             results: [
@@ -313,7 +311,7 @@ describe('reminder list', () => {
 
     it('does not show task context when filtered by task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getReminders.mockResolvedValue({
@@ -348,7 +346,7 @@ describe('reminder add --json', () => {
 
     it('outputs created reminder as JSON with --before', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -379,7 +377,7 @@ describe('reminder add --json', () => {
 
     it('outputs created reminder as JSON with --at', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -412,7 +410,7 @@ describe('reminder add', () => {
 
     it('adds reminder with --before offset', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -433,7 +431,7 @@ describe('reminder add', () => {
 
     it('adds reminder with --at datetime', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -458,7 +456,7 @@ describe('reminder add', () => {
 
     it('parses hour durations', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -478,7 +476,7 @@ describe('reminder add', () => {
 
     it('shows ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -575,7 +573,7 @@ describe('reminder add', () => {
 
     it('accepts --task flag instead of positional arg', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({
             id: 'task-1',
@@ -622,7 +620,7 @@ describe('reminder add', () => {
 
     it('passes --urgent through and shows [urgent] in output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockAddReminder.mockResolvedValue('rem-new')
@@ -652,7 +650,7 @@ describe('reminder update', () => {
 
     it('updates reminder with new offset', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -667,7 +665,7 @@ describe('reminder update', () => {
 
     it('updates reminder with new datetime', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -706,7 +704,7 @@ describe('reminder update', () => {
 
     it('toggles urgency alone without --before or --at', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -721,7 +719,7 @@ describe('reminder update', () => {
 
     it('shows [urgent] in confirmation when time and --urgent are combined', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateReminder.mockResolvedValue(undefined)
 
@@ -742,7 +740,7 @@ describe('reminder update', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateReminder.mockResolvedValue(undefined)
         mockGetReminderById.mockResolvedValue({
@@ -780,7 +778,7 @@ describe('reminder delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -801,7 +799,7 @@ describe('reminder delete', () => {
 
     it('deletes reminder with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -850,7 +848,7 @@ describe('reminder --dry-run', () => {
 
     it('reminder add --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test task' })
 
@@ -871,7 +869,7 @@ describe('reminder --dry-run', () => {
 
     it('reminder delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchReminders.mockResolvedValue([
             {
@@ -891,7 +889,7 @@ describe('reminder --dry-run', () => {
 
     it('reminder update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -916,7 +914,7 @@ describe('reminder get', () => {
 
     it('fetches a time-based reminder by id', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -936,7 +934,7 @@ describe('reminder get', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -964,7 +962,7 @@ describe('reminder get', () => {
 
     it('shows [urgent] badge for urgent reminders', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -984,7 +982,7 @@ describe('reminder get', () => {
 
     it('includes isUrgent in default --json output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetReminderById.mockResolvedValue({
             id: 'rem-1',
@@ -1022,7 +1020,7 @@ describe('reminder location add', () => {
 
     it('adds a location reminder', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         setupTask()
 
         mockAddLocationReminder.mockResolvedValue({
@@ -1169,7 +1167,7 @@ describe('reminder location add', () => {
 
     it('--dry-run does not call the API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         setupTask()
 
         await program.parseAsync([
@@ -1204,7 +1202,7 @@ describe('reminder location update', () => {
 
     it('updates a subset of fields', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateLocationReminder.mockResolvedValue({
             id: 'loc-1',
@@ -1246,7 +1244,7 @@ describe('reminder location update', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateLocationReminder.mockResolvedValue({
             id: 'loc-1',
@@ -1281,7 +1279,7 @@ describe('reminder location update', () => {
 
     it('--dry-run does not call the API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -1325,7 +1323,7 @@ describe('reminder location delete', () => {
 
     it('requires --yes to delete', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockLocationReminder()
 
         await program.parseAsync(['node', 'td', 'reminder', 'location', 'delete', 'id:loc-1'])
@@ -1338,7 +1336,7 @@ describe('reminder location delete', () => {
 
     it('deletes with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockLocationReminder()
 
         await program.parseAsync([
@@ -1359,7 +1357,7 @@ describe('reminder location delete', () => {
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockLocationReminder()
 
         await program.parseAsync([
@@ -1386,7 +1384,7 @@ describe('reminder location get', () => {
 
     it('fetches a location reminder by id', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetLocationReminderById.mockResolvedValue({
             id: 'loc-1',
@@ -1410,7 +1408,7 @@ describe('reminder location get', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockGetLocationReminderById.mockResolvedValue({
             id: 'loc-1',

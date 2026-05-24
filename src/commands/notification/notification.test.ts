@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/notifications.js', () => ({
@@ -17,8 +18,6 @@ import {
     markNotificationUnread,
     rejectInvitation,
 } from '../../lib/api/notifications.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerNotificationCommand } from './index.js'
 
 const mockFetchNotifications = vi.mocked(fetchNotifications)
@@ -67,7 +66,7 @@ describe('notification list', () => {
 
     it('lists notifications', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite(), createItemAssigned()])
 
@@ -79,7 +78,7 @@ describe('notification list', () => {
 
     it('shows "No notifications." when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([])
 
@@ -90,7 +89,7 @@ describe('notification list', () => {
 
     it('filters unread with --unread', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -105,7 +104,7 @@ describe('notification list', () => {
 
     it('filters read with --read', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -121,7 +120,7 @@ describe('notification list', () => {
 
     it('filters by type with --type', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -139,7 +138,7 @@ describe('notification list', () => {
 
     it('filters by multiple types with --type', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -172,7 +171,7 @@ describe('notification list', () => {
 
     it('respects --offset', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -199,7 +198,7 @@ describe('notification list', () => {
 
     it('respects --limit', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -217,7 +216,7 @@ describe('notification list', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -232,7 +231,7 @@ describe('notification list', () => {
 
     it('outputs NDJSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ id: 'n1' }),
@@ -248,7 +247,7 @@ describe('notification list', () => {
 
     it('does not expose invitationSecret in JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -267,7 +266,7 @@ describe('notification view', () => {
 
     it('implicit view: td notification <ref> behaves like td notification view <ref>', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -278,7 +277,7 @@ describe('notification view', () => {
 
     it('shows notification details', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -291,7 +290,7 @@ describe('notification view', () => {
 
     it('shows actions for share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -304,7 +303,7 @@ describe('notification view', () => {
 
     it('does not show actions for non-invitation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createItemAssigned()])
 
@@ -316,7 +315,7 @@ describe('notification view', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
 
@@ -346,7 +345,7 @@ describe('notification accept', () => {
 
     it('accepts share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockAccept.mockResolvedValue(undefined)
@@ -387,7 +386,7 @@ describe('notification reject', () => {
 
     it('rejects share invitation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockReject.mockResolvedValue(undefined)
@@ -418,7 +417,7 @@ describe('notification read', () => {
 
     it('marks single notification as read', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite()])
         mockMarkRead.mockResolvedValue(undefined)
@@ -431,7 +430,7 @@ describe('notification read', () => {
 
     it('warns without --yes for --all', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'notification', 'read', '--all'])
 
@@ -443,7 +442,7 @@ describe('notification read', () => {
 
     it('marks all as read with --all --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([
             createShareInvite({ isUnread: true }),
@@ -473,7 +472,7 @@ describe('notification unread', () => {
 
     it('marks notification as unread', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchNotifications.mockResolvedValue([createShareInvite({ isUnread: false })])
         mockMarkUnread.mockResolvedValue(undefined)

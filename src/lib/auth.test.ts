@@ -1,6 +1,5 @@
+import { captureConsole } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockConsoleError } from '../test-support/console-spy.js'
-
 const TEST_HOME = '/tmp/todoist-cli-tests'
 const TEST_CONFIG_PATH = `${TEST_HOME}/.config/todoist-cli/config.json`
 
@@ -144,7 +143,7 @@ describe('lib/auth', () => {
             }
         })
 
-        errorSpy = mockConsoleError()
+        errorSpy = captureConsole('error')
     })
 
     afterEach(() => {

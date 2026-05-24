@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')
@@ -12,8 +13,6 @@ vi.mock('../../lib/skills/update-installed.js', () => ({
 import { createInstaller } from '../../lib/skills/create-installer.js'
 import { getInstaller, listAgents, skillInstallers } from '../../lib/skills/index.js'
 import { updateAllInstalledSkills } from '../../lib/skills/update-installed.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerSkillCommand } from './index.js'
 
 function createProgram() {
@@ -25,7 +24,7 @@ describe('skill command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     describe('list subcommand', () => {

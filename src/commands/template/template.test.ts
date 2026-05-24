@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { open } from 'node:fs/promises'
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')
@@ -21,10 +22,8 @@ vi.mock('../../lib/refs.js', async (importOriginal) => {
 import { getApi } from '../../lib/api/core.js'
 import { resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerTemplateCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -42,7 +41,7 @@ describe('template', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
         mockResolveProjectRef.mockResolvedValue(fixtures.projects.work)
     })
 
@@ -50,7 +49,7 @@ describe('template', () => {
         it('exports template as CSV to stdout', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('task,priority\nBuy milk,4')
-            const stdoutSpy = mockProcessStdout()
+            const stdoutSpy = captureStream()
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', 'Work'])
 
@@ -87,7 +86,7 @@ describe('template', () => {
         it('passes --relative-dates flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            mockProcessStdout()
+            captureStream()
 
             await program.parseAsync([
                 'node',
@@ -118,7 +117,7 @@ describe('template', () => {
         it('accepts --project flag', async () => {
             const program = createProgram()
             mockApi.exportTemplateAsFile.mockResolvedValue('content')
-            mockProcessStdout()
+            captureStream()
 
             await program.parseAsync(['node', 'td', 'template', 'export-file', '--project', 'Work'])
 

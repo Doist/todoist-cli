@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -5,10 +6,8 @@ vi.mock('../../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerSectionCommand } from './index.js'
 
 function createProgram() {
@@ -40,7 +39,7 @@ describe('section list', () => {
 
     it('resolves project and lists sections', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -65,7 +64,7 @@ describe('section list', () => {
 
     it('shows "No sections" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getSections.mockResolvedValue({ results: [], nextCursor: null })
@@ -77,7 +76,7 @@ describe('section list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getSections.mockResolvedValue({
@@ -95,7 +94,7 @@ describe('section list', () => {
 
     it('accepts --project flag instead of positional arg', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -120,7 +119,7 @@ describe('section list', () => {
 
     it('searches sections by name with --search', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchSections.mockResolvedValue({
             results: [
@@ -141,7 +140,7 @@ describe('section list', () => {
 
     it('searches sections scoped to a project with --search and --project', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -170,7 +169,7 @@ describe('section list', () => {
 
     it('outputs JSON with --search and --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchSections.mockResolvedValue({
             results: [{ id: 'sec-1', name: 'Planning', projectId: 'proj-1' }],
@@ -195,7 +194,7 @@ describe('section create --json', () => {
 
     it('outputs created section as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addSection.mockResolvedValue({
@@ -235,7 +234,7 @@ describe('section update --json', () => {
 
     it('outputs updated section as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Old Name', projectId: 'proj-1' })
         mockApi.updateSection.mockResolvedValue({
@@ -285,7 +284,7 @@ describe('section reorder', () => {
             results: [...sections],
             nextCursor: null,
         }))
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('requires --project', async () => {
@@ -601,7 +600,7 @@ describe('section create', () => {
 
     it('creates section in project', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -629,7 +628,7 @@ describe('section create', () => {
 
     it('shows section ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addSection.mockResolvedValue({ id: 'sec-xyz', name: 'Test' })
@@ -667,7 +666,7 @@ describe('section delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'My Section' })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -681,7 +680,7 @@ describe('section delete', () => {
 
     it('deletes section with id: prefix and --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-123', name: 'My Section' })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -734,7 +733,7 @@ describe('section update', () => {
 
     it('updates section name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Old Name' })
         mockApi.updateSection.mockResolvedValue({ id: 'sec-1', name: 'New Name' })
@@ -766,7 +765,7 @@ describe('section --dry-run', () => {
 
     it('section create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -786,7 +785,7 @@ describe('section --dry-run', () => {
 
     it('section delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -804,7 +803,7 @@ describe('section --dry-run', () => {
 
     it('section update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -823,7 +822,7 @@ describe('section --dry-run', () => {
 
     it('section archive --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -841,7 +840,7 @@ describe('section --dry-run', () => {
 
     it('section unarchive --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-1',
@@ -876,7 +875,7 @@ describe('section archive', () => {
 
     it('archives section with id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -899,7 +898,7 @@ describe('section archive', () => {
 
     it('shows message for already archived section', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -934,7 +933,7 @@ describe('section unarchive', () => {
 
     it('unarchives section with id: prefix', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',
@@ -957,7 +956,7 @@ describe('section unarchive', () => {
 
     it('shows message for non-archived section', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getSection.mockResolvedValue({
             id: 'sec-123',

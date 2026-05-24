@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -10,13 +11,7 @@ vi.mock('../../lib/api/core.js', () => ({
 
 import { getApi } from '../../lib/api/core.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import {
-    mockConsoleLog,
-    mockProcessStderr,
-    mockProcessStdout,
-} from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerCommentCommand } from './index.js'
 
 const mockGetApi = vi.mocked(getApi)
@@ -48,7 +43,7 @@ describe('comment list', () => {
 
     it('resolves task and lists comments', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.getComments.mockResolvedValue({
@@ -78,7 +73,7 @@ describe('comment list', () => {
 
     it('shows "No comments" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({ results: [], nextCursor: null })
@@ -90,7 +85,7 @@ describe('comment list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -110,7 +105,7 @@ describe('comment list', () => {
 
     it('resolves task by name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Buy milk' }],
@@ -136,7 +131,7 @@ describe('comment add', () => {
 
     it('adds comment to task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -163,7 +158,7 @@ describe('comment add', () => {
 
     it('shows comment ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.addComment.mockResolvedValue({
@@ -195,7 +190,7 @@ describe('comment delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-1',
@@ -211,7 +206,7 @@ describe('comment delete', () => {
 
     it('deletes comment with id: prefix and --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -252,7 +247,7 @@ describe('comment update', () => {
 
     it('updates comment content', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -281,7 +276,7 @@ describe('comment update', () => {
 
     it('truncates long content in output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const longContent = 'A'.repeat(60)
         mockApi.getComment.mockResolvedValue({
@@ -319,7 +314,7 @@ describe('comment add with attachment', () => {
 
     it('uploads file and attaches to comment', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -359,7 +354,7 @@ describe('comment add with attachment', () => {
 
     it('forwards --file-name to api.uploadFile as the attachment filename', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -416,7 +411,7 @@ describe('comment add with attachment', () => {
 
     it('works without --file flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -452,7 +447,7 @@ describe('comment list with attachments', () => {
 
     it('shows [file] marker for comments with attachments', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -478,7 +473,7 @@ describe('comment list with attachments', () => {
 
     it('truncates long content to default 3 lines', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -503,7 +498,7 @@ describe('comment list with attachments', () => {
 
     it('respects --lines flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -526,7 +521,7 @@ describe('comment list with attachments', () => {
 
     it('includes hasAttachment in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Test' })
         mockApi.getComments.mockResolvedValue({
@@ -574,7 +569,7 @@ describe('comment view', () => {
 
     it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -590,7 +585,7 @@ describe('comment view', () => {
 
     it('shows full comment content', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -609,7 +604,7 @@ describe('comment view', () => {
 
     it('shows attachment details', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -638,7 +633,7 @@ describe('comment view', () => {
 
     it('shows image-attachment hint steering agents away from direct download', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -664,7 +659,7 @@ describe('comment view', () => {
 
     it('shows image-attachment hint when only fileName signals the image type', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -688,7 +683,7 @@ describe('comment view', () => {
 
     it('omits image hint when fileUrl is missing even if fileType is an image type', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -711,8 +706,8 @@ describe('comment view', () => {
 
     it('writes image hint to stderr when --json is used with an image attachment', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
-        const stderrSpy = mockProcessStderr()
+        const consoleSpy = captureConsole()
+        const stderrSpy = captureStream('stderr')
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -740,8 +735,8 @@ describe('comment view', () => {
 
     it('does not write to stderr when --json is used with a non-image attachment', async () => {
         const program = createProgram()
-        mockConsoleLog()
-        const stderrSpy = mockProcessStderr()
+        captureConsole()
+        const stderrSpy = captureStream('stderr')
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -764,7 +759,7 @@ describe('comment view', () => {
 
     it('outputs JSON with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -786,7 +781,7 @@ describe('comment view', () => {
 
     it('outputs full JSON with --json --full', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -824,7 +819,7 @@ describe('project comment list', () => {
 
     it('lists comments on a project with --project flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.getComments.mockResolvedValue({
@@ -849,7 +844,7 @@ describe('project comment list', () => {
 
     it('resolves project by name with --project flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Work' }],
@@ -875,7 +870,7 @@ describe('comment add with --stdin', () => {
 
     it('reads content from stdin with --stdin flag', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -925,7 +920,7 @@ describe('comment add with --stdin', () => {
 
     it('works with multiline content from stdin', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         const mockStdin = new PassThrough()
         vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
@@ -964,7 +959,7 @@ describe('comment add --json', () => {
 
     it('outputs created comment as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -995,7 +990,7 @@ describe('comment add --json', () => {
 
     it('does not print plain-text confirmation with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -1030,7 +1025,7 @@ describe('comment update --json', () => {
 
     it('outputs updated comment as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({
             id: 'comment-123',
@@ -1071,7 +1066,7 @@ describe('project comment add', () => {
 
     it('adds comment to project with --project flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addComment.mockResolvedValue({
@@ -1099,7 +1094,7 @@ describe('project comment add', () => {
 
     it('adds comment with attachment to project', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addComment.mockResolvedValue({
@@ -1146,7 +1141,7 @@ describe('comment --dry-run', () => {
 
     it('comment add --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'Test task' }],
@@ -1170,7 +1165,7 @@ describe('comment --dry-run', () => {
 
     it('comment delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getComment.mockResolvedValue({ id: 'comment-1', content: 'Test comment' })
 
@@ -1182,7 +1177,7 @@ describe('comment --dry-run', () => {
 
     it('comment update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -1203,7 +1198,7 @@ describe('comment --dry-run', () => {
 describe('comment (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'comment'])

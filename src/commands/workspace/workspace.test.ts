@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -18,9 +19,7 @@ vi.mock('../../lib/config.js', () => ({
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerWorkspaceCommand } from './index.js'
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
@@ -63,7 +62,7 @@ describe('workspace list', () => {
         setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists all workspaces', async () => {
@@ -135,7 +134,7 @@ describe('workspace view', () => {
         setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('resolves workspace by name', async () => {
@@ -239,7 +238,7 @@ describe('workspace projects', () => {
             { id: 'folder-1', name: 'Engineering', workspaceId: 'ws-1' },
             { id: 'folder-2', name: 'Marketing', workspaceId: 'ws-1' },
         ])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists projects grouped by folder', async () => {
@@ -433,7 +432,7 @@ describe('workspace users', () => {
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
         mockFetchWorkspaceFolders.mockResolvedValue([])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists workspace users', async () => {
@@ -642,7 +641,7 @@ describe('workspace insights', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces as never)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows insights for workspace projects', async () => {
@@ -760,7 +759,7 @@ describe('workspace create', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('creates a workspace with --name', async () => {
@@ -869,7 +868,7 @@ describe('workspace update', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('updates an admin-owned workspace', async () => {
@@ -985,7 +984,7 @@ describe('workspace delete', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('throws NOT_ADMIN on non-admin workspace (even on --dry-run)', async () => {
@@ -1044,7 +1043,7 @@ describe('workspace user-tasks', () => {
             ],
             hasMore: false,
         })
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('resolves user by email and calls API', async () => {
@@ -1163,7 +1162,7 @@ describe('workspace activity', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue(mockWorkspaces)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('calls API with workspace id and passes through filters', async () => {
@@ -1215,7 +1214,7 @@ describe('workspace use (default workspace)', () => {
         mockFetchWorkspaceFolders.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
         mockWriteConfig.mockResolvedValue(undefined)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('stores the resolved workspace id under workspace.defaultWorkspace', async () => {

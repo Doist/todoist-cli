@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -17,9 +18,7 @@ vi.mock('../lib/markdown.js', () => ({
 import { fetchWorkspaces, type Workspace } from '../lib/api/workspaces.js'
 import { preloadMarkdown } from '../lib/markdown.js'
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
 import { type MockApi } from '../test-support/mock-api.js'
-import { createTestProgram } from '../test-support/program.js'
 import { registerTodayCommand } from './today.js'
 
 const mockPreloadMarkdown = vi.mocked(preloadMarkdown)
@@ -47,7 +46,7 @@ describe('today command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows overdue tasks in Overdue section', async () => {

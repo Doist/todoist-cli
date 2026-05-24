@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -5,9 +6,7 @@ vi.mock('../../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerLabelCommand } from './index.js'
 
 function createProgram() {
@@ -24,7 +23,7 @@ describe('label list', () => {
 
     it('lists all labels', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -42,7 +41,7 @@ describe('label list', () => {
 
     it('shows "No labels found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
 
@@ -53,7 +52,7 @@ describe('label list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: true }],
@@ -70,7 +69,7 @@ describe('label list', () => {
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -98,7 +97,7 @@ describe('label list --search', () => {
 
     it('searches labels by name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
@@ -114,7 +113,7 @@ describe('label list --search', () => {
 
     it('includes matching shared labels in search results', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
         mockApi.getSharedLabels.mockResolvedValue({
@@ -130,7 +129,7 @@ describe('label list --search', () => {
 
     it('outputs search results as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'bugfix', color: 'red', isFavorite: false }],
@@ -147,7 +146,7 @@ describe('label list --search', () => {
 
     it('shows "No labels found" when search has no results', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.searchLabels.mockResolvedValue({ results: [], nextCursor: null })
 
@@ -167,7 +166,7 @@ describe('label rename-shared', () => {
 
     it('renames a shared label', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -192,7 +191,7 @@ describe('label rename-shared', () => {
 
     it('strips @ prefix from name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -216,7 +215,7 @@ describe('label rename-shared', () => {
 
     it('previews rename with --dry-run', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -239,7 +238,7 @@ describe('label rename-shared', () => {
 
     it('throws when shared label not found', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         await expect(
             program.parseAsync([
@@ -265,7 +264,7 @@ describe('label remove-shared', () => {
 
     it('removes a shared label with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -279,7 +278,7 @@ describe('label remove-shared', () => {
 
     it('strips @ prefix from name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -292,7 +291,7 @@ describe('label remove-shared', () => {
 
     it('shows confirmation prompt without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -307,7 +306,7 @@ describe('label remove-shared', () => {
 
     it('previews removal with --dry-run', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSharedLabels.mockResolvedValue({
             results: ['oldname'],
             nextCursor: null,
@@ -321,7 +320,7 @@ describe('label remove-shared', () => {
 
     it('throws when shared label not found', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         await expect(
             program.parseAsync(['node', 'td', 'label', 'remove-shared', 'nonexistent', '--yes']),
@@ -339,7 +338,7 @@ describe('label create --json', () => {
 
     it('outputs created label as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -368,7 +367,7 @@ describe('label update --json', () => {
 
     it('outputs updated label as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work', color: 'charcoal', isFavorite: false }],
@@ -410,7 +409,7 @@ describe('label create', () => {
 
     it('creates label with name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addLabel.mockResolvedValue({ id: 'label-new', name: 'work' })
 
@@ -422,7 +421,7 @@ describe('label create', () => {
 
     it('creates label with --color', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -448,7 +447,7 @@ describe('label create', () => {
 
     it('creates label with --favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.addLabel.mockResolvedValue({
             id: 'label-new',
@@ -473,7 +472,7 @@ describe('label create', () => {
 
     it('shows label ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.addLabel.mockResolvedValue({ id: 'label-xyz', name: 'test' })
 
@@ -493,7 +492,7 @@ describe('label delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent' }],
@@ -509,7 +508,7 @@ describe('label delete', () => {
 
     it('deletes by name with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent' }],
@@ -525,7 +524,7 @@ describe('label delete', () => {
 
     it('deletes by id: prefix with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-123', name: 'urgent' }],
@@ -541,7 +540,7 @@ describe('label delete', () => {
 
     it('handles @-prefixed name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'home' }],
@@ -575,7 +574,7 @@ describe('label update', () => {
 
     it('updates label name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'old-name' }],
@@ -601,7 +600,7 @@ describe('label update', () => {
 
     it('updates label color and favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work' }],
@@ -633,7 +632,7 @@ describe('label update', () => {
 
     it('removes favorite with --no-favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'work', isFavorite: true }],
@@ -654,7 +653,7 @@ describe('label update', () => {
 
     it('updates by id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-123', name: 'existing' }],
@@ -683,7 +682,7 @@ describe('label update', () => {
 
     it('handles @-prefixed name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'home' }],
@@ -744,7 +743,7 @@ describe('label URL resolution', () => {
 
     it('resolves label by URL in delete command', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent' }],
@@ -766,7 +765,7 @@ describe('label URL resolution', () => {
 
     it('resolves label by URL in update command', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent' }],
@@ -838,7 +837,7 @@ describe('label view', () => {
 
     it('shows label metadata and tasks', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -874,7 +873,7 @@ describe('label view', () => {
 
     it('shows "No tasks with this label" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'unused', color: 'red', isFavorite: false }],
@@ -893,7 +892,7 @@ describe('label view', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -923,7 +922,7 @@ describe('label view', () => {
 
     it('defaults to view subcommand (td label <ref>)', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -942,7 +941,7 @@ describe('label view', () => {
 
     it('resolves label by URL in view command', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -967,7 +966,7 @@ describe('label view', () => {
 
     it('shows favorite indicator', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: true }],
@@ -996,7 +995,7 @@ describe('shared labels', () => {
     describe('label list', () => {
         it('shows shared labels after personal labels', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -1019,7 +1018,7 @@ describe('shared labels', () => {
 
         it('shows only shared labels when no personal labels exist', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1035,7 +1034,7 @@ describe('shared labels', () => {
 
         it('fetches shared labels with omitPersonal: true', async () => {
             const program = createProgram()
-            mockConsoleLog()
+            captureConsole()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({ results: [], nextCursor: null })
@@ -1049,7 +1048,7 @@ describe('shared labels', () => {
 
         it('includes sharedLabels array in JSON output', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'urgent', color: 'red', isFavorite: false }],
@@ -1072,7 +1071,7 @@ describe('shared labels', () => {
     describe('label view', () => {
         it('resolves shared-only label by name', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1091,7 +1090,7 @@ describe('shared labels', () => {
 
         it('prefers personal label over shared with same name', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({
                 results: [{ id: 'label-1', name: 'review', color: 'blue', isFavorite: false }],
@@ -1109,7 +1108,7 @@ describe('shared labels', () => {
 
         it('shows "shared label" type for shared-only labels', async () => {
             const program = createProgram()
-            const consoleSpy = mockConsoleLog()
+            const consoleSpy = captureConsole()
 
             mockApi.getLabels.mockResolvedValue({ results: [], nextCursor: null })
             mockApi.getSharedLabels.mockResolvedValue({
@@ -1166,7 +1165,7 @@ describe('shared labels', () => {
 describe('label (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'label'])
@@ -1194,7 +1193,7 @@ describe('label --dry-run', () => {
 
     it('label create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'label', 'create', '--name', 'urgent', '--dry-run'])
 
@@ -1204,7 +1203,7 @@ describe('label --dry-run', () => {
 
     it('label delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [
@@ -1228,7 +1227,7 @@ describe('label --dry-run', () => {
 
     it('label update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getLabels.mockResolvedValue({
             results: [

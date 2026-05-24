@@ -1,5 +1,5 @@
+import { captureConsole } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockConsoleLog } from '../test-support/console-spy.js'
 import { createMockApi, type MockApi } from '../test-support/mock-api.js'
 import { PRIORITY_CHOICES, parsePriority } from './task-list.js'
 
@@ -71,7 +71,7 @@ describe('listTasksForProject', () => {
 
     beforeEach(async () => {
         vi.resetModules()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
 
         mockApi = createMockApi()
 

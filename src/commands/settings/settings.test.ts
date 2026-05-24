@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/user-settings.js', () => ({
@@ -25,10 +26,8 @@ import {
     updateUserSettings,
 } from '../../lib/api/user-settings.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import {
     DATE_FORMAT_CHOICES,
     DAY_CHOICES,
@@ -73,7 +72,7 @@ describe('settings view', () => {
 
     it('displays settings in human-readable format', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings)
 
@@ -89,7 +88,7 @@ describe('settings view', () => {
 
     it('outputs JSON with --json flag using human-friendly values', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings)
 
@@ -107,7 +106,7 @@ describe('settings view', () => {
 
     it('formats 12h time format correctly', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -121,7 +120,7 @@ describe('settings view', () => {
 
     it('formats US date format correctly', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -144,7 +143,7 @@ describe('settings view - start page name resolution', () => {
 
     it('resolves project name in text output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -162,7 +161,7 @@ describe('settings view - start page name resolution', () => {
 
     it('resolves project name in JSON output', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -180,7 +179,7 @@ describe('settings view - start page name resolution', () => {
 
     it('resolves label name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -198,7 +197,7 @@ describe('settings view - start page name resolution', () => {
 
     it('resolves filter name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -219,7 +218,7 @@ describe('settings view - start page name resolution', () => {
 
     it('does not call API for simple start page values', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
 
@@ -231,7 +230,7 @@ describe('settings view - start page name resolution', () => {
 
     it('has null startPageName in JSON for simple values', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue(defaultSettings) // startPage: 'today'
 
@@ -245,7 +244,7 @@ describe('settings view - start page name resolution', () => {
 
     it('gracefully handles API failure', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchUserSettings.mockResolvedValue({
             ...defaultSettings,
@@ -270,7 +269,7 @@ describe('settings update', () => {
 
     it('updates timezone', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -291,7 +290,7 @@ describe('settings update', () => {
 
     it('updates time format to 24h', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -302,7 +301,7 @@ describe('settings update', () => {
 
     it('updates time format to 12h', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -313,7 +312,7 @@ describe('settings update', () => {
 
     it('updates date format to US', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -324,7 +323,7 @@ describe('settings update', () => {
 
     it('updates date format to international', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -335,7 +334,7 @@ describe('settings update', () => {
 
     it('updates start day with day name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -346,7 +345,7 @@ describe('settings update', () => {
 
     it('updates start day with short day name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -357,7 +356,7 @@ describe('settings update', () => {
 
     it('updates theme by name', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -368,7 +367,7 @@ describe('settings update', () => {
 
     it('updates auto reminder', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -379,7 +378,7 @@ describe('settings update', () => {
 
     it('updates notification settings', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -390,7 +389,7 @@ describe('settings update', () => {
 
     it('parses boolean values correctly', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -401,7 +400,7 @@ describe('settings update', () => {
 
     it('updates multiple settings at once', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateUserSettings.mockResolvedValue(undefined)
 
@@ -427,7 +426,7 @@ describe('settings update', () => {
 
     it('shows help when no settings specified', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'settings', 'update'])

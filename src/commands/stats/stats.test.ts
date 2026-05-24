@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/stats.js', () => ({
@@ -6,8 +7,6 @@ vi.mock('../../lib/api/stats.js', () => ({
 }))
 
 import { fetchProductivityStats, updateGoals } from '../../lib/api/stats.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerStatsCommand } from './index.js'
 
 const mockFetchProductivityStats = vi.mocked(fetchProductivityStats)
@@ -51,7 +50,7 @@ describe('stats view', () => {
 
     it('displays stats in human-readable format', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -67,7 +66,7 @@ describe('stats view', () => {
 
     it('shows vacation mode warning when enabled', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         const vacationStats = {
             ...defaultStats,
@@ -82,7 +81,7 @@ describe('stats view', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -99,7 +98,7 @@ describe('stats view', () => {
 
     it('outputs full JSON with --json --full flags', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -115,7 +114,7 @@ describe('stats view', () => {
 
     it('shows streak information', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchProductivityStats.mockResolvedValue(defaultStats)
 
@@ -134,7 +133,7 @@ describe('stats goals', () => {
 
     it('updates daily goal', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -146,7 +145,7 @@ describe('stats goals', () => {
 
     it('updates weekly goal', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -158,7 +157,7 @@ describe('stats goals', () => {
 
     it('updates both daily and weekly goals', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -172,7 +171,7 @@ describe('stats goals', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'goals'])
@@ -207,7 +206,7 @@ describe('stats vacation', () => {
 
     it('enables vacation mode with --on', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -219,7 +218,7 @@ describe('stats vacation', () => {
 
     it('disables vacation mode with --off', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockUpdateGoals.mockResolvedValue(undefined)
 
@@ -239,7 +238,7 @@ describe('stats vacation', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'vacation'])

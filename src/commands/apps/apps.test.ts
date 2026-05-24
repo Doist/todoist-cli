@@ -1,4 +1,8 @@
-import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
+import {
+    captureConsole,
+    createTestProgram,
+    describeEmptyMachineOutput,
+} from '@doist/cli-core/testing'
 import { TodoistRequestError } from '@doist/todoist-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -22,9 +26,7 @@ import { wrapApiError } from '../../lib/api/core.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerAppsCommand } from './index.js'
 
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
@@ -88,7 +90,7 @@ describe('apps list', () => {
 
     it('lists apps with displayName (id:N), Client ID, and a description line', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
 
@@ -116,7 +118,7 @@ describe('apps list', () => {
 
     it('outputs full JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApps.mockResolvedValue([APP_A])
 
@@ -132,7 +134,7 @@ describe('apps list', () => {
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
 
@@ -156,7 +158,7 @@ describe('apps view', () => {
 
     it('resolves id:N directly via getApp without listing', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -168,7 +170,7 @@ describe('apps view', () => {
 
     it('resolves a raw numeric id via getApp directly (no listing roundtrip)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -180,7 +182,7 @@ describe('apps view', () => {
 
     it('resolves a name via fuzzy match then re-fetches via getApp to enrich with userCount', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApps.mockResolvedValue([APP_A, APP_B])
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
@@ -207,7 +209,7 @@ describe('apps view', () => {
 
     it('does not call getApp twice on id:N (no redundant detail fetch)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -218,7 +220,7 @@ describe('apps view', () => {
 
     it('shows fallback strings for null fields and (none) for empty token scopes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
 
@@ -282,7 +284,7 @@ describe('apps view', () => {
 
     it('treats `td apps <ref>` as `td apps view <ref>` (implicit default subcommand)', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -307,7 +309,7 @@ describe('apps view', () => {
 
     it('renders a multi-URI JSON-array oauthRedirectUri as separate indented lines', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,
@@ -326,7 +328,7 @@ describe('apps view', () => {
 
     it('treats empty-string serviceUrl/oauthRedirectUri the same as null', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,
@@ -343,7 +345,7 @@ describe('apps view', () => {
 
     it('outputs full JSON of AppWithUserCount with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -358,7 +360,7 @@ describe('apps view', () => {
 
     it('outputs single-line JSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -396,7 +398,7 @@ describe('apps view — enriched fields', () => {
 
     it('only fetches webhook by default (no secret-bearing endpoints touched)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
@@ -412,7 +414,7 @@ describe('apps view — enriched fields', () => {
 
     it('fires all five enrichment calls with --include-secrets', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--include-secrets'])
 
@@ -425,7 +427,7 @@ describe('apps view — enriched fields', () => {
 
     it('shows Client ID by default and hides the four sensitive credential lines', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
@@ -447,7 +449,7 @@ describe('apps view — enriched fields', () => {
 
     it('reveals every sensitive value with --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
 
@@ -465,7 +467,7 @@ describe('apps view — enriched fields', () => {
 
     it('renders webhook details when configured', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
 
@@ -479,7 +481,7 @@ describe('apps view — enriched fields', () => {
 
     it('keeps (not created) for a null test token even with --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: null })
 
@@ -491,7 +493,7 @@ describe('apps view — enriched fields', () => {
 
     it('includes clientId but omits sensitive credential keys from --json by default', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
 
@@ -513,7 +515,7 @@ describe('apps view — enriched fields', () => {
 
     it('includes every sensitive field in --json --include-secrets', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getAppTestToken.mockResolvedValue({ accessToken: 'test-mno' })
 
@@ -537,7 +539,7 @@ describe('apps view — enriched fields', () => {
 
     it('emits webhook: null in --json when the app has no webhook configured', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
 
@@ -603,7 +605,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('does not validate the URI on --remove (lets users clean up legacy malformed data)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         // App's stored URI is malformed but we want to let the user remove it.
         mockApi.getApp.mockResolvedValue({
@@ -628,7 +630,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('adds a new redirect URI to an app that has one (serializes as JSON array)', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -658,7 +660,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('adds a first redirect URI to an app that has none (serializes as plain string)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_B_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -702,7 +704,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('add --dry-run previews without calling updateApp', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -725,7 +727,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove exits without error when URI is not present on the app', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -748,7 +750,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove no-op with --json outputs the unchanged app as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -793,7 +795,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove requires --yes; without it prints preview and does not call updateApp', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
 
@@ -815,7 +817,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove with --yes clears oauthRedirectUri to null when removing the only URI', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, oauthRedirectUri: null })
@@ -838,7 +840,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('add with --json outputs only the essential app fields via the shared formatter', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
         mockApi.updateApp.mockResolvedValue({
@@ -871,7 +873,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
     it('remove with --yes writes the remaining URIs when multiple were set', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.getApp.mockResolvedValue({
             ...APP_A_DETAIL,

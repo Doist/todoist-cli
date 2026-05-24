@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -17,9 +18,7 @@ import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
@@ -38,7 +37,7 @@ describe('project list', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists all projects', async () => {
@@ -172,7 +171,7 @@ describe('project archived', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists archived projects', async () => {
@@ -248,7 +247,7 @@ describe('project view', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('resolves project by name', async () => {
@@ -456,7 +455,7 @@ describe('project list grouping', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('groups projects by workspace', async () => {
@@ -608,7 +607,7 @@ describe('project collaborators', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists workspace users for workspace project', async () => {
@@ -783,7 +782,7 @@ describe('project delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Test Project' }],
@@ -800,7 +799,7 @@ describe('project delete', () => {
 
     it('deletes project with --yes when no tasks', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Test Project' }],
@@ -872,7 +871,7 @@ describe('project create', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('creates project with name', async () => {
@@ -993,7 +992,7 @@ describe('project create --json', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('outputs created project as JSON', async () => {
@@ -1031,7 +1030,7 @@ describe('project archive', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('archives project by name', async () => {
@@ -1089,7 +1088,7 @@ describe('project unarchive', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('unarchives project by name', async () => {
@@ -1146,7 +1145,7 @@ describe('project browse', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        mockConsoleLog()
+        captureConsole()
     })
 
     it('opens project in browser by name', async () => {
@@ -1182,12 +1181,12 @@ describe('project move', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows help when no ref provided', async () => {
         const program = createProgram()
-        mockProcessStdout()
+        captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'project', 'move'])
@@ -1500,7 +1499,7 @@ describe('project move', () => {
 describe('project (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'project'])
@@ -1528,7 +1527,7 @@ describe('project --dry-run', () => {
 
     it('project create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -1546,7 +1545,7 @@ describe('project --dry-run', () => {
 
     it('project update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Old Name' }],
@@ -1570,7 +1569,7 @@ describe('project --dry-run', () => {
 
     it('project archive --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Test', isArchived: false }],
@@ -1585,7 +1584,7 @@ describe('project --dry-run', () => {
 
     it('project delete --dry-run --yes still does not execute', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getProjects.mockResolvedValue({
             results: [{ id: 'proj-1', name: 'Empty Project' }],
@@ -1616,7 +1615,7 @@ describe('project archived-count', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         vi.mocked(getApi).mockResolvedValue(mockApi)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows count in human-readable format', async () => {
@@ -1663,7 +1662,7 @@ describe('project permissions', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         vi.mocked(getApi).mockResolvedValue(mockApi)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows permissions in human-readable format', async () => {
@@ -1710,7 +1709,7 @@ describe('project view --detailed', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         vi.mocked(getApi).mockResolvedValue(mockApi)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('uses getFullProject and shows sections and collaborators', async () => {
@@ -1782,7 +1781,7 @@ describe('project join', () => {
         vi.clearAllMocks()
         mockApi = createMockApi()
         vi.mocked(getApi).mockResolvedValue(mockApi)
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('joins project and shows workspace name', async () => {
@@ -1914,7 +1913,7 @@ describe('project progress', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows progress for a project', async () => {
@@ -1971,7 +1970,7 @@ describe('project health', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows health status and description', async () => {
@@ -2064,7 +2063,7 @@ describe('project health-context', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows project metrics', async () => {
@@ -2133,7 +2132,7 @@ describe('project activity-stats', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows daily activity', async () => {
@@ -2250,7 +2249,7 @@ describe('project analyze-health', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('triggers analysis and shows confirmation', async () => {

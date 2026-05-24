@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/config.js', () => ({
@@ -21,8 +22,6 @@ import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
 import { listStoredUsers, NoTokenError, probeApiToken } from '../../lib/auth.js'
 import { type Config, readConfigStrict } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerConfigCommand } from './index.js'
 
 const mockReadConfigStrict = vi.mocked(readConfigStrict)
@@ -81,7 +80,7 @@ describe('config view', () => {
             authScope: 'data:read,data:delete',
             authFlags: ['app-management'],
         })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
 
@@ -100,7 +99,7 @@ describe('config view', () => {
     it('labels tokens stored in the system credential manager', async () => {
         presentConfig({ auth_mode: 'read-write' })
         mockToken('secure-store', { token: 'tdo_keychainXXXXXXXX1234' })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
 
@@ -119,7 +118,7 @@ describe('config view', () => {
             auth_flags: ['read-only'],
         })
         mockToken('env', { token: 'tdo_envXXXXXXXX5678', authMode: 'unknown' })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
 
@@ -135,7 +134,7 @@ describe('config view', () => {
     it('degrades gracefully when the credential manager is unavailable', async () => {
         presentConfig({ auth_mode: 'read-write', update_channel: 'stable' })
         mockProbeApiToken.mockRejectedValue(new SecureStoreUnavailableError('macOS Keychain error'))
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
 
@@ -147,7 +146,7 @@ describe('config view', () => {
 
     it('--json emits the raw config with api_token masked', async () => {
         presentConfig()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
 
@@ -160,7 +159,7 @@ describe('config view', () => {
     it('--show-token reveals the full token in both views', async () => {
         presentConfig()
         mockToken('config-file')
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--show-token'])
         const pretty = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
@@ -175,7 +174,7 @@ describe('config view', () => {
     it('handles a missing config file gracefully', async () => {
         missingConfig()
         mockProbeApiToken.mockRejectedValue(new NoTokenError())
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
         expect(consoleSpy.mock.calls[0][0]).toContain('not created yet')
@@ -203,7 +202,7 @@ describe('config view', () => {
     it('shows "not set" when no token can be found anywhere', async () => {
         presentConfig({ update_channel: 'stable' })
         mockProbeApiToken.mockRejectedValue(new NoTokenError())
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
@@ -213,7 +212,7 @@ describe('config view', () => {
 
     it('masks very short tokens without exposing characters', async () => {
         presentConfig({ api_token: 'abcd' })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
@@ -253,7 +252,7 @@ describe('config view', () => {
                 email: 'first@example.com',
             },
         })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
@@ -285,7 +284,7 @@ describe('config view', () => {
                 email: 'first@example.com',
             },
         })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
@@ -307,7 +306,7 @@ describe('config view', () => {
         ])
         const { NoUserSelectedError } = await import('../../lib/users.js')
         mockProbeApiToken.mockRejectedValue(new NoUserSelectedError())
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view'])
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
@@ -328,7 +327,7 @@ describe('config view', () => {
                 },
             ],
         })
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await createProgram().parseAsync(['node', 'td', 'config', 'view', '--json'])
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)

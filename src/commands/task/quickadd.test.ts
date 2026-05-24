@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -13,9 +14,7 @@ vi.mock('../../lib/stdin.js', () => ({
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerTaskCommand } from './index.js'
 
 const mockReadStdin = vi.mocked(readStdin)
@@ -35,7 +34,7 @@ describe('task quickadd command', () => {
 
     it('calls quickAddTask with positional text', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -50,7 +49,7 @@ describe('task quickadd command', () => {
 
     it('works via qa alias', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -65,7 +64,7 @@ describe('task quickadd command', () => {
 
     it('reads text from stdin with --stdin', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
         mockApi.quickAddTask.mockResolvedValue({
@@ -118,7 +117,7 @@ describe('task quickadd command', () => {
 
     it('--dry-run skips API call and prints preview', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'task', 'qa', 'Buy milk', '--dry-run'])
 
@@ -128,7 +127,7 @@ describe('task quickadd command', () => {
 
     it('--json outputs task as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -145,7 +144,7 @@ describe('task quickadd command', () => {
 
     it('displays due date when present', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
