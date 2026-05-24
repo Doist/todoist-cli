@@ -4,6 +4,7 @@ import chalk from 'chalk'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { resolveActiveUser } from '../../lib/auth.js'
+import { projectAccount } from './project-account.js'
 
 /**
  * Attach `td accounts current` via cli-core's `attachAccountCurrentCommand`.
@@ -28,13 +29,8 @@ export function attachTodoistUserCurrentCommand(
             return `${account.email} ${chalk.dim(`(id:${account.id})`)}${marker}`
         },
         renderJson: ({ account, isDefault }) => ({
-            id: account.id,
-            email: account.email,
+            ...projectAccount(account, isDefault),
             source: 'secure-store',
-            isDefault,
-            authMode: account.auth_mode,
-            authScope: account.auth_scope,
-            authFlags: account.auth_flags,
         }),
         onNotAuthenticated: async ({ view }) => {
             // Nothing resolved in the store, so the active credential is

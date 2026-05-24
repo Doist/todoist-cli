@@ -72,8 +72,8 @@ td auth login                          # adds the account; first one becomes def
 td accounts list                       # all stored accounts (with default marker)
 td accounts list --json                # { accounts: [...], default } envelope; --ndjson streams one account per line
 td accounts use <id|email>             # set the default account (alias: td accounts default; --json/--ndjson supported)
-td accounts current                    # show the active account
-td accounts remove <id|email>          # delete an account (and its token)
+td accounts current                    # show the active account (--json/--ndjson supported)
+td accounts remove <id|email>          # delete an account and its token (--json/--ndjson supported)
 td --user <id|email> task list         # one-off override for any command
 td auth logout --user <id|email>       # log out a specific account
 \`\`\`

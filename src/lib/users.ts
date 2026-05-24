@@ -49,16 +49,29 @@ export function getDefaultUserId(config: Config): string | undefined {
  * pin itself matters — e.g. `accounts remove` deciding whether it cleared a
  * pin, or `doctor` diagnosing whether the pin resolves.
  */
-export function getEffectiveDefaultUserId(config: Config): string | undefined {
+/**
+ * The account that resolves as default when no `--user` is given: the pinned
+ * `defaultUser` when it points at a stored account, otherwise — falling through
+ * an orphaned pin — the sole stored account (a lone account is implicitly
+ * default), or `undefined` when neither applies.
+ *
+ * Single source of truth for the default-selection rule: `resolveActiveUser`
+ * (`auth.ts`) and `getEffectiveDefaultUserId` both call this so the active-user
+ * resolver and the `(default)` marker can't drift.
+ */
+export function getEffectiveDefaultUser(config: Config): StoredUser | undefined {
     const users = getStoredUsers(config)
     const pinned = getDefaultUserId(config)
-    // A pinned pointer only counts when it resolves to a stored account —
-    // mirrors `resolveActiveUser`, which ignores an orphaned `defaultUser` and
-    // falls through to the sole stored account. Returning a stale id here would
-    // put `accounts current` / `auth status` back out of sync on a config whose
-    // `defaultUser` points at a removed account.
-    if (pinned && users.some((u) => u.id === pinned)) return pinned
-    return users.length === 1 ? users[0]!.id : undefined
+    if (pinned) {
+        const found = users.find((u) => u.id === pinned)
+        if (found) return found
+        // Pinned pointer is orphaned — fall through to the sole-account rule.
+    }
+    return users.length === 1 ? users[0] : undefined
+}
+
+export function getEffectiveDefaultUserId(config: Config): string | undefined {
+    return getEffectiveDefaultUser(config)?.id
 }
 
 /**

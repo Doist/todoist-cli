@@ -294,6 +294,27 @@ describe('user command', () => {
 
             expect(consoleSpy.mock.calls.flat().join('\n')).toContain('legacy')
         })
+
+        it('emits one ndjson line for the env fallback', async () => {
+            // The onNotAuthenticated branch formats NDJSON itself for
+            // out-of-store sources.
+            mockResolveActiveUser.mockResolvedValue({
+                id: 'env',
+                email: '',
+                token: 'envtoken',
+                authMode: 'unknown',
+                source: 'env',
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'current', '--ndjson'])
+
+            expect(consoleSpy).toHaveBeenCalledTimes(1)
+            expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toMatchObject({
+                id: null,
+                source: 'env',
+                isDefault: false,
+            })
+        })
     })
 
     describe('remove', () => {
@@ -341,6 +362,38 @@ describe('user command', () => {
             await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111'])
 
             expect(errorSpy.mock.calls.flat().join('\n')).toContain('Keyring unavailable')
+        })
+
+        it('emits { ok, removed } for --json', async () => {
+            clearMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c' },
+                wasDefault: false,
+            })
+
+            await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111', '--json'])
+
+            expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
+                ok: true,
+                removed: '111',
+            })
+        })
+
+        it('is silent on stdout for --ndjson', async () => {
+            clearMock.mockResolvedValue({
+                account: { id: '111', email: 'a@b.c' },
+                wasDefault: false,
+            })
+
+            await createProgram().parseAsync([
+                'node',
+                'td',
+                'accounts',
+                'remove',
+                '111',
+                '--ndjson',
+            ])
+
+            expect(consoleSpy).not.toHaveBeenCalled()
         })
     })
 })

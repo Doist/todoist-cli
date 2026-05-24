@@ -3,24 +3,7 @@ import chalk from 'chalk'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { isAccessible } from '../../lib/global-args.js'
-
-/**
- * Per-account `--json` / `--ndjson` shape. Flattens the stored
- * `TodoistAccount` into the camelCase fields the CLI has always surfaced,
- * dropping the internal `label` duplicate and snake_case config keys. The
- * `{ accounts, default }` envelope around these entries is owned by cli-core's
- * `attachAccountListCommand`.
- */
-function projectAccount(account: TodoistAccount, isDefault: boolean) {
-    return {
-        id: account.id,
-        email: account.email,
-        isDefault,
-        authMode: account.auth_mode,
-        authScope: account.auth_scope,
-        authFlags: account.auth_flags,
-    }
-}
+import { projectAccount } from './project-account.js'
 
 /**
  * Attach `td accounts list` via cli-core's generic `attachAccountListCommand`,
