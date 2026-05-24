@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -11,9 +12,7 @@ vi.mock('../../lib/api/workspaces.js', () => ({
 
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerFolderCommand } from './index.js'
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
@@ -51,7 +50,7 @@ describe('folder list', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('lists folders for a workspace', async () => {
@@ -120,7 +119,7 @@ describe('folder create', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('creates folder in workspace', async () => {
@@ -250,7 +249,7 @@ describe('folder update', () => {
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('updates folder name by id:xxx', async () => {
@@ -333,7 +332,7 @@ describe('folder delete', () => {
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows confirmation prompt without --yes', async () => {
@@ -380,7 +379,7 @@ describe('folder view', () => {
         mockFetchWorkspaceFolders.mockResolvedValue([
             { id: 'folder-1', name: 'Engineering', workspaceId: '12345' },
         ])
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows folder details and contained projects', async () => {
@@ -455,7 +454,7 @@ describe('folder workspace auto-detection', () => {
 
     it('auto-detects single workspace for folder resolution', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
         mockFetchWorkspaces.mockResolvedValue([mockWorkspace])
         mockApi.getFolder.mockResolvedValue(mockFolder)
         mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })

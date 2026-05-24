@@ -1,4 +1,9 @@
-import { describeEmptyMachineOutput } from '@doist/cli-core/testing'
+import {
+    captureConsole,
+    captureStream,
+    createTestProgram,
+    describeEmptyMachineOutput,
+} from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/browser.js', () => ({
@@ -12,8 +17,6 @@ vi.mock('../../lib/config.js', () => ({
 
 import { openInBrowser } from '../../lib/browser.js'
 import { readConfig, writeConfig } from '../../lib/config.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerHelpCenterCommand } from './index.js'
 
 function createProgram() {
@@ -36,7 +39,7 @@ describe('hc command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
         fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
         mockReadConfig.mockResolvedValue({})
@@ -482,7 +485,7 @@ describe('hc command', () => {
     })
 
     it('outputs the raw HTML body with --html', async () => {
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
         fetchSpy.mockResolvedValue(
             createJsonResponse({
                 article: {

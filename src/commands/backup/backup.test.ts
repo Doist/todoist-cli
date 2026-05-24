@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -11,9 +12,7 @@ vi.mock('../../lib/auth.js', () => ({
 
 import { getAuthMetadata } from '../../lib/auth.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerBackupCommand } from './index.js'
 
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
@@ -37,7 +36,7 @@ describe('backup list', () => {
 
     it('lists available backups', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getBackups.mockResolvedValue([
             { version: '2024-01-15_12:00', url: 'https://example.com/backup1.zip' },
@@ -52,7 +51,7 @@ describe('backup list', () => {
 
     it('shows "No backups found." when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getBackups.mockResolvedValue([])
 
@@ -63,7 +62,7 @@ describe('backup list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getBackups.mockResolvedValue([
             { version: '2024-01-15_12:00', url: 'https://example.com/backup1.zip' },
@@ -80,7 +79,7 @@ describe('backup list', () => {
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.getBackups.mockResolvedValue([
             { version: '2024-01-15_12:00', url: 'https://example.com/backup1.zip' },
@@ -176,7 +175,7 @@ describe('backup download', () => {
 
     it('downloads a backup to the specified output path', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {})
 
         mockApi.getBackups.mockResolvedValue([
@@ -234,7 +233,7 @@ describe('backup download', () => {
 
     it('errors when --output-file is not provided', async () => {
         const program = createProgram()
-        mockConsoleError()
+        captureConsole('error')
 
         await expect(
             program.parseAsync(['node', 'td', 'backup', 'download', '2024-01-15_12:00']),

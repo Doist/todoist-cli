@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -11,9 +12,7 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
 
 import { reorderProjects } from '../../lib/api/projects-sync.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
 const mockReorderProjects = vi.mocked(reorderProjects)
@@ -42,7 +41,7 @@ describe('project reorder', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     function primeProjects(target: (typeof siblings)[number], all = siblings) {

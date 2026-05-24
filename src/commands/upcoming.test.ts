@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -6,9 +7,7 @@ vi.mock('../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleError, mockConsoleLog } from '../test-support/console-spy.js'
 import { type MockApi } from '../test-support/mock-api.js'
-import { createTestProgram } from '../test-support/program.js'
 import { registerUpcomingCommand } from './upcoming.js'
 
 function createProgram() {
@@ -28,7 +27,7 @@ describe('upcoming command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('defaults to 7 days', async () => {
@@ -259,7 +258,7 @@ describe('upcoming command', () => {
 
     it('rejects invalid days argument', async () => {
         const program = createProgram()
-        const errorSpy = mockConsoleError()
+        const errorSpy = captureConsole('error')
 
         await program.parseAsync(['node', 'td', 'upcoming', 'invalid'])
 

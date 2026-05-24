@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -5,9 +6,7 @@ vi.mock('../../lib/api/core.js', () => ({
 }))
 
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerCompletedCommand } from './index.js'
 
 function createProgram() {
@@ -32,7 +31,7 @@ describe('completed command', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('shows completed tasks', async () => {

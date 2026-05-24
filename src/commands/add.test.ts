@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
@@ -10,9 +11,7 @@ vi.mock('../lib/stdin.js', () => ({
 
 import { readStdin } from '../lib/stdin.js'
 import { setupApiMock } from '../test-support/api-mock.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
 import { type MockApi } from '../test-support/mock-api.js'
-import { createTestProgram } from '../test-support/program.js'
 import { registerAddCommand } from './add.js'
 
 const mockReadStdin = vi.mocked(readStdin)
@@ -31,7 +30,7 @@ describe('add command', () => {
 
     it('calls quickAddTask with text', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -46,7 +45,7 @@ describe('add command', () => {
 
     it('displays created task content', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -61,7 +60,7 @@ describe('add command', () => {
 
     it('displays due date when present', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -76,7 +75,7 @@ describe('add command', () => {
 
     it('displays task ID', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-123',
@@ -91,7 +90,7 @@ describe('add command', () => {
 
     it('handles text with natural language and tags', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
@@ -108,7 +107,7 @@ describe('add command', () => {
 
     it('--dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync(['node', 'td', 'add', 'Buy milk', '--dry-run'])
 
@@ -118,7 +117,7 @@ describe('add command', () => {
 
     it('reads text from stdin with --stdin', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
         mockApi.quickAddTask.mockResolvedValue({
@@ -143,7 +142,7 @@ describe('add command', () => {
 
     it('--json outputs JSON of created task', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',

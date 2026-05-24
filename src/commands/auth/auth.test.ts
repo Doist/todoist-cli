@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -74,13 +75,7 @@ import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
-import {
-    mockConsoleError,
-    mockConsoleLog,
-    mockProcessStdout,
-} from '../../test-support/console-spy.js'
 import { createMockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerAuthCommand } from './index.js'
 import { attachTodoistStatusCommand } from './status.js'
 
@@ -114,8 +109,8 @@ describe('auth command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = mockConsoleLog()
-        errorSpy = mockConsoleError()
+        consoleSpy = captureConsole()
+        errorSpy = captureConsole('error')
         mockListStoredUsers.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
     })
@@ -175,7 +170,7 @@ describe('auth command', () => {
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
             stubProbeApiForUser()
-            mockProcessStdout()
+            captureStream()
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
@@ -193,7 +188,7 @@ describe('auth command', () => {
                 _writeToOutput: vi.fn(),
             }
             mockCreateInterface.mockReturnValue(mockRl as unknown as Interface)
-            mockProcessStdout()
+            captureStream()
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
@@ -560,7 +555,7 @@ describe('auth command', () => {
             activeMock.mockResolvedValue({ token: 'stored-token-1234567', account })
 
             const program = createProgram()
-            const stdoutWrite = mockProcessStdout()
+            const stdoutWrite = captureStream()
             const originalArgv = process.argv
             process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'token', 'view']
             resetGlobalArgs()

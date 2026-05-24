@@ -1,6 +1,6 @@
 import fs from 'node:fs'
+import { captureConsole } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mockConsoleError } from '../test-support/console-spy.js'
 import { resetGlobalArgs } from './global-args.js'
 import type { ProgressEvent } from './progress.js'
 import { getProgressTracker, ProgressTracker, resetProgressTracker } from './progress.js'
@@ -116,7 +116,7 @@ describe('ProgressTracker', () => {
                 throw new Error('Permission denied')
             })
 
-            const consoleSpy = mockConsoleError()
+            const consoleSpy = captureConsole('error')
 
             const tracker = new ProgressTracker()
             tracker.emit({ type: 'start', command: 'today' })

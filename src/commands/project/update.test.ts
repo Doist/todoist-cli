@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -10,9 +11,7 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
 
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerProjectCommand } from './index.js'
 
 const mockMoveProjectParent = vi.mocked(moveProjectParent)
@@ -28,7 +27,7 @@ describe('project update', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('updates project name', async () => {
@@ -213,7 +212,7 @@ describe('project update --json', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('outputs updated project as JSON', async () => {
@@ -252,7 +251,7 @@ describe('project update --parent / --no-parent', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
     })
 
     it('re-parents under another personal project (sync only, no updateProject)', async () => {

@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', async (importOriginal) => {
@@ -9,10 +10,8 @@ vi.mock('../../lib/api/core.js', async (importOriginal) => {
 })
 
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog } from '../../test-support/console-spy.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { resolveLocale } from './format.js'
 import { registerBillingCommand } from './index.js'
 
@@ -31,7 +30,7 @@ describe('billing subscription', () => {
 
     it('is the default subcommand and renders the subscription summary', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         // No subcommand given → default subscription
@@ -51,7 +50,7 @@ describe('billing subscription', () => {
 
     it('outputs the raw payload with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         await program.parseAsync(['node', 'td', 'billing', 'subscription', '--json'])
@@ -64,7 +63,7 @@ describe('billing subscription', () => {
 
     it('outputs single-line JSON with --ndjson', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSubscriptionInfo.mockResolvedValue(fixtures.billing.subscription)
 
         await program.parseAsync(['node', 'td', 'billing', 'subscription', '--ndjson'])
@@ -76,7 +75,7 @@ describe('billing subscription', () => {
 
     it('renders a free plan with no price gracefully', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getSubscriptionInfo.mockResolvedValue({
             ...fixtures.billing.subscription,
             status: 'none',
@@ -107,7 +106,7 @@ describe('billing plan', () => {
 
     it('renders pro plan details', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getProPlanDetails.mockResolvedValue(fixtures.billing.proPlanDetails)
 
         await program.parseAsync(['node', 'td', 'billing', 'plan'])
@@ -120,7 +119,7 @@ describe('billing plan', () => {
 
     it('outputs the raw payload with --json', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getProPlanDetails.mockResolvedValue(fixtures.billing.proPlanDetails)
 
         await program.parseAsync(['node', 'td', 'billing', 'plan', '--json'])
@@ -142,7 +141,7 @@ describe('billing prices', () => {
 
     it('renders pro and teams price listings', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getPrices.mockResolvedValue(fixtures.billing.prices)
 
         await program.parseAsync(['node', 'td', 'billing', 'prices'])
@@ -166,7 +165,7 @@ describe('billing pricing', () => {
 
     it('formats minor-unit numbers as money and lists version entries', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getPricing.mockResolvedValue(fixtures.billing.pricing)
 
         await program.parseAsync(['node', 'td', 'billing', 'pricing'])
@@ -180,7 +179,7 @@ describe('billing pricing', () => {
 
     it('does not render non-version metadata keys as pricing versions', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getPricing.mockResolvedValue(fixtures.billing.pricingWithMetadata)
 
         await program.parseAsync(['node', 'td', 'billing', 'pricing'])
@@ -193,7 +192,7 @@ describe('billing pricing', () => {
 
     it('passes --formatted through, prints strings as-is, and skips the locale fetch', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
         mockApi.getPricing.mockResolvedValue(fixtures.billing.pricingFormatted)
 
         await program.parseAsync(['node', 'td', 'billing', 'pricing', '--formatted'])

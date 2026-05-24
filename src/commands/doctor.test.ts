@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockWithSpinner, mockProgressTracker, mockLoadingSpinnerStart, mockLoadingSpinnerStop } =
@@ -71,8 +72,6 @@ vi.mock('../lib/config.js', async (importOriginal) => {
 import { TodoistApi } from '@doist/todoist-sdk'
 import { NoTokenError, probeApiToken } from '../lib/auth.js'
 import { readConfig } from '../lib/config.js'
-import { mockConsoleLog } from '../test-support/console-spy.js'
-import { createTestProgram } from '../test-support/program.js'
 import { registerDoctorCommand } from './doctor.js'
 
 const mockReadFile = vi.mocked(readFile)
@@ -99,7 +98,7 @@ describe('doctor command', () => {
     let originalProcessVersion: PropertyDescriptor | undefined
 
     beforeEach(() => {
-        consoleSpy = mockConsoleLog()
+        consoleSpy = captureConsole()
         vi.clearAllMocks()
         vi.unstubAllGlobals()
         process.exitCode = undefined

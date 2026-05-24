@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -38,8 +39,6 @@ vi.mock('@doist/cli-core/auth', async (importOriginal) => {
 })
 
 import { createTodoistTokenStore } from '../../lib/auth-store.js'
-import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { attachTodoistLoginCommand } from './login.js'
 
 type AttachOptions = {
@@ -95,8 +94,8 @@ describe('attachTodoistLoginCommand: onSuccess output formatting', () => {
     let errorSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-        consoleSpy = mockConsoleLog()
-        errorSpy = mockConsoleError()
+        consoleSpy = captureConsole()
+        errorSpy = captureConsole('error')
     })
 
     afterEach(() => {

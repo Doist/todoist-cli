@@ -1,3 +1,4 @@
+import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -13,10 +14,8 @@ vi.mock('../../lib/api/filters.js', () => ({
 
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { mockConsoleLog, mockProcessStdout } from '../../test-support/console-spy.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerFilterCommand } from './index.js'
 
 const mockFetchFilters = vi.mocked(fetchFilters)
@@ -35,7 +34,7 @@ describe('filter list', () => {
 
     it('lists all filters', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work tasks', query: '@work' }),
@@ -50,7 +49,7 @@ describe('filter list', () => {
 
     it('shows "No filters found" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([])
 
@@ -61,7 +60,7 @@ describe('filter list', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -77,7 +76,7 @@ describe('filter list', () => {
 
     it('outputs NDJSON with --ndjson flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -99,7 +98,7 @@ describe('filter create --json', () => {
 
     it('outputs created filter as JSON', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockAddFilter.mockResolvedValue({
             id: 'filter-new',
@@ -140,7 +139,7 @@ describe('filter create', () => {
 
     it('creates filter with name and query', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Work', query: '@work' }),
@@ -165,7 +164,7 @@ describe('filter create', () => {
 
     it('creates filter with --color', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Urgent', query: 'p1', color: 'red' }),
@@ -191,7 +190,7 @@ describe('filter create', () => {
 
     it('creates filter with --favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-new', name: 'Important', query: 'p1 | p2', isFavorite: true }),
@@ -216,7 +215,7 @@ describe('filter create', () => {
 
     it('shows filter ID after creation', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockAddFilter.mockResolvedValue(
             makeFilter({ id: 'filter-xyz', name: 'Test', query: 'today' }),
@@ -244,7 +243,7 @@ describe('filter delete', () => {
 
     it('shows dry-run without --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -259,7 +258,7 @@ describe('filter delete', () => {
 
     it('deletes by name with --yes', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -274,7 +273,7 @@ describe('filter delete', () => {
 
     it('deletes by id: prefix with --yes', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -304,7 +303,7 @@ describe('filter update', () => {
 
     it('updates filter name', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Old Name', query: '@work' }),
@@ -329,7 +328,7 @@ describe('filter update', () => {
 
     it('updates filter query', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -353,7 +352,7 @@ describe('filter update', () => {
 
     it('updates filter color and favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -379,7 +378,7 @@ describe('filter update', () => {
 
     it('removes favorite with --no-favorite', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work', isFavorite: true }),
@@ -395,7 +394,7 @@ describe('filter update', () => {
 
     it('updates by id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -458,7 +457,7 @@ describe('filter show', () => {
 
     it('shows tasks matching filter', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -493,7 +492,7 @@ describe('filter show', () => {
 
     it('shows "No tasks match this filter" when empty', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Empty', query: 'nonexistent' }),
@@ -511,7 +510,7 @@ describe('filter show', () => {
 
     it('outputs JSON with --json flag', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -540,7 +539,7 @@ describe('filter show', () => {
 
     it('shows filter by id: prefix', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-123', name: 'Work', query: '@work' }),
@@ -570,7 +569,7 @@ describe('filter show', () => {
 
     it('resolves partial name match', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work Tasks', query: '@work' }),
@@ -626,7 +625,7 @@ describe('filter view (alias)', () => {
 
     it('works via "view" subcommand', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -646,7 +645,7 @@ describe('filter view (alias)', () => {
 
     it('defaults to view subcommand (td filter <ref>)', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -675,7 +674,7 @@ describe('filter URL resolution', () => {
 
     it('resolves filter by URL in view command', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
@@ -701,7 +700,7 @@ describe('filter URL resolution', () => {
 
     it('resolves filter by URL in delete command', async () => {
         const program = createProgram()
-        mockConsoleLog()
+        captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter1', name: 'Work', query: '@work' }),
@@ -743,7 +742,7 @@ describe('filter URL resolution', () => {
 describe('filter (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = mockProcessStdout()
+        const stdoutSpy = captureStream()
 
         try {
             await program.parseAsync(['node', 'td', 'filter'])
@@ -767,7 +766,7 @@ describe('filter --dry-run', () => {
 
     it('filter create --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         await program.parseAsync([
             'node',
@@ -787,7 +786,7 @@ describe('filter --dry-run', () => {
 
     it('filter delete --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),
@@ -801,7 +800,7 @@ describe('filter --dry-run', () => {
 
     it('filter update --dry-run previews without calling API', async () => {
         const program = createProgram()
-        const consoleSpy = mockConsoleLog()
+        const consoleSpy = captureConsole()
 
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '#Work' }),

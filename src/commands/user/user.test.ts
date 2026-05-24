@@ -1,3 +1,4 @@
+import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/auth.js', async (importOriginal) => {
@@ -34,8 +35,6 @@ vi.mock('../../lib/auth-store.js', async (importOriginal) => {
 vi.mock('chalk')
 
 import { readConfig, resolveActiveUser } from '../../lib/auth.js'
-import { mockConsoleError, mockConsoleLog } from '../../test-support/console-spy.js'
-import { createTestProgram } from '../../test-support/program.js'
 import { registerUserCommand } from './index.js'
 
 const mockReadConfig = vi.mocked(readConfig)
@@ -50,8 +49,8 @@ describe('user command', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        consoleSpy = mockConsoleLog()
-        mockConsoleError()
+        consoleSpy = captureConsole()
+        captureConsole('error')
         mockReadConfig.mockResolvedValue({})
     })
 
@@ -372,7 +371,7 @@ describe('user command', () => {
                 storage: 'config-file',
                 warning: 'Keyring unavailable; removed plaintext token instead.',
             })
-            const errorSpy = mockConsoleError()
+            const errorSpy = captureConsole('error')
 
             await createProgram().parseAsync(['node', 'td', 'accounts', 'remove', '111'])
 
