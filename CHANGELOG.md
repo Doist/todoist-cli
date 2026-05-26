@@ -1,3 +1,9 @@
+## [1.69.2](https://github.com/Doist/todoist-cli/compare/v1.69.1...v1.69.2) (2026-05-26)
+
+### Bug Fixes
+
+* **deps:** update dependency date-fns to v4.2.1 ([#369](https://github.com/Doist/todoist-cli/issues/369)) ([55f218a](https://github.com/Doist/todoist-cli/commit/55f218a8176305068414664ec6e0bd1075d32f38))
+
 ## [1.69.1](https://github.com/Doist/todoist-cli/compare/v1.69.0...v1.69.1) (2026-05-25)
 
 ### Bug Fixes
