@@ -4,8 +4,9 @@ import { getApi } from '../../lib/api/core.js'
 import { shareProject as shareProjectSync } from '../../lib/api/projects-sync.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
+import { findUser } from '../workspace/helpers.js'
 
 export type ProjectShareOptions = {
     role?: string
@@ -26,25 +27,6 @@ function parseRole(role: string | undefined): WorkspaceRole {
         ])
     }
     return upper as WorkspaceRole
-}
-
-async function isWorkspaceMember(
-    api: Awaited<ReturnType<typeof getApi>>,
-    workspaceId: string,
-    email: string,
-): Promise<boolean> {
-    const target = email.toLowerCase()
-    let cursor: string | undefined
-
-    while (true) {
-        const response = await api.getWorkspaceUsers({ workspaceId, cursor, limit: 200 })
-        if (response.workspaceUsers.some((u) => u.userEmail.toLowerCase() === target)) {
-            return true
-        }
-        if (!response.hasMore || !response.nextCursor) break
-        cursor = response.nextCursor
-    }
-    return false
 }
 
 export async function shareProject(
@@ -77,11 +59,12 @@ export async function shareProject(
 
         if (options.json) {
             console.log(
-                JSON.stringify(
-                    { projectId: project.id, projectName: project.name, email, autoInvited: false },
-                    null,
-                    2,
-                ),
+                formatJson({
+                    projectId: project.id,
+                    projectName: project.name,
+                    email,
+                    autoInvited: false,
+                }),
             )
             return
         }
@@ -94,29 +77,30 @@ export async function shareProject(
 
     // Workspace project: role applies, optional auto-invite to the workspace.
     const role = parseRole(options.role)
-    const isMember = await isWorkspaceMember(api, project.workspaceId, email)
+    const lowerEmail = email.toLowerCase()
+    const isMember =
+        (await findUser(project.workspaceId, (u) => u.userEmail.toLowerCase() === lowerEmail)) !==
+        null
 
-    if (options.dryRun) {
-        printDryRun('share project', {
-            Project: project.name,
-            Email: email,
-            Role: role,
-            'Auto-invite': !isMember
-                ? options.autoInvite
-                    ? 'yes'
-                    : 'required (not a member)'
-                : undefined,
-        })
-        return
-    }
-
+    // Validate before the dry-run early return so a dry run reflects the real outcome.
     if (!isMember && !options.autoInvite) {
         throw new CliError('NOT_WORKSPACE_MEMBER', `${email} is not a member of this workspace.`, [
             'Pass --auto-invite to invite them to the workspace first',
         ])
     }
 
-    const autoInvited = !isMember && Boolean(options.autoInvite)
+    const autoInvited = !isMember
+
+    if (options.dryRun) {
+        printDryRun('share project', {
+            Project: project.name,
+            Email: email,
+            Role: role,
+            'Auto-invite': autoInvited ? 'yes' : undefined,
+        })
+        return
+    }
+
     if (autoInvited) {
         await api.inviteWorkspaceUsers({
             workspaceId: project.workspaceId,
@@ -134,11 +118,13 @@ export async function shareProject(
 
     if (options.json) {
         console.log(
-            JSON.stringify(
-                { projectId: project.id, projectName: project.name, email, role, autoInvited },
-                null,
-                2,
-            ),
+            formatJson({
+                projectId: project.id,
+                projectName: project.name,
+                email,
+                role,
+                autoInvited,
+            }),
         )
         return
     }

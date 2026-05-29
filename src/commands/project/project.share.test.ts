@@ -287,4 +287,102 @@ describe('project share', () => {
             autoInvited: false,
         })
     })
+
+    it('finds a member across paginated workspace-user pages', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Park Ops',
+            workspaceId: 'ws-1',
+        })
+        mockApi.getWorkspaceUsers
+            .mockResolvedValueOnce({
+                workspaceUsers: [
+                    {
+                        userId: 'user-1',
+                        fullName: 'John Hammond',
+                        userEmail: 'john@ingen.com',
+                        role: 'ADMIN',
+                    },
+                ],
+                hasMore: true,
+                nextCursor: 'page-2',
+            })
+            .mockResolvedValueOnce({
+                workspaceUsers: [
+                    {
+                        userId: 'user-2',
+                        fullName: 'Alan Grant',
+                        userEmail: 'alan@ingen.com',
+                        role: 'MEMBER',
+                    },
+                ],
+                hasMore: false,
+            })
+
+        await program.parseAsync(['node', 'td', 'project', 'share', 'id:proj-1', 'alan@ingen.com'])
+
+        expect(mockApi.getWorkspaceUsers).toHaveBeenCalledTimes(2)
+        expect(mockApi.getWorkspaceUsers).toHaveBeenNthCalledWith(2, {
+            workspaceId: 'ws-1',
+            cursor: 'page-2',
+            limit: 200,
+        })
+        expect(mockApi.inviteWorkspaceUsers).not.toHaveBeenCalled()
+        expect(mockApi.sync).toHaveBeenCalledWith(
+            shareCommand({
+                type: 'share_project',
+                args: {
+                    projectId: 'proj-1',
+                    email: 'alan@ingen.com',
+                    message: undefined,
+                    workspaceRole: 'MEMBER',
+                },
+            }),
+        )
+    })
+
+    it('accepts the project via the --project flag', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Field Notes', isShared: true })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'share',
+            '--project',
+            'id:proj-1',
+            'alan@ingen.com',
+        ])
+
+        expect(mockApi.sync).toHaveBeenCalledWith(
+            shareCommand({
+                type: 'share_project',
+                args: { projectId: 'proj-1', email: 'alan@ingen.com', message: undefined },
+            }),
+        )
+        expect(consoleSpy).toHaveBeenCalledWith('Shared: Field Notes with alan@ingen.com')
+    })
+
+    it('errors when the project is given both positionally and via --project', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'share',
+                'id:proj-1',
+                'alan@ingen.com',
+                '--project',
+                'id:proj-2',
+            ]),
+        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+    })
 })

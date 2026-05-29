@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { CliError } from '../../lib/errors.js'
 import { parseOrderArg } from '../../lib/order.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
@@ -258,9 +259,10 @@ Examples:
             return joinProjectCmd(id, options)
         })
 
-    project
-        .command('share <ref> <email>')
+    const shareCmd = project
+        .command('share [ref] [email]')
         .description('Invite a collaborator to a project')
+        .option('--project <ref>', 'Project name or id:xxx (alias for the positional ref)')
         .option(
             '--role <role>',
             'Workspace role: guest, member, or admin (workspace projects only; default: member)',
@@ -277,10 +279,32 @@ Examples:
             `
 Examples:
   td project share "Roadmap" alice@example.com
+  td project share --project "Roadmap" alice@example.com
   td project share "Team Plan" bob@example.com --role guest --auto-invite`,
         )
         .action((ref, email, options) => {
-            return shareProject(ref, email, options)
+            // Project can come from the positional ref or --project, but not both.
+            let projectRef: string | undefined
+            let collaboratorEmail: string | undefined
+            if (options.project) {
+                if (ref && email) {
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify project both as argument and --project flag',
+                    )
+                }
+                projectRef = options.project
+                collaboratorEmail = ref
+            } else {
+                projectRef = ref
+                collaboratorEmail = email
+            }
+
+            if (!projectRef || !collaboratorEmail) {
+                shareCmd.help()
+                return
+            }
+            return shareProject(projectRef, collaboratorEmail, options)
         })
 
     const progressCmd = project

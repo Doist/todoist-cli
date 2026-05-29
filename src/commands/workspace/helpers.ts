@@ -109,7 +109,11 @@ export async function resolveWorkspaceUserRef(
     ])
 }
 
-async function findUser(
+/**
+ * Paginates `getWorkspaceUsers` and returns the first user matching
+ * `predicate`, or `null` if none match. Stops as soon as a match is found.
+ */
+export async function findUser(
     workspaceId: string,
     predicate: (user: WorkspaceUser) => boolean,
 ): Promise<WorkspaceUser | null> {

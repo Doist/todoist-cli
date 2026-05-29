@@ -179,6 +179,10 @@ td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes
 td project join id:abc123
 td project share "Roadmap" alice@example.com
+td project share --project "Roadmap" alice@example.com
+td project share "Roadmap" alice@example.com --message "Join the planning"
+td project share "Roadmap" alice@example.com --json
+td project share "Roadmap" alice@example.com --dry-run
 td project share "Team Plan" bob@example.com --role guest --auto-invite
 td project delete "Roadmap" --yes
 td project progress "Roadmap"
