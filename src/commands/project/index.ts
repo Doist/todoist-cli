@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { CliError } from '../../lib/errors.js'
 import { parseOrderArg } from '../../lib/order.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
@@ -20,6 +21,7 @@ import { moveProject } from './move.js'
 import { showPermissions } from './permissions.js'
 import { showProjectProgress } from './progress.js'
 import { reorderProject } from './reorder.js'
+import { shareProject } from './share.js'
 import { unarchiveProject } from './unarchive.js'
 import { updateProject } from './update.js'
 import { viewProject } from './view.js'
@@ -255,6 +257,67 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             return joinProjectCmd(id, options)
+        })
+
+    const shareCmd = project
+        .command('share [project] [email]')
+        .description('Invite a collaborator to a project')
+        .option('--project <ref>', 'Project name or id:xxx (alias for the positional project)')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--role <role>',
+                    'Workspace role (workspace projects only; default: member)',
+                ),
+                ['guest', 'member', 'admin'],
+            ),
+        )
+        .option('--message <msg>', 'Optional invitation message')
+        .option(
+            '--auto-invite',
+            'If the email is not yet a workspace member, invite them to the workspace first (workspace projects only)',
+        )
+        .option('--json', 'Output the result as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td project share "Roadmap" alice@example.com
+  td project share --project "Roadmap" alice@example.com
+  td project share "Team Plan" bob@example.com --role guest --auto-invite`,
+        )
+        .action((projectArg, emailArg, options) => {
+            // The project is provided either positionally or via --project, never both.
+            // In --project mode the sole positional is the collaborator email.
+            let projectRef: string | undefined
+            let email: string | undefined
+            if (options.project !== undefined) {
+                if (emailArg !== undefined) {
+                    throw new CliError(
+                        'CONFLICTING_OPTIONS',
+                        'Cannot specify the project both positionally and via --project.',
+                    )
+                }
+                projectRef = options.project
+                email = projectArg
+            } else {
+                projectRef = projectArg
+                email = emailArg
+            }
+
+            if (projectRef === undefined) {
+                shareCmd.help()
+                return
+            }
+            if (email === undefined) {
+                throw new CliError(
+                    'MISSING_EMAIL',
+                    'Specify the email of the collaborator to invite.',
+                    ['Usage: td project share <project> <email>'],
+                )
+            }
+            return shareProject(projectRef, email, options)
         })
 
     const progressCmd = project
