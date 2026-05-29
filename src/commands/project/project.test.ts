@@ -19,7 +19,7 @@ import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../li
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
-import { createProjectProgram as createProgram } from './test-helpers.js'
+import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 

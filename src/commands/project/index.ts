@@ -260,12 +260,17 @@ Examples:
         })
 
     const shareCmd = project
-        .command('share [ref] [email]')
+        .command('share [project] [email]')
         .description('Invite a collaborator to a project')
-        .option('--project <ref>', 'Project name or id:xxx (alias for the positional ref)')
-        .option(
-            '--role <role>',
-            'Workspace role: guest, member, or admin (workspace projects only; default: member)',
+        .option('--project <ref>', 'Project name or id:xxx (alias for the positional project)')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--role <role>',
+                    'Workspace role (workspace projects only; default: member)',
+                ),
+                ['guest', 'member', 'admin'],
+            ),
         )
         .option('--message <msg>', 'Optional invitation message')
         .option(
@@ -282,29 +287,37 @@ Examples:
   td project share --project "Roadmap" alice@example.com
   td project share "Team Plan" bob@example.com --role guest --auto-invite`,
         )
-        .action((ref, email, options) => {
-            // Project can come from the positional ref or --project, but not both.
+        .action((projectArg, emailArg, options) => {
+            // The project is provided either positionally or via --project, never both.
+            // In --project mode the sole positional is the collaborator email.
             let projectRef: string | undefined
-            let collaboratorEmail: string | undefined
-            if (options.project) {
-                if (ref && email) {
+            let email: string | undefined
+            if (options.project !== undefined) {
+                if (emailArg !== undefined) {
                     throw new CliError(
                         'CONFLICTING_OPTIONS',
-                        'Cannot specify project both as argument and --project flag',
+                        'Cannot specify the project both positionally and via --project.',
                     )
                 }
                 projectRef = options.project
-                collaboratorEmail = ref
+                email = projectArg
             } else {
-                projectRef = ref
-                collaboratorEmail = email
+                projectRef = projectArg
+                email = emailArg
             }
 
-            if (!projectRef || !collaboratorEmail) {
+            if (projectRef === undefined) {
                 shareCmd.help()
                 return
             }
-            return shareProject(projectRef, collaboratorEmail, options)
+            if (email === undefined) {
+                throw new CliError(
+                    'MISSING_EMAIL',
+                    'Specify the email of the collaborator to invite.',
+                    ['Usage: td project share <project> <email>'],
+                )
+            }
+            return shareProject(projectRef, email, options)
         })
 
     const progressCmd = project

@@ -7,7 +7,7 @@ vi.mock('../../lib/api/core.js', () => ({
 
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
-import { createProjectProgram as createProgram } from './test-helpers.js'
+import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
 describe('project share', () => {
     let mockApi: MockApi
@@ -195,7 +195,7 @@ describe('project share', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Invited ellie@ingen.com to workspace')
     })
 
-    it('rejects an invalid --role before calling the API', async () => {
+    it('rejects an invalid --role (Commander choices)', async () => {
         const program = createProgram()
 
         mockApi.getProject.mockResolvedValue({
@@ -215,10 +215,37 @@ describe('project share', () => {
                 '--role',
                 'editor',
             ]),
-        ).rejects.toMatchObject({ code: 'INVALID_ROLE' })
+        ).rejects.toThrow('Allowed choices are')
 
         expect(mockApi.sync).not.toHaveBeenCalled()
         expect(mockApi.inviteWorkspaceUsers).not.toHaveBeenCalled()
+    })
+
+    it('--role is case-insensitive', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Park Ops',
+            workspaceId: 'ws-1',
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({ workspaceUsers: [], hasMore: false })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'share',
+            'id:proj-1',
+            'ellie@ingen.com',
+            '--role',
+            'Guest',
+            '--auto-invite',
+        ])
+
+        expect(mockApi.inviteWorkspaceUsers).toHaveBeenCalledWith(
+            expect.objectContaining({ role: 'GUEST' }),
+        )
     })
 
     it('--dry-run previews without mutating', async () => {
@@ -245,6 +272,32 @@ describe('project share', () => {
         expect(mockApi.sync).not.toHaveBeenCalled()
         expect(mockApi.inviteWorkspaceUsers).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would share project'))
+    })
+
+    it('--dry-run on a workspace project errors when the email is not a member and --auto-invite is omitted', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Park Ops',
+            workspaceId: 'ws-1',
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({ workspaceUsers: [], hasMore: false })
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'share',
+                'id:proj-1',
+                'ellie@ingen.com',
+                '--dry-run',
+            ]),
+        ).rejects.toMatchObject({ code: 'NOT_WORKSPACE_MEMBER' })
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+        expect(mockApi.inviteWorkspaceUsers).not.toHaveBeenCalled()
     })
 
     it('outputs JSON with --json', async () => {

@@ -1,4 +1,4 @@
-import { isWorkspaceProject, WORKSPACE_ROLES, type WorkspaceRole } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type WorkspaceRole } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { shareProject as shareProjectSync } from '../../lib/api/projects-sync.js'
@@ -16,17 +16,9 @@ export type ProjectShareOptions = {
     dryRun?: boolean
 }
 
+// Role values are validated by Commander's `--role` choices; default to MEMBER.
 function parseRole(role: string | undefined): WorkspaceRole {
-    if (role === undefined) {
-        return 'MEMBER'
-    }
-    const upper = role.toUpperCase()
-    if (!(WORKSPACE_ROLES as readonly string[]).includes(upper)) {
-        throw new CliError('INVALID_ROLE', `Invalid role "${role}".`, [
-            `Valid roles: ${WORKSPACE_ROLES.map((r) => r.toLowerCase()).join(', ')}`,
-        ])
-    }
-    return upper as WorkspaceRole
+    return (role?.toUpperCase() ?? 'MEMBER') as WorkspaceRole
 }
 
 export async function shareProject(
