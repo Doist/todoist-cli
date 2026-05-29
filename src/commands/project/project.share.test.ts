@@ -5,6 +5,7 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
+import { CliError } from '../../lib/errors.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
@@ -437,5 +438,58 @@ describe('project share', () => {
         ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
 
         expect(mockApi.sync).not.toHaveBeenCalled()
+    })
+
+    it('maps a personal collaborator-limit rejection to a helpful error', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Field Notes', isShared: true })
+        // Backend rejects via sync_status; the SDK surfaces the human message.
+        mockApi.sync.mockRejectedValue(new Error('Too many invitations'))
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'share', 'id:proj-1', 'alan@ingen.com']),
+        ).rejects.toMatchObject({ code: 'COLLABORATOR_LIMIT_REACHED' })
+    })
+
+    it('maps a workspace guest-limit rejection during auto-invite to a helpful error', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Park Ops',
+            workspaceId: 'ws-1',
+        })
+        mockApi.getWorkspaceUsers.mockResolvedValue({ workspaceUsers: [], hasMore: false })
+        mockApi.inviteWorkspaceUsers.mockRejectedValue(
+            new Error('Workspace already has the maximum number of guests allowed'),
+        )
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'share',
+                'id:proj-1',
+                'ellie@ingen.com',
+                '--role',
+                'guest',
+                '--auto-invite',
+            ]),
+        ).rejects.toMatchObject({ code: 'WORKSPACE_GUEST_LIMIT_REACHED' })
+
+        expect(mockApi.sync).not.toHaveBeenCalled()
+    })
+
+    it('passes through an unrecognized backend error unchanged', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Field Notes', isShared: true })
+        mockApi.sync.mockRejectedValue(new CliError('API_ERROR', 'Some other failure'))
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'share', 'id:proj-1', 'alan@ingen.com']),
+        ).rejects.toMatchObject({ code: 'API_ERROR' })
     })
 })

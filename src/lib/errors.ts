@@ -91,6 +91,16 @@ export type ErrorCode =
     | 'NOT_SHARED'
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
+    // Sharing limits & permissions
+    | 'COLLABORATOR_LIMIT_REACHED'
+    | 'ALREADY_COLLABORATOR'
+    | 'WORKSPACE_GUEST_LIMIT_REACHED'
+    | 'WORKSPACE_MEMBER_LIMIT_REACHED'
+    | 'ALREADY_WORKSPACE_MEMBER'
+    | 'WORKSPACE_JOIN_LIMIT_REACHED'
+    | 'ACCOUNT_NOT_VERIFIED'
+    | 'PROJECT_FROZEN'
+    | 'SHARE_FORBIDDEN'
     // Escape hatch for dynamic codes
     | (string & {})
 
