@@ -1,3 +1,9 @@
+## [1.70.0](https://github.com/Doist/todoist-cli/compare/v1.69.3...v1.70.0) (2026-05-29)
+
+### Features
+
+* **project:** add `project share` to invite a collaborator ([#373](https://github.com/Doist/todoist-cli/issues/373)) ([514d0fd](https://github.com/Doist/todoist-cli/commit/514d0fd830aaf523933a3fdac3988bfc2fd15dc9))
+
 ## [1.69.3](https://github.com/Doist/todoist-cli/compare/v1.69.2...v1.69.3) (2026-05-28)
 
 ### Bug Fixes
