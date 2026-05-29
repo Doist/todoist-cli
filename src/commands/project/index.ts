@@ -20,6 +20,7 @@ import { moveProject } from './move.js'
 import { showPermissions } from './permissions.js'
 import { showProjectProgress } from './progress.js'
 import { reorderProject } from './reorder.js'
+import { shareProject } from './share.js'
 import { unarchiveProject } from './unarchive.js'
 import { updateProject } from './update.js'
 import { viewProject } from './view.js'
@@ -255,6 +256,31 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             return joinProjectCmd(id, options)
+        })
+
+    project
+        .command('share <ref> <email>')
+        .description('Invite a collaborator to a project')
+        .option(
+            '--role <role>',
+            'Workspace role: guest, member, or admin (workspace projects only; default: member)',
+        )
+        .option('--message <msg>', 'Optional invitation message')
+        .option(
+            '--auto-invite',
+            'If the email is not yet a workspace member, invite them to the workspace first (workspace projects only)',
+        )
+        .option('--json', 'Output the result as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .addHelpText(
+            'after',
+            `
+Examples:
+  td project share "Roadmap" alice@example.com
+  td project share "Team Plan" bob@example.com --role guest --auto-invite`,
+        )
+        .action((ref, email, options) => {
+            return shareProject(ref, email, options)
         })
 
     const progressCmd = project

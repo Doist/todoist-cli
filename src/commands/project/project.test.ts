@@ -1,4 +1,4 @@
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, captureStream } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -19,16 +19,12 @@ import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../li
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
-import { registerProjectCommand } from './index.js'
+import { createProjectProgram as createProgram } from './test-helpers.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
-
-function createProgram() {
-    return createTestProgram(registerProjectCommand)
-}
 
 describe('project list', () => {
     let mockApi: MockApi

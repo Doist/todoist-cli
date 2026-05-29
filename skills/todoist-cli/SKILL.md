@@ -90,7 +90,7 @@ Resolution order: `--user <ref>` > `user.defaultUser` from config > the only sto
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
 - Task lifecycle: `td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
-- Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/browse/collaborators/permissions`
+- Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/share/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
 - Goals: `td goal list/view/create/update/delete/complete/uncomplete/link/unlink`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td folder ...`, `td workspace ...`
@@ -178,6 +178,8 @@ td project archive "Roadmap"
 td project unarchive "Roadmap"
 td project move "Roadmap" --to-workspace "Acme" --folder "Engineering" --visibility team --yes
 td project join id:abc123
+td project share "Roadmap" alice@example.com
+td project share "Team Plan" bob@example.com --role guest --auto-invite
 td project delete "Roadmap" --yes
 td project progress "Roadmap"
 td project health "Roadmap"
