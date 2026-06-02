@@ -1,3 +1,9 @@
+## [1.71.0](https://github.com/Doist/todoist-cli/compare/v1.70.0...v1.71.0) (2026-06-02)
+
+### Features
+
+* **auth:** add `--no-browser-open` to `auth login` ([#376](https://github.com/Doist/todoist-cli/issues/376)) ([90ee8ec](https://github.com/Doist/todoist-cli/commit/90ee8ecf0112b8e7ae712cd05bb3debbdca391a8))
+
 ## [1.70.0](https://github.com/Doist/todoist-cli/compare/v1.69.3...v1.70.0) (2026-05-29)
 
 ### Features
