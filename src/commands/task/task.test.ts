@@ -1377,6 +1377,41 @@ describe('task add --assignee', () => {
         )
     })
 
+    it('creates task with assignee whose email is hidden', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work', isShared: true }],
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-123', name: 'Jane Smith', email: null as unknown as string }],
+            nextCursor: null,
+        })
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--project',
+            'Work',
+            '--assignee',
+            'Jane Smith',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ assigneeId: 'user-123' }),
+        )
+    })
+
     it('throws error when --assignee used without --project', async () => {
         const program = createProgram()
 

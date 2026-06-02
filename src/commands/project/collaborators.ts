@@ -6,6 +6,10 @@ import { CliError } from '../../lib/errors.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
+function formatCollaboratorEmail(email: string | null): string {
+    return chalk.dim(email ? `<${email}>` : '(hidden)')
+}
+
 export async function listCollaborators(ref: string, options: ViewOptions = {}): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
@@ -70,7 +74,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
         for (const user of allUsers) {
             const id = chalk.dim(user.userId)
             const name = formatUserShortName(user.fullName)
-            const email = chalk.dim(`<${user.userEmail}>`)
+            const email = formatCollaboratorEmail(user.userEmail)
             const role = chalk.dim(`[${user.role}]`)
             console.log(`${id}  ${name} ${email} ${role}`)
         }
@@ -81,7 +85,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
         throw new CliError('NOT_SHARED', 'Project is not shared.')
     }
 
-    const allUsers: Array<{ id: string; name: string; email: string }> = []
+    const allUsers: Array<{ id: string; name: string; email: string | null }> = []
     let cursor: string | undefined
     while (true) {
         const response = await api.getProjectCollaborators(project.id, { cursor })
@@ -114,7 +118,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
     for (const user of allUsers) {
         const id = chalk.dim(user.id)
         const name = formatUserShortName(user.name)
-        const email = chalk.dim(`<${user.email}>`)
+        const email = formatCollaboratorEmail(user.email)
         console.log(`${id}  ${name} ${email}`)
     }
 }

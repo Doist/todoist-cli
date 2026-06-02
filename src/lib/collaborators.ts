@@ -6,7 +6,7 @@ import { extractId, isIdRef } from './refs.js'
 export interface CollaboratorInfo {
     id: string
     name: string
-    email: string
+    email: string | null
 }
 
 export class CollaboratorCache {
@@ -231,7 +231,7 @@ export async function resolveAssigneeId(
     const exactName = collaborators.find((c) => c.name.toLowerCase() === lower)
     if (exactName) return exactName.id
 
-    const exactEmail = collaborators.find((c) => c.email.toLowerCase() === lower)
+    const exactEmail = collaborators.find((c) => c.email?.toLowerCase() === lower)
     if (exactEmail) return exactEmail.id
 
     const partialName = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
