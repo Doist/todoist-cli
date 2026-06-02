@@ -1,6 +1,8 @@
+import type { UiExtension } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { resolveAppRef } from '../../lib/refs.js'
+import { appInstallUrl } from '../../lib/urls.js'
 import { parseOAuthRedirectUris } from './helpers.js'
 
 export interface ViewAppOptions {
@@ -15,28 +17,62 @@ function hiddenLine(label: string): string {
     return `  ${label}${chalk.dim(HIDDEN_HINT)}`
 }
 
+// Renders a UI extension's type alongside its variant-specific sub-type, e.g.
+// "context-menu: project" or "composer: task". Settings extensions have no sub-type.
+// Branches are exhaustive over the SDK's UiExtension union so a new variant fails to
+// compile (via the `never` fallback) rather than silently rendering a partial label.
+function formatExtensionType(ext: UiExtension): string {
+    switch (ext.extensionType) {
+        case 'context-menu':
+            return `${ext.extensionType}: ${ext.contextType}`
+        case 'composer':
+            return `${ext.extensionType}: ${ext.composerType}`
+        case 'settings':
+            return ext.extensionType
+        default: {
+            const _exhaustive: never = ext
+            return _exhaustive
+        }
+    }
+}
+
 export async function viewApp(ref: string, options: ViewAppOptions = {}): Promise<void> {
     const api = await getApi()
     const app = await resolveAppRef(api, ref)
     const revealSecrets = Boolean(options.includeSecrets)
 
-    // Secret-bearing endpoints (getAppSecrets for clientSecret, verification / test /
-    // distribution tokens) are gated on `revealSecrets` so we never transport
-    // secret data onto the user's machine unless they asked for it.
-    const [webhook, secrets, verification, testToken, distribution] = await Promise.all([
+    // Secret-bearing endpoints (getAppSecrets for clientSecret, verification and test
+    // tokens) are gated on `revealSecrets` so we never transport secret data onto the
+    // user's machine unless they asked for it.
+    const [webhook, uiExtensions, secrets, verification, testToken] = await Promise.all([
         api.getAppWebhook(app.id),
+        api.getUiExtensionsForApp(app.id),
         revealSecrets ? api.getAppSecrets(app.id) : Promise.resolve(null),
         revealSecrets ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
         revealSecrets ? api.getAppTestToken(app.id) : Promise.resolve(null),
-        revealSecrets ? api.getAppDistributionToken(app.id) : Promise.resolve(null),
     ])
 
+    // The distribution token underpins the shareable install URL — not a secret, but
+    // only relevant when the app has UI extensions (plain output) or for the full JSON
+    // payload, so we skip the call entirely in the common no-extensions plain path.
+    const wantsJson = Boolean(options.json || options.ndjson)
+    const distribution =
+        wantsJson || uiExtensions.length > 0 ? await api.getAppDistributionToken(app.id) : null
+    const distributionToken = distribution?.distributionToken ?? null
+    const installUrl =
+        uiExtensions.length > 0 && distributionToken ? appInstallUrl(distributionToken) : null
+
     if (options.json || options.ndjson) {
-        const payload: Record<string, unknown> = { ...app, webhook }
+        const payload: Record<string, unknown> = {
+            ...app,
+            webhook,
+            uiExtensions,
+            distributionToken,
+            installUrl,
+        }
         if (revealSecrets && secrets) {
             payload.clientSecret = secrets.clientSecret
             payload.verificationToken = verification?.verificationToken ?? null
-            payload.distributionToken = distribution?.distributionToken ?? null
             payload.testToken = { accessToken: testToken?.accessToken ?? null }
         }
         const indent = options.json ? 2 : undefined
@@ -81,12 +117,10 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
         console.log(
             `  Test token:         ${accessToken == null ? chalk.dim('(not created)') : accessToken}`,
         )
-        console.log(`  Distribution token: ${distribution?.distributionToken ?? '(none)'}`)
     } else {
         console.log(hiddenLine('Client secret:      '))
         console.log(hiddenLine('Verification token: '))
         console.log(hiddenLine('Test token:         '))
-        console.log(hiddenLine('Distribution token: '))
     }
 
     if (webhook === null) {
@@ -95,6 +129,17 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
         console.log(`  Webhook:            ${webhook.status} — ${webhook.callbackUrl}`)
         console.log(`  Webhook events:     ${webhook.events.join(', ') || '(none)'}`)
         console.log(`  Webhook version:    ${webhook.version}`)
+    }
+
+    if (uiExtensions.length > 0) {
+        const [first, ...rest] = uiExtensions
+        console.log(`  UI extensions:      ${first.name} (${formatExtensionType(first)})`)
+        for (const ext of rest) {
+            console.log(`                      ${ext.name} (${formatExtensionType(ext)})`)
+        }
+        if (installUrl) {
+            console.log(`  Install URL:        ${installUrl}`)
+        }
     }
 
     console.log('')
