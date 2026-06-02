@@ -42,6 +42,7 @@ td auth login --read-only --additional-scopes=backups
 td auth login --additional-scopes=billing
 td auth login --additional-scopes=app-management,backups
 td auth login --callback-port 9000           # override the OAuth callback port
+td auth login --no-browser-open              # print the authorize URL instead of opening a browser
 td auth login --json                         # emit the new account record as JSON
 td auth login --ndjson                       # one-line newline-delimited JSON
 td auth token
@@ -53,7 +54,7 @@ td auth logout
 td auth logout --json                        # emits `{"ok": true}` (--ndjson is silent)
 ```
 
-`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. Across all three, keyring-fallback warnings are written to stderr so stdout stays parseable. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy).
+`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. Across all three, keyring-fallback warnings are written to stderr so stdout stays parseable. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy) and `--no-browser-open`, which prints the authorization URL for manual copy-paste instead of opening a browser (useful on headless or remote hosts).
 
 Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separated). Run `td auth login --help` for the full list. Currently supported:
 
