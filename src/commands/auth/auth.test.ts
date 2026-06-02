@@ -129,12 +129,16 @@ function makeTodoistStore(opts: MakeStoreOpts = {}) {
     const store = Object.assign(harness.store as unknown as TodoistTokenStore, {
         getLastStorageResult: () => lastStorage,
         getLastClearResult: () => lastClear,
+        // Resolve through the fake's own `active()` (which applies the store
+        // matcher) rather than re-deriving ref matching here, then read the
+        // default flag off `list()` for the resolved account.
         activeAccount: async (ref?: string) => {
+            const resolved = await harness.store.active(ref)
+            if (!resolved) return null
             const records = await harness.store.list()
-            const target = ref
-                ? records.find((r) => r.account.id === ref || r.account.email === ref)
-                : records.find((r) => r.isDefault)
-            return target ? { account: target.account, isDefault: target.isDefault } : null
+            const isDefault =
+                records.find((r) => r.account.id === resolved.account.id)?.isDefault ?? false
+            return { account: resolved.account, isDefault }
         },
     })
     return {
@@ -156,6 +160,11 @@ function useStore(opts: MakeStoreOpts = {}) {
     return made
 }
 
+/** Explicit empty-store install for the logged-out / `onNotAuthenticated` path. */
+function useEmptyStore() {
+    return useStore()
+}
+
 describe('auth command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
     let errorSpy: ReturnType<typeof vi.spyOn>
@@ -166,9 +175,10 @@ describe('auth command', () => {
         errorSpy = captureConsole('error')
         mockListStoredUsers.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
-        // Safety net: any test that forgets `useStore()` gets an empty store
-        // rather than the factory's "not set" throw.
-        holder.store = makeTodoistStore().store
+        // No default store: a test that forgets `useStore()`/`useEmptyStore()`
+        // hits the factory's "not set" throw rather than silently falling back
+        // to the logged-out path and mis-covering a stored/snapshot branch.
+        holder.store = undefined
     })
 
     afterEach(() => {
@@ -279,6 +289,7 @@ describe('auth command', () => {
 
     describe('status subcommand', () => {
         it('shows authenticated status when logged in', async () => {
+            useEmptyStore()
             const program = createProgram()
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
@@ -297,6 +308,7 @@ describe('auth command', () => {
         })
 
         it('marks the active user as default when matching', async () => {
+            useEmptyStore()
             const program = createProgram()
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
@@ -317,6 +329,7 @@ describe('auth command', () => {
         it('marks a lone account as default with no pinned defaultUser', async () => {
             // Effective-default rule: a single stored account is implicitly the
             // default, so the marker matches `accounts list` even with no pin.
+            useEmptyStore()
             const program = createProgram()
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
@@ -334,6 +347,7 @@ describe('auth command', () => {
         })
 
         it('lists other stored accounts', async () => {
+            useEmptyStore()
             const program = createProgram()
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
@@ -354,6 +368,7 @@ describe('auth command', () => {
         })
 
         it('outputs JSON when --json flag is used', async () => {
+            useEmptyStore()
             const program = createProgram()
             const mockApi = createMockApi({ getUser: vi.fn().mockResolvedValue(TEST_USER) })
             mockGetApi.mockResolvedValue(mockApi)
@@ -381,6 +396,7 @@ describe('auth command', () => {
         })
 
         it('throws NoTokenError when not authenticated', async () => {
+            useEmptyStore()
             const program = createProgram()
             mockGetApi.mockRejectedValue(new NoTokenError())
             // status now first calls `store.active()` (via cli-core) and, if a
