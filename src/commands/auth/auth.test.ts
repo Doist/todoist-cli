@@ -1,27 +1,30 @@
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import {
+    type StoreEntry,
+    alanGrant,
+    buildTokenStore,
+    captureConsole,
+    captureStream,
+    createTestProgram,
+} from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock the auth-store factory so token / logout commands can drive a stub.
-const setMock = vi.fn()
-const clearMock = vi.fn()
-const activeMock = vi.fn<(ref?: string) => Promise<unknown>>()
-const listMock = vi.fn<() => Promise<unknown[]>>().mockResolvedValue([])
-const lastStorageMock = vi.fn<() => unknown>()
-const lastClearMock = vi.fn<() => unknown>()
+// Each test drives cli-core's stateful `buildTokenStore` fake. The mock factory
+// returns whatever store the current test installed via `useStore()` (see the
+// `makeTodoistStore` helper below), so the store's entries/spies are per-test.
+const holder = vi.hoisted(() => ({
+    store: undefined as import('../../lib/auth-store.js').TodoistTokenStore | undefined,
+}))
 vi.mock('../../lib/auth-store.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
     return {
         ...actual,
-        createTodoistTokenStore: () => ({
-            active: activeMock,
-            list: listMock,
-            setDefault: vi.fn(),
-            set: setMock,
-            clear: clearMock,
-            getLastStorageResult: lastStorageMock,
-            getLastClearResult: lastClearMock,
-        }),
+        createTodoistTokenStore: () => {
+            if (!holder.store) {
+                throw new Error('test store not set; call useStore() before createProgram()')
+            }
+            return holder.store
+        },
     }
 })
 
@@ -71,6 +74,7 @@ vi.mock('node:readline', () => ({
 }))
 
 import { createInterface, type Interface } from 'node:readline'
+import type { TokenStorageResult } from '@doist/cli-core/auth'
 import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
@@ -103,6 +107,55 @@ function createProgram() {
     return createTestProgram(registerAuthCommand)
 }
 
+type MakeStoreOpts = {
+    // Default [] — an EMPTY store. A seeded `active()` snapshot would flip
+    // `status` onto the fetchLive path, so empty is the right default.
+    entries?: StoreEntry<TodoistAccount>[]
+    lastStorage?: TokenStorageResult
+    lastClear?: TokenStorageResult
+}
+
+/**
+ * Wrap cli-core's stateful `buildTokenStore` fake, bolting on the keyring-only
+ * methods (`getLastStorageResult` / `getLastClearResult` / `activeAccount`) that
+ * live on `KeyringTokenStore` but not `TokenStore`, so the result satisfies
+ * `TodoistTokenStore`. Returns the harness too (`state.entries`, `*Spy`) for
+ * assertions, plus setters to mutate the storage-result shape mid-test.
+ */
+function makeTodoistStore(opts: MakeStoreOpts = {}) {
+    const harness = buildTokenStore<TodoistAccount>({ entries: opts.entries ?? [] })
+    let lastStorage = opts.lastStorage
+    let lastClear = opts.lastClear
+    const store = Object.assign(harness.store as unknown as TodoistTokenStore, {
+        getLastStorageResult: () => lastStorage,
+        getLastClearResult: () => lastClear,
+        activeAccount: async (ref?: string) => {
+            const records = await harness.store.list()
+            const target = ref
+                ? records.find((r) => r.account.id === ref || r.account.email === ref)
+                : records.find((r) => r.isDefault)
+            return target ? { account: target.account, isDefault: target.isDefault } : null
+        },
+    })
+    return {
+        store,
+        harness,
+        setLastStorage: (r?: TokenStorageResult) => {
+            lastStorage = r
+        },
+        setLastClear: (r?: TokenStorageResult) => {
+            lastClear = r
+        },
+    }
+}
+
+/** Build a store and install it for the eager `createTodoistTokenStore()` call. */
+function useStore(opts: MakeStoreOpts = {}) {
+    const made = makeTodoistStore(opts)
+    holder.store = made.store
+    return made
+}
+
 describe('auth command', () => {
     let consoleSpy: ReturnType<typeof vi.spyOn>
     let errorSpy: ReturnType<typeof vi.spyOn>
@@ -113,6 +166,9 @@ describe('auth command', () => {
         errorSpy = captureConsole('error')
         mockListStoredUsers.mockResolvedValue([])
         mockReadConfig.mockResolvedValue({})
+        // Safety net: any test that forgets `useStore()` gets an empty store
+        // rather than the factory's "not set" throw.
+        holder.store = makeTodoistStore().store
     })
 
     afterEach(() => {
@@ -120,12 +176,8 @@ describe('auth command', () => {
     })
 
     describe('token subcommand', () => {
-        beforeEach(() => {
-            setMock.mockReset().mockResolvedValue(undefined)
-            lastStorageMock.mockReset().mockReturnValue({ storage: 'secure-store' })
-        })
-
         it('successfully saves a token', async () => {
+            const { harness } = useStore({ lastStorage: { storage: 'secure-store' } })
             const program = createProgram()
             const token = 'some_token_123456789'
 
@@ -134,19 +186,22 @@ describe('auth command', () => {
             await program.parseAsync(['node', 'td', 'auth', 'token', token])
 
             expect(mockCreateApiForToken).toHaveBeenCalledWith(token)
-            expect(setMock).toHaveBeenCalledWith(
+            expect(harness.state.entries).toHaveLength(1)
+            const [entry] = harness.state.entries
+            expect(entry.account).toEqual(
                 expect.objectContaining({
                     id: TEST_USER.id,
                     email: TEST_USER.email,
                     label: TEST_USER.email,
                     auth_mode: 'unknown',
                 }),
-                token,
             )
+            expect(entry.token).toBe(token)
             expect(consoleSpy).toHaveBeenCalledWith('✓', `Saved token for ${TEST_USER.email}`)
         })
 
         it('trims whitespace from token', async () => {
+            const { harness } = useStore({ lastStorage: { storage: 'secure-store' } })
             const program = createProgram()
             const tokenWithWhitespace = '  some_token_123456789  '
             const expectedToken = 'some_token_123456789'
@@ -156,10 +211,11 @@ describe('auth command', () => {
             await program.parseAsync(['node', 'td', 'auth', 'token', tokenWithWhitespace])
 
             expect(mockCreateApiForToken).toHaveBeenCalledWith(expectedToken)
-            expect(setMock).toHaveBeenCalledWith(expect.anything(), expectedToken)
+            expect(harness.state.entries[0]?.token).toBe(expectedToken)
         })
 
         it('prompts interactively when no token argument given', async () => {
+            const { harness } = useStore({ lastStorage: { storage: 'secure-store' } })
             const program = createProgram()
             const mockRl = {
                 question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
@@ -175,10 +231,11 @@ describe('auth command', () => {
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
             expect(mockRl.question).toHaveBeenCalled()
-            expect(setMock).toHaveBeenCalledWith(expect.anything(), 'interactive_token_456')
+            expect(harness.state.entries[0]?.token).toBe('interactive_token_456')
         })
 
         it('shows error when interactive input is empty', async () => {
+            const { harness } = useStore({ lastStorage: { storage: 'secure-store' } })
             const program = createProgram()
             const mockRl = {
                 question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
@@ -192,18 +249,20 @@ describe('auth command', () => {
 
             await program.parseAsync(['node', 'td', 'auth', 'token'])
 
-            expect(setMock).not.toHaveBeenCalled()
+            expect(harness.state.entries).toHaveLength(0)
             expect(errorSpy).toHaveBeenCalledWith('Error:', 'No token provided')
         })
 
         it('surfaces config-file fallback warning', async () => {
+            useStore({
+                lastStorage: {
+                    storage: 'config-file',
+                    warning:
+                        'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
+                },
+            })
             const program = createProgram()
             stubProbeApiForUser()
-            lastStorageMock.mockReturnValue({
-                storage: 'config-file',
-                warning:
-                    'system credential manager unavailable; token saved as plaintext in /tmp/test-config.json',
-            })
 
             await program.parseAsync(['node', 'td', 'auth', 'token', 'some_token_123456789'])
 
@@ -355,32 +414,20 @@ describe('auth command', () => {
                 const program = new Command()
                 program.exitOverride()
                 const auth = program.command('auth')
-                const snapshotStore: TodoistTokenStore = {
-                    async active() {
-                        return { token: 'snapshot_token', account: SNAPSHOT_ACCOUNT }
-                    },
-                    async set() {},
-                    async setBundle() {},
-                    async activeBundle() {
-                        return {
+                // Status with `fetchLive` reads `activeBundle()` first and, on a
+                // null bundle with no `--user`, treats the account as logged out.
+                // Seed a bundle so the snapshot path resolves (token comes from
+                // `bundle.accessToken`).
+                const { store } = makeTodoistStore({
+                    entries: [
+                        {
                             account: SNAPSHOT_ACCOUNT,
+                            isDefault: true,
                             bundle: { accessToken: 'snapshot_token' },
-                        }
-                    },
-                    async activeAccount() {
-                        return { account: SNAPSHOT_ACCOUNT, isDefault: true }
-                    },
-                    async clear() {
-                        return null
-                    },
-                    async list() {
-                        return [{ account: SNAPSHOT_ACCOUNT, isDefault: true }]
-                    },
-                    async setDefault() {},
-                    getLastStorageResult: () => undefined,
-                    getLastClearResult: () => undefined,
-                }
-                attachTodoistStatusCommand(auth, snapshotStore)
+                        },
+                    ],
+                })
+                attachTodoistStatusCommand(auth, store)
                 return program
             }
 
@@ -460,16 +507,9 @@ describe('auth command', () => {
                 'system credential manager unavailable; token cleared from plaintext config.json',
         }
 
-        beforeEach(() => {
-            clearMock.mockReset().mockResolvedValue(undefined)
-            lastClearMock.mockReset().mockReturnValue({ storage: 'secure-store' })
-            activeMock.mockReset()
-            listMock.mockReset().mockResolvedValue([])
-        })
-
         it('surfaces keyring-fallback warning to stderr', async () => {
+            useStore({ lastClear: WARNING_RESULT })
             const program = createProgram()
-            lastClearMock.mockReturnValue(WARNING_RESULT)
 
             await program.parseAsync(['node', 'td', 'auth', 'logout'])
 
@@ -483,20 +523,17 @@ describe('auth command', () => {
             // and substitutes it when commander calls `store.clear(undefined)`.
             // Existence is checked via `store.list()` (no token side effect),
             // not `store.active()`.
-            listMock.mockResolvedValue([
-                {
-                    account: { id: '111', email: 'a@example.com', label: 'a@example.com' },
-                    isDefault: true,
-                },
-            ])
+            const { harness } = useStore({
+                entries: [{ account: alanGrant as TodoistAccount, isDefault: true }],
+            })
 
             const program = createProgram()
             const originalArgv = process.argv
-            process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'logout']
+            process.argv = ['node', 'td', '--user', alanGrant.email, 'auth', 'logout']
             resetGlobalArgs()
             try {
                 await program.parseAsync(['node', 'td', 'auth', 'logout'])
-                expect(clearMock).toHaveBeenCalledWith('a@example.com')
+                expect(harness.clearSpy).toHaveBeenCalledWith(alanGrant.email)
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
@@ -507,17 +544,17 @@ describe('auth command', () => {
             // cli-core's `clear(ref)` is contractually a no-op on miss; without
             // the wrap's pre-check, `logout --user mistake` would print
             // "✓ Logged out" and exit 0. The wrap surfaces the typed miss.
-            listMock.mockResolvedValue([])
+            const { harness } = useStore()
 
             const program = createProgram()
             const originalArgv = process.argv
-            process.argv = ['node', 'td', '--user', 'missing@example.com', 'auth', 'logout']
+            process.argv = ['node', 'td', '--user', 'missing@ingen.com', 'auth', 'logout']
             resetGlobalArgs()
             try {
                 await expect(
                     program.parseAsync(['node', 'td', 'auth', 'logout']),
                 ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
-                expect(clearMock).not.toHaveBeenCalled()
+                expect(harness.clearSpy).not.toHaveBeenCalled()
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
@@ -530,8 +567,8 @@ describe('auth command', () => {
             // removed" confirmation; cli-core then prints `{ok: true}`. A
             // regression that leaked human prose into stdout — or dropped the
             // envelope — would corrupt machine-output consumers.
+            useStore({ lastClear: WARNING_RESULT })
             const program = createProgram()
-            lastClearMock.mockReturnValue(WARNING_RESULT)
 
             await program.parseAsync(['node', 'td', 'auth', 'logout', '--json'])
 
@@ -550,18 +587,24 @@ describe('auth command', () => {
         // don't cover (they only exercise `.clear`).
 
         it('routes --user from global args through the active() path', async () => {
-            const account = { id: '111', email: 'a@example.com', label: 'a@example.com' }
-            listMock.mockResolvedValue([{ account, isDefault: true }])
-            activeMock.mockResolvedValue({ token: 'stored-token-1234567', account })
+            const { harness } = useStore({
+                entries: [
+                    {
+                        account: alanGrant as TodoistAccount,
+                        isDefault: true,
+                        token: 'stored-token-1234567',
+                    },
+                ],
+            })
 
             const program = createProgram()
             const stdoutWrite = captureStream()
             const originalArgv = process.argv
-            process.argv = ['node', 'td', '--user', 'a@example.com', 'auth', 'token', 'view']
+            process.argv = ['node', 'td', '--user', alanGrant.email, 'auth', 'token', 'view']
             resetGlobalArgs()
             try {
                 await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
-                expect(activeMock).toHaveBeenCalledWith('a@example.com')
+                expect(harness.activeSpy).toHaveBeenCalledWith(alanGrant.email)
                 expect(stdoutWrite).toHaveBeenCalledWith('stored-token-1234567')
             } finally {
                 process.argv = originalArgv
@@ -570,17 +613,17 @@ describe('auth command', () => {
         })
 
         it('surfaces UserNotFoundError when --user does not match', async () => {
-            listMock.mockResolvedValue([])
+            const { harness } = useStore()
 
             const program = createProgram()
             const originalArgv = process.argv
-            process.argv = ['node', 'td', '--user', 'nobody@example.com', 'auth', 'token', 'view']
+            process.argv = ['node', 'td', '--user', 'nobody@ingen.com', 'auth', 'token', 'view']
             resetGlobalArgs()
             try {
                 await expect(
                     program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
                 ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
-                expect(activeMock).not.toHaveBeenCalled()
+                expect(harness.activeSpy).not.toHaveBeenCalled()
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
