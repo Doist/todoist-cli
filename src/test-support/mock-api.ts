@@ -201,6 +201,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         getAppTestToken: vi.fn().mockResolvedValue({ accessToken: null }),
         getAppDistributionToken: vi.fn().mockResolvedValue({ distributionToken: '' }),
         getAppWebhook: vi.fn().mockResolvedValue(null),
+        getUiExtensionsForApp: vi.fn().mockResolvedValue([]),
         updateApp: vi.fn(),
         // Billing
         getSubscriptionInfo: vi.fn(),

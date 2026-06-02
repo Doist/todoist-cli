@@ -396,23 +396,24 @@ describe('apps view — enriched fields', () => {
         mockApi.getAppWebhook.mockResolvedValue(null)
     })
 
-    it('only fetches webhook by default (no secret-bearing endpoints touched)', async () => {
+    it('fetches webhook, UI extensions, and the (non-secret) distribution token by default', async () => {
         const program = createProgram()
         captureConsole()
 
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
-        // Secret-minimization: endpoints whose payload carries sensitive data
-        // are never touched without --include-secrets. clientId is no longer
-        // a reason to call getAppSecrets — it's on App directly now.
+        expect(mockApi.getUiExtensionsForApp).toHaveBeenCalledWith('9909')
+        // The distribution token underpins the shareable install URL — not a secret.
+        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
+        // Secret-minimization: endpoints whose payload carries genuinely sensitive
+        // data are never touched without --include-secrets.
         expect(mockApi.getAppSecrets).not.toHaveBeenCalled()
         expect(mockApi.getAppVerificationToken).not.toHaveBeenCalled()
         expect(mockApi.getAppTestToken).not.toHaveBeenCalled()
-        expect(mockApi.getAppDistributionToken).not.toHaveBeenCalled()
     })
 
-    it('fires all five enrichment calls with --include-secrets', async () => {
+    it('fires the remaining secret enrichment calls with --include-secrets', async () => {
         const program = createProgram()
         captureConsole()
 
@@ -425,7 +426,7 @@ describe('apps view — enriched fields', () => {
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
     })
 
-    it('shows Client ID by default and hides the four sensitive credential lines', async () => {
+    it('shows Client ID by default and hides the three sensitive credential lines', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
 
@@ -438,11 +439,11 @@ describe('apps view — enriched fields', () => {
         expect(output).toContain('Client secret:      (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Verification token: (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Test token:         (hidden — pass --include-secrets to reveal)')
-        expect(output).toContain('Distribution token: (hidden — pass --include-secrets to reveal)')
+        // Distribution token is no longer a secret — no hidden placeholder for it.
+        expect(output).not.toContain('Distribution token:')
         // Raw secret strings must not appear
         expect(output).not.toContain('secret-def')
         expect(output).not.toContain('verify-ghi')
-        expect(output).not.toContain('dist-jkl')
         // Webhook line is still shown (callback URL is user-supplied, not a secret)
         expect(output).toContain('Webhook:            (not configured)')
     })
@@ -460,7 +461,6 @@ describe('apps view — enriched fields', () => {
         expect(output).toContain('Client secret:      secret-def')
         expect(output).toContain('Verification token: verify-ghi')
         expect(output).toContain('Test token:         test-mno')
-        expect(output).toContain('Distribution token: dist-jkl')
         // No hidden placeholders remain
         expect(output).not.toContain('pass --include-secrets')
     })
@@ -502,10 +502,11 @@ describe('apps view — enriched fields', () => {
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         // clientId is public — present by default (from App payload).
         expect(parsed.clientId).toBe('client-abc')
+        // distributionToken is non-secret — always present (drives the install URL).
+        expect(parsed.distributionToken).toBe('dist-jkl')
         // Sensitive keys must still be absent — not null or placeholder.
         expect(parsed).not.toHaveProperty('clientSecret')
         expect(parsed).not.toHaveProperty('verificationToken')
-        expect(parsed).not.toHaveProperty('distributionToken')
         expect(parsed).not.toHaveProperty('testToken')
         expect(parsed.webhook).toMatchObject({
             status: 'active',
@@ -545,6 +546,105 @@ describe('apps view — enriched fields', () => {
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.webhook).toBeNull()
+    })
+
+    const UI_EXTENSIONS = [
+        {
+            id: '1',
+            integrationId: '9909',
+            extensionId: 'ext-settings',
+            url: 'https://example.com/settings',
+            icon: null,
+            name: 'Settings panel',
+            description: '',
+            width: null,
+            height: null,
+            defVersion: 1,
+            minimumCardistVersion: '0.1',
+            extensionType: 'settings' as const,
+        },
+        {
+            id: '2',
+            integrationId: '9909',
+            extensionId: 'ext-context',
+            url: 'https://example.com/context',
+            icon: null,
+            name: 'Project action',
+            description: '',
+            width: null,
+            height: null,
+            defVersion: 1,
+            minimumCardistVersion: '0.1',
+            extensionType: 'context-menu' as const,
+            contextType: 'project' as const,
+        },
+        {
+            id: '3',
+            integrationId: '9909',
+            extensionId: 'ext-composer',
+            url: 'https://example.com/composer',
+            icon: null,
+            name: 'Task composer',
+            description: '',
+            width: null,
+            height: null,
+            defVersion: 1,
+            minimumCardistVersion: '0.1',
+            extensionType: 'composer' as const,
+            composerType: 'task' as const,
+        },
+    ]
+
+    it('lists UI extensions (with sub-types) and the install URL when the app has them', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getUiExtensionsForApp.mockResolvedValue(UI_EXTENSIONS)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('UI extensions:      Settings panel (settings)')
+        expect(output).toContain('Project action (context-menu: project)')
+        expect(output).toContain('Task composer (composer: task)')
+        expect(output).toContain('Install URL:        https://app.todoist.com/app/install/dist-jkl')
+    })
+
+    it('omits the UI extensions section and install URL when the app has none', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        // Default mock: getUiExtensionsForApp resolves to []
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).not.toContain('UI extensions:')
+        expect(output).not.toContain('Install URL:')
+    })
+
+    it('carries uiExtensions, distributionToken, and installUrl in --json', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getUiExtensionsForApp.mockResolvedValue(UI_EXTENSIONS)
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.uiExtensions).toHaveLength(3)
+        expect(parsed.distributionToken).toBe('dist-jkl')
+        expect(parsed.installUrl).toBe('https://app.todoist.com/app/install/dist-jkl')
+    })
+
+    it('sets installUrl null in --json when the app has no UI extensions', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.uiExtensions).toEqual([])
+        expect(parsed.installUrl).toBeNull()
     })
 })
 

@@ -34,6 +34,10 @@ export function workspaceGoalsUrl(workspaceId: string): string {
     return `${BASE_URL}/goals/${workspaceId}`
 }
 
+export function appInstallUrl(distributionToken: string): string {
+    return `${BASE_URL}/install/${distributionToken}`
+}
+
 export function commentUrl(taskId: string, commentId: string): string {
     return `${entityUrl('task', taskId)}#comment-${commentId}`
 }
