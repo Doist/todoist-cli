@@ -61,17 +61,14 @@ function attachAndCapture(): AttachOptions {
     return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
 }
 
-function attachAndCaptureLogin(): { options: AttachOptions; login: Command } {
+function attachAndCaptureLogin(): { options: AttachOptions; program: Command } {
     capturedAttachOptions.length = 0
-    const captured: { login?: Command } = {}
-    createTestProgram((program) => {
-        captured.login = attachTodoistLoginCommand(program, createTodoistTokenStore())
-    })
-    const login = captured.login
-    if (!login) throw new Error('login command was not attached')
+    const program = createTestProgram((p) =>
+        attachTodoistLoginCommand(p, createTodoistTokenStore()),
+    )
     return {
         options: capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions,
-        login,
+        program,
     }
 }
 
@@ -170,14 +167,18 @@ describe('attachTodoistLoginCommand: --no-browser-open', () => {
     })
 
     it('opens the browser by default', async () => {
-        const { options } = attachAndCaptureLogin()
+        const { options, program } = attachAndCaptureLogin()
+        // Parse the real CLI surface so the test exercises flag wiring, not
+        // Commander's internal option store.
+        await program.parseAsync(['login'], { from: 'user' })
+
         await options.openBrowser('https://todoist.com/oauth/authorize')
         expect(openMock).toHaveBeenCalledWith('https://todoist.com/oauth/authorize')
     })
 
-    it('skips opening the browser when --no-browser-open is set', async () => {
-        const { options, login } = attachAndCaptureLogin()
-        login.setOptionValue('browserOpen', false)
+    it('skips opening the browser when --no-browser-open is passed', async () => {
+        const { options, program } = attachAndCaptureLogin()
+        await program.parseAsync(['login', '--no-browser-open'], { from: 'user' })
 
         await options.openBrowser('https://todoist.com/oauth/authorize')
 

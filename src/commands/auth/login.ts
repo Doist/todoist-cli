@@ -2,10 +2,10 @@ import { formatJson, formatNdjson } from '@doist/cli-core'
 import { attachLoginCommand } from '@doist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
-import open from 'open'
 import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'
 import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
+import { openInBrowser } from '../../lib/browser.js'
 import {
     extractAdditionalScopes,
     formatScopesHelp,
@@ -53,7 +53,9 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
         renderError: renderAuthErrorPage,
         openBrowser: async (url) => {
             if (loginCommand?.opts().browserOpen === false) return
-            await open(url)
+            // cli-core already prints the authorize URL before this hook fires,
+            // so suppress the helper's own announcement to avoid a duplicate.
+            await openInBrowser(url, { announce: false })
         },
         onSuccess: ({ account, view }) => {
             const storage = store.getLastStorageResult()
