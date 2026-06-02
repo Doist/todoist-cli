@@ -108,6 +108,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppTestToken: { text: 'Loading app...', color: 'blue' },
         getAppDistributionToken: { text: 'Loading app...', color: 'blue' },
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
+        getUiExtensionsForApp: { text: 'Loading app...', color: 'blue' },
         updateApp: { text: 'Updating app...', color: 'yellow' },
         // Billing — all billing reads share one label so a command that also
         // fetches the user (for locale) reads as a single spinner.
@@ -216,6 +217,7 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getAppTestToken: 'app-management',
     getAppDistributionToken: 'app-management',
     getAppWebhook: 'app-management',
+    getUiExtensionsForApp: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
     getSubscriptionInfo: 'billing',

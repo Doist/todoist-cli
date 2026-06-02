@@ -19,14 +19,20 @@ function hiddenLine(label: string): string {
 
 // Renders a UI extension's type alongside its variant-specific sub-type, e.g.
 // "context-menu: project" or "composer: task". Settings extensions have no sub-type.
+// Branches are exhaustive over the SDK's UiExtension union so a new variant fails to
+// compile (via the `never` fallback) rather than silently rendering a partial label.
 function formatExtensionType(ext: UiExtension): string {
     switch (ext.extensionType) {
         case 'context-menu':
             return `${ext.extensionType}: ${ext.contextType}`
         case 'composer':
             return `${ext.extensionType}: ${ext.composerType}`
-        default:
+        case 'settings':
             return ext.extensionType
+        default: {
+            const _exhaustive: never = ext
+            return _exhaustive
+        }
     }
 }
 
@@ -37,18 +43,21 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
 
     // Secret-bearing endpoints (getAppSecrets for clientSecret, verification and test
     // tokens) are gated on `revealSecrets` so we never transport secret data onto the
-    // user's machine unless they asked for it. The distribution token is *not* a secret
-    // — it is the shareable install link's basis — so it is always fetched.
-    const [webhook, uiExtensions, distribution, secrets, verification, testToken] =
-        await Promise.all([
-            api.getAppWebhook(app.id),
-            api.getUiExtensionsForApp(app.id),
-            api.getAppDistributionToken(app.id),
-            revealSecrets ? api.getAppSecrets(app.id) : Promise.resolve(null),
-            revealSecrets ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
-            revealSecrets ? api.getAppTestToken(app.id) : Promise.resolve(null),
-        ])
+    // user's machine unless they asked for it.
+    const [webhook, uiExtensions, secrets, verification, testToken] = await Promise.all([
+        api.getAppWebhook(app.id),
+        api.getUiExtensionsForApp(app.id),
+        revealSecrets ? api.getAppSecrets(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppVerificationToken(app.id) : Promise.resolve(null),
+        revealSecrets ? api.getAppTestToken(app.id) : Promise.resolve(null),
+    ])
 
+    // The distribution token underpins the shareable install URL — not a secret, but
+    // only relevant when the app has UI extensions (plain output) or for the full JSON
+    // payload, so we skip the call entirely in the common no-extensions plain path.
+    const wantsJson = Boolean(options.json || options.ndjson)
+    const distribution =
+        wantsJson || uiExtensions.length > 0 ? await api.getAppDistributionToken(app.id) : null
     const distributionToken = distribution?.distributionToken ?? null
     const installUrl =
         uiExtensions.length > 0 && distributionToken ? appInstallUrl(distributionToken) : null

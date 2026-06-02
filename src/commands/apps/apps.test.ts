@@ -396,16 +396,17 @@ describe('apps view — enriched fields', () => {
         mockApi.getAppWebhook.mockResolvedValue(null)
     })
 
-    it('fetches webhook, UI extensions, and the (non-secret) distribution token by default', async () => {
+    it('fetches webhook and UI extensions but defers the distribution token when the app has no extensions', async () => {
         const program = createProgram()
         captureConsole()
 
+        // Default mock: getUiExtensionsForApp resolves to []
         await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
 
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
         expect(mockApi.getUiExtensionsForApp).toHaveBeenCalledWith('9909')
-        // The distribution token underpins the shareable install URL — not a secret.
-        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
+        // No UI extensions in plain output → no install URL → skip the avoidable call.
+        expect(mockApi.getAppDistributionToken).not.toHaveBeenCalled()
         // Secret-minimization: endpoints whose payload carries genuinely sensitive
         // data are never touched without --include-secrets.
         expect(mockApi.getAppSecrets).not.toHaveBeenCalled()
@@ -413,7 +414,29 @@ describe('apps view — enriched fields', () => {
         expect(mockApi.getAppTestToken).not.toHaveBeenCalled()
     })
 
-    it('fires the remaining secret enrichment calls with --include-secrets', async () => {
+    it('fetches the distribution token in plain output once the app has UI extensions', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getUiExtensionsForApp.mockResolvedValue([
+            makeUiExtension('Settings panel', { extensionType: 'settings' }),
+        ])
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909'])
+
+        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
+    })
+
+    it('fetches the distribution token for --json even without UI extensions', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        await program.parseAsync(['node', 'td', 'apps', 'view', 'id:9909', '--json'])
+
+        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
+    })
+
+    it('fires the secret enrichment calls with --include-secrets', async () => {
         const program = createProgram()
         captureConsole()
 
@@ -422,8 +445,10 @@ describe('apps view — enriched fields', () => {
         expect(mockApi.getAppSecrets).toHaveBeenCalledWith('9909')
         expect(mockApi.getAppVerificationToken).toHaveBeenCalledWith('9909')
         expect(mockApi.getAppTestToken).toHaveBeenCalledWith('9909')
-        expect(mockApi.getAppDistributionToken).toHaveBeenCalledWith('9909')
         expect(mockApi.getAppWebhook).toHaveBeenCalledWith('9909')
+        // The distribution token is no longer a secret; --include-secrets does not
+        // pull it in. It is fetched only for the install URL / JSON payload.
+        expect(mockApi.getAppDistributionToken).not.toHaveBeenCalled()
     })
 
     it('shows Client ID by default and hides the three sensitive credential lines', async () => {
@@ -548,51 +573,38 @@ describe('apps view — enriched fields', () => {
         expect(parsed.webhook).toBeNull()
     })
 
+    // These tests only care about name + type + subtype; the rest of the SDK shape is
+    // boilerplate, so a tiny helper keeps each case focused on the fields under test.
+    function makeUiExtension(
+        name: string,
+        variant:
+            | { extensionType: 'settings' }
+            | { extensionType: 'context-menu'; contextType: 'project' | 'task' }
+            | { extensionType: 'composer'; composerType: 'task' | 'comment' },
+    ) {
+        return {
+            id: name,
+            integrationId: '9909',
+            extensionId: name,
+            url: 'https://example.com',
+            icon: null,
+            name,
+            description: '',
+            width: null,
+            height: null,
+            defVersion: 1,
+            minimumCardistVersion: '0.1',
+            ...variant,
+        }
+    }
+
     const UI_EXTENSIONS = [
-        {
-            id: '1',
-            integrationId: '9909',
-            extensionId: 'ext-settings',
-            url: 'https://example.com/settings',
-            icon: null,
-            name: 'Settings panel',
-            description: '',
-            width: null,
-            height: null,
-            defVersion: 1,
-            minimumCardistVersion: '0.1',
-            extensionType: 'settings' as const,
-        },
-        {
-            id: '2',
-            integrationId: '9909',
-            extensionId: 'ext-context',
-            url: 'https://example.com/context',
-            icon: null,
-            name: 'Project action',
-            description: '',
-            width: null,
-            height: null,
-            defVersion: 1,
-            minimumCardistVersion: '0.1',
-            extensionType: 'context-menu' as const,
-            contextType: 'project' as const,
-        },
-        {
-            id: '3',
-            integrationId: '9909',
-            extensionId: 'ext-composer',
-            url: 'https://example.com/composer',
-            icon: null,
-            name: 'Task composer',
-            description: '',
-            width: null,
-            height: null,
-            defVersion: 1,
-            minimumCardistVersion: '0.1',
-            extensionType: 'composer' as const,
-            composerType: 'task' as const,
-        },
+        makeUiExtension('Settings panel', { extensionType: 'settings' }),
+        makeUiExtension('Project action', {
+            extensionType: 'context-menu',
+            contextType: 'project',
+        }),
+        makeUiExtension('Task composer', { extensionType: 'composer', composerType: 'task' }),
     ]
 
     it('lists UI extensions (with sub-types) and the install URL when the app has them', async () => {
