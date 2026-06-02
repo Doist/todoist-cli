@@ -1,3 +1,9 @@
+## [1.72.0](https://github.com/Doist/todoist-cli/compare/v1.71.0...v1.72.0) (2026-06-02)
+
+### Features
+
+* **apps:** show UI extensions and install URL in `apps view` ([#377](https://github.com/Doist/todoist-cli/issues/377)) ([53d9fe6](https://github.com/Doist/todoist-cli/commit/53d9fe6cb6b0be6fd17d6096d7cd54d38c4bdfda))
+
 ## [1.71.0](https://github.com/Doist/todoist-cli/compare/v1.70.0...v1.71.0) (2026-06-02)
 
 ### Features
