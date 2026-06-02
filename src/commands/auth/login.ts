@@ -28,6 +28,15 @@ const TODOIST_CALLBACK_PORT_FALLBACK = 5
  * to `resolveScopes`.
  */
 export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStore): Command {
+    // `--no-browser-open` lets the user finish the flow by copy-pasting the
+    // printed authorize URL (headless host, remote shell, or simply not wanting
+    // the browser hijacked). cli-core always surfaces the URL before the
+    // `openBrowser` hook fires, so skipping the spawn still leaves a usable
+    // login. The hook isn't handed the parsed flags, so we read the option off
+    // the command at call time via this forward reference (assigned below,
+    // before any login can run).
+    let loginCommand: Command | undefined
+
     const login = attachLoginCommand<TodoistAccount>(auth, {
         provider: createTodoistAuthProvider(),
         store,
@@ -43,6 +52,7 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
         renderSuccess: renderAuthSuccessPage,
         renderError: renderAuthErrorPage,
         openBrowser: async (url) => {
+            if (loginCommand?.opts().browserOpen === false) return
             await open(url)
         },
         onSuccess: ({ account, view }) => {
@@ -72,8 +82,14 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
         },
     })
 
+    loginCommand = login
+
     return login
         .description('Authenticate with Todoist via OAuth')
+        .option(
+            '--no-browser-open',
+            'Print the authorization URL instead of opening it in a browser automatically',
+        )
         .option(
             '--additional-scopes <list>',
             'Comma-separated opt-in OAuth scopes (see list below). The flag may be repeated; every occurrence is merged.',

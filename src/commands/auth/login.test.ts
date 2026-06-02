@@ -19,6 +19,9 @@ vi.mock('../../lib/api/core.js', () => ({
 
 vi.mock('chalk')
 
+const openMock = vi.fn()
+vi.mock('open', () => ({ default: (url: string) => openMock(url) }))
+
 // Capture (but don't execute) the options handed to cli-core's
 // `attachLoginCommand` so tests can invoke the Todoist-local callbacks
 // (`resolveScopes`, `onSuccess`) directly — cli-core's own tests don't cover
@@ -48,6 +51,7 @@ type AttachOptions = {
         view: { json: boolean; ndjson: boolean }
         flags: Record<string, unknown>
     }) => void | Promise<void>
+    openBrowser: (url: string) => Promise<void>
     store: { getLastStorageResult: () => unknown }
 }
 
@@ -55,6 +59,20 @@ function attachAndCapture(): AttachOptions {
     capturedAttachOptions.length = 0
     createTestProgram((program) => attachTodoistLoginCommand(program, createTodoistTokenStore()))
     return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
+}
+
+function attachAndCaptureLogin(): { options: AttachOptions; login: Command } {
+    capturedAttachOptions.length = 0
+    const captured: { login?: Command } = {}
+    createTestProgram((program) => {
+        captured.login = attachTodoistLoginCommand(program, createTodoistTokenStore())
+    })
+    const login = captured.login
+    if (!login) throw new Error('login command was not attached')
+    return {
+        options: capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions,
+        login,
+    }
 }
 
 const ACCOUNT = {
@@ -139,5 +157,32 @@ describe('attachTodoistLoginCommand: onSuccess output formatting', () => {
         expect(consoleSpy).toHaveBeenCalledTimes(1)
         expect(() => JSON.parse(consoleSpy.mock.calls[0][0] as string)).not.toThrow()
         expect(errorSpy.mock.calls.map((c: unknown[]) => c.join(' ')).join('\n')).toContain(warning)
+    })
+})
+
+describe('attachTodoistLoginCommand: --no-browser-open', () => {
+    beforeEach(() => {
+        openMock.mockClear()
+    })
+
+    afterEach(() => {
+        capturedAttachOptions.length = 0
+    })
+
+    it('opens the browser by default', async () => {
+        const { options } = attachAndCaptureLogin()
+        await options.openBrowser('https://todoist.com/oauth/authorize')
+        expect(openMock).toHaveBeenCalledWith('https://todoist.com/oauth/authorize')
+    })
+
+    it('skips opening the browser when --no-browser-open is set', async () => {
+        const { options, login } = attachAndCaptureLogin()
+        login.setOptionValue('browserOpen', false)
+
+        await options.openBrowser('https://todoist.com/oauth/authorize')
+
+        // cli-core still surfaces the URL itself; the local hook just declines
+        // to spawn a browser, leaving the printed URL for manual copy-paste.
+        expect(openMock).not.toHaveBeenCalled()
     })
 })
