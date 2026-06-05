@@ -1064,6 +1064,22 @@ describe('apps delete', () => {
         expect(output).toContain('Todoist for VS Code')
     })
 
+    it('--dry-run wins over --yes: previews and never deletes', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'delete', 'id:9909', '--dry-run', '--yes'])
+
+        // --dry-run takes precedence even when confirmation is present —
+        // a destructive delete must not fire.
+        expect(mockApi.deleteApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).not.toContain('Deleted:')
+    })
+
     it('resolves an app by name before deleting', async () => {
         const program = createProgram()
         captureConsole()
