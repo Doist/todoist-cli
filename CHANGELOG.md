@@ -1,3 +1,9 @@
+## [1.73.0](https://github.com/Doist/todoist-cli/compare/v1.72.1...v1.73.0) (2026-06-05)
+
+### Features
+
+* **apps:** Add delete command ([#385](https://github.com/Doist/todoist-cli/issues/385)) ([480f41b](https://github.com/Doist/todoist-cli/commit/480f41b3daaf2adaa31e1d287c511c2c6f34530e)), closes [#383](https://github.com/Doist/todoist-cli/issues/383)
+
 ## [1.72.1](https://github.com/Doist/todoist-cli/compare/v1.72.0...v1.72.1) (2026-06-04)
 
 ### Bug Fixes
