@@ -1108,8 +1108,8 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
         })
     })
 
-    it('emits the app-management hint for app-management methods (getApps, getApp)', async () => {
-        for (const method of ['getApps', 'getApp']) {
+    it('emits the app-management hint for app-management methods (read and write)', async () => {
+        for (const method of ['getApps', 'getApp', 'updateApp', 'deleteApp']) {
             const wrapped = (await wrapApiError(scopeError(), method)) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
             expect(wrapped.hints?.[0]).toContain('--additional-scopes=app-management')
