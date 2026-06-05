@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { deleteApp } from './delete.js'
 import { listApps } from './list.js'
 import { updateApp } from './update.js'
 import { viewApp } from './view.js'
@@ -20,6 +21,7 @@ Examples:
   td apps view id:9909 --json --include-secrets
   td apps update id:9909 --add-oauth-redirect https://example.com/callback
   td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
+  td apps delete id:9909 --yes
 
 Sensitive values (client id, client secret, verification token, test token,
 distribution token) are hidden by default. Pass --include-secrets to fetch
@@ -68,5 +70,18 @@ Requires authenticating with the dev:app_console scope:
                 return
             }
             return updateApp(ref, options)
+        })
+
+    const deleteCmd = apps
+        .command('delete [ref]')
+        .description('Delete a single app (by name, id:N, or raw id)')
+        .option('--yes', 'Confirm deletion')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((ref, options) => {
+            if (!ref) {
+                deleteCmd.help()
+                return
+            }
+            return deleteApp(ref, options)
         })
 }
