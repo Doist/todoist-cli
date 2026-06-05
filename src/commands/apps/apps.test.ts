@@ -1014,6 +1014,81 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
     })
 })
 
+describe('apps delete', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+    })
+
+    it('deletes the app with --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.deleteApp.mockResolvedValue(true)
+
+        await program.parseAsync(['node', 'td', 'apps', 'delete', 'id:9909', '--yes'])
+
+        expect(mockApi.deleteApp).toHaveBeenCalledWith('9909')
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Deleted: Todoist for VS Code (id:9909)')
+    })
+
+    it('without --yes prints a preview and does not call deleteApp', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'delete', 'id:9909'])
+
+        expect(mockApi.deleteApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Would delete app: Todoist for VS Code (id:9909)')
+        expect(output).toContain('Use --yes to confirm.')
+    })
+
+    it('--dry-run previews without calling deleteApp', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync(['node', 'td', 'apps', 'delete', 'id:9909', '--dry-run'])
+
+        expect(mockApi.deleteApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toContain('Todoist for VS Code')
+    })
+
+    it('resolves an app by name before deleting', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApps.mockResolvedValue([APP_A, APP_B])
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.deleteApp.mockResolvedValue(true)
+
+        await program.parseAsync(['node', 'td', 'apps', 'delete', 'Todoist for VS Code', '--yes'])
+
+        expect(mockApi.deleteApp).toHaveBeenCalledWith('9909')
+    })
+
+    it('throws APP_NOT_FOUND for an unknown app and never calls deleteApp', async () => {
+        const program = createProgram()
+
+        mockApi.getApps.mockResolvedValue([APP_A])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'delete', 'nope', '--yes']),
+        ).rejects.toMatchObject({ code: 'APP_NOT_FOUND' })
+        expect(mockApi.deleteApp).not.toHaveBeenCalled()
+    })
+})
+
 describe('wrapApiError → MISSING_SCOPE detection', () => {
     function scopeError() {
         return new TodoistRequestError('HTTP 403: Forbidden', 403, {
