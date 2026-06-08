@@ -1,4 +1,11 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": ["github>doist/renovate-config:frontend-base"]
+    "extends": ["github>doist/renovate-config:frontend-base"],
+    "packageRules": [
+        {
+            "matchPackageNames": ["oxlint", "oxfmt"],
+            "groupName": "ox toolchain",
+            "description": "Group oxlint and oxfmt updates into a single PR"
+        }
+    ]
 }
