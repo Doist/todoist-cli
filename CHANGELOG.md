@@ -1,3 +1,9 @@
+## [1.73.1](https://github.com/Doist/todoist-cli/compare/v1.73.0...v1.73.1) (2026-06-08)
+
+### Bug Fixes
+
+* bump Todoist SDK to 10.3.1 ([496f891](https://github.com/Doist/todoist-cli/commit/496f89169d8c47b7099b648c3cc1109c9ac0a0c9))
+
 ## [1.73.0](https://github.com/Doist/todoist-cli/compare/v1.72.1...v1.73.0) (2026-06-05)
 
 ### Features
