@@ -243,6 +243,28 @@ describe('project update', () => {
         expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', { description: '' })
     })
 
+    it('treats --description "" as a no-op (does not clear)', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'Renamed' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--name',
+            'Renamed',
+            '--description',
+            '',
+        ])
+
+        // Empty --description is falsy and must be omitted; use --stdin to clear.
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', { name: 'Renamed' })
+    })
+
     it('rejects --description together with --stdin', async () => {
         const program = createProgram()
 

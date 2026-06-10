@@ -370,11 +370,16 @@ describe('project view', () => {
         })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
 
+        // Sentinel proves the printed text is the renderer's output, not the source.
+        mockRenderMarkdown.mockResolvedValueOnce('〔rendered〕')
+
         await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1'])
 
         expect(consoleSpy).toHaveBeenCalledWith('Description:')
-        // Default path renders the description through markdown.
         expect(mockRenderMarkdown).toHaveBeenCalledWith('**Quarterly** goals')
+        // The rendered sentinel is what gets logged, not the raw markdown.
+        expect(consoleSpy).toHaveBeenCalledWith('〔rendered〕')
+        expect(consoleSpy).not.toHaveBeenCalledWith('**Quarterly** goals')
     })
 
     it('omits description block when empty', async () => {

@@ -157,8 +157,12 @@ td project list --personal
 td project list --search "Road"
 td project archived
 td project view "Roadmap" --detailed
+td project view "Roadmap" --raw                          # don't render the description markdown
 td project collaborators "Roadmap"
 td project create --name "New Project" --color blue
+td project create --name "New Project" --description "Quarterly OKRs"
+td project create --name "Imported" --stdin              # read the description from stdin
+td project update "Roadmap" --description "Updated scope"
 td project update "Roadmap" --favorite
 td project update "Roadmap" --folder "Engineering"
 td project update "Roadmap" --no-folder
