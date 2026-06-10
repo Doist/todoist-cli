@@ -30,16 +30,9 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
-    // `description` is forwarded by the REST client but not yet in the SDK's
-    // UpdateProjectArgs type. TODO: drop the cast once the SDK types it.
-    const args: {
-        name?: string
-        color?: ColorKey
-        isFavorite?: boolean
-        folderId?: string | null
-        viewStyle?: ProjectViewStyle
-        description?: string
-    } = {}
+    // Keep the SDK signature so the rest of the payload stays compile-checked;
+    // only `description` escapes the types until the SDK adds it to UpdateProjectArgs.
+    const args: Parameters<typeof api.updateProject>[1] & { description?: string } = {}
     if (options.name) args.name = options.name
     if (options.color) args.color = options.color
     if (options.favorite === true) args.isFavorite = true

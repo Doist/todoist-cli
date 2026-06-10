@@ -18,9 +18,16 @@ vi.mock('../../lib/stdin.js', () => ({
     readStdin: vi.fn(),
 }))
 
+// Identity render so existing task-row assertions are unaffected; the
+// description tests assert whether the renderer is invoked (rendered vs --raw).
+vi.mock('../../lib/markdown.js', () => ({
+    renderMarkdown: vi.fn(async (s: string) => s),
+}))
+
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
+import { renderMarkdown } from '../../lib/markdown.js'
 import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
@@ -28,6 +35,7 @@ import { createProjectProgram as createProgram } from '../../test-support/projec
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
 const mockReadStdin = vi.mocked(readStdin)
+const mockRenderMarkdown = vi.mocked(renderMarkdown)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
@@ -328,7 +336,7 @@ describe('project view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('URL:'))
     })
 
-    it('shows description block when present', async () => {
+    it('prints the raw description with --raw, bypassing the renderer', async () => {
         const program = createProgram()
 
         mockApi.getProject.mockResolvedValue({
@@ -336,7 +344,7 @@ describe('project view', () => {
             name: 'Work',
             color: 'blue',
             isFavorite: false,
-            description: 'Quarterly goals',
+            description: '**Quarterly** goals',
             url: 'https://todoist.com/app/project/proj-1',
         })
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
@@ -344,7 +352,29 @@ describe('project view', () => {
         await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1', '--raw'])
 
         expect(consoleSpy).toHaveBeenCalledWith('Description:')
-        expect(consoleSpy).toHaveBeenCalledWith('Quarterly goals')
+        expect(consoleSpy).toHaveBeenCalledWith('**Quarterly** goals')
+        // --raw must not route the description through the markdown renderer.
+        expect(mockRenderMarkdown).not.toHaveBeenCalledWith('**Quarterly** goals')
+    })
+
+    it('renders the description through markdown without --raw', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            description: '**Quarterly** goals',
+            url: 'https://todoist.com/app/project/proj-1',
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('Description:')
+        // Default path renders the description through markdown.
+        expect(mockRenderMarkdown).toHaveBeenCalledWith('**Quarterly** goals')
     })
 
     it('omits description block when empty', async () => {
@@ -436,6 +466,7 @@ describe('project view', () => {
             name: 'Work',
             color: 'blue',
             isFavorite: true,
+            description: 'Team OKRs',
             url: 'https://...',
         })
 
@@ -445,6 +476,8 @@ describe('project view', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('proj-1')
         expect(parsed.name).toBe('Work')
+        // Regression guard: `description` must survive the curated JSON projection.
+        expect(parsed.description).toBe('Team OKRs')
     })
 
     it('outputs full JSON with --json --full', async () => {
@@ -1094,6 +1127,7 @@ describe('project create --json', () => {
             name: 'New Project',
             color: 'charcoal',
             isFavorite: false,
+            description: 'Kickoff notes',
         })
 
         await program.parseAsync([
@@ -1110,6 +1144,8 @@ describe('project create --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('proj-new')
         expect(parsed.name).toBe('New Project')
+        // Regression guard: `description` must survive the curated JSON projection.
+        expect(parsed.description).toBe('Kickoff notes')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
     })
 })

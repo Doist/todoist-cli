@@ -50,10 +50,9 @@ export async function createProject(options: CreateOptions): Promise<void> {
         parentId = parentProject.id
     }
 
-    // `description` is forwarded by the REST client but not yet in the SDK's
-    // AddProjectArgs type, so build the args as a variable to attach it without
-    // tripping excess-property checks. TODO: drop once the SDK types it.
-    const args = {
+    // Keep the SDK signature so the rest of the payload stays compile-checked;
+    // only `description` escapes the types until the SDK adds it to AddProjectArgs.
+    const args: Parameters<typeof api.addProject>[0] & { description?: string } = {
         name: options.name,
         color: options.color,
         isFavorite: options.favorite,

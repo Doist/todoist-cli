@@ -279,6 +279,7 @@ describe('project update --json', () => {
             id: 'proj-1',
             name: 'New Name',
             color: 'charcoal',
+            description: 'Revised scope',
         })
 
         await program.parseAsync([
@@ -296,6 +297,8 @@ describe('project update --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('proj-1')
         expect(parsed.name).toBe('New Name')
+        // Regression guard: `description` must survive the curated JSON projection.
+        expect(parsed.description).toBe('Revised scope')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
     })
 })
