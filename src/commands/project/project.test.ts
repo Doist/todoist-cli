@@ -14,14 +14,20 @@ vi.mock('../../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
+vi.mock('../../lib/stdin.js', () => ({
+    readStdin: vi.fn(),
+}))
+
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
+import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
+const mockReadStdin = vi.mocked(readStdin)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
 const mockFetchWorkspaceFolders = vi.mocked(fetchWorkspaceFolders)
@@ -320,6 +326,43 @@ describe('project view', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Color:'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Favorite:'))
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('URL:'))
+    })
+
+    it('shows description block when present', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            description: 'Quarterly goals',
+            url: 'https://todoist.com/app/project/proj-1',
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1', '--raw'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('Description:')
+        expect(consoleSpy).toHaveBeenCalledWith('Quarterly goals')
+    })
+
+    it('omits description block when empty', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            description: '',
+            url: 'https://todoist.com/app/project/proj-1',
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1'])
+
+        expect(consoleSpy).not.toHaveBeenCalledWith('Description:')
     })
 
     it('lists tasks in project', async () => {
@@ -978,6 +1021,58 @@ describe('project create', () => {
         await program.parseAsync(['node', 'td', 'project', 'create', '--name', 'Test'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('proj-xyz'))
+    })
+
+    it('creates project with --description', async () => {
+        const program = createProgram()
+
+        mockApi.addProject.mockResolvedValue({ id: 'proj-new', name: 'Docs' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'create',
+            '--name',
+            'Docs',
+            '--description',
+            'A handy reference',
+        ])
+
+        expect(mockApi.addProject).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'Docs', description: 'A handy reference' }),
+        )
+    })
+
+    it('reads description from stdin with --stdin', async () => {
+        const program = createProgram()
+
+        mockReadStdin.mockResolvedValue('Piped description')
+        mockApi.addProject.mockResolvedValue({ id: 'proj-new', name: 'Docs' })
+
+        await program.parseAsync(['node', 'td', 'project', 'create', '--name', 'Docs', '--stdin'])
+
+        expect(mockApi.addProject).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Piped description' }),
+        )
+    })
+
+    it('rejects --description together with --stdin', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'create',
+                '--name',
+                'Docs',
+                '--description',
+                'x',
+                '--stdin',
+            ]),
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
     })
 })
 

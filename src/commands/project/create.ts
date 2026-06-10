@@ -1,8 +1,10 @@
 import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
+import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
+import { readStdin } from '../../lib/stdin.js'
 import { resolvePersonalParent } from './helpers.js'
 
 export interface CreateOptions {
@@ -11,11 +13,23 @@ export interface CreateOptions {
     favorite?: boolean
     parent?: string
     viewStyle?: string
+    description?: string
+    stdin?: boolean
     json?: boolean
     dryRun?: boolean
 }
 
 export async function createProject(options: CreateOptions): Promise<void> {
+    if (options.stdin && options.description !== undefined) {
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --description and --stdin')
+    }
+    let description: string | undefined
+    if (options.stdin) {
+        description = await readStdin()
+    } else if (options.description) {
+        description = options.description
+    }
+
     if (options.dryRun) {
         printDryRun('create project', {
             Name: options.name,
@@ -23,6 +37,7 @@ export async function createProject(options: CreateOptions): Promise<void> {
             Favorite: options.favorite ? 'yes' : undefined,
             Parent: options.parent,
             'View style': options.viewStyle,
+            Description: description,
         })
         return
     }
@@ -35,13 +50,18 @@ export async function createProject(options: CreateOptions): Promise<void> {
         parentId = parentProject.id
     }
 
-    const project = await api.addProject({
+    // `description` is forwarded by the REST client but not yet in the SDK's
+    // AddProjectArgs type, so build the args as a variable to attach it without
+    // tripping excess-property checks. TODO: drop once the SDK types it.
+    const args = {
         name: options.name,
         color: options.color,
         isFavorite: options.favorite,
         parentId,
         viewStyle: options.viewStyle as ProjectViewStyle,
-    })
+        ...(description !== undefined ? { description } : {}),
+    }
+    const project = await api.addProject(args)
 
     if (options.json) {
         console.log(formatJson(project, 'project'))

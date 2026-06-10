@@ -189,6 +189,7 @@ const TASK_ESSENTIAL_FIELDS = [
 const PROJECT_ESSENTIAL_FIELDS = [
     'id',
     'name',
+    'description',
     'color',
     'isFavorite',
     'parentId',

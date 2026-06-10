@@ -5,6 +5,7 @@ import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
+import { readStdin } from '../../lib/stdin.js'
 import { resolveFolderByRef } from '../folder/helpers.js'
 import { isDescendantOf, loadPersonalProjects, resolvePersonalParent } from './helpers.js'
 
@@ -15,26 +16,40 @@ export interface UpdateOptions {
     folder?: string | false
     parent?: string | false
     viewStyle?: string
+    description?: string
+    stdin?: boolean
     json?: boolean
     dryRun?: boolean
 }
 
 export async function updateProject(ref: string, options: UpdateOptions): Promise<void> {
+    if (options.stdin && options.description !== undefined) {
+        throw new CliError('CONFLICTING_OPTIONS', 'Cannot use both --description and --stdin')
+    }
+
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
+    // `description` is forwarded by the REST client but not yet in the SDK's
+    // UpdateProjectArgs type. TODO: drop the cast once the SDK types it.
     const args: {
         name?: string
         color?: ColorKey
         isFavorite?: boolean
         folderId?: string | null
         viewStyle?: ProjectViewStyle
+        description?: string
     } = {}
     if (options.name) args.name = options.name
     if (options.color) args.color = options.color
     if (options.favorite === true) args.isFavorite = true
     if (options.favorite === false) args.isFavorite = false
     if (options.viewStyle) args.viewStyle = options.viewStyle as ProjectViewStyle
+    if (options.stdin) {
+        args.description = await readStdin()
+    } else if (options.description) {
+        args.description = options.description
+    }
 
     if (options.folder !== undefined) {
         if (!isWorkspaceProject(project)) {
@@ -108,6 +123,7 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
                       ? (newParentName ?? newParentId)
                       : undefined,
             'View style': args.viewStyle,
+            Description: args.description,
         })
         return
     }

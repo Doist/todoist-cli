@@ -3,10 +3,18 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
+import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatJson, formatNdjson, formatTaskRow } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { projectUrl } from '../../lib/urls.js'
+
+async function printDescription(description: string | undefined, raw: boolean): Promise<void> {
+    if (!description) return
+    console.log('')
+    console.log('Description:')
+    console.log(raw ? description : await renderMarkdown(description))
+}
 
 export async function viewProject(
     ref: string,
@@ -92,6 +100,8 @@ export async function viewProject(
         console.log(`Comments: ${fullData.commentsCount}`)
         console.log(`URL:      ${projectUrl(displayProject.id)}`)
 
+        await printDescription(displayProject.description, options.raw ?? false)
+
         if (fullData.tasks.length > 0) {
             console.log('')
             console.log(chalk.dim(`--- Tasks (${fullData.tasks.length}) ---`))
@@ -171,6 +181,8 @@ export async function viewProject(
     console.log(`Color:    ${project.color}`)
     console.log(`Favorite: ${project.isFavorite ? 'Yes' : 'No'}`)
     console.log(`URL:      ${projectUrl(project.id)}`)
+
+    await printDescription(project.description, options.raw ?? false)
 
     if (tasks.length > 0) {
         console.log('')
