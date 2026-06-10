@@ -231,7 +231,10 @@ td section list "Roadmap"
 td section list --search "Planning"
 td section list --search "Planning" --project "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
+td section create --project "Roadmap" --name "QA" --description "Bugs to verify"
+td section create --project "Roadmap" --name "Imported" --stdin   # read the description from stdin
 td section update id:123 --name "Done"
+td section update id:123 --description "Sprint backlog"            # description-only update
 td section reorder "Review" --project "Roadmap" --before "Done"
 td section reorder "Review" --project "Roadmap" --after "In Progress"
 td section reorder --section "Review" --project "Roadmap" --position 0 --dry-run

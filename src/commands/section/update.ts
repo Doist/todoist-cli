@@ -19,11 +19,10 @@ export async function updateSection(sectionId: string, options: UpdateOptions): 
     }
     const id = lenientIdRef(sectionId, 'section')
 
-    // SDK dependency: UpdateSectionArgs currently requires `name` and omits
-    // `description`. We keep the SDK signature via Partial so only the two
-    // escape hatches (optional name, description) sit outside the SDK types.
-    type SectionUpdateArgs = Parameters<Awaited<ReturnType<typeof getApi>>['updateSection']>[1]
-    const args: Partial<SectionUpdateArgs> & { description?: string } = {}
+    // SDK dependency: UpdateSectionArgs requires `name` and omits `description`,
+    // so the args type lists exactly the two fields we send. The cast at the
+    // call site bridges to the SDK signature until it models both.
+    const args: { name?: string; description?: string } = {}
     if (options.name) args.name = options.name
     if (options.stdin) {
         args.description = await readStdin()
@@ -54,10 +53,12 @@ export async function updateSection(sectionId: string, options: UpdateOptions): 
         return
     }
 
-    const section = await api.getSection(id)
+    // Only fetch the existing section when renaming, to show "old → new".
+    // Description-only updates skip the extra blocking request.
+    const previousName = args.name ? (await api.getSection(id)).name : undefined
     const updated = await api.updateSection(id, updateArgs)
     if (!isQuiet()) {
-        const label = args.name ? `${section.name} → ${updated.name}` : updated.name
+        const label = previousName ? `${previousName} → ${updated.name}` : updated.name
         console.log(`Updated: ${label} (id:${id})`)
     }
 }
