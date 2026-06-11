@@ -9,12 +9,18 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
     moveProjectParent: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../../lib/stdin.js', () => ({
+    readStdin: vi.fn(),
+}))
+
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
+import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerProjectCommand } from './index.js'
 
 const mockMoveProjectParent = vi.mocked(moveProjectParent)
+const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     return createTestProgram(registerProjectCommand)
@@ -203,6 +209,78 @@ describe('project update', () => {
             ]),
         ).rejects.toThrow('--folder can only be used on workspace projects')
     })
+
+    it('updates project description', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--description',
+            'Updated notes',
+        ])
+
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', {
+            description: 'Updated notes',
+        })
+    })
+
+    it('clears description with empty stdin', async () => {
+        const program = createProgram()
+
+        mockReadStdin.mockResolvedValue('')
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+
+        await program.parseAsync(['node', 'td', 'project', 'update', 'id:proj-1', '--stdin'])
+
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', { description: '' })
+    })
+
+    it('treats --description "" as a no-op (does not clear)', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'Renamed' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--name',
+            'Renamed',
+            '--description',
+            '',
+        ])
+
+        // Empty --description is falsy and must be omitted; use --stdin to clear.
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', { name: 'Renamed' })
+    })
+
+    it('rejects --description together with --stdin', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'update',
+                'id:proj-1',
+                '--description',
+                'x',
+                '--stdin',
+            ]),
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
+    })
 })
 
 describe('project update --json', () => {
@@ -223,6 +301,7 @@ describe('project update --json', () => {
             id: 'proj-1',
             name: 'New Name',
             color: 'charcoal',
+            description: 'Revised scope',
         })
 
         await program.parseAsync([
@@ -240,6 +319,8 @@ describe('project update --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('proj-1')
         expect(parsed.name).toBe('New Name')
+        // Regression guard: `description` must survive the curated JSON projection.
+        expect(parsed.description).toBe('Revised scope')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
     })
 })
