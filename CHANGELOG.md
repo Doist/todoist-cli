@@ -1,3 +1,9 @@
+## [1.73.4](https://github.com/Doist/todoist-cli/compare/v1.73.3...v1.73.4) (2026-06-11)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v0.25.1 ([#394](https://github.com/Doist/todoist-cli/issues/394)) ([a2f5582](https://github.com/Doist/todoist-cli/commit/a2f5582373bd05bd1899391ed93657696c3f11f4))
+
 ## [1.73.3](https://github.com/Doist/todoist-cli/compare/v1.73.2...v1.73.3) (2026-06-10)
 
 ### Bug Fixes
