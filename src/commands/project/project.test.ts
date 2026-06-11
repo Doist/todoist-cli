@@ -382,6 +382,51 @@ describe('project view', () => {
         expect(consoleSpy).not.toHaveBeenCalledWith('**Quarterly** goals')
     })
 
+    it('leaves task-row content unrendered with --raw', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            description: '',
+            url: 'https://todoist.com/app/project/proj-1',
+        })
+        mockApi.getTasks.mockResolvedValue({
+            results: [{ id: 'task-1', content: '**Bold** task', priority: 1 }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1', '--raw'])
+
+        // --raw passes through to formatTaskRow, so task content is not rendered.
+        expect(mockRenderMarkdown).not.toHaveBeenCalledWith('**Bold** task')
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('**Bold** task'))
+    })
+
+    it('renders task-row content without --raw', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Work',
+            color: 'blue',
+            isFavorite: false,
+            description: '',
+            url: 'https://todoist.com/app/project/proj-1',
+        })
+        mockApi.getTasks.mockResolvedValue({
+            results: [{ id: 'task-1', content: '**Bold** task', priority: 1 }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-1'])
+
+        // Default path routes task content through the renderer.
+        expect(mockRenderMarkdown).toHaveBeenCalledWith('**Bold** task')
+    })
+
     it('omits description block when empty', async () => {
         const program = createProgram()
 
