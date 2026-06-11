@@ -1,3 +1,9 @@
+## [1.74.0](https://github.com/Doist/todoist-cli/compare/v1.73.4...v1.74.0) (2026-06-11)
+
+### Features
+
+* **section:** add description to create and update ([#396](https://github.com/Doist/todoist-cli/issues/396)) ([a2ccb4e](https://github.com/Doist/todoist-cli/commit/a2ccb4e19458a3d43a6c3d793956bb39f88a59ff))
+
 ## [1.73.4](https://github.com/Doist/todoist-cli/compare/v1.73.3...v1.73.4) (2026-06-11)
 
 ### Bug Fixes
