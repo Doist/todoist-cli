@@ -38,15 +38,11 @@ export async function createSection(options: CreateOptions): Promise<void> {
     const api = await getApi()
     const projectId = await resolveProjectId(api, options.project)
 
-    // `description` is forwarded by the REST client but not yet in the SDK's
-    // AddSectionArgs type (and the SDK strips it from section reads). Tracked as
-    // an SDK dependency. Keep the SDK signature so only `description` escapes typing.
-    const args: Parameters<typeof api.addSection>[0] & { description?: string } = {
+    const section = await api.addSection({
         name: options.name,
         projectId,
         ...(description !== undefined ? { description } : {}),
-    }
-    const section = await api.addSection(args)
+    })
 
     if (options.json) {
         console.log(formatJson(section, 'section'))

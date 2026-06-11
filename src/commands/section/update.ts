@@ -19,13 +19,12 @@ export async function updateSection(sectionId: string, options: UpdateOptions): 
     }
     const id = lenientIdRef(sectionId, 'section')
 
-    // SDK dependency: UpdateSectionArgs requires `name` and omits `description`,
-    // so the args type lists exactly the two fields we send. The cast at the
-    // call site bridges to the SDK signature until it models both.
-    const args: { name?: string; description?: string } = {}
+    const args: { name?: string; description?: string | null } = {}
     if (options.name) args.name = options.name
     if (options.stdin) {
-        args.description = await readStdin()
+        // Empty stdin clears the description (backend NULL_CLEARS); non-empty sets it.
+        const piped = await readStdin()
+        args.description = piped === '' ? null : piped
     } else if (options.description) {
         args.description = options.description
     }
@@ -38,13 +37,15 @@ export async function updateSection(sectionId: string, options: UpdateOptions): 
         printDryRun('update section', {
             ID: id,
             Name: args.name,
-            Description: args.description,
+            Description: args.description === null ? '(cleared)' : args.description,
         })
         return
     }
 
     const api = await getApi()
-    // Cast covers the SDK gap above; the REST client forwards the extra fields.
+    // The SDK's UpdateSectionArgs is RequireAtLeastOne, which a dynamically-built
+    // partial can't satisfy statically; the NO_CHANGES guard above guarantees at
+    // least one field is set at runtime.
     const updateArgs = args as Parameters<typeof api.updateSection>[1]
 
     if (options.json) {

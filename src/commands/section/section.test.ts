@@ -888,7 +888,7 @@ describe('section update', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Planning (id:sec-1)')
     })
 
-    it('clears description with empty stdin', async () => {
+    it('clears description with empty stdin (sends null per backend NULL_CLEARS)', async () => {
         const program = createProgram()
 
         mockReadStdin.mockResolvedValue('')
@@ -897,7 +897,7 @@ describe('section update', () => {
 
         await program.parseAsync(['node', 'td', 'section', 'update', 'id:sec-1', '--stdin'])
 
-        expect(mockApi.updateSection).toHaveBeenCalledWith('sec-1', { description: '' })
+        expect(mockApi.updateSection).toHaveBeenCalledWith('sec-1', { description: null })
     })
 
     it('throws when no changes specified', async () => {
