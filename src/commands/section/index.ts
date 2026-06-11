@@ -50,6 +50,8 @@ export function registerSectionCommand(program: Command): void {
         .description('Create a section')
         .option('--name <name>', 'Section name (required)')
         .option('--project <name>', 'Project name or id:xxx (required)')
+        .option('--description <text>', 'Section description (markdown)')
+        .option('--stdin', 'Read section description from stdin')
         .option('--json', 'Output the created section as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
@@ -76,11 +78,16 @@ export function registerSectionCommand(program: Command): void {
     const updateCmd = section
         .command('update [id]')
         .description('Update a section')
-        .option('--name <name>', 'New section name (required)')
+        .option('--name <name>', 'New section name')
+        .option(
+            '--description <text>',
+            'New description (markdown); pipe empty input via --stdin to clear',
+        )
+        .option('--stdin', 'Read section description from stdin')
         .option('--json', 'Output the updated section as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
-            if (!id || !options.name) {
+            if (!id) {
                 updateCmd.help()
                 return
             }

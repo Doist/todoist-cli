@@ -5,10 +5,17 @@ vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
+vi.mock('../../lib/stdin.js', () => ({
+    readStdin: vi.fn(),
+}))
+
+import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerSectionCommand } from './index.js'
+
+const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     return createTestProgram(registerSectionCommand)
@@ -200,6 +207,7 @@ describe('section create --json', () => {
         mockApi.addSection.mockResolvedValue({
             id: 'sec-new',
             name: 'New Section',
+            description: 'Section notes',
             projectId: 'proj-1',
             sectionOrder: 1,
         })
@@ -220,6 +228,10 @@ describe('section create --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('sec-new')
         expect(parsed.name).toBe('New Section')
+        // Regression guard for the CLI's curated JSON projection: once the SDK
+        // exposes section `description` (it strips it today), it must not be
+        // dropped from the output. The mock simulates that post-SDK response.
+        expect(parsed.description).toBe('Section notes')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
     })
 })
@@ -240,6 +252,7 @@ describe('section update --json', () => {
         mockApi.updateSection.mockResolvedValue({
             id: 'sec-1',
             name: 'New Name',
+            description: 'Updated notes',
             projectId: 'proj-1',
             sectionOrder: 1,
         })
@@ -259,6 +272,10 @@ describe('section update --json', () => {
         const parsed = JSON.parse(output)
         expect(parsed.id).toBe('sec-1')
         expect(parsed.name).toBe('New Name')
+        // Regression guard for the CLI's curated JSON projection: once the SDK
+        // exposes section `description` (it strips it today), it must not be
+        // dropped from the output. The mock simulates that post-SDK response.
+        expect(parsed.description).toBe('Updated notes')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Updated:'))
     })
 })
@@ -646,6 +663,100 @@ describe('section create', () => {
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('sec-xyz'))
     })
+
+    it('creates section with --description', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
+        mockApi.addSection.mockResolvedValue({ id: 'sec-new', name: 'Review' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'create',
+            '--name',
+            'Review',
+            '--project',
+            'id:proj-1',
+            '--description',
+            'Pending review',
+        ])
+
+        expect(mockApi.addSection).toHaveBeenCalledWith({
+            name: 'Review',
+            projectId: 'proj-1',
+            description: 'Pending review',
+        })
+    })
+
+    it('reads description from stdin with --stdin', async () => {
+        const program = createProgram()
+
+        mockReadStdin.mockResolvedValue('Piped description')
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
+        mockApi.addSection.mockResolvedValue({ id: 'sec-new', name: 'Review' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'create',
+            '--name',
+            'Review',
+            '--project',
+            'id:proj-1',
+            '--stdin',
+        ])
+
+        expect(mockApi.addSection).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Piped description' }),
+        )
+    })
+
+    it('rejects --description together with --stdin', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'section',
+                'create',
+                '--name',
+                'Review',
+                '--project',
+                'id:proj-1',
+                '--description',
+                'x',
+                '--stdin',
+            ]),
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
+    })
+
+    it('reads stdin then previews under --stdin --dry-run without calling the API', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockReadStdin.mockResolvedValue('Piped preview')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'create',
+            '--name',
+            'Review',
+            '--project',
+            'id:proj-1',
+            '--stdin',
+            '--dry-run',
+        ])
+
+        expect(mockReadStdin).toHaveBeenCalled()
+        expect(mockApi.addSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Piped preview'))
+    })
 })
 
 describe('section delete', () => {
@@ -752,6 +863,88 @@ describe('section update', () => {
             name: 'New Name',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name → New Name (id:sec-1)')
+    })
+
+    it('updates description only, without a name change', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
+        mockApi.updateSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'update',
+            'id:sec-1',
+            '--description',
+            'Sprint backlog',
+        ])
+
+        expect(mockApi.updateSection).toHaveBeenCalledWith('sec-1', {
+            description: 'Sprint backlog',
+        })
+        expect(consoleSpy).toHaveBeenCalledWith('Updated: Planning (id:sec-1)')
+    })
+
+    it('clears description with empty stdin (sends null per backend NULL_CLEARS)', async () => {
+        const program = createProgram()
+
+        mockReadStdin.mockResolvedValue('')
+        mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
+        mockApi.updateSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
+
+        await program.parseAsync(['node', 'td', 'section', 'update', 'id:sec-1', '--stdin'])
+
+        expect(mockApi.updateSection).toHaveBeenCalledWith('sec-1', { description: null })
+    })
+
+    it('throws when no changes specified', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'section', 'update', 'id:sec-1']),
+        ).rejects.toHaveProperty('code', 'NO_CHANGES')
+    })
+
+    it('rejects --description together with --stdin', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'section',
+                'update',
+                'id:sec-1',
+                '--description',
+                'x',
+                '--stdin',
+            ]),
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
+    })
+
+    it('reads stdin then previews under --stdin --dry-run without calling the API', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockReadStdin.mockResolvedValue('Piped preview')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'update',
+            'id:sec-1',
+            '--stdin',
+            '--dry-run',
+        ])
+
+        expect(mockReadStdin).toHaveBeenCalled()
+        expect(mockApi.updateSection).not.toHaveBeenCalled()
+        expect(mockApi.getSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Piped preview'))
     })
 })
 
