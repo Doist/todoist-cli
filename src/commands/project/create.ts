@@ -50,17 +50,14 @@ export async function createProject(options: CreateOptions): Promise<void> {
         parentId = parentProject.id
     }
 
-    // Keep the SDK signature so the rest of the payload stays compile-checked;
-    // only `description` escapes the types until the SDK adds it to AddProjectArgs.
-    const args: Parameters<typeof api.addProject>[0] & { description?: string } = {
+    const project = await api.addProject({
         name: options.name,
         color: options.color,
         isFavorite: options.favorite,
         parentId,
         viewStyle: options.viewStyle as ProjectViewStyle,
         ...(description !== undefined ? { description } : {}),
-    }
-    const project = await api.addProject(args)
+    })
 
     if (options.json) {
         console.log(formatJson(project, 'project'))

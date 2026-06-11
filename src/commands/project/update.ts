@@ -30,9 +30,7 @@ export async function updateProject(ref: string, options: UpdateOptions): Promis
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
-    // Keep the SDK signature so the rest of the payload stays compile-checked;
-    // only `description` escapes the types until the SDK adds it to UpdateProjectArgs.
-    const args: Parameters<typeof api.updateProject>[1] & { description?: string } = {}
+    const args: Parameters<typeof api.updateProject>[1] = {}
     if (options.name) args.name = options.name
     if (options.color) args.color = options.color
     if (options.favorite === true) args.isFavorite = true
