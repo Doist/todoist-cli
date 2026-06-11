@@ -54,9 +54,9 @@ export async function updateSection(sectionId: string, options: UpdateOptions): 
         return
     }
 
-    // Only fetch the existing section when renaming, to show "old → new".
-    // Description-only updates skip the extra blocking request.
-    const previousName = args.name ? (await api.getSection(id)).name : undefined
+    // Only fetch the existing section when renaming AND we'll print the result,
+    // to show "old → new". Description-only or quiet updates skip the roundtrip.
+    const previousName = args.name && !isQuiet() ? (await api.getSection(id)).name : undefined
     const updated = await api.updateSection(id, updateArgs)
     if (!isQuiet()) {
         const label = previousName ? `${previousName} → ${updated.name}` : updated.name

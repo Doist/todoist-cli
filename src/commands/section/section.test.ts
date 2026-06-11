@@ -924,6 +924,28 @@ describe('section update', () => {
             ]),
         ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
     })
+
+    it('reads stdin then previews under --stdin --dry-run without calling the API', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockReadStdin.mockResolvedValue('Piped preview')
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'section',
+            'update',
+            'id:sec-1',
+            '--stdin',
+            '--dry-run',
+        ])
+
+        expect(mockReadStdin).toHaveBeenCalled()
+        expect(mockApi.updateSection).not.toHaveBeenCalled()
+        expect(mockApi.getSection).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Piped preview'))
+    })
 })
 
 describe('section --dry-run', () => {
