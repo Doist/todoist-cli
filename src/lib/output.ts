@@ -198,7 +198,14 @@ const PROJECT_ESSENTIAL_FIELDS = [
     'workspaceId',
 ] as const
 const LABEL_ESSENTIAL_FIELDS = ['id', 'name', 'color', 'isFavorite'] as const
-const SECTION_ESSENTIAL_FIELDS = ['id', 'name', 'projectId', 'sectionOrder', 'url'] as const
+const SECTION_ESSENTIAL_FIELDS = [
+    'id',
+    'name',
+    'description',
+    'projectId',
+    'sectionOrder',
+    'url',
+] as const
 const COMMENT_ESSENTIAL_FIELDS = [
     'id',
     'content',

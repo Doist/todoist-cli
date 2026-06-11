@@ -5,7 +5,7 @@ compatibility: "Requires the td CLI (@doist/todoist-cli) to be installed and aut
 license: MIT
 metadata:
   author: Doist
-  version: "1.73.4"
+  version: "1.74.0"
 ---
 
 # Todoist CLI (td)
@@ -239,7 +239,11 @@ td section list "Roadmap"
 td section list --search "Planning"
 td section list --search "Planning" --project "Roadmap"
 td section create --project "Roadmap" --name "In Progress"
+td section create --project "Roadmap" --name "QA" --description "Bugs to verify"
+td section create --project "Roadmap" --name "Imported" --stdin   # read the description from stdin
 td section update id:123 --name "Done"
+td section update id:123 --description "Sprint backlog"            # description-only update
+echo "" | td section update id:123 --stdin                        # empty stdin clears the description
 td section reorder "Review" --project "Roadmap" --before "Done"
 td section reorder "Review" --project "Roadmap" --after "In Progress"
 td section reorder --section "Review" --project "Roadmap" --position 0 --dry-run
