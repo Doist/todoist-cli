@@ -12,7 +12,7 @@ jobs:
             latest-version: ${{ steps.check-updates.outputs.latest-version }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup Node
               uses: actions/setup-node@v6
@@ -48,7 +48,7 @@ jobs:
 
             - name: Upload updated package files
               if: steps.check-updates.outputs.updates-available == 'true'
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: updated-packages
                   path: |
@@ -61,7 +61,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Download updated package files
               uses: actions/download-artifact@v4
@@ -94,7 +94,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Download updated package files
               uses: actions/download-artifact@v4
