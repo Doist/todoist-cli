@@ -56,7 +56,7 @@ export async function createProject(options: CreateOptions): Promise<void> {
         isFavorite: options.favorite,
         parentId,
         viewStyle: options.viewStyle as ProjectViewStyle,
-        ...(description !== undefined ? { description } : {}),
+        description,
     })
 
     if (options.json) {
