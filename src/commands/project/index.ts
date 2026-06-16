@@ -62,6 +62,7 @@ Examples:
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .option('--detailed', 'Include sections, collaborators, notes, and comment count')
+        .option('--raw', 'Disable markdown rendering')
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
@@ -111,6 +112,8 @@ Examples:
                 VIEW_STYLE_CHOICES,
             ),
         )
+        .option('--description <text>', 'Project description (markdown)')
+        .option('--stdin', 'Read project description from stdin')
         .option('--json', 'Output the created project as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
@@ -138,6 +141,11 @@ Examples:
                 VIEW_STYLE_CHOICES,
             ),
         )
+        .option(
+            '--description <text>',
+            'New description (markdown); pipe empty input via --stdin to clear',
+        )
+        .option('--stdin', 'Read project description from stdin')
         .option('--json', 'Output the updated project as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
