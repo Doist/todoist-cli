@@ -136,6 +136,6 @@ jobs:
                   comms-username: ${{ secrets.COMMS_USERNAME }}
                   comms-password: ${{ secrets.COMMS_PASSWORD }}
                   workspace-id: 69
-                  thread-id: BPZsUohfX5WV4tFJKMHAh
+                  thread-id: CZECS4Yebwx7c1c8hDRmB
                   content: ${{ steps.announcement.outputs.message }}
               continue-on-error: true
