@@ -10,6 +10,7 @@ interface InstallerConfig {
     name: string
     description: string
     dirName: string
+    globalDirName?: string
 }
 
 export function generateSkillFile(): string {
@@ -30,7 +31,8 @@ metadata:
 export function createInstaller(config: InstallerConfig): SkillInstaller {
     function getInstallPath(local: boolean): string {
         const base = local ? process.cwd() : homedir()
-        return join(base, config.dirName, 'skills', SKILL_NAME, 'SKILL.md')
+        const dirName = local ? config.dirName : (config.globalDirName ?? config.dirName)
+        return join(base, dirName, 'skills', SKILL_NAME, 'SKILL.md')
     }
 
     return {

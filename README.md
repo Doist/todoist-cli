@@ -26,7 +26,7 @@ td skill install pi
 td skill install universal
 ```
 
-Skills are installed to `~/<agent-dir>/skills/todoist-cli/SKILL.md` (e.g. `~/.claude/` for claude-code, `~/.agents/` for universal, etc.). When updating the CLI, installed skills are updated automatically. The `universal` agent is compatible with Amp, OpenCode, and other agents that read from `~/.agents/`.
+Skills are installed to `~/<agent-dir>/skills/todoist-cli/SKILL.md` (e.g. `~/.claude/` for claude-code, `~/.agents/` for universal, etc.; Pi uses `~/.pi/agent/skills/todoist-cli/SKILL.md` for global installs). When updating the CLI, installed skills are updated automatically. The `universal` agent is compatible with Amp, OpenCode, and other agents that read from `~/.agents/`.
 
 ```bash
 td skill list

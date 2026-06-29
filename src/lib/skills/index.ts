@@ -31,6 +31,7 @@ export const skillInstallers: Record<string, SkillInstaller> = {
         name: 'pi',
         description: 'Pi skill for Todoist CLI',
         dirName: '.pi',
+        globalDirName: '.pi/agent',
     }),
     universal: createInstaller({
         name: 'universal',
