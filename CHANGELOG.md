@@ -1,3 +1,9 @@
+## [1.75.3](https://github.com/Doist/todoist-cli/compare/v1.75.2...v1.75.3) (2026-06-29)
+
+### Bug Fixes
+
+* install Pi skills in agent directory ([#414](https://github.com/Doist/todoist-cli/issues/414)) ([97c1cac](https://github.com/Doist/todoist-cli/commit/97c1cac36da2e0d63a39d77baac95cebaca75a22))
+
 ## [1.75.2](https://github.com/Doist/todoist-cli/compare/v1.75.1...v1.75.2) (2026-06-24)
 
 ### Bug Fixes
