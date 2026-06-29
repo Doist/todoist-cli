@@ -221,6 +221,11 @@ describe('installer paths', () => {
         })
     }
 
+    it('installs Pi global skills under the Pi agent directory', () => {
+        const globalPath = skillInstallers.pi.getInstallPath(false)
+        expect(globalPath).toContain(join('.pi', 'agent', 'skills', 'todoist-cli', 'SKILL.md'))
+    })
+
     it('generates skill file with YAML frontmatter', () => {
         const content = skillInstallers['claude-code'].generateContent()
         expect(content).toContain('---')
