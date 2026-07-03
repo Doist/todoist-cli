@@ -151,7 +151,6 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>, str
         'Manage filters',
         async () => (await import('./commands/filter/index.js')).registerFilterCommand,
     ],
-    goal: ['Manage goals', async () => (await import('./commands/goal.js')).registerGoalCommand],
     folder: [
         'Manage workspace folders',
         async () => (await import('./commands/folder/index.js')).registerFolderCommand,

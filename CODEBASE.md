@@ -43,7 +43,6 @@ src/
 ├─ commands/              # One file per flat command, one folder per group
 │  ├─ add.ts, today.ts, upcoming.ts, inbox.ts, view.ts,
 │  │  doctor.ts, changelog.ts, activity.ts, attachment.ts
-│  ├─ goal.ts             # Flat command with subcommand registry inside
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
 │  │  backup/, apps/, billing/, stats/, completed/, auth/, settings/,
@@ -103,8 +102,6 @@ lives in `src/lib/skills/content.ts` (SKILL_CONTENT) — don't duplicate here.
   activity-stats, health, analyze-health
 - **Labels, Sections, Comments, Filters, Reminders, Folders, Templates** —
   standard CRUD + browse
-- **Goals** — list, view, create, update, delete, complete, uncomplete,
-  link/unlink tasks
 - **Workspaces** — list/view + workspace users + access management
 - **Notifications** — list/view/accept/reject/dismiss
 - **Productivity & activity** — `activity`, `stats`, `completed`
@@ -159,7 +156,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
   `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
   `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,
-  `resolveFolderRef`, `resolveAppRef`, `resolveGoalRef`, `resolveFromList`,
+  `resolveFolderRef`, `resolveAppRef`, `resolveFromList`,
   `parseTodoistUrl`, `classifyTodoistUrl`
 - **`reorder.ts`** — `validateReorderPlacement()` for shared
   `--before` / `--after` / `--position` validation.
