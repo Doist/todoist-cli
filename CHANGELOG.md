@@ -1,3 +1,9 @@
+## [1.76.0](https://github.com/Doist/todoist-cli/compare/v1.75.3...v1.76.0) (2026-07-06)
+
+### Features
+
+* **apps:** add --set-webhook-url to apps update ([#420](https://github.com/Doist/todoist-cli/issues/420)) ([449583f](https://github.com/Doist/todoist-cli/commit/449583f9a9d0edad84e286f32e511ec28a7ee61a))
+
 ## [1.75.3](https://github.com/Doist/todoist-cli/compare/v1.75.2...v1.75.3) (2026-06-29)
 
 ### Bug Fixes
