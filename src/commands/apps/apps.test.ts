@@ -1148,6 +1148,29 @@ describe('apps update --set-webhook-url', () => {
         expect(output).toContain('already set to')
     })
 
+    it('same-URL no-op with --json outputs the unchanged webhook as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://old.example.com/webhook',
+            '--json',
+        ])
+
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.callbackUrl).toBe('https://old.example.com/webhook')
+    })
+
     it('--dry-run previews without calling updateAppWebhook', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()

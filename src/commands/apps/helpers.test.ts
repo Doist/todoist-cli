@@ -56,6 +56,8 @@ describe('validateWebhookUrl', () => {
         // localhost and custom schemes are valid OAuth redirects but not webhook targets.
         'http://localhost/webhook',
         'https://localhost/webhook',
+        // A dotted localhost host would otherwise pass the generic https check.
+        'https://foo.localhost/webhook',
         'myapp://webhook',
         'ftp://example.com',
     ])('rejects %s', (url) => {

@@ -26,6 +26,15 @@ function validateIntegrationUrl(url: string): boolean {
 // URIs, localhost and custom schemes are not valid webhook targets, so this
 // only accepts the plain https form.
 export function validateWebhookUrl(url: string): boolean {
+    // `validateIntegrationUrl` accepts any dotted https host, which lets
+    // `foo.localhost` through — reject localhost and its subdomains explicitly
+    // since a webhook target must be publicly reachable.
+    try {
+        const { hostname } = new URL(url)
+        if (hostname === 'localhost' || hostname.endsWith('.localhost')) return false
+    } catch {
+        return false
+    }
     return validateIntegrationUrl(url)
 }
 

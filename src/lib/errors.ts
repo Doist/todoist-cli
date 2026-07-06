@@ -84,6 +84,7 @@ export type ErrorCode =
     | 'FILE_READ_ERROR'
     | 'FILE_TOO_LARGE'
     | 'NO_CHANGES'
+    | 'NO_WEBHOOK'
     | 'NO_DUE_DATE'
     | 'NO_DUE_TIME'
     | 'NO_URL'
