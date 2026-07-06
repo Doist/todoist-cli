@@ -1014,6 +1014,208 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
     })
 })
 
+describe('apps update --set-webhook-url', () => {
+    let mockApi: MockApi
+
+    const WEBHOOK = {
+        status: 'active' as const,
+        callbackUrl: 'https://old.example.com/webhook',
+        version: '1' as const,
+        events: ['item:added', 'item:completed'] as const,
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+    })
+
+    it('swaps the callback URL, preserving the existing events and version', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateAppWebhook.mockResolvedValue({
+            ...WEBHOOK,
+            callbackUrl: 'https://new.example.com/webhook',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+        ])
+
+        expect(mockApi.updateAppWebhook).toHaveBeenCalledWith({
+            appId: '9909',
+            callbackUrl: 'https://new.example.com/webhook',
+            events: WEBHOOK.events,
+            version: '1',
+        })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Set webhook URL for Todoist for VS Code')
+        expect(output).toContain('https://new.example.com/webhook')
+    })
+
+    it('outputs the updated webhook as JSON with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateAppWebhook.mockResolvedValue({
+            ...WEBHOOK,
+            callbackUrl: 'https://new.example.com/webhook',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.callbackUrl).toBe('https://new.example.com/webhook')
+        expect(parsed.events).toEqual(['item:added', 'item:completed'])
+    })
+
+    it('errors with NO_WEBHOOK when the app has no webhook configured', async () => {
+        const program = createProgram()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(null)
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--set-webhook-url',
+                'https://new.example.com/webhook',
+            ]),
+        ).rejects.toMatchObject({ code: 'NO_WEBHOOK' })
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+    })
+
+    it('rejects an invalid webhook URL before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--set-webhook-url',
+                'http://localhost/webhook',
+            ]),
+        ).rejects.toMatchObject({ code: 'INVALID_URL' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+    })
+
+    it('is a no-op when the URL already matches the configured callback', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://old.example.com/webhook',
+        ])
+
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('already set to')
+    })
+
+    it('same-URL no-op with --json outputs the unchanged webhook as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://old.example.com/webhook',
+            '--json',
+        ])
+
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.callbackUrl).toBe('https://old.example.com/webhook')
+    })
+
+    it('--dry-run previews without calling updateAppWebhook', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toContain('https://new.example.com/webhook')
+    })
+
+    it('errors when combined with an OAuth-redirect flag', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--set-webhook-url',
+                'https://new.example.com/webhook',
+                '--add-oauth-redirect',
+                'https://example.com/cb',
+            ]),
+        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+    })
+})
+
 describe('apps delete', () => {
     let mockApi: MockApi
 

@@ -7,11 +7,13 @@ import {
     parseOAuthRedirectUris,
     serializeOAuthRedirectUris,
     validateRedirectUri,
+    validateWebhookUrl,
 } from './helpers.js'
 
 export interface UpdateAppOptions {
     addOauthRedirect?: string
     removeOauthRedirect?: string
+    setWebhookUrl?: string
     yes?: boolean
     dryRun?: boolean
     json?: boolean
@@ -24,22 +26,35 @@ function invalidUri(uri: string): CliError {
     ])
 }
 
+function invalidWebhookUrl(url: string): CliError {
+    return new CliError('INVALID_URL', `Invalid webhook URL: ${url}`, [
+        'Use a public https://<host> URL.',
+    ])
+}
+
 export async function updateApp(ref: string, options: UpdateAppOptions): Promise<void> {
     const add = options.addOauthRedirect
     const remove = options.removeOauthRedirect
+    const setWebhookUrl = options.setWebhookUrl
 
-    if (add && remove) {
+    const operations = [add, remove, setWebhookUrl].filter((op) => op !== undefined)
+    if (operations.length > 1) {
         throw new CliError(
             'CONFLICTING_OPTIONS',
-            '--add-oauth-redirect and --remove-oauth-redirect cannot be used together.',
+            '--add-oauth-redirect, --remove-oauth-redirect and --set-webhook-url cannot be used together.',
             ['Pass one flag at a time.'],
         )
     }
 
-    if (!add && !remove) {
+    if (operations.length === 0) {
         throw new CliError('NO_CHANGES', 'No changes specified.', [
-            'Use --add-oauth-redirect <url> or --remove-oauth-redirect <url>.',
+            'Use --add-oauth-redirect <url>, --remove-oauth-redirect <url>, or --set-webhook-url <url>.',
         ])
+    }
+
+    if (setWebhookUrl !== undefined) {
+        await setWebhook(ref, setWebhookUrl, options)
+        return
     }
 
     // Validate only the URI we're about to persist. Removals intentionally
@@ -137,5 +152,60 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         console.log(
             `Removed OAuth redirect URI from ${app.displayName} (id:${app.id}): ${toRemove}`,
         )
+    }
+}
+
+// The webhook is a separate endpoint from the app record, and it holds a single
+// callback URL, so setting it is a straight swap. `updateAppWebhook` requires
+// the full event list, so we read the existing webhook and preserve its events
+// and version — a webhook must already exist for a URL-only swap to be possible.
+async function setWebhook(ref: string, url: string, options: UpdateAppOptions): Promise<void> {
+    if (!validateWebhookUrl(url)) throw invalidWebhookUrl(url)
+
+    const api = await getApi()
+    const app = await resolveAppRef(api, ref)
+    const webhook = await api.getAppWebhook(app.id)
+
+    if (webhook === null) {
+        throw new CliError(
+            'NO_WEBHOOK',
+            `No webhook configured for "${app.displayName}". A webhook must exist before its URL can be changed.`,
+        )
+    }
+
+    if (webhook.callbackUrl === url) {
+        // Surface the unchanged webhook for scripts so `--json` stays parseable
+        // even on a no-op.
+        if (options.json) {
+            console.log(JSON.stringify(webhook, null, 2))
+            return
+        }
+        console.log(
+            `Webhook URL for "${app.displayName}" is already set to ${url} — nothing to change.`,
+        )
+        return
+    }
+
+    if (options.dryRun) {
+        printDryRun('set webhook URL', {
+            App: `${app.displayName} (id:${app.id})`,
+            'Webhook URL': url,
+        })
+        return
+    }
+
+    const updated = await api.updateAppWebhook({
+        appId: app.id,
+        callbackUrl: url,
+        events: webhook.events,
+        version: webhook.version,
+    })
+
+    if (options.json) {
+        console.log(JSON.stringify(updated, null, 2))
+        return
+    }
+    if (!isQuiet()) {
+        console.log(`Set webhook URL for ${app.displayName} (id:${app.id}): ${url}`)
     }
 }
