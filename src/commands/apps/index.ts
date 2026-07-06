@@ -21,6 +21,7 @@ Examples:
   td apps view id:9909 --json --include-secrets
   td apps update id:9909 --add-oauth-redirect https://example.com/callback
   td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
+  td apps update id:9909 --set-webhook-url https://example.com/webhook
   td apps delete id:9909 --yes
 
 Sensitive values (client id, client secret, verification token, test token,
@@ -61,6 +62,7 @@ Requires authenticating with the dev:app_console scope:
             '--remove-oauth-redirect <url>',
             'Remove an OAuth redirect URI from the app (requires --yes)',
         )
+        .option('--set-webhook-url <url>', "Set (swap) the app's webhook callback URL")
         .option('--yes', 'Confirm destructive changes (required for --remove-oauth-redirect)')
         .option('--dry-run', 'Preview what would happen without executing')
         .option('--json', 'Output the updated app as JSON')

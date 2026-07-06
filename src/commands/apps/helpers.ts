@@ -22,6 +22,13 @@ function validateIntegrationUrl(url: string): boolean {
     }
 }
 
+// A webhook callback must be a public https:// endpoint. Unlike OAuth redirect
+// URIs, localhost and custom schemes are not valid webhook targets, so this
+// only accepts the plain https form.
+export function validateWebhookUrl(url: string): boolean {
+    return validateIntegrationUrl(url)
+}
+
 export function validateRedirectUri(url: string): boolean {
     if (localhostRegex.test(url)) {
         try {

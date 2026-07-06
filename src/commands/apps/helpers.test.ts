@@ -3,6 +3,7 @@ import {
     parseOAuthRedirectUris,
     serializeOAuthRedirectUris,
     validateRedirectUri,
+    validateWebhookUrl,
 } from './helpers.js'
 
 describe('validateRedirectUri', () => {
@@ -37,6 +38,28 @@ describe('validateRedirectUri', () => {
         'vbscript://run',
     ])('rejects %s', (url) => {
         expect(validateRedirectUri(url)).toBe(false)
+    })
+})
+
+describe('validateWebhookUrl', () => {
+    it.each([
+        'https://example.com',
+        'https://example.com/webhook',
+        'https://sub.example.co.uk/hook',
+    ])('accepts %s', (url) => {
+        expect(validateWebhookUrl(url)).toBe(true)
+    })
+
+    it.each([
+        'not-a-url',
+        'http://example.com',
+        // localhost and custom schemes are valid OAuth redirects but not webhook targets.
+        'http://localhost/webhook',
+        'https://localhost/webhook',
+        'myapp://webhook',
+        'ftp://example.com',
+    ])('rejects %s', (url) => {
+        expect(validateWebhookUrl(url)).toBe(false)
     })
 })
 
