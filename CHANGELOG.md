@@ -1,3 +1,13 @@
+## [2.0.0](https://github.com/Doist/todoist-cli/compare/v1.76.1...v2.0.0) (2026-07-13)
+
+### ⚠ BREAKING CHANGES
+
+* Removal of Goals (BETA)
+
+### Features
+
+* Removal of Goals (BETA) ([096eaec](https://github.com/Doist/todoist-cli/commit/096eaeca5c53faa346d4b39fb512009e7b73056e))
+
 ## [1.76.1](https://github.com/Doist/todoist-cli/compare/v1.76.0...v1.76.1) (2026-07-07)
 
 ### Bug Fixes
