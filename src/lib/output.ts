@@ -233,16 +233,6 @@ const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
     'locTrigger',
     'radius',
 ] as const
-const GOAL_ESSENTIAL_FIELDS = [
-    'id',
-    'name',
-    'description',
-    'ownerType',
-    'ownerId',
-    'deadline',
-    'isCompleted',
-    'progress',
-] as const
 const FILTER_ESSENTIAL_FIELDS = ['id', 'name', 'query', 'color', 'isFavorite'] as const
 const FOLDER_ESSENTIAL_FIELDS = ['id', 'name', 'workspaceId', 'defaultOrder', 'childOrder'] as const
 const APP_ESSENTIAL_FIELDS = [
@@ -303,9 +293,6 @@ function addWebUrl<T extends { id: string }>(item: T, type: EntityType): T & { w
                 url = ''
             }
             break
-        case 'goal':
-            url = ''
-            break
         case 'reminder':
             url = ''
             break
@@ -334,7 +321,6 @@ export type EntityType =
     | 'reminder'
     | 'location-reminder'
     | 'filter'
-    | 'goal'
     | 'folder'
     | 'notification'
     | 'app'
@@ -357,8 +343,6 @@ function getEssentialFields(type: EntityType): readonly string[] {
             return LOCATION_REMINDER_ESSENTIAL_FIELDS
         case 'filter':
             return FILTER_ESSENTIAL_FIELDS
-        case 'goal':
-            return GOAL_ESSENTIAL_FIELDS
         case 'folder':
             return FOLDER_ESSENTIAL_FIELDS
         case 'notification':
