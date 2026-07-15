@@ -1,7 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatJson, printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun, processJsonItem } from '../../lib/output.js'
 import { resolveAppRef } from '../../lib/refs.js'
 import {
     parseOAuthRedirectUris,
@@ -11,6 +11,8 @@ import {
 } from './helpers.js'
 
 export interface UpdateAppOptions {
+    name?: string
+    description?: string
     addOauthRedirect?: string
     removeOauthRedirect?: string
     setWebhookUrl?: string
@@ -32,39 +34,93 @@ function invalidWebhookUrl(url: string): CliError {
     ])
 }
 
+// Every update flag can be combined in a single invocation. The command
+// performs up to two API operations: an app-record patch (name, description
+// and/or OAuth redirect URIs via `updateApp`) and a webhook URL swap (a
+// separate endpoint via `updateAppWebhook`). The only mutually-exclusive pair
+// is --add-oauth-redirect / --remove-oauth-redirect, which read-modify-write
+// the same field with different confirmation semantics.
 export async function updateApp(ref: string, options: UpdateAppOptions): Promise<void> {
-    const add = options.addOauthRedirect
-    const remove = options.removeOauthRedirect
+    const { name, description, addOauthRedirect: add, removeOauthRedirect: remove } = options
     const setWebhookUrl = options.setWebhookUrl
 
-    const operations = [add, remove, setWebhookUrl].filter((op) => op !== undefined)
-    if (operations.length > 1) {
+    // Phase A — validate up front, before any network call.
+    if (add !== undefined && remove !== undefined) {
         throw new CliError(
             'CONFLICTING_OPTIONS',
-            '--add-oauth-redirect, --remove-oauth-redirect and --set-webhook-url cannot be used together.',
-            ['Pass one flag at a time.'],
+            '--add-oauth-redirect and --remove-oauth-redirect cannot be used together.',
+            ['Pass one at a time.'],
         )
     }
 
-    if (operations.length === 0) {
-        throw new CliError('NO_CHANGES', 'No changes specified.', [
-            'Use --add-oauth-redirect <url>, --remove-oauth-redirect <url>, or --set-webhook-url <url>.',
-        ])
-    }
-
-    if (setWebhookUrl !== undefined) {
-        await setWebhook(ref, setWebhookUrl, options)
-        return
+    // An empty display name would blank out the app's name; reject it. An empty
+    // --description is allowed on purpose — it clears the description.
+    if (name !== undefined && name.trim() === '') {
+        throw new CliError('INVALID_OPTIONS', 'Display name cannot be empty.')
     }
 
     // Validate only the URI we're about to persist. Removals intentionally
     // skip validation so users can clean up legacy malformed URIs that
     // predate this validator or were written by older tooling.
     if (add !== undefined && !validateRedirectUri(add)) throw invalidUri(add)
+    if (setWebhookUrl !== undefined && !validateWebhookUrl(setWebhookUrl)) {
+        throw invalidWebhookUrl(setWebhookUrl)
+    }
 
+    if (
+        name === undefined &&
+        description === undefined &&
+        add === undefined &&
+        remove === undefined &&
+        setWebhookUrl === undefined
+    ) {
+        throw new CliError('NO_CHANGES', 'No changes specified.', [
+            'Use --name, --description, --add-oauth-redirect <url>, --remove-oauth-redirect <url>, or --set-webhook-url <url>.',
+        ])
+    }
+
+    // Phase B — reads. Both happen before any write so NO_WEBHOOK / ALREADY_EXISTS
+    // can't leave a half-applied state.
     const api = await getApi()
     const app = await resolveAppRef(api, ref)
     const current = parseOAuthRedirectUris(app.oauthRedirectUri)
+
+    const webhook = setWebhookUrl !== undefined ? await api.getAppWebhook(app.id) : null
+    if (setWebhookUrl !== undefined && webhook === null) {
+        throw new CliError(
+            'NO_WEBHOOK',
+            `No webhook configured for "${app.displayName}". A webhook must exist before its URL can be changed.`,
+        )
+    }
+
+    // Phase C — build the plan (no writes).
+    const patch: Parameters<typeof api.updateApp>[1] = {}
+    const changes: string[] = []
+    const noops: string[] = []
+    let removeIsMutation = false
+    let webhookWillChange = false
+
+    if (name !== undefined) {
+        if (name === app.displayName) {
+            noops.push(
+                `Display name for "${app.displayName}" is already "${name}" — nothing to change.`,
+            )
+        } else {
+            patch.displayName = name
+            changes.push(`set name to "${name}"`)
+        }
+    }
+
+    if (description !== undefined) {
+        // A null and an empty-string description both mean "no description", so
+        // clearing an already-empty description is a no-op.
+        if ((app.description ?? '') === description) {
+            noops.push(`Description for "${app.displayName}" already matches — nothing to change.`)
+        } else {
+            patch.description = description
+            changes.push(description === '' ? 'cleared description' : 'set description')
+        }
+    }
 
     if (add !== undefined) {
         if (current.includes(add)) {
@@ -73,58 +129,80 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
                 `"${add}" is already an OAuth redirect URI for "${app.displayName}".`,
             )
         }
-
-        const next = [...current, add]
-
-        if (options.dryRun) {
-            printDryRun('add OAuth redirect URI', {
-                App: `${app.displayName} (id:${app.id})`,
-                URI: add,
-            })
-            return
-        }
-
-        const updated = await api.updateApp(app.id, {
-            oauthRedirectUri: serializeOAuthRedirectUris(next),
-        })
-
-        if (options.json) {
-            console.log(formatJson(updated, 'app'))
-            return
-        }
-        if (!isQuiet()) {
-            console.log(`Added OAuth redirect URI to ${app.displayName} (id:${app.id}): ${add}`)
-        }
-        return
+        patch.oauthRedirectUri = serializeOAuthRedirectUris([...current, add])
+        changes.push(`added OAuth redirect URI ${add}`)
     }
 
-    // --remove-oauth-redirect path
-    const toRemove = remove as string
+    if (remove !== undefined) {
+        if (current.includes(remove)) {
+            const next = current.filter((u) => u !== remove)
+            patch.oauthRedirectUri = next.length === 0 ? null : serializeOAuthRedirectUris(next)
+            removeIsMutation = true
+            changes.push(`removed OAuth redirect URI ${remove}`)
+        } else {
+            noops.push(
+                `"${remove}" is not an OAuth redirect URI for "${app.displayName}" — nothing to remove.`,
+            )
+        }
+    }
 
-    if (!current.includes(toRemove)) {
-        // Surface the unchanged app for scripts so `--json` stays parseable
-        // even on a no-op.
+    if (setWebhookUrl !== undefined && webhook !== null) {
+        if (webhook.callbackUrl === setWebhookUrl) {
+            noops.push(
+                `Webhook URL for "${app.displayName}" is already set to ${setWebhookUrl} — nothing to change.`,
+            )
+        } else {
+            webhookWillChange = true
+            changes.push(`set webhook URL ${setWebhookUrl}`)
+        }
+    }
+
+    const hasRecordChange = Object.keys(patch).length > 0
+    const hasWebhookChange = webhookWillChange
+    // The JSON output shape is keyed on which surfaces the flags addressed, not
+    // on which mutated, so it stays stable even when a sub-op is a no-op.
+    const recordTouched =
+        name !== undefined || description !== undefined || add !== undefined || remove !== undefined
+    const webhookTouched = setWebhookUrl !== undefined
+
+    // Phase D — gating.
+    // Every requested change was a no-op (remove-not-present and/or
+    // webhook-already-set). Surface the unchanged object so scripts stay
+    // parseable, and exit 0.
+    if (!hasRecordChange && !hasWebhookChange) {
         if (options.json) {
-            console.log(formatJson(app, 'app'))
+            printResultJson({ app, webhook, recordTouched, webhookTouched })
             return
         }
-        console.log(
-            `"${toRemove}" is not an OAuth redirect URI for "${app.displayName}" — nothing to remove.`,
-        )
+        for (const line of noops) console.log(line)
         return
     }
 
     if (options.dryRun) {
-        printDryRun('remove OAuth redirect URI', {
+        printDryRun('update app', {
             App: `${app.displayName} (id:${app.id})`,
-            URI: toRemove,
+            Name: patch.displayName,
+            Description:
+                'description' in patch
+                    ? patch.description === ''
+                        ? '(cleared)'
+                        : patch.description
+                    : undefined,
+            'OAuth redirect':
+                add !== undefined
+                    ? `add ${add}`
+                    : removeIsMutation
+                      ? `remove ${remove}`
+                      : undefined,
+            'Webhook URL': hasWebhookChange ? setWebhookUrl : undefined,
         })
         return
     }
 
-    if (!options.yes) {
-        // For programmatic callers, fail loudly rather than silently no-op
-        // with a human-readable preview the caller can't parse.
+    // A real OAuth-redirect removal is destructive and gates the whole batch:
+    // without --yes nothing is performed, so any metadata/webhook change in the
+    // same invocation is withheld too.
+    if (removeIsMutation && !options.yes) {
         if (options.json) {
             throw new CliError(
                 'CONFIRMATION_REQUIRED',
@@ -132,80 +210,59 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
                 ['Pass --yes to confirm.'],
             )
         }
-        console.log(
-            `Would remove OAuth redirect URI from ${app.displayName} (id:${app.id}): ${toRemove}`,
-        )
+        console.log(`Would update ${app.displayName} (id:${app.id}) — ${changes.join('; ')}.`)
         console.log('Use --yes to confirm.')
         return
     }
 
-    const next = current.filter((u) => u !== toRemove)
-    const updated = await api.updateApp(app.id, {
-        oauthRedirectUri: next.length === 0 ? null : serializeOAuthRedirectUris(next),
-    })
+    // Phase E — execute. Record patch first, then the webhook swap. If the
+    // record patch succeeds and the webhook call throws, the record change is
+    // already persisted and the error propagates — there is no rollback.
+    let updatedApp = app
+    if (hasRecordChange) updatedApp = await api.updateApp(app.id, patch)
 
+    let updatedWebhook = webhook
+    if (hasWebhookChange && webhook !== null) {
+        updatedWebhook = await api.updateAppWebhook({
+            appId: app.id,
+            callbackUrl: setWebhookUrl as string,
+            events: webhook.events,
+            version: webhook.version,
+        })
+    }
+
+    // Phase F — output.
     if (options.json) {
-        console.log(formatJson(updated, 'app'))
+        printResultJson({ app: updatedApp, webhook: updatedWebhook, recordTouched, webhookTouched })
         return
     }
     if (!isQuiet()) {
-        console.log(
-            `Removed OAuth redirect URI from ${app.displayName} (id:${app.id}): ${toRemove}`,
-        )
+        console.log(`Updated ${app.displayName} (id:${app.id}) — ${changes.join('; ')}.`)
+        for (const line of noops) console.log(line)
     }
 }
 
-// The webhook is a separate endpoint from the app record, and it holds a single
-// callback URL, so setting it is a straight swap. `updateAppWebhook` requires
-// the full event list, so we read the existing webhook and preserve its events
-// and version — a webhook must already exist for a URL-only swap to be possible.
-async function setWebhook(ref: string, url: string, options: UpdateAppOptions): Promise<void> {
-    if (!validateWebhookUrl(url)) throw invalidWebhookUrl(url)
-
-    const api = await getApi()
-    const app = await resolveAppRef(api, ref)
-    const webhook = await api.getAppWebhook(app.id)
-
-    if (webhook === null) {
-        throw new CliError(
-            'NO_WEBHOOK',
-            `No webhook configured for "${app.displayName}". A webhook must exist before its URL can be changed.`,
-        )
-    }
-
-    if (webhook.callbackUrl === url) {
-        // Surface the unchanged webhook for scripts so `--json` stays parseable
-        // even on a no-op.
-        if (options.json) {
-            console.log(JSON.stringify(webhook, null, 2))
-            return
-        }
-        console.log(
-            `Webhook URL for "${app.displayName}" is already set to ${url} — nothing to change.`,
-        )
+// Single-surface invocations keep their historical bare-object shapes so
+// existing scripts don't break; only when both the app record and the webhook
+// are touched do we emit a combined, self-describing document.
+function printResultJson({
+    app,
+    webhook,
+    recordTouched,
+    webhookTouched,
+}: {
+    app: Awaited<ReturnType<Awaited<ReturnType<typeof getApi>>['getApp']>>
+    webhook: Awaited<ReturnType<Awaited<ReturnType<typeof getApi>>['getAppWebhook']>>
+    recordTouched: boolean
+    webhookTouched: boolean
+}): void {
+    if (recordTouched && webhookTouched) {
+        console.log(JSON.stringify({ app: processJsonItem(app, 'app'), webhook }, null, 2))
         return
     }
-
-    if (options.dryRun) {
-        printDryRun('set webhook URL', {
-            App: `${app.displayName} (id:${app.id})`,
-            'Webhook URL': url,
-        })
+    if (webhookTouched) {
+        console.log(JSON.stringify(webhook, null, 2))
         return
     }
-
-    const updated = await api.updateAppWebhook({
-        appId: app.id,
-        callbackUrl: url,
-        events: webhook.events,
-        version: webhook.version,
-    })
-
-    if (options.json) {
-        console.log(JSON.stringify(updated, null, 2))
-        return
-    }
-    if (!isQuiet()) {
-        console.log(`Set webhook URL for ${app.displayName} (id:${app.id}): ${url}`)
-    }
+    console.log(formatJson(app, 'app'))
 }

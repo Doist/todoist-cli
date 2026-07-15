@@ -766,7 +766,8 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
                 '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
         })
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Added OAuth redirect URI to Todoist for VS Code')
+        expect(output).toContain('Updated Todoist for VS Code')
+        expect(output).toContain('added OAuth redirect URI')
         expect(output).toContain('https://example.com/cb')
     })
 
@@ -923,7 +924,8 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
         expect(mockApi.updateApp).not.toHaveBeenCalled()
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Would remove OAuth redirect URI')
+        expect(output).toContain('Would update Todoist for VS Code')
+        expect(output).toContain('removed OAuth redirect URI')
         expect(output).toContain('Use --yes to confirm.')
     })
 
@@ -947,7 +949,8 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
 
         expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { oauthRedirectUri: null })
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Removed OAuth redirect URI from Todoist for VS Code')
+        expect(output).toContain('Updated Todoist for VS Code')
+        expect(output).toContain('removed OAuth redirect URI')
     })
 
     it('add with --json outputs only the essential app fields via the shared formatter', async () => {
@@ -1057,7 +1060,8 @@ describe('apps update --set-webhook-url', () => {
             version: '1',
         })
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
-        expect(output).toContain('Set webhook URL for Todoist for VS Code')
+        expect(output).toContain('Updated Todoist for VS Code')
+        expect(output).toContain('set webhook URL')
         expect(output).toContain('https://new.example.com/webhook')
     })
 
@@ -1195,8 +1199,239 @@ describe('apps update --set-webhook-url', () => {
         expect(output).toContain('https://new.example.com/webhook')
     })
 
-    it('errors when combined with an OAuth-redirect flag', async () => {
+    it('combines with an OAuth-redirect flag, patching the record then swapping the webhook', async () => {
         const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+        mockApi.updateAppWebhook.mockResolvedValue({
+            ...WEBHOOK,
+            callbackUrl: 'https://new.example.com/webhook',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+        expect(mockApi.updateAppWebhook).toHaveBeenCalledWith({
+            appId: '9909',
+            callbackUrl: 'https://new.example.com/webhook',
+            events: WEBHOOK.events,
+            version: '1',
+        })
+    })
+})
+
+describe('apps update --name / --description (and combined)', () => {
+    let mockApi: MockApi
+
+    const WEBHOOK = {
+        status: 'active' as const,
+        callbackUrl: 'https://old.example.com/webhook',
+        version: '1' as const,
+        events: ['item:added', 'item:completed'] as const,
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+    })
+
+    it('sets the display name', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Updated Todoist for VS Code')
+        expect(output).toContain('set name to "Renamed App"')
+    })
+
+    it('sets the description', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, description: 'New blurb' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--description',
+            'New blurb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { description: 'New blurb' })
+    })
+
+    it('clears the description with an empty string', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, description: '' })
+
+        await program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--description', ''])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { description: '' })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('cleared description')
+    })
+
+    it('sets name and description together in a single updateApp patch', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            displayName: 'Renamed App',
+            description: 'New blurb',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--description',
+            'New blurb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            displayName: 'Renamed App',
+            description: 'New blurb',
+        })
+    })
+
+    it('rejects an empty display name before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--name', '   ']),
+        ).rejects.toMatchObject({ code: 'INVALID_OPTIONS' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('combines --name with --add-oauth-redirect in one updateApp patch', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            displayName: 'Renamed App',
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--add-oauth-redirect',
+            'https://example.com/cb',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            displayName: 'Renamed App',
+            oauthRedirectUri:
+                '["vscode://doist.todoist-vs-code/auth-complete","https://example.com/cb"]',
+        })
+    })
+
+    it('combines --name with --set-webhook-url and emits { app, webhook } JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+        mockApi.updateAppWebhook.mockResolvedValue({
+            ...WEBHOOK,
+            callbackUrl: 'https://new.example.com/webhook',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--json',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        expect(mockApi.updateAppWebhook).toHaveBeenCalledWith({
+            appId: '9909',
+            callbackUrl: 'https://new.example.com/webhook',
+            events: WEBHOOK.events,
+            version: '1',
+        })
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.app.id).toBe('9909')
+        expect(parsed.app.displayName).toBe('Renamed App')
+        expect(parsed.webhook.callbackUrl).toBe('https://new.example.com/webhook')
+        // The embedded app is projected to its essential fields, same as the
+        // lone-record --json path.
+        expect(parsed.app).not.toHaveProperty('iconSm')
+        expect(parsed.app).not.toHaveProperty('userId')
+    })
+
+    it('propagates a webhook failure after the record patch already persisted', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+        mockApi.updateAppWebhook.mockRejectedValue(new Error('webhook endpoint unavailable'))
 
         await expect(
             program.parseAsync([
@@ -1205,14 +1440,97 @@ describe('apps update --set-webhook-url', () => {
                 'apps',
                 'update',
                 'id:9909',
+                '--name',
+                'Renamed App',
                 '--set-webhook-url',
                 'https://new.example.com/webhook',
-                '--add-oauth-redirect',
-                'https://example.com/cb',
+                '--json',
             ]),
-        ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
-        expect(mockApi.getApp).not.toHaveBeenCalled()
+        ).rejects.toThrow('webhook endpoint unavailable')
+
+        // The record patch ran first and is not rolled back when the webhook
+        // call fails.
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        expect(mockApi.updateAppWebhook).toHaveBeenCalledTimes(1)
+    })
+
+    it('withholds the whole batch when a real removal lacks --yes (plain preview)', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--remove-oauth-redirect',
+            'vscode://doist.todoist-vs-code/auth-complete',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Would update Todoist for VS Code')
+        expect(output).toContain('set name to "Renamed App"')
+        expect(output).toContain('removed OAuth redirect URI')
+        expect(output).toContain('Use --yes to confirm.')
+    })
+
+    it('withholds the whole batch when a real removal lacks --yes (--json throws)', async () => {
+        const program = createProgram()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--name',
+                'Renamed App',
+                '--remove-oauth-redirect',
+                'vscode://doist.todoist-vs-code/auth-complete',
+                '--json',
+            ]),
+        ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' })
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('combined --dry-run previews every change without any API call', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--description',
+            'New blurb',
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
         expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toContain('Renamed App')
+        expect(output).toContain('New blurb')
+        expect(output).toContain('https://new.example.com/webhook')
     })
 })
 
