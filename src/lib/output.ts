@@ -378,13 +378,6 @@ function processItem<T extends object>(
     return base
 }
 
-// Return an entity projected to its essential fields (the same projection
-// `formatJson` applies) as an object, for callers that need to embed it inside
-// a larger JSON structure rather than emit it directly.
-export function projectEntity<T extends object>(data: T, type: EntityType): object {
-    return processItem(data, type, false, false)
-}
-
 export function formatJson<T extends object>(
     data: T | T[],
     type?: EntityType,

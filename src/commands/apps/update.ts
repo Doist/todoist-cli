@@ -1,7 +1,7 @@
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { formatJson, printDryRun, projectEntity } from '../../lib/output.js'
+import { formatJson, printDryRun, processJsonItem } from '../../lib/output.js'
 import { resolveAppRef } from '../../lib/refs.js'
 import {
     parseOAuthRedirectUris,
@@ -101,13 +101,25 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
     let webhookWillChange = false
 
     if (name !== undefined) {
-        patch.displayName = name
-        changes.push(`set name to "${name}"`)
+        if (name === app.displayName) {
+            noops.push(
+                `Display name for "${app.displayName}" is already "${name}" — nothing to change.`,
+            )
+        } else {
+            patch.displayName = name
+            changes.push(`set name to "${name}"`)
+        }
     }
 
     if (description !== undefined) {
-        patch.description = description
-        changes.push(description === '' ? 'cleared description' : 'set description')
+        // A null and an empty-string description both mean "no description", so
+        // clearing an already-empty description is a no-op.
+        if ((app.description ?? '') === description) {
+            noops.push(`Description for "${app.displayName}" already matches — nothing to change.`)
+        } else {
+            patch.description = description
+            changes.push(description === '' ? 'cleared description' : 'set description')
+        }
     }
 
     if (add !== undefined) {
@@ -171,11 +183,11 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
             App: `${app.displayName} (id:${app.id})`,
             Name: patch.displayName,
             Description:
-                description === undefined
-                    ? undefined
-                    : description === ''
-                      ? '(cleared)'
-                      : description,
+                'description' in patch
+                    ? patch.description === ''
+                        ? '(cleared)'
+                        : patch.description
+                    : undefined,
             'OAuth redirect':
                 add !== undefined
                     ? `add ${add}`
@@ -245,7 +257,7 @@ function printResultJson({
     webhookTouched: boolean
 }): void {
     if (recordTouched && webhookTouched) {
-        console.log(JSON.stringify({ app: projectEntity(app, 'app'), webhook }, null, 2))
+        console.log(JSON.stringify({ app: processJsonItem(app, 'app'), webhook }, null, 2))
         return
     }
     if (webhookTouched) {

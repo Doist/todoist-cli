@@ -1418,6 +1418,40 @@ describe('apps update --name / --description (and combined)', () => {
         expect(parsed.app.id).toBe('9909')
         expect(parsed.app.displayName).toBe('Renamed App')
         expect(parsed.webhook.callbackUrl).toBe('https://new.example.com/webhook')
+        // The embedded app is projected to its essential fields, same as the
+        // lone-record --json path.
+        expect(parsed.app).not.toHaveProperty('iconSm')
+        expect(parsed.app).not.toHaveProperty('userId')
+    })
+
+    it('propagates a webhook failure after the record patch already persisted', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.getAppWebhook.mockResolvedValue(WEBHOOK)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+        mockApi.updateAppWebhook.mockRejectedValue(new Error('webhook endpoint unavailable'))
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--name',
+                'Renamed App',
+                '--set-webhook-url',
+                'https://new.example.com/webhook',
+                '--json',
+            ]),
+        ).rejects.toThrow('webhook endpoint unavailable')
+
+        // The record patch ran first and is not rolled back when the webhook
+        // call fails.
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        expect(mockApi.updateAppWebhook).toHaveBeenCalledTimes(1)
     })
 
     it('withholds the whole batch when a real removal lacks --yes (plain preview)', async () => {
