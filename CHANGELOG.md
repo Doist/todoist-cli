@@ -1,3 +1,9 @@
+## [2.0.1](https://github.com/Doist/todoist-cli/compare/v2.0.0...v2.0.1) (2026-07-15)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.6 ([#430](https://github.com/Doist/todoist-cli/issues/430)) ([2ac46e6](https://github.com/Doist/todoist-cli/commit/2ac46e6c65c9022731b271b1bb7fab3519ea5ea3))
+
 ## [2.0.0](https://github.com/Doist/todoist-cli/compare/v1.76.1...v2.0.0) (2026-07-13)
 
 ### ⚠ BREAKING CHANGES
