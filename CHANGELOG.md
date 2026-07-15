@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/Doist/todoist-cli/compare/v2.0.1...v2.1.0) (2026-07-15)
+
+### Features
+
+* **apps:** add --name and --description to apps update ([#431](https://github.com/Doist/todoist-cli/issues/431)) ([a325f0e](https://github.com/Doist/todoist-cli/commit/a325f0e49b7e995d043af231a60f64060983f31f))
+
 ## [2.0.1](https://github.com/Doist/todoist-cli/compare/v2.0.0...v2.0.1) (2026-07-15)
 
 ### Bug Fixes
