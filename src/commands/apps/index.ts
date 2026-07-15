@@ -19,9 +19,12 @@ Examples:
   td apps view 9909
   td apps view id:9909 --include-secrets
   td apps view id:9909 --json --include-secrets
+  td apps update id:9909 --name "My Renamed App"
+  td apps update id:9909 --description "Does a useful thing"
   td apps update id:9909 --add-oauth-redirect https://example.com/callback
   td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
   td apps update id:9909 --set-webhook-url https://example.com/webhook
+  td apps update id:9909 --name "My App" --description "New blurb" --set-webhook-url https://example.com/webhook
   td apps delete id:9909 --yes
 
 Sensitive values (client id, client secret, verification token, test token,
@@ -57,6 +60,8 @@ Requires authenticating with the dev:app_console scope:
     const updateCmd = apps
         .command('update [ref]')
         .description('Update a single app (by name, id:N, or raw id)')
+        .option('--name <name>', "Set the app's display name")
+        .option('--description <description>', "Set the app's description (empty string clears it)")
         .option('--add-oauth-redirect <url>', 'Add an OAuth redirect URI to the app')
         .option(
             '--remove-oauth-redirect <url>',
@@ -65,7 +70,7 @@ Requires authenticating with the dev:app_console scope:
         .option('--set-webhook-url <url>', "Set (swap) the app's webhook callback URL")
         .option('--yes', 'Confirm destructive changes (required for --remove-oauth-redirect)')
         .option('--dry-run', 'Preview what would happen without executing')
-        .option('--json', 'Output the updated app as JSON')
+        .option('--json', 'Output the updated app/webhook as JSON')
         .action((ref, options) => {
             if (!ref) {
                 updateCmd.help()
