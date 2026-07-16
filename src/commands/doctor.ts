@@ -83,9 +83,15 @@ function isNoTokenError(error: unknown): boolean {
     )
 }
 
+function padVersion(spec: string): string {
+    const parts = spec.split('.')
+    while (parts.length < 3) parts.push('0')
+    return parts.slice(0, 3).join('.')
+}
+
 function checkNodeVersion(): DoctorCheck | null {
     const required = packageJson.engines.node
-    const match = required.match(/^>=\s*v?(\d+\.\d+\.\d+)$/)
+    const match = required.match(/^>=\s*v?(\d+(?:\.\d+){0,2})$/)
 
     if (!match) {
         return {
@@ -96,7 +102,7 @@ function checkNodeVersion(): DoctorCheck | null {
         }
     }
 
-    const minimumVersion = match[1]
+    const minimumVersion = padVersion(match[1])
     const currentVersion = process.version
     const ok = compareVersions(currentVersion, minimumVersion) >= 0
 
