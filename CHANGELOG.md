@@ -1,3 +1,13 @@
+## [3.0.0](https://github.com/Doist/todoist-cli/compare/v2.1.0...v3.0.0) (2026-07-16)
+
+### ⚠ BREAKING CHANGES
+
+* require node >=24, test on 24 & 26, support npm >=11 (#433)
+
+### Features
+
+* require node >=24, test on 24 & 26, support npm >=11 ([#433](https://github.com/Doist/todoist-cli/issues/433)) ([d97e7f4](https://github.com/Doist/todoist-cli/commit/d97e7f412120adca7e93ae5e4753629e0d5440f8))
+
 ## [2.1.0](https://github.com/Doist/todoist-cli/compare/v2.0.1...v2.1.0) (2026-07-15)
 
 ### Features
