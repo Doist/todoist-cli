@@ -13,7 +13,7 @@ jobs:
             github.actor != 'renovate[bot]'
         steps:
             - name: Automatically request reviews from Frontend Product
-              uses: doist/auto-request-reviews-action@v1
+              uses: doist/auto-request-reviews-action@v2
               with:
                   reviewers: 1
                   team: 'Doist/frontend-product'
