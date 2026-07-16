@@ -85,7 +85,7 @@ function isNoTokenError(error: unknown): boolean {
 
 function checkNodeVersion(): DoctorCheck | null {
     const required = packageJson.engines.node
-    const match = required.match(/^>=\s*v?(\d+\.\d+\.\d+)$/)
+    const match = required.match(/^>=\s*v?(\d+(?:\.\d+){0,2})$/)
 
     if (!match) {
         return {
