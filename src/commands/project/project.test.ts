@@ -777,6 +777,24 @@ describe('project collaborators', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Jane S.'))
     })
 
+    it('lists shared personal project collaborators with hidden email', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Shared Project',
+            isShared: true,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-1', name: 'Jane Smith', email: null as unknown as string }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'collaborators', 'id:proj-1'])
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(hidden)'))
+    })
+
     it('throws error for non-shared project', async () => {
         const program = createProgram()
 
@@ -849,6 +867,30 @@ describe('project collaborators', () => {
             email: 'jane@example.com',
         })
         expect(parsed.nextCursor).toBeNull()
+    })
+
+    it('preserves hidden email in JSON output for shared personal project', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'Shared Project',
+            isShared: true,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [{ id: 'user-1', name: 'Jane Smith', email: null as unknown as string }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'collaborators', 'id:proj-1', '--json'])
+
+        const output = consoleSpy.mock.calls[0][0]
+        const parsed = JSON.parse(output)
+        expect(parsed.results[0]).toEqual({
+            id: 'user-1',
+            name: 'Jane Smith',
+            email: null,
+        })
     })
 
     it('outputs NDJSON for workspace project with --ndjson', async () => {
