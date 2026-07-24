@@ -1,3 +1,9 @@
+## [3.0.1](https://github.com/Doist/todoist-cli/compare/v3.0.0...v3.0.1) (2026-07-24)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v1 ([#439](https://github.com/Doist/todoist-cli/issues/439)) ([7bad7a7](https://github.com/Doist/todoist-cli/commit/7bad7a7f703e9ca00d45d752bd27dfe6341c2429))
+
 ## [3.0.0](https://github.com/Doist/todoist-cli/compare/v2.1.0...v3.0.0) (2026-07-16)
 
 ### ⚠ BREAKING CHANGES
