@@ -13,7 +13,8 @@ export async function updateAllInstalledSkills(local: boolean): Promise<UpdateAl
 
     for (const [name, installer] of Object.entries(skillInstallers)) {
         try {
-            const isInstalled = await installer.isInstalled(local)
+            const isInstalled =
+                (await installer.isInstalled(local)) || (await installer.hasLegacyInstall(local))
             if (isInstalled) {
                 await installer.update(local)
                 updated.push(name)

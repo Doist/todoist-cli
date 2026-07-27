@@ -28,6 +28,8 @@ td skill install universal
 
 Skills are installed to `~/<agent-dir>/skills/todoist-cli/SKILL.md` (e.g. `~/.claude/` for claude-code, `~/.agents/` for universal, etc.). When updating the CLI, installed skills are updated automatically. The `universal` agent is compatible with Amp, OpenCode, and other agents that read from `~/.agents/`.
 
+The `gemini` agent installs to `~/.gemini/config/skills/todoist-cli/SKILL.md`, the global location read by Antigravity, Antigravity CLI and Antigravity IDE alike. For project-scoped Antigravity skills use `td skill install universal --local`, which writes to `.agents/skills/` — the workspace directory Antigravity reads.
+
 ```bash
 td skill list
 td skill uninstall <agent>
