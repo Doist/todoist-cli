@@ -1,6 +1,6 @@
-import { access, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -415,6 +415,22 @@ describe('legacy install migration', () => {
         expect(await exists(currentFile)).toBe(false)
         expect(await exists(legacyFile)).toBe(false)
     })
+
+    // Permissions do not apply to root, so the unlink would succeed there.
+    it.skipIf(process.getuid?.() === 0)(
+        'surfaces failures to remove the legacy skill',
+        async () => {
+            await writeLegacySkill()
+            const legacyDir = dirname(legacyFile)
+            await chmod(legacyDir, 0o555)
+
+            try {
+                await expect(installer.update(false)).rejects.toThrow()
+            } finally {
+                await chmod(legacyDir, 0o755)
+            }
+        },
+    )
 
     it('still throws when nothing is installed', async () => {
         await mkdir(join(fakeHome, '.gemini'), { recursive: true })

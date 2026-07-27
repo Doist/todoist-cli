@@ -1,4 +1,4 @@
-import { access, mkdir, readdir, rmdir, unlink, writeFile } from 'node:fs/promises'
+import { access, mkdir, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import packageJson from '../../../package.json' with { type: 'json' }
@@ -30,14 +30,15 @@ metadata:
     return frontmatter + SKILL_CONTENT
 }
 
+function isEnoent(error: unknown): boolean {
+    return error instanceof Error && 'code' in error && error.code === 'ENOENT'
+}
+
+/** Removes up to `levels` directories, walking upwards, stopping at the first one that is not empty. */
 async function removeEmptyDirs(startDir: string, levels: number): Promise<void> {
     let dir = startDir
     for (let level = 0; level < levels; level++) {
         try {
-            const files = await readdir(dir)
-            if (files.length > 0) {
-                return
-            }
             await rmdir(dir)
         } catch {
             return
@@ -80,8 +81,13 @@ export function createInstaller(config: InstallerConfig): SkillInstaller {
         }
         try {
             await unlink(filepath)
-        } catch {
-            return
+        } catch (error) {
+            // Anything other than the file already being gone leaves the old skill
+            // active for clients that still read it, so it must not pass silently.
+            if (isEnoent(error)) {
+                return
+            }
+            throw error
         }
         // Prune the now-empty todoist-cli/ directory and, if nothing else lives
         // there, the skills/ directory that contained it.
