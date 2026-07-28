@@ -8,7 +8,7 @@ export function registerCompletionCommand(program: Command): void {
 
     completion
         .command('install [shell]')
-        .description('Install shell completions (bash, zsh, fish)')
+        .description('Install shell completions (bash, zsh, fish, pwsh)')
         .action(async (shell?: string) => {
             await installAction(shell)
         })

@@ -153,11 +153,11 @@ When active, due dates get a `due:` prefix, deadlines get a `deadline:` prefix, 
 
 ## Shell Completions
 
-Tab completion is available for bash, zsh, and fish:
+Tab completion is available for bash, zsh, fish, and PowerShell:
 
 ```bash
 td completion install        # prompts for shell
-td completion install bash   # or: zsh, fish
+td completion install bash   # or: zsh, fish, pwsh
 ```
 
 Restart your shell or source your config file to activate. To remove:
