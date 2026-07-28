@@ -1,6 +1,6 @@
-import { access, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -188,7 +188,7 @@ describe('installer paths', () => {
         { agent: 'codex', dir: '.codex', desc: 'Codex skill for Todoist CLI' },
         { agent: 'copilot', dir: '.copilot', desc: 'GitHub Copilot skill for Todoist CLI' },
         { agent: 'cursor', dir: '.cursor', desc: 'Cursor skill for Todoist CLI' },
-        { agent: 'gemini', dir: '.gemini', desc: 'Gemini CLI skill for Todoist CLI' },
+        { agent: 'gemini', dir: '.gemini', desc: 'Antigravity (Gemini) skill for Todoist CLI' },
         { agent: 'pi', dir: '.pi', desc: 'Pi skill for Todoist CLI' },
         { agent: 'universal', dir: '.agents', desc: 'Universal agent skill for Todoist CLI' },
     ] as const
@@ -224,6 +224,11 @@ describe('installer paths', () => {
     it('installs Pi global skills under the Pi agent directory', () => {
         const globalPath = skillInstallers.pi.getInstallPath(false)
         expect(globalPath).toContain(join('.pi', 'agent', 'skills', 'todoist-cli', 'SKILL.md'))
+    })
+
+    it('installs Gemini global skills under the Antigravity config directory', () => {
+        const globalPath = skillInstallers.gemini.getInstallPath(false)
+        expect(globalPath).toContain(join('.gemini', 'config', 'skills', 'todoist-cli', 'SKILL.md'))
     })
 
     it('generates skill file with YAML frontmatter', () => {
@@ -318,6 +323,119 @@ describe('install detection', () => {
             process.chdir(originalCwd)
             await rm(testDir, { recursive: true, force: true })
         }
+    })
+})
+
+describe('legacy install migration', () => {
+    let fakeHome: string
+    let originalHome: string | undefined
+    let legacyFile: string
+    let currentFile: string
+
+    const installer = skillInstallers.gemini
+
+    beforeEach(async () => {
+        fakeHome = await mkdtemp(join(tmpdir(), 'skill-home-'))
+        originalHome = process.env.HOME
+        process.env.HOME = fakeHome
+        legacyFile = join(fakeHome, '.gemini', 'skills', 'todoist-cli', 'SKILL.md')
+        currentFile = join(fakeHome, '.gemini', 'config', 'skills', 'todoist-cli', 'SKILL.md')
+    })
+
+    afterEach(async () => {
+        if (originalHome === undefined) {
+            delete process.env.HOME
+        } else {
+            process.env.HOME = originalHome
+        }
+        await rm(fakeHome, { recursive: true, force: true })
+    })
+
+    async function writeLegacySkill() {
+        await mkdir(join(fakeHome, '.gemini', 'skills', 'todoist-cli'), { recursive: true })
+        await writeFile(legacyFile, 'old content', 'utf-8')
+    }
+
+    async function exists(filepath: string): Promise<boolean> {
+        try {
+            await access(filepath)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    it('reports the legacy path only for global scope', () => {
+        expect(installer.getLegacyInstallPath(false)).toBe(legacyFile)
+        expect(installer.getLegacyInstallPath(true)).toBeUndefined()
+    })
+
+    it('has no legacy path for agents that never moved', async () => {
+        const claudeCode = skillInstallers['claude-code']
+        expect(claudeCode.getLegacyInstallPath(false)).toBeUndefined()
+        expect(await claudeCode.hasLegacyInstall(false)).toBe(false)
+    })
+
+    it('installs to the new path and removes the legacy skill', async () => {
+        await writeLegacySkill()
+
+        await installer.install(false, false)
+
+        expect(await readFile(currentFile, 'utf-8')).toContain('name: todoist-cli')
+        expect(await exists(legacyFile)).toBe(false)
+        expect(await exists(join(fakeHome, '.gemini', 'skills'))).toBe(false)
+    })
+
+    it('migrates a legacy-only install on update', async () => {
+        await writeLegacySkill()
+
+        expect(await installer.isInstalled(false)).toBe(false)
+        expect(await installer.hasLegacyInstall(false)).toBe(true)
+
+        await installer.update(false)
+
+        expect(await readFile(currentFile, 'utf-8')).toContain('name: todoist-cli')
+        expect(await exists(legacyFile)).toBe(false)
+    })
+
+    it('uninstalls a legacy-only install', async () => {
+        await writeLegacySkill()
+
+        await expect(installer.uninstall(false)).resolves.not.toThrow()
+        expect(await exists(legacyFile)).toBe(false)
+    })
+
+    it('removes both locations on uninstall', async () => {
+        await writeLegacySkill()
+        await installer.install(false, true)
+        await writeLegacySkill()
+
+        await installer.uninstall(false)
+
+        expect(await exists(currentFile)).toBe(false)
+        expect(await exists(legacyFile)).toBe(false)
+    })
+
+    // Permissions do not apply to root, so the unlink would succeed there.
+    it.skipIf(process.getuid?.() === 0)(
+        'surfaces failures to remove the legacy skill',
+        async () => {
+            await writeLegacySkill()
+            const legacyDir = dirname(legacyFile)
+            await chmod(legacyDir, 0o555)
+
+            try {
+                await expect(installer.update(false)).rejects.toThrow()
+            } finally {
+                await chmod(legacyDir, 0o755)
+            }
+        },
+    )
+
+    it('still throws when nothing is installed', async () => {
+        await mkdir(join(fakeHome, '.gemini'), { recursive: true })
+
+        await expect(installer.uninstall(false)).rejects.toThrow('Skill file not found')
     })
 })
 

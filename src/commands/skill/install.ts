@@ -19,9 +19,15 @@ export async function installSkill(agent: string, options: InstallOptions): Prom
     const local = options.local ?? false
     const force = options.force ?? false
 
+    const legacyPath = installer.getLegacyInstallPath(local)
+    const hadLegacy = await installer.hasLegacyInstall(local)
+
     await installer.install(local, force)
 
     const filepath = installer.getInstallPath(local)
     console.log(chalk.green('✓'), `Installed ${installer.name} skill`)
     console.log(chalk.dim(filepath))
+    if (hadLegacy && legacyPath) {
+        console.log(chalk.dim(`Removed skill from previous location ${legacyPath}`))
+    }
 }

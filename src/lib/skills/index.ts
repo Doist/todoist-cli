@@ -24,8 +24,12 @@ export const skillInstallers: Record<string, SkillInstaller> = {
     }),
     gemini: createInstaller({
         name: 'gemini',
-        description: 'Gemini CLI skill for Todoist CLI',
+        // Antigravity reads global skills from ~/.gemini/config/skills — the only
+        // global location the Antigravity CLI, IDE and agent all pick up.
+        description: 'Antigravity (Gemini) skill for Todoist CLI',
         dirName: '.gemini',
+        globalDirName: '.gemini/config',
+        legacyGlobalDirName: '.gemini',
     }),
     pi: createInstaller({
         name: 'pi',

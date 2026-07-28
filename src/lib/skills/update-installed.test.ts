@@ -13,6 +13,8 @@ function mockInstaller(overrides: Partial<SkillInstaller> = {}): SkillInstaller 
         name: 'test',
         description: 'test',
         getInstallPath: vi.fn(() => '/test/path'),
+        getLegacyInstallPath: vi.fn(() => undefined),
+        hasLegacyInstall: vi.fn(async () => false),
         generateContent: vi.fn(() => 'content'),
         isInstalled: vi.fn(async () => false),
         install: vi.fn(async () => {}),
@@ -97,6 +99,25 @@ describe('updateAllInstalledSkills', () => {
 
         removeInstaller('agent-installed')
         removeInstaller('agent-missing')
+    })
+
+    it('updates agents that only have a skill at the legacy path', async () => {
+        setInstaller(
+            'agent-legacy',
+            mockInstaller({
+                name: 'agent-legacy',
+                isInstalled: vi.fn(async () => false),
+                hasLegacyInstall: vi.fn(async () => true),
+            }),
+        )
+
+        const result = await updateAllInstalledSkills(false)
+
+        expect(result.updated).toEqual(['agent-legacy'])
+        expect(result.skipped).toEqual([])
+        expect(getInstaller('agent-legacy').update).toHaveBeenCalledWith(false)
+
+        removeInstaller('agent-legacy')
     })
 
     it('continues updating remaining agents if one fails', async () => {

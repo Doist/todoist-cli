@@ -38,7 +38,9 @@ export async function updateSkill(agent: string, options: UpdateOptions): Promis
     }
 
     const local = options.local ?? false
-    const installed = await installer.isInstalled(local)
+    const legacyPath = installer.getLegacyInstallPath(local)
+    const hadLegacy = await installer.hasLegacyInstall(local)
+    const installed = (await installer.isInstalled(local)) || hadLegacy
 
     if (!installed) {
         throw new CliError(
@@ -52,4 +54,7 @@ export async function updateSkill(agent: string, options: UpdateOptions): Promis
     const filepath = installer.getInstallPath(local)
     console.log(chalk.green('✓'), `Updated ${installer.name} skill`)
     console.log(chalk.dim(filepath))
+    if (hadLegacy && legacyPath) {
+        console.log(chalk.dim(`Removed skill from previous location ${legacyPath}`))
+    }
 }
