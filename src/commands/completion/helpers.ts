@@ -3,8 +3,6 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SupportedShell } from '@pnpm/tabtab'
 
-// pwsh is included because tabtab supports it — installedShells() needs to
-// detect and clean up pwsh completion files even though we don't advertise it.
 export const COMPLETION_EXTENSIONS: Record<SupportedShell, string> = {
     bash: 'bash',
     zsh: 'zsh',
