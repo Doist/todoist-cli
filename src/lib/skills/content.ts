@@ -384,6 +384,7 @@ td config view --json
 td config view --show-token
 
 td completion install zsh
+td completion install pwsh
 td completion uninstall
 
 td view https://app.todoist.com/app/task/buy-milk-abc123
