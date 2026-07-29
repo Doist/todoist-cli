@@ -138,4 +138,5 @@ jobs:
                   workspace-id: 69
                   thread-id: CZECS4Yebwx7c1c8hDRmB
                   content: ${{ steps.announcement.outputs.message }}
+                  audience: thread
               continue-on-error: true
