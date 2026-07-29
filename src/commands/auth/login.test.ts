@@ -41,7 +41,6 @@ vi.mock('@doist/cli-core/auth', async (importOriginal) => {
     }
 })
 
-import { createTodoistTokenStore } from '../../lib/auth-store.js'
 import { attachTodoistLoginCommand } from './login.js'
 
 type AttachOptions = {
@@ -57,15 +56,13 @@ type AttachOptions = {
 
 function attachAndCapture(): AttachOptions {
     capturedAttachOptions.length = 0
-    createTestProgram((program) => attachTodoistLoginCommand(program, createTodoistTokenStore()))
+    createTestProgram((program) => attachTodoistLoginCommand(program))
     return capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions
 }
 
 function attachAndCaptureLogin(): { options: AttachOptions; program: Command } {
     capturedAttachOptions.length = 0
-    const program = createTestProgram((p) =>
-        attachTodoistLoginCommand(p, createTodoistTokenStore()),
-    )
+    const program = createTestProgram((p) => attachTodoistLoginCommand(p))
     return {
         options: capturedAttachOptions[capturedAttachOptions.length - 1].options as AttachOptions,
         program,
@@ -185,5 +182,25 @@ describe('attachTodoistLoginCommand: --no-browser-open', () => {
         // cli-core still surfaces the URL itself; the local hook just declines
         // to spawn a browser, leaving the printed URL for manual copy-paste.
         expect(openMock).not.toHaveBeenCalled()
+    })
+})
+
+describe('attachTodoistLoginCommand: --credential-store', () => {
+    afterEach(() => {
+        capturedAttachOptions.length = 0
+    })
+
+    it('defaults to system storage', async () => {
+        const { program } = attachAndCaptureLogin()
+        await program.parseAsync(['login'], { from: 'user' })
+
+        expect(program.commands[0]?.opts().credentialStore).toBe('system')
+    })
+
+    it('accepts explicit plaintext storage', async () => {
+        const { program } = attachAndCaptureLogin()
+        await program.parseAsync(['login', '--credential-store=plaintext'], { from: 'user' })
+
+        expect(program.commands[0]?.opts().credentialStore).toBe('plaintext')
     })
 })

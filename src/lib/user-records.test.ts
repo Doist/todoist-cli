@@ -83,7 +83,7 @@ describe('createTodoistUserRecordStore', () => {
         expect(persisted.users[0].api_token).toBeUndefined()
     })
 
-    it('upsert preserves fallbackToken when supplied (keyring-offline write)', async () => {
+    it('upsert preserves fallbackToken when supplied (plaintext credential write)', async () => {
         const { createTodoistUserRecordStore } = await import('./user-records.js')
         await createTodoistUserRecordStore().upsert({
             account: ACCOUNT_A,

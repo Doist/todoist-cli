@@ -73,12 +73,18 @@ This opens your browser to authenticate with Todoist. Once approved, the token i
 - Windows: Credential Manager
 - Linux: Secret Service/libsecret
 
-If secure storage is unavailable, the CLI warns and falls back to `~/.config/todoist-cli/config.json`. Existing plaintext tokens are migrated automatically the next time the CLI reads them successfully from the config file.
+Secure storage is required by default. If it is unavailable, login fails without writing a credential to disk. To explicitly use plaintext config-file storage, pass `--credential-store=plaintext`; the CLI always prints a warning when it writes a credential this way. Existing plaintext tokens are migrated automatically the next time the CLI reads them successfully from the config file.
 
 For a read-only OAuth token (scope `data:read`), run:
 
 ```bash
 td auth login --read-only
+```
+
+To explicitly store a credential in plaintext instead of the OS credential manager:
+
+```bash
+td auth login --credential-store=plaintext
 ```
 
 In read-only mode, commands that change Todoist data (create/update/delete/complete/move/archive, etc.) are blocked by the CLI.
@@ -100,6 +106,9 @@ Run `td auth login --help` for the full list. When a command fails for lack of a
 ```bash
 td auth token "your-token"
 ```
+
+Manual tokens use the system credential manager by default too. To explicitly store one
+in plaintext, add `--credential-store=plaintext`; the CLI prints a warning after the write.
 
 **Environment variable:**
 
