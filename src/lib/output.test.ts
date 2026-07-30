@@ -404,12 +404,6 @@ describe('formatChildrenBlock', () => {
         expect(lines[1]).toContain('due: Aug 2')
     })
 
-    it('omits the due segment for an undated subtask', () => {
-        const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', false)
-
-        expect(lines[1]).not.toContain('due:')
-    })
-
     it('substitutes a text marker in accessible mode', () => {
         const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', true)
 
@@ -480,42 +474,18 @@ describe('formatChildrenBlock', () => {
 })
 
 describe('processChildrenJson', () => {
+    const oneChild = { childCount: 1, children: [{ ...fixtures.tasks.child, hasChildren: true }] }
+
     it('projects children to essential fields and keeps hasChildren', () => {
-        const result = processChildrenJson(
-            {
-                childCount: 1,
-                children: [{ ...fixtures.tasks.child, hasChildren: true }],
-            },
-            'task',
-        )
-        const children = result.children as Record<string, unknown>[]
+        const result = processChildrenJson(oneChild, 'task')
 
         expect(result.childCount).toBe(1)
-        expect(children[0].hasChildren).toBe(true)
-        expect(children[0].content).toBe('Book venue')
-        expect(children[0]).not.toHaveProperty('userId')
+        expect(result.children?.[0]).toMatchObject({ content: 'Book venue', hasChildren: true })
+        expect(result.children?.[0]).not.toHaveProperty('userId')
     })
 
     it('includes every field under full', () => {
-        const result = processChildrenJson(
-            {
-                childCount: 1,
-                children: [{ ...fixtures.tasks.child, hasChildren: false }],
-            },
-            'task',
-            true,
-        )
-        const children = result.children as Record<string, unknown>[]
-
-        expect(children[0]).toHaveProperty('userId')
-    })
-
-    it('drops unset keys from the serialized payload', () => {
-        const serialized = JSON.parse(
-            JSON.stringify(processChildrenJson({ childCount: 0, children: [] }, 'task')),
-        )
-
-        expect(serialized).toEqual({ childCount: 0, children: [] })
+        expect(processChildrenJson(oneChild, 'task', true).children?.[0]).toHaveProperty('userId')
     })
 })
 

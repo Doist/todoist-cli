@@ -1951,7 +1951,8 @@ describe('project view --detailed', () => {
     })
 })
 
-describe('project view --include-children', () => {
+describe('project view hierarchy', () => {
+    const { parent, child, workspaceProject } = fixtures.projects
     let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
 
@@ -1959,151 +1960,86 @@ describe('project view --include-children', () => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
         consoleSpy = captureConsole()
+        mockApi.getProject.mockResolvedValue(parent)
         mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
     })
+
+    function view(...args: string[]) {
+        return createProgram().parseAsync(['node', 'td', 'project', 'view', ...args])
+    }
 
     function output(): string {
         return consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n')
     }
 
-    it('lists sub-projects and marks the ones that nest further', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+    /** The single pretty-printed document emitted by --json. */
+    function payload(): Record<string, unknown> {
+        return JSON.parse(output())
+    }
+
+    /** The emitted --ndjson records, one per line. */
+    function records(): Record<string, unknown>[] {
+        return output()
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line))
+    }
+
+    function hierarchy(...extra: object[]) {
         mockApi.getProjects.mockResolvedValue({
-            results: [
-                fixtures.projects.parent,
-                { ...fixtures.projects.child, id: 'sub-b', name: 'Later', childOrder: 2 },
-                fixtures.projects.child,
-                { ...fixtures.projects.child, id: 'grandchild', parentId: 'proj-child' },
-            ],
+            results: [parent, child, ...extra],
             nextCursor: null,
         })
+    }
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--include-children',
-        ])
+    it('lists sub-projects and marks the ones that nest further', async () => {
+        hierarchy(
+            { ...child, id: 'sub-b', name: 'Later', childOrder: 2 },
+            { ...child, id: 'grandchild', parentId: child.id },
+        )
+
+        await view('id:proj-parent', '--include-children')
 
         expect(output()).toContain('Sub-projects: 2')
-        expect(output()).toContain('Moonrises')
-        expect(output()).toContain('▸')
+        expect(output()).toContain('Moonrises  ▸')
         expect(output()).toContain('Later')
     })
 
     it('reports none for a workspace project without loading the project list', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.workspaceProject)
+        mockApi.getProject.mockResolvedValue(workspaceProject)
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-ws-1',
-            '--include-children',
-        ])
+        await view('id:proj-ws-1', '--include-children')
 
         expect(mockApi.getProjects).not.toHaveBeenCalled()
         expect(output()).toContain('Sub-projects: none')
     })
 
-    it('merges the child fields into --json output', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
-        mockApi.getProjects.mockResolvedValue({
-            results: [fixtures.projects.parent, fixtures.projects.child],
-            nextCursor: null,
-        })
-
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--include-children',
-            '--json',
-        ])
-
-        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
-        expect(payload.id).toBe('proj-parent')
-        expect(payload.childCount).toBe(1)
-        expect(payload.children[0]).toMatchObject({ id: 'proj-child', hasChildren: false })
-    })
-
-    it('emits sub-projects between the project and its tasks in --ndjson', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
-        mockApi.getProjects.mockResolvedValue({
-            results: [fixtures.projects.parent, fixtures.projects.child],
-            nextCursor: null,
-        })
-        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
-
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--include-children',
-            '--ndjson',
-        ])
-
-        const records = output()
-            .split('\n')
-            .filter(Boolean)
-            .map((line) => JSON.parse(line))
-        expect(records.map((r) => r.id)).toEqual(['proj-parent', 'proj-child', 'task-1'])
-        // The child records are their own lines, so the summary rides on the parent.
-        expect(records[0]).toMatchObject({ childCount: 1 })
-        expect(records[0]).not.toHaveProperty('children')
-    })
-
-    it('carries a failed lookup through to --ndjson consumers', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+    it('still prints the project when the children lookup fails', async () => {
         mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--include-children',
-            '--ndjson',
-        ])
+        await view('id:proj-parent', '--include-children')
 
-        const first = JSON.parse(output().split('\n')[0] ?? '{}')
-        expect(first.childrenError).toBe('Rate limited')
-        expect(first).not.toHaveProperty('childCount')
+        expect(output()).toContain('Photography')
+        expect(output()).toContain('Sub-projects: unavailable')
+        expect(output()).toContain('Rate limited')
     })
 
-    it('leaves --ndjson untouched without the flag', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+    it('merges the child fields into --json output', async () => {
+        hierarchy()
 
-        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-parent', '--ndjson'])
+        await view('id:proj-parent', '--include-children', '--json')
 
-        const first = JSON.parse(output().split('\n')[0] ?? '{}')
-        expect(first).not.toHaveProperty('childCount')
-        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(payload()).toMatchObject({
+            id: 'proj-parent',
+            childCount: 1,
+            children: [{ id: 'proj-child', hasChildren: false }],
+        })
     })
 
     it('puts the child fields alongside commentsCount under --detailed --json', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
-        mockApi.getProjects.mockResolvedValue({
-            results: [fixtures.projects.parent, fixtures.projects.child],
-            nextCursor: null,
-        })
+        hierarchy()
         mockApi.getFullProject.mockResolvedValue({
-            project: fixtures.projects.parent,
+            project: parent,
             commentsCount: 0,
             tasks: [],
             sections: [],
@@ -2111,108 +2047,77 @@ describe('project view --include-children', () => {
             notes: [],
         })
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--detailed',
-            '--include-children',
-            '--json',
-        ])
+        await view('id:proj-parent', '--detailed', '--include-children', '--json')
 
-        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
-        expect(payload.childCount).toBe(1)
-        expect(payload.children[0].id).toBe('proj-child')
+        const detailed = payload() as { childCount: number; children: { id: string }[] }
+        expect(detailed.childCount).toBe(1)
+        expect(detailed.children[0]?.id).toBe('proj-child')
     })
 
-    it('still prints the project when the children lookup fails', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+    it('emits sub-projects between the project and its tasks in --ndjson', async () => {
+        hierarchy()
+        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
+
+        await view('id:proj-parent', '--include-children', '--ndjson')
+
+        expect(records().map((r) => r.id)).toEqual(['proj-parent', 'proj-child', 'task-1'])
+        // The children are their own lines, so the summary rides on the parent.
+        expect(records()[0]).toMatchObject({ childCount: 1 })
+        expect(records()[0]).not.toHaveProperty('children')
+    })
+
+    it('carries a failed lookup through to --ndjson consumers', async () => {
         mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-parent',
-            '--include-children',
-        ])
+        await view('id:proj-parent', '--include-children', '--ndjson')
 
-        expect(output()).toContain('Photography')
-        expect(output()).toContain('Sub-projects: unavailable')
-        expect(output()).toContain('Rate limited')
-    })
-})
-
-describe('project view parent line', () => {
-    let mockApi: MockApi
-    let consoleSpy: ReturnType<typeof vi.spyOn>
-
-    beforeEach(() => {
-        vi.clearAllMocks()
-        mockApi = setupApiMock()
-        consoleSpy = captureConsole()
-        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+        expect(records()[0]).toMatchObject({ childrenError: 'Rate limited' })
+        expect(records()[0]).not.toHaveProperty('childCount')
     })
 
-    function output(): string {
-        return consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n')
-    }
+    it.each(['--json', '--ndjson'] as const)(
+        'leaves %s untouched without the flag',
+        async (mode) => {
+            await view('id:proj-parent', mode)
+
+            expect(output()).not.toContain('childCount')
+            expect(mockApi.getProjects).not.toHaveBeenCalled()
+        },
+    )
 
     it('names the parent project without needing the flag', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockImplementation(async (id) =>
-            id === 'proj-parent' ? fixtures.projects.parent : fixtures.projects.child,
-        )
+        mockApi.getProject.mockImplementation(async (id) => (id === parent.id ? parent : child))
 
-        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-child'])
+        await view('id:proj-child')
 
         expect(mockApi.getProject).toHaveBeenCalledWith('proj-parent')
         expect(mockApi.getProjects).not.toHaveBeenCalled()
         expect(output()).toContain('Parent:   Photography (id:proj-parent)')
     })
 
-    it.each(['--json', '--ndjson'] as const)(
-        'does not resolve the parent for %s, which never renders it',
-        async (mode) => {
-            const program = createProgram()
-            mockApi.getProject.mockResolvedValue(fixtures.projects.child)
-
-            await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-child', mode])
-
-            expect(mockApi.getProject).toHaveBeenCalledTimes(1)
-        },
-    )
-
     it('omits the parent line for a top-level project', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
-
-        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-parent'])
+        await view('id:proj-parent')
 
         expect(mockApi.getProject).toHaveBeenCalledTimes(1)
         expect(output()).not.toContain('Parent:')
     })
 
-    it('reuses the loaded project list instead of fetching the parent again', async () => {
-        const program = createProgram()
-        mockApi.getProject.mockResolvedValue(fixtures.projects.child)
-        mockApi.getProjects.mockResolvedValue({
-            results: [fixtures.projects.parent, fixtures.projects.child],
-            nextCursor: null,
-        })
+    it.each(['--json', '--ndjson'] as const)(
+        'does not resolve the parent for %s, which never renders it',
+        async (mode) => {
+            mockApi.getProject.mockResolvedValue(child)
 
-        await program.parseAsync([
-            'node',
-            'td',
-            'project',
-            'view',
-            'id:proj-child',
-            '--include-children',
-        ])
+            await view('id:proj-child', mode)
+
+            expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        },
+    )
+
+    it('reuses the loaded project list instead of fetching the parent again', async () => {
+        mockApi.getProject.mockResolvedValue(child)
+        hierarchy()
+
+        await view('id:proj-child', '--include-children')
 
         expect(mockApi.getProject).toHaveBeenCalledTimes(1)
         expect(output()).toContain('Parent:   Photography (id:proj-parent)')

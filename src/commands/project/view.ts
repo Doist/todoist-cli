@@ -45,41 +45,33 @@ function printChildren(
     }
 }
 
-/** The already-projected sub-project records for `--ndjson`, if any were requested. */
-function childNdjsonRecords(
-    children: ChildrenResult<ProjectChild> | undefined,
-    options: ViewOptions,
-): object[] {
-    if (!children) return []
-    return processChildrenJson(children, 'project', options.full, options.showUrls).children ?? []
-}
-
 /**
- * The project record for `--ndjson`, carrying the children summary. The child
- * records go out as their own lines, so counts, truncation and lookup failures
- * ride on the parent — otherwise a consumer cannot tell "no sub-projects" from
- * "the lookup failed" or "there are more than were emitted".
+ * The project record plus one record per sub-project, for `--ndjson`. The summary
+ * — count, truncation, lookup failure — rides on the project record, because the
+ * children go out as their own lines and would otherwise be indistinguishable
+ * from "no sub-projects".
  */
-function projectNdjsonRecord(
+function projectNdjsonLines(
     project: Project,
     children: ChildrenResult<ProjectChild> | undefined,
     options: ViewOptions,
-): string {
+): string[] {
     if (!children) {
-        return formatNdjson([project], 'project', options.full, options.showUrls)
+        return [formatNdjson([project], 'project', options.full, options.showUrls)]
     }
-    const { children: _records, ...summary } = processChildrenJson(
+    const { children: childRecords = [], ...summary } = processChildrenJson(
         children,
         'project',
         options.full,
         options.showUrls,
     )
-    return formatNdjson([
-        {
-            ...processJsonItem(project, 'project', options.full ?? false, options.showUrls),
-            ...summary,
-        },
-    ])
+    const record = {
+        ...processJsonItem(project, 'project', options.full ?? false, options.showUrls),
+        ...summary,
+    }
+    const lines = [formatNdjson([record])]
+    if (childRecords.length > 0) lines.push(formatNdjson(childRecords))
+    return lines
 }
 
 /**
@@ -149,11 +141,7 @@ export async function viewProject(
         if (options.ndjson) {
             const lines: string[] = []
             if (fullData.project) {
-                lines.push(projectNdjsonRecord(fullData.project, children, options))
-            }
-            const childRecords = childNdjsonRecords(children, options)
-            if (childRecords.length > 0) {
-                lines.push(formatNdjson(childRecords))
+                lines.push(...projectNdjsonLines(fullData.project, children, options))
             }
             if (fullData.tasks.length > 0) {
                 lines.push(formatNdjson(fullData.tasks, 'task', options.full, options.showUrls))
@@ -265,11 +253,7 @@ export async function viewProject(
 
     if (options.ndjson) {
         const lines: string[] = []
-        lines.push(projectNdjsonRecord(project, children, options))
-        const childRecords = childNdjsonRecords(children, options)
-        if (childRecords.length > 0) {
-            lines.push(formatNdjson(childRecords))
-        }
+        lines.push(...projectNdjsonLines(project, children, options))
         if (tasks.length > 0) {
             lines.push(formatNdjson(tasks, 'task', options.full, options.showUrls))
         }
