@@ -151,8 +151,13 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `extractAdditionalScopes`, `resolveAuthScope`, `formatScopesHelp`
 - **`output.ts`** — `formatTaskRow`, `formatTaskView`, `formatJson`,
   `formatNdjson`, `formatPaginatedJson`, `processJsonItem` (essential-field
-  picker used by JSON callers that build composite payloads), `formatDueDate`,
+  picker used by JSON callers that build composite payloads),
+  `formatChildrenBlock`, `processChildrenJson`, `formatDueDate`,
   `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`
+- **`children.ts`** — `--include-children` support: `getTaskChildren()`
+  (parentId query plus a nesting probe per child), `buildProjectChildren()`
+  (pure; groups a pre-fetched personal-project list), `resolveChildren()`
+  (never throws — reports via `childrenError`), `CHILDREN_MAX`
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
   `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
   `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,

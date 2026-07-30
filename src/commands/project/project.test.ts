@@ -30,6 +30,7 @@ import { openInBrowser } from '../../lib/browser.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
@@ -1947,6 +1948,179 @@ describe('project view --detailed', () => {
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
         expect(JSON.parse(output)).toEqual(fullData)
+    })
+})
+
+describe('project view hierarchy', () => {
+    const { parent, child, workspaceProject } = fixtures.projects
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        consoleSpy = captureConsole()
+        mockApi.getProject.mockResolvedValue(parent)
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+    })
+
+    function view(...args: string[]) {
+        return createProgram().parseAsync(['node', 'td', 'project', 'view', ...args])
+    }
+
+    function output(): string {
+        return consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n')
+    }
+
+    /** The single pretty-printed document emitted by --json. */
+    function payload(): Record<string, unknown> {
+        return JSON.parse(output())
+    }
+
+    /** The emitted --ndjson records, one per line. */
+    function records(): Record<string, unknown>[] {
+        return output()
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line))
+    }
+
+    function hierarchy(...extra: object[]) {
+        mockApi.getProjects.mockResolvedValue({
+            results: [parent, child, ...extra],
+            nextCursor: null,
+        })
+    }
+
+    it('lists sub-projects and marks the ones that nest further', async () => {
+        hierarchy(
+            { ...child, id: 'sub-b', name: 'Later', childOrder: 2 },
+            { ...child, id: 'grandchild', parentId: child.id },
+        )
+
+        await view('id:proj-parent', '--include-children')
+
+        expect(output()).toContain('Sub-projects: 2')
+        expect(output()).toContain('Moonrises  ▸')
+        expect(output()).toContain('Later')
+    })
+
+    it('reports none for a workspace project without loading the project list', async () => {
+        mockApi.getProject.mockResolvedValue(workspaceProject)
+
+        await view('id:proj-ws-1', '--include-children')
+
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(output()).toContain('Sub-projects: none')
+    })
+
+    it('still prints the project when the children lookup fails', async () => {
+        mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
+
+        await view('id:proj-parent', '--include-children')
+
+        expect(output()).toContain('Photography')
+        expect(output()).toContain('Sub-projects: unavailable')
+        expect(output()).toContain('Rate limited')
+    })
+
+    it('merges the child fields into --json output', async () => {
+        hierarchy()
+
+        await view('id:proj-parent', '--include-children', '--json')
+
+        expect(payload()).toMatchObject({
+            id: 'proj-parent',
+            childCount: 1,
+            children: [{ id: 'proj-child', hasChildren: false }],
+        })
+    })
+
+    it('puts the child fields alongside commentsCount under --detailed --json', async () => {
+        hierarchy()
+        mockApi.getFullProject.mockResolvedValue({
+            project: parent,
+            commentsCount: 0,
+            tasks: [],
+            sections: [],
+            collaborators: [],
+            notes: [],
+        })
+
+        await view('id:proj-parent', '--detailed', '--include-children', '--json')
+
+        const detailed = payload() as { childCount: number; children: { id: string }[] }
+        expect(detailed.childCount).toBe(1)
+        expect(detailed.children[0]?.id).toBe('proj-child')
+    })
+
+    it('emits sub-projects between the project and its tasks in --ndjson', async () => {
+        hierarchy()
+        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
+
+        await view('id:proj-parent', '--include-children', '--ndjson')
+
+        expect(records().map((r) => r.id)).toEqual(['proj-parent', 'proj-child', 'task-1'])
+        // The children are their own lines, so the summary rides on the parent.
+        expect(records()[0]).toMatchObject({ childCount: 1 })
+        expect(records()[0]).not.toHaveProperty('children')
+    })
+
+    it('carries a failed lookup through to --ndjson consumers', async () => {
+        mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
+
+        await view('id:proj-parent', '--include-children', '--ndjson')
+
+        expect(records()[0]).toMatchObject({ childrenError: 'Rate limited' })
+        expect(records()[0]).not.toHaveProperty('childCount')
+    })
+
+    it.each(['--json', '--ndjson'] as const)(
+        'leaves %s untouched without the flag',
+        async (mode) => {
+            await view('id:proj-parent', mode)
+
+            expect(output()).not.toContain('childCount')
+            expect(mockApi.getProjects).not.toHaveBeenCalled()
+        },
+    )
+
+    it('names the parent project without needing the flag', async () => {
+        mockApi.getProject.mockImplementation(async (id) => (id === parent.id ? parent : child))
+
+        await view('id:proj-child')
+
+        expect(mockApi.getProject).toHaveBeenCalledWith('proj-parent')
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(output()).toContain('Parent:   Photography (id:proj-parent)')
+    })
+
+    it('omits the parent line for a top-level project', async () => {
+        await view('id:proj-parent')
+
+        expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        expect(output()).not.toContain('Parent:')
+    })
+
+    it.each(['--json', '--ndjson'] as const)(
+        'does not resolve the parent for %s, which never renders it',
+        async (mode) => {
+            mockApi.getProject.mockResolvedValue(child)
+
+            await view('id:proj-child', mode)
+
+            expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        },
+    )
+
+    it('reuses the loaded project list instead of fetching the parent again', async () => {
+        mockApi.getProject.mockResolvedValue(child)
+        hierarchy()
+
+        await view('id:proj-child', '--include-children')
+
+        expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        expect(output()).toContain('Parent:   Photography (id:proj-parent)')
     })
 })
 

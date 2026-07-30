@@ -39,22 +39,34 @@ const commentDefaults = {
     isDeleted: false,
 }
 
+const basicTask = {
+    ...taskDefaults,
+    id: 'task-1',
+    content: 'Buy milk',
+    description: '',
+    priority: 1,
+    projectId: 'proj-1',
+    sectionId: null,
+    parentId: null,
+    labels: [],
+    due: null,
+    checked: false,
+    url: 'https://todoist.com/showTask?id=task-1',
+} as Task
+
+const personalProject = {
+    id: 'proj-personal',
+    name: 'Personal',
+    color: 'green',
+    isFavorite: false,
+    parentId: null,
+    viewStyle: 'list',
+    url: 'https://todoist.com/app/project/proj-personal',
+} as Project
+
 export const fixtures = {
     tasks: {
-        basic: {
-            ...taskDefaults,
-            id: 'task-1',
-            content: 'Buy milk',
-            description: '',
-            priority: 1,
-            projectId: 'proj-1',
-            sectionId: null,
-            parentId: null,
-            labels: [],
-            due: null,
-            checked: false,
-            url: 'https://todoist.com/showTask?id=task-1',
-        } as Task,
+        basic: basicTask,
         withDue: {
             ...taskDefaults,
             id: 'task-2',
@@ -111,6 +123,20 @@ export const fixtures = {
             checked: false,
             url: 'https://todoist.com/showTask?id=task-5',
         } as Task,
+        parent: {
+            ...basicTask,
+            id: 'task-parent',
+            content: 'Plan party',
+            priority: 3,
+            url: 'https://todoist.com/showTask?id=task-parent',
+        } as Task,
+        child: {
+            ...basicTask,
+            id: 'task-child',
+            content: 'Book venue',
+            parentId: 'task-parent',
+            url: 'https://todoist.com/showTask?id=task-child',
+        } as Task,
     },
     projects: {
         inbox: {
@@ -131,14 +157,21 @@ export const fixtures = {
             viewStyle: 'board',
             url: 'https://todoist.com/app/project/proj-work',
         } as Project,
-        personal: {
-            id: 'proj-personal',
-            name: 'Personal',
-            color: 'green',
-            isFavorite: false,
-            parentId: null,
-            viewStyle: 'list',
-            url: 'https://todoist.com/app/project/proj-personal',
+        personal: personalProject,
+        parent: {
+            ...personalProject,
+            id: 'proj-parent',
+            name: 'Photography',
+            childOrder: 1,
+            url: 'https://todoist.com/app/project/proj-parent',
+        } as Project,
+        child: {
+            ...personalProject,
+            id: 'proj-child',
+            name: 'Moonrises',
+            parentId: 'proj-parent',
+            childOrder: 1,
+            url: 'https://todoist.com/app/project/proj-child',
         } as Project,
         workspaceProject: {
             id: 'proj-ws-1',

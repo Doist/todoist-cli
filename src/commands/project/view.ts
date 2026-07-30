@@ -1,13 +1,27 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type PersonalProject, type TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi } from '../../lib/api/core.js'
+import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
+import {
+    buildProjectChildren,
+    type ChildrenResult,
+    type ProjectChild,
+    resolveChildren,
+} from '../../lib/children.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { formatJson, formatNdjson, formatTaskRow } from '../../lib/output.js'
+import {
+    formatChildrenBlock,
+    formatJson,
+    formatNdjson,
+    formatTaskRow,
+    processChildrenJson,
+    processJsonItem,
+} from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { projectUrl } from '../../lib/urls.js'
+import { loadPersonalProjects } from './helpers.js'
 
 async function printDescription(description: string | undefined, raw: boolean): Promise<void> {
     if (!description) return
@@ -16,15 +30,89 @@ async function printDescription(description: string | undefined, raw: boolean): 
     console.log(raw ? description : await renderMarkdown(description))
 }
 
+function printParent(parentProject: Project | undefined): void {
+    if (!parentProject) return
+    console.log(`Parent:   ${parentProject.name} (id:${parentProject.id})`)
+}
+
+function printChildren(
+    children: ChildrenResult<ProjectChild> | undefined,
+    projectId: string,
+): void {
+    if (!children) return
+    for (const line of formatChildrenBlock(children, 'project', projectId)) {
+        console.log(line)
+    }
+}
+
+/**
+ * The project record plus one record per sub-project, for `--ndjson`. The summary
+ * — count, truncation, lookup failure — rides on the project record, because the
+ * children go out as their own lines and would otherwise be indistinguishable
+ * from "no sub-projects".
+ */
+function projectNdjsonLines(
+    project: Project,
+    children: ChildrenResult<ProjectChild> | undefined,
+    options: ViewOptions,
+): string[] {
+    if (!children) {
+        return [formatNdjson([project], 'project', options.full, options.showUrls)]
+    }
+    const { children: childRecords = [], ...summary } = processChildrenJson(
+        children,
+        'project',
+        options.full,
+        options.showUrls,
+    )
+    const record = {
+        ...processJsonItem(project, 'project', options.full ?? false, options.showUrls),
+        ...summary,
+    }
+    const lines = [formatNdjson([record])]
+    if (childRecords.length > 0) lines.push(formatNdjson(childRecords))
+    return lines
+}
+
+/**
+ * Names the parent project, reusing the already-loaded hierarchy when there is
+ * one. Only the human-readable paths render it, so only they should pay for it.
+ */
+async function resolveParentProject(
+    api: TodoistApi,
+    project: Project,
+    allPersonal: PersonalProject[] | undefined,
+): Promise<Project | undefined> {
+    if (isWorkspaceProject(project) || !project.parentId) return undefined
+    const parentId = project.parentId
+    return allPersonal?.find((p) => p.id === parentId) ?? (await api.getProject(parentId))
+}
+
 export async function viewProject(
     ref: string,
-    options: ViewOptions & { detailed?: boolean } = {},
+    options: ViewOptions & { detailed?: boolean; includeChildren?: boolean } = {},
 ): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
+    let allPersonal: PersonalProject[] | undefined
+    // Started rather than awaited: paginating the project tree is independent of
+    // the project's own tasks, so the two run together.
+    const childrenRequest: Promise<ChildrenResult<ProjectChild>> | undefined =
+        options.includeChildren
+            ? isWorkspaceProject(project)
+                ? Promise.resolve({ childCount: 0, children: [] })
+                : resolveChildren(async () => {
+                      allPersonal = await loadPersonalProjects(api)
+                      return buildProjectChildren(project, allPersonal)
+                  })
+            : undefined
+
     if (options.detailed) {
-        const fullData = await api.getFullProject(project.id)
+        const [fullData, children] = await Promise.all([
+            api.getFullProject(project.id),
+            childrenRequest,
+        ])
 
         if (options.json) {
             const output = {
@@ -42,6 +130,9 @@ export async function viewProject(
                 ),
                 collaborators: fullData.collaborators,
                 notes: fullData.notes,
+                ...(children
+                    ? processChildrenJson(children, 'project', options.full, options.showUrls)
+                    : {}),
             }
             console.log(JSON.stringify(output, null, 2))
             return
@@ -50,9 +141,7 @@ export async function viewProject(
         if (options.ndjson) {
             const lines: string[] = []
             if (fullData.project) {
-                lines.push(
-                    formatNdjson([fullData.project], 'project', options.full, options.showUrls),
-                )
+                lines.push(...projectNdjsonLines(fullData.project, children, options))
             }
             if (fullData.tasks.length > 0) {
                 lines.push(formatNdjson(fullData.tasks, 'task', options.full, options.showUrls))
@@ -77,6 +166,7 @@ export async function viewProject(
         console.log(chalk.bold(displayProject.name))
         console.log('')
         console.log(`ID:       ${displayProject.id}`)
+        printParent(await resolveParentProject(api, project, allPersonal))
 
         if (isWorkspaceProject(displayProject)) {
             const workspaces = await fetchWorkspaces()
@@ -99,6 +189,7 @@ export async function viewProject(
         console.log(`Favorite: ${displayProject.isFavorite ? 'Yes' : 'No'}`)
         console.log(`Comments: ${fullData.commentsCount}`)
         console.log(`URL:      ${projectUrl(displayProject.id)}`)
+        printChildren(children, displayProject.id)
 
         await printDescription(displayProject.description, options.raw ?? false)
 
@@ -141,15 +232,28 @@ export async function viewProject(
     }
 
     if (options.json) {
-        console.log(formatJson(project, 'project', options.full, options.showUrls))
+        const children = await childrenRequest
+        if (!children) {
+            console.log(formatJson(project, 'project', options.full, options.showUrls))
+            return
+        }
+        console.log(
+            formatJson({
+                ...processJsonItem(project, 'project', options.full ?? false, options.showUrls),
+                ...processChildrenJson(children, 'project', options.full, options.showUrls),
+            }),
+        )
         return
     }
 
-    const { results: tasks } = await api.getTasks({ projectId: project.id })
+    const [{ results: tasks }, children] = await Promise.all([
+        api.getTasks({ projectId: project.id }),
+        childrenRequest,
+    ])
 
     if (options.ndjson) {
         const lines: string[] = []
-        lines.push(formatNdjson([project], 'project', options.full, options.showUrls))
+        lines.push(...projectNdjsonLines(project, children, options))
         if (tasks.length > 0) {
             lines.push(formatNdjson(tasks, 'task', options.full, options.showUrls))
         }
@@ -160,6 +264,7 @@ export async function viewProject(
     console.log(chalk.bold(project.name))
     console.log('')
     console.log(`ID:       ${project.id}`)
+    printParent(await resolveParentProject(api, project, allPersonal))
 
     if (isWorkspaceProject(project)) {
         const [workspaces, folders] = await Promise.all([
@@ -183,6 +288,7 @@ export async function viewProject(
     console.log(`Color:    ${project.color}`)
     console.log(`Favorite: ${project.isFavorite ? 'Yes' : 'No'}`)
     console.log(`URL:      ${projectUrl(project.id)}`)
+    printChildren(children, project.id)
 
     await printDescription(project.description, options.raw ?? false)
 
