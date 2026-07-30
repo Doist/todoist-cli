@@ -173,13 +173,20 @@ export function formatChildrenBlock(
     return lines
 }
 
+export type ChildrenJson = {
+    childCount?: number
+    children?: object[]
+    hasMoreChildren?: boolean
+    childrenError?: string
+}
+
 /** Children fields for a `--json` payload. Undefined keys are dropped by JSON.stringify. */
 export function processChildrenJson(
     result: ChildrenResult<TaskChild | ProjectChild>,
     type: ChildKind,
     full = false,
     showUrl = false,
-): Record<string, unknown> {
+): ChildrenJson {
     return {
         childCount: result.childCount,
         children: result.children?.map((child) => ({

@@ -1,4 +1,3 @@
-import type { Task } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { getTaskChildren, resolveChildren } from '../../lib/children.js'
 import type { ViewOptions } from '../../lib/options.js'
@@ -17,11 +16,14 @@ export async function viewTask(
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
 
-    const children = options.includeChildren
-        ? await resolveChildren(() => getTaskChildren(api, task.id))
+    // Started rather than awaited: the lookup keys off the task id alone, so it
+    // runs alongside the project and parent fetches below.
+    const childrenRequest = options.includeChildren
+        ? resolveChildren(() => getTaskChildren(api, task.id))
         : undefined
 
     if (options.json) {
+        const children = await childrenRequest
         if (!children) {
             console.log(formatJson(task, 'task', options.full, true))
             return
@@ -35,13 +37,12 @@ export async function viewTask(
         return
     }
 
-    const { results: projects } = await api.getProjects()
+    const [{ results: projects }, parentTask, children] = await Promise.all([
+        api.getProjects(),
+        task.parentId ? api.getTask(task.parentId) : undefined,
+        childrenRequest,
+    ])
     const project = projects.find((p) => p.id === task.projectId)
-
-    let parentTask: Task | undefined
-    if (task.parentId) {
-        parentTask = await api.getTask(task.parentId)
-    }
 
     // The listing already counted them; don't fetch the same subtasks twice.
     const subtaskCount = children

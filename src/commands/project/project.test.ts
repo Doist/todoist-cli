@@ -2059,6 +2059,40 @@ describe('project view --include-children', () => {
             .filter(Boolean)
             .map((line) => JSON.parse(line))
         expect(records.map((r) => r.id)).toEqual(['proj-parent', 'proj-child', 'task-1'])
+        // The child records are their own lines, so the summary rides on the parent.
+        expect(records[0]).toMatchObject({ childCount: 1 })
+        expect(records[0]).not.toHaveProperty('children')
+    })
+
+    it('carries a failed lookup through to --ndjson consumers', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--include-children',
+            '--ndjson',
+        ])
+
+        const first = JSON.parse(output().split('\n')[0] ?? '{}')
+        expect(first.childrenError).toBe('Rate limited')
+        expect(first).not.toHaveProperty('childCount')
+    })
+
+    it('leaves --ndjson untouched without the flag', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-parent', '--ndjson'])
+
+        const first = JSON.parse(output().split('\n')[0] ?? '{}')
+        expect(first).not.toHaveProperty('childCount')
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
     })
 
     it('puts the child fields alongside commentsCount under --detailed --json', async () => {
@@ -2137,8 +2171,21 @@ describe('project view parent line', () => {
         await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-child'])
 
         expect(mockApi.getProject).toHaveBeenCalledWith('proj-parent')
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
         expect(output()).toContain('Parent:   Photography (id:proj-parent)')
     })
+
+    it.each(['--json', '--ndjson'] as const)(
+        'does not resolve the parent for %s, which never renders it',
+        async (mode) => {
+            const program = createProgram()
+            mockApi.getProject.mockResolvedValue(fixtures.projects.child)
+
+            await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-child', mode])
+
+            expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        },
+    )
 
     it('omits the parent line for a top-level project', async () => {
         const program = createProgram()

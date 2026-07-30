@@ -387,6 +387,29 @@ describe('formatChildrenBlock', () => {
         expect(lines[2]).toContain('▸')
     })
 
+    it('labels a subtask due date', () => {
+        const dated = {
+            ...fixtures.tasks.child,
+            id: 'sub-3',
+            due: { date: '2026-08-02', string: 'Aug 2', isRecurring: false },
+            hasChildren: false,
+        } as TaskChild
+        const lines = formatChildrenBlock(
+            { childCount: 1, children: [dated] },
+            'task',
+            'task-parent',
+            false,
+        )
+
+        expect(lines[1]).toContain('due: Aug 2')
+    })
+
+    it('omits the due segment for an undated subtask', () => {
+        const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', false)
+
+        expect(lines[1]).not.toContain('due:')
+    })
+
     it('substitutes a text marker in accessible mode', () => {
         const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', true)
 
