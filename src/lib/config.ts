@@ -47,7 +47,7 @@ export type AuthFlag = (typeof AUTH_FLAG_ORDER)[number]
 /**
  * Per-user record stored in `config.users`. The token itself lives in the OS
  * credential manager under account `user-<id>`; `api_token` only appears here
- * when the credential manager was unavailable at save time (plaintext fallback).
+ * when plaintext storage is explicitly selected.
  */
 export interface StoredUser {
     id: string

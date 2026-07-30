@@ -4,7 +4,12 @@ import chalk from 'chalk'
 import type { Command } from 'commander'
 import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'
 import { createTodoistAuthProvider } from '../../lib/auth-provider.js'
-import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
+import {
+    createTodoistTokenStore,
+    parseCredentialStore,
+    type CredentialStore,
+    type TodoistAccount,
+} from '../../lib/auth-store.js'
 import { openInBrowser } from '../../lib/browser.js'
 import {
     extractAdditionalScopes,
@@ -27,7 +32,7 @@ const TODOIST_CALLBACK_PORT_FALLBACK = 5
  * the same Commander view; cli-core surfaces it through the `flags` argument
  * to `resolveScopes`.
  */
-export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStore): Command {
+export function attachTodoistLoginCommand(auth: Command): Command {
     // `--no-browser-open` lets the user finish the flow by copy-pasting the
     // printed authorize URL (headless host, remote shell, or simply not wanting
     // the browser hijacked). cli-core always surfaces the URL before the
@@ -36,6 +41,8 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
     // the command at call time via this forward reference (assigned below,
     // before any login can run).
     let loginCommand: Command | undefined
+    let credentialStore: CredentialStore = 'system'
+    const store = createTodoistTokenStore({ credentialStore: () => credentialStore })
 
     const login = attachLoginCommand<TodoistAccount>(auth, {
         provider: createTodoistAuthProvider(),
@@ -101,6 +108,15 @@ export function attachTodoistLoginCommand(auth: Command, store: TodoistTokenStor
             // parseScopesOption split/dedupe/validate as usual.
             (value: string, prev: string | undefined) =>
                 prev && prev.length > 0 ? `${prev},${value}` : value,
+        )
+        .option(
+            '--credential-store <store>',
+            'Where to store the credential: system (default) or plaintext',
+            (value: string) => {
+                credentialStore = parseCredentialStore(value)
+                return credentialStore
+            },
+            'system',
         )
         .addHelpText('after', formatScopesHelp())
 }

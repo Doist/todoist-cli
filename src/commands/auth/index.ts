@@ -1,6 +1,10 @@
 import { attachTokenViewCommand } from '@doist/cli-core/auth'
 import type { Command } from 'commander'
-import { createTodoistTokenStore, TOKEN_ENV_VAR } from '../../lib/auth-store.js'
+import {
+    createTodoistTokenStore,
+    parseCredentialStore,
+    TOKEN_ENV_VAR,
+} from '../../lib/auth-store.js'
 import { attachTodoistLoginCommand } from './login.js'
 import { attachTodoistLogoutCommand } from './logout.js'
 import { attachTodoistStatusCommand } from './status.js'
@@ -10,10 +14,10 @@ import { loginWithToken } from './token.js'
 export function registerAuthCommand(program: Command): void {
     const auth = program.command('auth').description('Manage authentication')
 
-    // Two stores share storage but expose different reads:
-    //   - `store` is the raw cli-core `TokenStore` — login uses it to `set()`,
-    //     status uses `active()` (with env-token short-circuit) as the
-    //     authenticated-snapshot gate.
+    // `store` is the raw cli-core `TokenStore` used by status, with an
+    // env-token short-circuit on authenticated reads. Login creates its own
+    // store so its --credential-store choice controls the write policy.
+    //
     //   - `refAware` substitutes `getRequestedUserRef()` for the `--user
     //     <ref>` that `index.ts` strips from argv before commander runs, and
     //     turns ref-misses into typed `UserNotFoundError`. Used by every
@@ -22,7 +26,7 @@ export function registerAuthCommand(program: Command): void {
     const store = createTodoistTokenStore()
     const refAware = withUserRefAware(store)
 
-    attachTodoistLoginCommand(auth, store)
+    attachTodoistLoginCommand(auth)
     attachTodoistLogoutCommand(auth, refAware)
     attachTodoistStatusCommand(auth, store)
 
@@ -33,6 +37,12 @@ export function registerAuthCommand(program: Command): void {
     const tokenCmd = auth
         .command('token [token]')
         .description('Save API token for CLI authentication (or use a subcommand: `view`)')
+        .option(
+            '--credential-store <store>',
+            'Where to store the credential: system (default) or plaintext',
+            parseCredentialStore,
+            'system',
+        )
         .action(loginWithToken)
 
     attachTokenViewCommand(tokenCmd, {

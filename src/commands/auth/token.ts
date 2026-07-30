@@ -1,9 +1,16 @@
 import chalk from 'chalk'
 import { createApiForToken } from '../../lib/api/core.js'
-import { createTodoistTokenStore, toTodoistAccount } from '../../lib/auth-store.js'
+import {
+    createTodoistTokenStore,
+    type CredentialStore,
+    toTodoistAccount,
+} from '../../lib/auth-store.js'
 import { logTokenStorageResult, promptHiddenInput } from './helpers.js'
 
-export async function loginWithToken(token?: string): Promise<void> {
+export async function loginWithToken(
+    token?: string,
+    options: { credentialStore?: CredentialStore } = {},
+): Promise<void> {
     if (!token) {
         token = await promptHiddenInput('API token: ')
         if (!token.trim()) {
@@ -18,7 +25,7 @@ export async function loginWithToken(token?: string): Promise<void> {
     const probeApi = createApiForToken(trimmed)
     const user = await probeApi.getUser()
 
-    const store = createTodoistTokenStore()
+    const store = createTodoistTokenStore({ credentialStore: options.credentialStore })
     await store.set(
         toTodoistAccount({ id: user.id, email: user.email, authMode: 'unknown' }),
         trimmed,

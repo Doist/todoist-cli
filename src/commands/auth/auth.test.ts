@@ -14,12 +14,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // `makeTodoistStore` helper below), so the store's entries/spies are per-test.
 const holder = vi.hoisted(() => ({
     store: undefined as import('../../lib/auth-store.js').TodoistTokenStore | undefined,
+    factoryOptions: [] as Array<{ credentialStore?: 'system' | 'plaintext' } | undefined>,
 }))
 vi.mock('../../lib/auth-store.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/auth-store.js')>()
     return {
         ...actual,
-        createTodoistTokenStore: () => {
+        createTodoistTokenStore: (options?: { credentialStore?: 'system' | 'plaintext' }) => {
+            holder.factoryOptions.push(options)
             if (!holder.store) {
                 throw new Error('test store not set; call useStore() before createProgram()')
             }
@@ -179,6 +181,7 @@ describe('auth command', () => {
         // hits the factory's "not set" throw rather than silently falling back
         // to the logged-out path and mis-covering a stored/snapshot branch.
         holder.store = undefined
+        holder.factoryOptions.length = 0
     })
 
     afterEach(() => {
@@ -222,6 +225,23 @@ describe('auth command', () => {
 
             expect(mockCreateApiForToken).toHaveBeenCalledWith(expectedToken)
             expect(harness.state.entries[0]?.token).toBe(expectedToken)
+        })
+
+        it('passes --credential-store to the token store', async () => {
+            useStore({ lastStorage: { storage: 'config-file' } })
+            const program = createProgram()
+            stubProbeApiForUser()
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'auth',
+                'token',
+                'some_token_123456789',
+                '--credential-store=plaintext',
+            ])
+
+            expect(holder.factoryOptions).toContainEqual({ credentialStore: 'plaintext' })
         })
 
         it('prompts interactively when no token argument given', async () => {

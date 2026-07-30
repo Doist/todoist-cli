@@ -43,9 +43,11 @@ td auth login --additional-scopes=billing
 td auth login --additional-scopes=app-management,backups
 td auth login --callback-port 9000           # override the OAuth callback port
 td auth login --no-browser-open              # print the authorize URL instead of opening a browser
+td auth login --credential-store=plaintext   # explicitly store the credential in plaintext
 td auth login --json                         # emit the new account record as JSON
 td auth login --ndjson                       # one-line newline-delimited JSON
 td auth token
+td auth token "$TOKEN" --credential-store=plaintext
 td auth status
 td auth status --json                        # full status payload as JSON (--ndjson also supported)
 TOKEN=$(td auth token view)
@@ -54,7 +56,7 @@ td auth logout
 td auth logout --json                        # emits `{"ok": true}` (--ndjson is silent)
 ```
 
-`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. Across all three, keyring-fallback warnings are written to stderr so stdout stays parseable. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy) and `--no-browser-open`, which prints the authorization URL for manual copy-paste instead of opening a browser (useful on headless or remote hosts).
+`td auth login`, `td auth status`, and `td auth logout` all accept the standard `--json` / `--ndjson` machine-output flags. For `login` and `status` the body carries the account record (id, email, auth metadata, plus `storedUsers` and `source` from status); `logout` emits a `{"ok": true}` envelope under `--json` and stays silent under `--ndjson`. `td auth login` additionally accepts `--callback-port <n>` (default `8765`, with a small fallback range when the port is busy) and `--no-browser-open`, which prints the authorization URL for manual copy-paste instead of opening a browser (useful on headless or remote hosts).
 
 Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separated). Run `td auth login --help` for the full list. Currently supported:
 
@@ -64,7 +66,7 @@ Opt-in OAuth scopes are requested via `--additional-scopes=<list>` (comma-separa
 
 Combine freely with `--read-only` to keep data access read-only while still granting an opt-in scope (e.g. `td auth login --read-only --additional-scopes=backups`). When a command fails for lack of a scope, the error suggests a re-login command that preserves whichever flags were originally used.
 
-Tokens are stored in the OS credential manager when available, with fallback to `~/.config/todoist-cli/config.json`. `TODOIST_API_TOKEN` takes precedence over stored credentials.
+Tokens are stored in the OS credential manager by default. If it is unavailable, credential writes fail without a plaintext fallback. Pass `--credential-store=plaintext` to `td auth login` or `td auth token` only when you explicitly accept plaintext config-file storage; every such write emits a warning to stderr. `TODOIST_API_TOKEN` takes precedence over stored credentials.
 
 `td auth token view` writes the stored token to stdout for use in scripts. **Always capture it into a shell variable** (e.g. `TOKEN=$(td auth token view)`) — never invoke it bare in an agent transcript or piped to a shell that echoes its output, since that would leak the secret. Honors `--user <id|email>` for multi-account installs and refuses when `TODOIST_API_TOKEN` is set in the environment (the token is already available there).
 

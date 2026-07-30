@@ -5,6 +5,7 @@ import {
     type KeyringTokenStore,
 } from '@doist/cli-core/auth'
 import { type AuthFlag, type AuthMode, getConfigPath, readConfig } from './config.js'
+import { CliError } from './errors.js'
 import { createTodoistUserRecordStore } from './user-records.js'
 import { getStoredUsers, matchUserRef } from './users.js'
 
@@ -17,6 +18,20 @@ import { getStoredUsers, matchUserRef } from './users.js'
 export const SERVICE_NAME = 'todoist-cli'
 export const LEGACY_ACCOUNT = 'api-token'
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
+export type CredentialStore = 'system' | 'plaintext'
+
+export function parseCredentialStore(value: string): CredentialStore {
+    switch (value) {
+        case 'system':
+        case 'plaintext':
+            return value
+        default:
+            throw new CliError('INVALID_CREDENTIAL_STORE', `Invalid credential store '${value}'.`, [
+                'Expected one of: system, plaintext.',
+            ])
+    }
+}
+
 export function accountForUser(id: string): string {
     return `user-${id}`
 }
@@ -59,9 +74,14 @@ export function toTodoistAccount(input: TodoistAccountInput): TodoistAccount {
 
 export type TodoistTokenStore = KeyringTokenStore<TodoistAccount>
 
+type CreateTodoistTokenStoreOptions = {
+    credentialStore?: CredentialStore | (() => CredentialStore)
+}
+
 /**
  * cli-core's keyring-backed `TokenStore`, wired to todoist-cli's
- * `UserRecordStore` adapter. Two Todoist-specific overlays on top of the
+ * `UserRecordStore` adapter. It passes Todoist's strict-by-default credential
+ * policy through to cli-core, plus two Todoist-specific overlays on top of the
  * defaults:
  *
  *   - `active()` / `activeBundle()` short-circuit to `null` when
@@ -80,18 +100,23 @@ export type TodoistTokenStore = KeyringTokenStore<TodoistAccount>
  * inherited from `inner` via the prototype chain — a future cli-core method
  * addition resolves automatically instead of being silently dropped.
  */
-export function createTodoistTokenStore(): TodoistTokenStore {
+export function createTodoistTokenStore(
+    options: CreateTodoistTokenStoreOptions = {},
+): TodoistTokenStore {
+    const userRecords = createTodoistUserRecordStore()
     const inner = createKeyringTokenStore<TodoistAccount>({
         serviceName: SERVICE_NAME,
-        userRecords: createTodoistUserRecordStore(),
+        userRecords,
         recordsLocation: getConfigPath(),
         accountForUser,
         matchAccount: (account: TodoistAccount, ref: AccountRef) =>
             matchUserRef({ id: account.id, email: account.email }, ref),
+        credentialStore: options.credentialStore ?? 'system',
     })
     function envTokenSet(): boolean {
         return Boolean(process.env[TOKEN_ENV_VAR])
     }
+
     return Object.assign(Object.create(inner) as TodoistTokenStore, {
         active: async (ref?: AccountRef) => (envTokenSet() ? null : inner.active(ref)),
         activeBundle: async (ref?: AccountRef) => (envTokenSet() ? null : inner.activeBundle(ref)),
