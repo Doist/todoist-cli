@@ -64,6 +64,10 @@ Examples:
         .option('--detailed', 'Include sections, collaborators, notes, and comment count')
         .option('--raw', 'Disable markdown rendering')
         .option('--show-urls', 'Show web app URLs for each task')
+        .option(
+            '--include-children',
+            'List direct sub-projects, flagging which have sub-projects of their own',
+        )
         .action((ref, options) => {
             if (!ref) {
                 project.help()

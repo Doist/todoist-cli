@@ -1,13 +1,27 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type PersonalProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getApi } from '../../lib/api/core.js'
+import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
+import {
+    buildProjectChildren,
+    type ChildrenResult,
+    type ProjectChild,
+    resolveChildren,
+} from '../../lib/children.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { formatJson, formatNdjson, formatTaskRow } from '../../lib/output.js'
+import {
+    formatChildrenBlock,
+    formatJson,
+    formatNdjson,
+    formatTaskRow,
+    processChildrenJson,
+    processJsonItem,
+} from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 import { projectUrl } from '../../lib/urls.js'
+import { loadPersonalProjects } from './helpers.js'
 
 async function printDescription(description: string | undefined, raw: boolean): Promise<void> {
     if (!description) return
@@ -16,12 +30,61 @@ async function printDescription(description: string | undefined, raw: boolean): 
     console.log(raw ? description : await renderMarkdown(description))
 }
 
+function printParent(parentProject: Project | undefined): void {
+    if (!parentProject) return
+    console.log(`Parent:   ${parentProject.name} (id:${parentProject.id})`)
+}
+
+function printChildren(
+    children: ChildrenResult<ProjectChild> | undefined,
+    projectId: string,
+): void {
+    if (!children) return
+    for (const line of formatChildrenBlock(children, 'project', projectId)) {
+        console.log(line)
+    }
+}
+
+/** The already-projected sub-project records for `--ndjson`, if any were requested. */
+function childNdjsonRecords(
+    children: ChildrenResult<ProjectChild> | undefined,
+    options: ViewOptions,
+): object[] {
+    if (!children) return []
+    const records = processChildrenJson(
+        children,
+        'project',
+        options.full,
+        options.showUrls,
+    ).children
+    return (records as object[] | undefined) ?? []
+}
+
 export async function viewProject(
     ref: string,
-    options: ViewOptions & { detailed?: boolean } = {},
+    options: ViewOptions & { detailed?: boolean; includeChildren?: boolean } = {},
 ): Promise<void> {
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
+
+    let allPersonal: PersonalProject[] | undefined
+    let children: ChildrenResult<ProjectChild> | undefined
+    if (options.includeChildren) {
+        children = isWorkspaceProject(project)
+            ? { childCount: 0, children: [] }
+            : await resolveChildren(async () => {
+                  allPersonal = await loadPersonalProjects(api)
+                  return buildProjectChildren(project, allPersonal)
+              })
+    }
+
+    // Free when the children lookup already loaded the list; one cheap call otherwise.
+    let parentProject: Project | undefined
+    if (!isWorkspaceProject(project) && project.parentId) {
+        const parentId = project.parentId
+        parentProject =
+            allPersonal?.find((p) => p.id === parentId) ?? (await api.getProject(parentId))
+    }
 
     if (options.detailed) {
         const fullData = await api.getFullProject(project.id)
@@ -42,6 +105,9 @@ export async function viewProject(
                 ),
                 collaborators: fullData.collaborators,
                 notes: fullData.notes,
+                ...(children
+                    ? processChildrenJson(children, 'project', options.full, options.showUrls)
+                    : {}),
             }
             console.log(JSON.stringify(output, null, 2))
             return
@@ -53,6 +119,10 @@ export async function viewProject(
                 lines.push(
                     formatNdjson([fullData.project], 'project', options.full, options.showUrls),
                 )
+            }
+            const childRecords = childNdjsonRecords(children, options)
+            if (childRecords.length > 0) {
+                lines.push(formatNdjson(childRecords))
             }
             if (fullData.tasks.length > 0) {
                 lines.push(formatNdjson(fullData.tasks, 'task', options.full, options.showUrls))
@@ -77,6 +147,7 @@ export async function viewProject(
         console.log(chalk.bold(displayProject.name))
         console.log('')
         console.log(`ID:       ${displayProject.id}`)
+        printParent(parentProject)
 
         if (isWorkspaceProject(displayProject)) {
             const workspaces = await fetchWorkspaces()
@@ -99,6 +170,7 @@ export async function viewProject(
         console.log(`Favorite: ${displayProject.isFavorite ? 'Yes' : 'No'}`)
         console.log(`Comments: ${fullData.commentsCount}`)
         console.log(`URL:      ${projectUrl(displayProject.id)}`)
+        printChildren(children, displayProject.id)
 
         await printDescription(displayProject.description, options.raw ?? false)
 
@@ -141,7 +213,16 @@ export async function viewProject(
     }
 
     if (options.json) {
-        console.log(formatJson(project, 'project', options.full, options.showUrls))
+        if (!children) {
+            console.log(formatJson(project, 'project', options.full, options.showUrls))
+            return
+        }
+        console.log(
+            formatJson({
+                ...processJsonItem(project, 'project', options.full ?? false, options.showUrls),
+                ...processChildrenJson(children, 'project', options.full, options.showUrls),
+            }),
+        )
         return
     }
 
@@ -150,6 +231,10 @@ export async function viewProject(
     if (options.ndjson) {
         const lines: string[] = []
         lines.push(formatNdjson([project], 'project', options.full, options.showUrls))
+        const childRecords = childNdjsonRecords(children, options)
+        if (childRecords.length > 0) {
+            lines.push(formatNdjson(childRecords))
+        }
         if (tasks.length > 0) {
             lines.push(formatNdjson(tasks, 'task', options.full, options.showUrls))
         }
@@ -160,6 +245,7 @@ export async function viewProject(
     console.log(chalk.bold(project.name))
     console.log('')
     console.log(`ID:       ${project.id}`)
+    printParent(parentProject)
 
     if (isWorkspaceProject(project)) {
         const [workspaces, folders] = await Promise.all([
@@ -183,6 +269,7 @@ export async function viewProject(
     console.log(`Color:    ${project.color}`)
     console.log(`Favorite: ${project.isFavorite ? 'Yes' : 'No'}`)
     console.log(`URL:      ${projectUrl(project.id)}`)
+    printChildren(children, project.id)
 
     await printDescription(project.description, options.raw ?? false)
 

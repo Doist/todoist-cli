@@ -65,6 +65,10 @@ Examples:
         .option('--json', 'Output as JSON')
         .option('--full', 'Include all fields in output')
         .option('--raw', 'Disable markdown rendering')
+        .option(
+            '--include-children',
+            'List direct subtasks, flagging which have subtasks of their own',
+        )
         .action((ref, options) => {
             if (!ref) {
                 task.help()

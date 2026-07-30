@@ -1,9 +1,11 @@
 import type { Task } from '@doist/todoist-sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fixtures } from '../test-support/fixtures.js'
+import type { ChildrenResult, ProjectChild, TaskChild } from './children.js'
 import { BaseCliError } from './errors.js'
 import { isAccessible, resetGlobalArgs } from './global-args.js'
 import {
+    formatChildrenBlock,
     formatDue,
     formatError,
     formatErrorJson,
@@ -15,6 +17,7 @@ import {
     formatPriority,
     formatTaskRow,
     formatTaskView,
+    processChildrenJson,
 } from './output.js'
 
 describe('formatPriority', () => {
@@ -337,6 +340,159 @@ describe('formatTaskView', () => {
         const task = fixtures.tasks.basic
         const result = await formatTaskView({ task })
         expect(result).not.toContain('Subtasks:')
+    })
+
+    it('lists children when provided, taking precedence over subtaskCount', async () => {
+        const task = fixtures.tasks.parent
+        const result = await formatTaskView({
+            task,
+            subtaskCount: 99,
+            children: {
+                childCount: 1,
+                children: [{ ...fixtures.tasks.child, hasChildren: false }],
+            },
+            accessible: false,
+        })
+
+        expect(result).toContain('Subtasks: 1 active')
+        expect(result).toContain('Book venue')
+        expect(result).not.toContain('99')
+    })
+})
+
+describe('formatChildrenBlock', () => {
+    function taskChildren(overrides: Partial<ChildrenResult<TaskChild>> = {}) {
+        return {
+            childCount: 2,
+            children: [
+                { ...fixtures.tasks.child, id: 'sub-1', hasChildren: false },
+                {
+                    ...fixtures.tasks.child,
+                    id: 'sub-2',
+                    content: 'Chase caterer',
+                    hasChildren: true,
+                },
+            ],
+            ...overrides,
+        } as ChildrenResult<TaskChild>
+    }
+
+    it('lists each child and marks the ones that nest further', () => {
+        const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', false)
+
+        expect(lines[0]).toBe('Subtasks: 2 active')
+        expect(lines[1]).toContain('id:sub-1')
+        expect(lines[1]).not.toContain('▸')
+        expect(lines[2]).toContain('Chase caterer')
+        expect(lines[2]).toContain('▸')
+    })
+
+    it('substitutes a text marker in accessible mode', () => {
+        const lines = formatChildrenBlock(taskChildren(), 'task', 'task-parent', true)
+
+        expect(lines.join('\n')).toContain('(has subtasks)')
+        expect(lines.join('\n')).not.toContain('▸')
+    })
+
+    it('says none rather than staying silent when there are no children', () => {
+        const lines = formatChildrenBlock(
+            { childCount: 0, children: [] },
+            'project',
+            'proj-parent',
+            false,
+        )
+
+        expect(lines).toEqual(['Sub-projects: none'])
+    })
+
+    it('reports an unavailable lookup with its reason', () => {
+        const lines = formatChildrenBlock(
+            { childrenError: 'Rate limited' },
+            'task',
+            'task-parent',
+            false,
+        )
+
+        expect(lines[0]).toBe('Subtasks: unavailable')
+        expect(lines[1]).toContain('Rate limited')
+    })
+
+    it('points at the paging command when the list is truncated', () => {
+        const lines = formatChildrenBlock(
+            taskChildren({ hasMoreChildren: true }),
+            'task',
+            'task-parent',
+            false,
+        )
+
+        expect(lines[0]).toContain('(more exist)')
+        expect(lines.at(-1)).toContain('td task list --parent id:task-parent --all')
+    })
+
+    it('names the children whose nesting could not be checked', () => {
+        const lines = formatChildrenBlock(
+            taskChildren({ childrenError: 'nesting unknown for 1 of 2 subtasks' }),
+            'task',
+            'task-parent',
+            false,
+        )
+
+        expect(lines[0]).toBe('Subtasks: 2 active')
+        expect(lines.at(-1)).toContain('nesting unknown for 1 of 2 subtasks')
+    })
+
+    it('uses sub-project wording for projects', () => {
+        const child = { ...fixtures.projects.child, hasChildren: true } as ProjectChild
+        const lines = formatChildrenBlock(
+            { childCount: 1, children: [child] },
+            'project',
+            'proj-parent',
+            true,
+        )
+
+        expect(lines[0]).toBe('Sub-projects: 1')
+        expect(lines[1]).toContain('Moonrises')
+        expect(lines[1]).toContain('(has sub-projects)')
+    })
+})
+
+describe('processChildrenJson', () => {
+    it('projects children to essential fields and keeps hasChildren', () => {
+        const result = processChildrenJson(
+            {
+                childCount: 1,
+                children: [{ ...fixtures.tasks.child, hasChildren: true }],
+            },
+            'task',
+        )
+        const children = result.children as Record<string, unknown>[]
+
+        expect(result.childCount).toBe(1)
+        expect(children[0].hasChildren).toBe(true)
+        expect(children[0].content).toBe('Book venue')
+        expect(children[0]).not.toHaveProperty('userId')
+    })
+
+    it('includes every field under full', () => {
+        const result = processChildrenJson(
+            {
+                childCount: 1,
+                children: [{ ...fixtures.tasks.child, hasChildren: false }],
+            },
+            'task',
+            true,
+        )
+        const children = result.children as Record<string, unknown>[]
+
+        expect(children[0]).toHaveProperty('userId')
+    })
+
+    it('drops unset keys from the serialized payload', () => {
+        const serialized = JSON.parse(
+            JSON.stringify(processChildrenJson({ childCount: 0, children: [] }, 'task')),
+        )
+
+        expect(serialized).toEqual({ childCount: 0, children: [] })
     })
 })
 

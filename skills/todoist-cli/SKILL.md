@@ -132,6 +132,7 @@ td task quickadd "Buy milk tomorrow p1 #Shopping"
 td task qa "Review PR @urgent +Alice"
 td task list --project "Work" --label "urgent" --priority p1
 td task view "Buy milk"
+td task view "Plan sprint" --include-children             # list direct subtasks, flagging ones that nest further
 td task add "Plan sprint" --project "Work" --section "Planning" --labels "urgent,review"
 td task update "Plan sprint" --deadline "2026-06-01" --assignee me
 td task reschedule "Plan sprint" 2026-03-20T14:00:00
@@ -153,6 +154,7 @@ Useful task flags:
 - `--stdin` on `task add` reads the task description from stdin; on `task quickadd` (and the top-level `td add`) it reads the full natural-language text from stdin.
 - `--parent`, `--section`, `--project`, `--workspace`, `--assignee`, `--labels`, `--due`, `--deadline`, `--duration`, and `--priority` cover most task workflows.
 - `td task complete --forever` stops recurrence; `td task update --no-due` clears the due date, `--no-deadline` clears deadlines, and `--no-labels` removes all labels; `td task move --no-parent` and `--no-section` detach from hierarchy.
+- `--include-children` on `task view` lists up to 25 direct subtasks, each flagged with whether it has subtasks of its own. **A dated parent can hide an undated subtask that no date filter will surface, so check this before assuming a task is a leaf** rather than guessing. Past 25, page the rest with `td task list --parent id:<id> --all`. Under `--json` it merges `childCount`, `children`, `hasMoreChildren` and `childrenError` into the task object; `childrenError` means the listing is incomplete, not empty.
 
 ### Projects And Workspaces
 ```bash
@@ -161,6 +163,7 @@ td project list --search "Road"
 td project archived
 td project view "Roadmap" --detailed
 td project view "Roadmap" --raw                          # don't render the description markdown
+td project view "Roadmap" --include-children             # list direct sub-projects, flagging ones that nest further
 td project collaborators "Roadmap"
 td project create --name "New Project" --color blue
 td project create --name "New Project" --description "Quarterly OKRs"
@@ -214,6 +217,8 @@ td folder create "Acme" --name "Engineering"
 td folder update "Engineering" --name "Platform" --workspace "Acme"
 td folder delete "Engineering" --workspace "Acme" --yes
 ```
+
+`--include-children` on `project view` lists up to 25 direct sub-projects, each flagged with whether it has sub-projects of its own, and merges the same `childCount` / `children` / `hasMoreChildren` / `childrenError` fields under `--json`. Workspace projects never have sub-projects — they nest under folders instead, so they always report none. A `Parent:` line is shown for any sub-project whether or not the flag is passed.
 
 ### Labels, Filters, And Sections
 ```bash

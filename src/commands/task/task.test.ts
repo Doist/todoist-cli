@@ -1,5 +1,6 @@
 import { PassThrough } from 'node:stream'
 import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import type { Task } from '@doist/todoist-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -15,6 +16,7 @@ vi.mock('../../lib/browser.js', () => ({
 import { completeTaskForever, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerTaskCommand } from './index.js'
 
@@ -344,6 +346,127 @@ describe('task view', () => {
         await program.parseAsync(['node', 'td', 'task', 'view', 'id:task-1', '--full'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Metadata'))
+    })
+})
+
+describe('task view --include-children', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        mockApi.getTask.mockResolvedValue(fixtures.tasks.parent)
+        mockApi.getProjects.mockResolvedValue({ results: [], nextCursor: null })
+    })
+
+    /** Answers the direct-children call, and treats every other task as a leaf. */
+    function mockSubtasks(subtasks: Task[]) {
+        mockApi.getTasks.mockImplementation(async (args) =>
+            args?.parentId === 'task-parent'
+                ? { results: subtasks, nextCursor: null }
+                : { results: [], nextCursor: null },
+        )
+    }
+
+    it('lists the subtasks and marks the ones that nest further', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        const nesting = { ...fixtures.tasks.child, id: 'sub-2', content: 'Chase caterer' }
+        mockApi.getTasks.mockImplementation(async (args) => {
+            if (args?.parentId === 'task-parent') {
+                return { results: [fixtures.tasks.child, nesting], nextCursor: null }
+            }
+            if (args?.parentId === 'sub-2') {
+                return { results: [fixtures.tasks.basic], nextCursor: null }
+            }
+            return { results: [], nextCursor: null }
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'view',
+            'id:task-parent',
+            '--include-children',
+        ])
+
+        const output = consoleSpy.mock.calls.map((call) => String(call[0])).join('\n')
+        expect(output).toContain('Subtasks: 2 active')
+        expect(output).toContain('Book venue')
+        expect(output).toContain('Chase caterer')
+        expect(output).toContain('▸')
+    })
+
+    it('says none for a leaf task', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockSubtasks([])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'view',
+            'id:task-parent',
+            '--include-children',
+        ])
+
+        expect(mockApi.getTasks).toHaveBeenCalledTimes(1)
+        expect(mockApi.getTasks).toHaveBeenCalledWith({ parentId: 'task-parent', limit: 25 })
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Subtasks: none'))
+    })
+
+    it('merges the child fields into --json output', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockSubtasks([fixtures.tasks.child])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'view',
+            'id:task-parent',
+            '--include-children',
+            '--json',
+        ])
+
+        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
+        expect(payload.id).toBe('task-parent')
+        expect(payload.childCount).toBe(1)
+        expect(payload.children[0]).toMatchObject({ id: 'task-child', hasChildren: false })
+    })
+
+    it('leaves --json untouched without the flag', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync(['node', 'td', 'task', 'view', 'id:task-parent', '--json'])
+
+        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
+        expect(payload).not.toHaveProperty('childCount')
+        expect(mockApi.getTasks).not.toHaveBeenCalled()
+    })
+
+    it('still prints the task when the children lookup fails', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockApi.getTasks.mockRejectedValue(new Error('Rate limited'))
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'view',
+            'id:task-parent',
+            '--include-children',
+        ])
+
+        const output = consoleSpy.mock.calls.map((call) => String(call[0])).join('\n')
+        expect(output).toContain('Plan party')
+        expect(output).toContain('Subtasks: unavailable')
+        expect(output).toContain('Rate limited')
     })
 })
 

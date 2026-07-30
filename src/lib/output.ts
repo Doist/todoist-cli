@@ -2,6 +2,7 @@ import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
+import type { ChildrenResult, ProjectChild, TaskChild } from './children.js'
 import { formatDuration } from './duration.js'
 import { type BaseCliError, type ErrorType } from './errors.js'
 
@@ -96,13 +97,111 @@ export async function formatTaskRow({
     return `${line1}\n${line2}`
 }
 
+const CHILD_KINDS = {
+    task: {
+        label: 'Subtasks',
+        unit: ' active',
+        noun: 'subtasks',
+        marker: 'has subtasks',
+        more: (id: string) => `td task list --parent id:${id} --all`,
+    },
+    project: {
+        label: 'Sub-projects',
+        unit: '',
+        noun: 'sub-projects',
+        marker: 'has sub-projects',
+        more: () => 'td project list --all',
+    },
+} as const
+
+type ChildKind = keyof typeof CHILD_KINDS
+
+function formatChildRow(child: TaskChild | ProjectChild, kind: ChildKind, a11y: boolean): string {
+    const parts: string[] = [chalk.dim(`id:${child.id}`)]
+    if (kind === 'task') {
+        const task = child as TaskChild
+        parts.push(task.content)
+        // Labelled unconditionally: a one-line child row has no column header to
+        // disambiguate a bare date, unlike formatTaskRow's meta line.
+        if (task.due) parts.push(chalk.green(`due: ${formatDue(task.due)}`))
+    } else {
+        parts.push((child as ProjectChild).name)
+    }
+    if (child.hasChildren) {
+        parts.push(chalk.dim(a11y ? `(${CHILD_KINDS[kind].marker})` : '▸'))
+    }
+    return `  ${parts.join('  ')}`
+}
+
+/**
+ * Renders a children lookup as a `Label: N` line plus one indented row per child.
+ * `accessible` is an explicit override so callers (and tests) can bypass the
+ * global gate, matching {@link formatTaskRow}.
+ */
+export function formatChildrenBlock(
+    result: ChildrenResult<TaskChild | ProjectChild>,
+    kind: ChildKind,
+    parentId: string,
+    accessible?: boolean,
+): string[] {
+    const a11y = accessible ?? isAccessible()
+    const meta = CHILD_KINDS[kind]
+    const lines: string[] = []
+
+    if (result.childCount === undefined) {
+        // Staying silent here would read as "no children" — say so out loud instead.
+        lines.push(`${meta.label}: unavailable`)
+        lines.push(chalk.dim(`  (lookup failed: ${result.childrenError ?? 'unknown error'})`))
+        return lines
+    }
+
+    lines.push(
+        result.childCount === 0
+            ? `${meta.label}: none`
+            : `${meta.label}: ${result.childCount}${meta.unit}${result.hasMoreChildren ? ' (more exist)' : ''}`,
+    )
+    for (const child of result.children ?? []) {
+        lines.push(formatChildRow(child, kind, a11y))
+    }
+    if (result.hasMoreChildren) {
+        lines.push(chalk.dim(`  ... more ${meta.noun} exist — ${meta.more(parentId)}`))
+    }
+    if (result.childrenError) {
+        const marker = a11y ? `"${meta.marker}"` : '▸'
+        lines.push(chalk.dim(`  (${result.childrenError}; shown without the ${marker} marker)`))
+    }
+    return lines
+}
+
+/** Children fields for a `--json` payload. Undefined keys are dropped by JSON.stringify. */
+export function processChildrenJson(
+    result: ChildrenResult<TaskChild | ProjectChild>,
+    type: ChildKind,
+    full = false,
+    showUrl = false,
+): Record<string, unknown> {
+    return {
+        childCount: result.childCount,
+        children: result.children?.map((child) => ({
+            ...processJsonItem(child, type, full, showUrl),
+            hasChildren: child.hasChildren,
+        })),
+        hasMoreChildren: result.hasMoreChildren,
+        childrenError: result.childrenError,
+    }
+}
+
 export interface FormatTaskViewOptions {
     task: Task
     project?: Project
     parentTask?: Task
+    /** Direct-subtask count for the default path. Ignored when `children` is set. */
     subtaskCount?: number
+    /** Set by `--include-children`; renders the count line plus the listing. */
+    children?: ChildrenResult<TaskChild>
     full?: boolean
     raw?: boolean
+    accessible?: boolean
 }
 
 export async function formatTaskView({
@@ -110,8 +209,10 @@ export async function formatTaskView({
     project,
     parentTask,
     subtaskCount,
+    children,
     full = false,
     raw = false,
+    accessible,
 }: FormatTaskViewOptions): Promise<string> {
     const lines: string[] = []
     const content = raw ? task.content : await renderMarkdown(task.content)
@@ -127,7 +228,9 @@ export async function formatTaskView({
     if (parentTask) {
         lines.push(`Parent:   ${parentTask.content} (id:${parentTask.id})`)
     }
-    if (subtaskCount !== undefined && subtaskCount > 0) {
+    if (children) {
+        lines.push(...formatChildrenBlock(children, 'task', task.id, accessible))
+    } else if (subtaskCount !== undefined && subtaskCount > 0) {
         lines.push(`Subtasks: ${subtaskCount} active`)
     }
 

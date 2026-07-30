@@ -30,6 +30,7 @@ import { openInBrowser } from '../../lib/browser.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
+import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
@@ -1947,6 +1948,227 @@ describe('project view --detailed', () => {
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
         expect(JSON.parse(output)).toEqual(fullData)
+    })
+})
+
+describe('project view --include-children', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        consoleSpy = captureConsole()
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+    })
+
+    function output(): string {
+        return consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n')
+    }
+
+    it('lists sub-projects and marks the ones that nest further', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockResolvedValue({
+            results: [
+                fixtures.projects.parent,
+                { ...fixtures.projects.child, id: 'sub-b', name: 'Later', childOrder: 2 },
+                fixtures.projects.child,
+                { ...fixtures.projects.child, id: 'grandchild', parentId: 'proj-child' },
+            ],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--include-children',
+        ])
+
+        expect(output()).toContain('Sub-projects: 2')
+        expect(output()).toContain('Moonrises')
+        expect(output()).toContain('▸')
+        expect(output()).toContain('Later')
+    })
+
+    it('reports none for a workspace project without loading the project list', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.workspaceProject)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-ws-1',
+            '--include-children',
+        ])
+
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        expect(output()).toContain('Sub-projects: none')
+    })
+
+    it('merges the child fields into --json output', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockResolvedValue({
+            results: [fixtures.projects.parent, fixtures.projects.child],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--include-children',
+            '--json',
+        ])
+
+        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
+        expect(payload.id).toBe('proj-parent')
+        expect(payload.childCount).toBe(1)
+        expect(payload.children[0]).toMatchObject({ id: 'proj-child', hasChildren: false })
+    })
+
+    it('emits sub-projects between the project and its tasks in --ndjson', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockResolvedValue({
+            results: [fixtures.projects.parent, fixtures.projects.child],
+            nextCursor: null,
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [fixtures.tasks.basic], nextCursor: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--include-children',
+            '--ndjson',
+        ])
+
+        const records = output()
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line))
+        expect(records.map((r) => r.id)).toEqual(['proj-parent', 'proj-child', 'task-1'])
+    })
+
+    it('puts the child fields alongside commentsCount under --detailed --json', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockResolvedValue({
+            results: [fixtures.projects.parent, fixtures.projects.child],
+            nextCursor: null,
+        })
+        mockApi.getFullProject.mockResolvedValue({
+            project: fixtures.projects.parent,
+            commentsCount: 0,
+            tasks: [],
+            sections: [],
+            collaborators: [],
+            notes: [],
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--detailed',
+            '--include-children',
+            '--json',
+        ])
+
+        const payload = JSON.parse(String(consoleSpy.mock.calls[0]?.[0]))
+        expect(payload.childCount).toBe(1)
+        expect(payload.children[0].id).toBe('proj-child')
+    })
+
+    it('still prints the project when the children lookup fails', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+        mockApi.getProjects.mockRejectedValue(new Error('Rate limited'))
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-parent',
+            '--include-children',
+        ])
+
+        expect(output()).toContain('Photography')
+        expect(output()).toContain('Sub-projects: unavailable')
+        expect(output()).toContain('Rate limited')
+    })
+})
+
+describe('project view parent line', () => {
+    let mockApi: MockApi
+    let consoleSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        consoleSpy = captureConsole()
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+    })
+
+    function output(): string {
+        return consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n')
+    }
+
+    it('names the parent project without needing the flag', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockImplementation(async (id) =>
+            id === 'proj-parent' ? fixtures.projects.parent : fixtures.projects.child,
+        )
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-child'])
+
+        expect(mockApi.getProject).toHaveBeenCalledWith('proj-parent')
+        expect(output()).toContain('Parent:   Photography (id:proj-parent)')
+    })
+
+    it('omits the parent line for a top-level project', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.parent)
+
+        await program.parseAsync(['node', 'td', 'project', 'view', 'id:proj-parent'])
+
+        expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        expect(output()).not.toContain('Parent:')
+    })
+
+    it('reuses the loaded project list instead of fetching the parent again', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue(fixtures.projects.child)
+        mockApi.getProjects.mockResolvedValue({
+            results: [fixtures.projects.parent, fixtures.projects.child],
+            nextCursor: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'view',
+            'id:proj-child',
+            '--include-children',
+        ])
+
+        expect(mockApi.getProject).toHaveBeenCalledTimes(1)
+        expect(output()).toContain('Parent:   Photography (id:proj-parent)')
     })
 })
 
