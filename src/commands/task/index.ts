@@ -119,7 +119,8 @@ Examples:
         .command('add [content]')
         .description('Add a task')
         .option('--content <text>', 'Task content (legacy, prefer positional argument)')
-        .option('--due <date>', 'Due date (YYYY-MM-DD or simple natural language; see Notes below)')
+        .option('--due <date>', 'Due date (YYYY-MM-DD or simple natural language)')
+        .option('--first-due <date>', 'First occurrence date (YYYY-MM-DD; requires --due)')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .addOption(
             withCaseInsensitiveChoices(
@@ -165,9 +166,8 @@ Examples:
             'after',
             `
 Notes:
-  --due is sent verbatim as the task's due_string. The server's due_string
-  parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but
-  does not unpack some more complex clauses (i.e. "starting <date>").`,
+  Use --first-due with a recurring --due rule to set its initial occurrence:
+  td task add "Task" --due "every! 2 weeks" --first-due 2026-05-17`,
         )
 
     const quickaddCmd = task
@@ -191,10 +191,8 @@ Notes:
         .command('update [ref]')
         .description('Update a task')
         .option('--content <text>', 'New content')
-        .option(
-            '--due <date>',
-            'New due date (YYYY-MM-DD or simple natural language; see Notes below)',
-        )
+        .option('--due <date>', 'New due date (YYYY-MM-DD or simple natural language)')
+        .option('--first-due <date>', 'First occurrence date (YYYY-MM-DD; requires --due)')
         .option('--no-due', 'Remove due date')
         .option('--deadline <date>', 'Deadline date (YYYY-MM-DD)')
         .option('--no-deadline', 'Remove deadline')
@@ -235,9 +233,8 @@ Notes:
             'after',
             `
 Notes:
-  --due is sent verbatim as the task's due_string, with the same caveats as
-  "task add --due": the server's due_string parser does not unpack some more
-  complex clauses (i.e. "starting <date>").`,
+  Use --first-due with a recurring --due rule to set its initial occurrence.
+  See "task add --due" for an example.`,
         )
 
     const moveCmd = task

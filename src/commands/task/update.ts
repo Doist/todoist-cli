@@ -1,4 +1,4 @@
-import { getApi } from '../../lib/api/core.js'
+import { getApi, rescheduleTask as rescheduleTaskSync } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -6,7 +6,7 @@ import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'
-import { applyDuration, type DurationArgs } from './helpers.js'
+import { applyDuration, type DurationArgs, validateFirstDueDate } from './helpers.js'
 
 export interface UpdateOptions {
     content?: string
@@ -24,9 +24,11 @@ export interface UpdateOptions {
     order?: number
     json?: boolean
     dryRun?: boolean
+    firstDue?: string
 }
 
 export async function updateTask(ref: string, options: UpdateOptions): Promise<void> {
+    const firstDue = validateFirstDueDate(options.firstDue, options.due)
     const api = await getApi()
     const task = await resolveTaskRef(api, ref)
 
@@ -91,6 +93,7 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
             Content: args.content,
             Description: args.description ?? undefined,
             Due: args.dueString ?? undefined,
+            'First occurrence': firstDue,
             Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
             Labels: options.labels === false ? '(remove all)' : options.labels,
@@ -104,7 +107,29 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
         return
     }
 
-    const updated = await api.updateTask(task.id, args)
+    let updated = await api.updateTask(task.id, args)
+
+    if (firstDue) {
+        if (!updated.due) {
+            throw new CliError(
+                'FIRST_DUE_NOT_APPLIED',
+                `Task "${updated.id}" was updated without a due date, so its first occurrence could not be set.`,
+            )
+        }
+        try {
+            await rescheduleTaskSync(updated.id, firstDue, updated.due)
+        } catch (error) {
+            throw new CliError(
+                'FIRST_DUE_NOT_APPLIED',
+                `Task "${updated.id}" was updated, but its first occurrence could not be set.`,
+                [
+                    `Recover with: td task reschedule id:${updated.id} ${firstDue}`,
+                    `Underlying error: ${(error as Error).message}`,
+                ],
+            )
+        }
+        updated = await api.getTask(updated.id)
+    }
 
     if (options.json) {
         console.log(formatJson(updated, 'task'))
