@@ -1,4 +1,4 @@
-import { getApi } from '../../lib/api/core.js'
+import { getApi, rescheduleTask as rescheduleTaskSync } from '../../lib/api/core.js'
 import { resolveAssigneeId } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -13,7 +13,7 @@ import {
 } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'
-import { applyDuration, type DurationArgs } from './helpers.js'
+import { applyDuration, type DurationArgs, validateFirstDueDate } from './helpers.js'
 
 export interface AddOptions {
     content: string
@@ -32,18 +32,18 @@ export interface AddOptions {
     order?: number
     json?: boolean
     dryRun?: boolean
+    firstDue?: string
 }
 
 export async function addTask(options: AddOptions): Promise<void> {
+    const firstDue = validateFirstDueDate(options.firstDue, options.due)
     const api = await getApi()
 
     const args: Parameters<typeof api.addTask>[0] = {
         content: options.content,
     }
 
-    if (options.due) {
-        args.dueString = options.due
-    }
+    if (options.due) args.dueString = options.due
 
     if (options.deadline) {
         args.deadlineDate = options.deadline
@@ -141,6 +141,7 @@ export async function addTask(options: AddOptions): Promise<void> {
             Content: args.content,
             Description: args.description,
             Due: args.dueString,
+            'First occurrence': firstDue,
             Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
             Project: options.project,
@@ -155,7 +156,29 @@ export async function addTask(options: AddOptions): Promise<void> {
         return
     }
 
-    const task = await api.addTask(args)
+    let task = await api.addTask(args)
+
+    if (firstDue) {
+        if (!task.due) {
+            throw new CliError(
+                'FIRST_DUE_NOT_APPLIED',
+                `Task "${task.id}" was created without a due date, so its first occurrence could not be set.`,
+            )
+        }
+        try {
+            await rescheduleTaskSync(task.id, firstDue, task.due)
+        } catch (error) {
+            throw new CliError(
+                'FIRST_DUE_NOT_APPLIED',
+                `Task "${task.id}" was created, but its first occurrence could not be set.`,
+                [
+                    `Recover with: td task reschedule id:${task.id} ${firstDue}`,
+                    `Underlying error: ${(error as Error).message}`,
+                ],
+            )
+        }
+        task = await api.getTask(task.id)
+    }
 
     if (options.json) {
         console.log(formatJson(task, 'task'))

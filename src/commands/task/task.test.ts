@@ -706,6 +706,95 @@ describe('task add', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Due: tomorrow')
     })
 
+    it('creates recurring task with --first-due that advances on completion', async () => {
+        const program = createProgram()
+        captureConsole()
+        const initialDue = {
+            date: '2026-07-31',
+            string: 'every! 2 weeks',
+            isRecurring: true,
+            timezone: null,
+            lang: 'en',
+        }
+
+        mockApi.addTask.mockResolvedValue({ id: 'task-new', content: 'Task', due: initialDue })
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: { ...initialDue, date: '2026-05-17' },
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            'Task',
+            '--due',
+            'every! 2 weeks',
+            '--first-due',
+            '2026-05-17',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ dueString: 'every! 2 weeks' }),
+        )
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-new', '2026-05-17', initialDue)
+        expect(mockApi.getTask).toHaveBeenCalledWith('task-new')
+    })
+
+    it('passes due strings through unchanged without --first-due', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.addTask.mockResolvedValue({ id: 'task-new', content: 'Task', due: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            'Task',
+            '--due',
+            'every! 2 weeks starting 2026-05-17',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ dueString: 'every! 2 weeks starting 2026-05-17' }),
+        )
+        expect(mockRescheduleTask).not.toHaveBeenCalled()
+    })
+
+    it('rejects --first-due without --due before creating a task', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'add', 'Task', '--first-due', '2026-05-17']),
+        ).rejects.toThrow('The --first-due flag requires --due.')
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+    })
+
+    it('rejects an invalid --first-due date before creating a task', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'add',
+                'Task',
+                '--due',
+                'every 2 weeks',
+                '--first-due',
+                '2026-02-29',
+            ]),
+        ).rejects.toThrow('Invalid first due date: "2026-02-29"')
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+    })
+
     it('creates task with --priority', async () => {
         const program = createProgram()
         captureConsole()
@@ -1111,6 +1200,64 @@ describe('task update', () => {
         expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
             dueString: 'next week',
         })
+    })
+
+    it('updates a recurring task with --first-due that advances on completion', async () => {
+        const program = createProgram()
+        captureConsole()
+        const initialDue = {
+            date: '2026-07-31',
+            string: 'every! 2 weeks',
+            isRecurring: true,
+            timezone: null,
+            lang: 'en',
+        }
+
+        mockApi.getTask
+            .mockResolvedValueOnce({ id: 'task-1', content: 'Task' })
+            .mockResolvedValueOnce({
+                id: 'task-1',
+                content: 'Task',
+                due: { ...initialDue, date: '2026-05-17' },
+            })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task', due: initialDue })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--due',
+            'every! 2 weeks',
+            '--first-due',
+            '2026-05-17',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            dueString: 'every! 2 weeks',
+        })
+        expect(mockRescheduleTask).toHaveBeenCalledWith('task-1', '2026-05-17', initialDue)
+        expect(mockApi.getTask).toHaveBeenLastCalledWith('task-1')
+    })
+
+    it('rejects --first-due with --no-due before updating a task', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'task',
+                'update',
+                'id:task-1',
+                '--no-due',
+                '--first-due',
+                '2026-05-17',
+            ]),
+        ).rejects.toThrow('Cannot use --first-due and --no-due together.')
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
     })
 
     it('updates task priority', async () => {
@@ -2740,23 +2887,23 @@ describe('task add/update --due help text', () => {
         return output
     }
 
-    it('task add --help documents the verbatim caveat for --due', async () => {
+    it('task add --help documents --first-due', async () => {
         const output = await captureHelp(['task', 'add', '--help'])
 
         expect(output).toContain('--due')
         expect(output).toContain('Notes:')
-        expect(output).toContain('sent verbatim')
-        expect(output).toContain('"starting <date>"')
+        expect(output).toContain('--first-due')
+        expect(output).toContain('initial occurrence')
+        expect(output).toContain('every! 2 weeks')
     })
 
-    it('task update --help documents the verbatim caveat and refers back to task add --due', async () => {
+    it('task update --help documents --first-due', async () => {
         const output = await captureHelp(['task', 'update', '--help'])
 
         expect(output).toContain('--due')
         expect(output).toContain('Notes:')
-        expect(output).toContain('sent verbatim')
-        expect(output).toContain('"starting <date>"')
-        expect(output).toContain('same caveats as')
+        expect(output).toContain('--first-due')
+        expect(output).toContain('initial occurrence')
         expect(output).toContain('"task add --due"')
     })
 })
