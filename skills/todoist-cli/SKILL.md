@@ -5,7 +5,6 @@ compatibility: "Requires the td CLI (@doist/todoist-cli) to be installed and aut
 license: MIT
 metadata:
   author: Doist
-  version: "3.1.3"
 ---
 
 # Todoist CLI (td)
