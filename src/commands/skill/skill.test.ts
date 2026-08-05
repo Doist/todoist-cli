@@ -240,6 +240,7 @@ describe('installer paths', () => {
         expect(content).toContain('compatibility: ')
         expect(content).toContain('license: MIT')
         expect(content).toContain('author: Doist')
+        expect(content).not.toMatch(/\n  version:/)
         expect(content).toContain('# Todoist CLI (td)')
         expect(content).toContain('td today')
         expect(content).toContain('td task add')

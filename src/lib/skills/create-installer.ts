@@ -23,7 +23,6 @@ compatibility: ${JSON.stringify(SKILL_COMPATIBILITY)}
 license: ${packageJson.license}
 metadata:
   author: Doist
-  version: ${JSON.stringify(packageJson.version)}
 ---
 
 `
