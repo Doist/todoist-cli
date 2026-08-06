@@ -1,10 +1,16 @@
 import { type UpdateFilterArgs, updateFilter } from '../../lib/api/filters.js'
+import { setViewOptions } from '../../lib/api/view-options.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
+import {
+    describeViewOptions,
+    parseViewOptionFlags,
+    type ViewOptionFlags,
+} from '../../lib/view-options.js'
 import { resolveFilterRef } from './helpers.js'
 
-export interface UpdateOptions {
+export interface UpdateOptions extends ViewOptionFlags {
     name?: string
     query?: string
     color?: UpdateFilterArgs['color']
@@ -14,6 +20,7 @@ export interface UpdateOptions {
 
 export async function updateFilterCmd(nameOrId: string, options: UpdateOptions): Promise<void> {
     const filter = await resolveFilterRef(nameOrId)
+    const viewOptions = parseViewOptionFlags(options)
 
     const args: UpdateFilterArgs = {}
     if (options.name) args.name = options.name
@@ -21,7 +28,7 @@ export async function updateFilterCmd(nameOrId: string, options: UpdateOptions):
     if (options.color) args.color = options.color
     if (options.favorite !== undefined) args.isFavorite = options.favorite
 
-    if (Object.keys(args).length === 0) {
+    if (Object.keys(args).length === 0 && !viewOptions) {
         throw new CliError('NO_CHANGES', 'No changes specified.')
     }
 
@@ -32,11 +39,18 @@ export async function updateFilterCmd(nameOrId: string, options: UpdateOptions):
             Query: args.query,
             Color: args.color,
             Favorite: args.isFavorite !== undefined ? String(args.isFavorite) : undefined,
+            View: viewOptions ? describeViewOptions(viewOptions) : undefined,
         })
         return
     }
 
-    await updateFilter(filter.id, args)
+    if (Object.keys(args).length > 0) {
+        await updateFilter(filter.id, args)
+    }
+    if (viewOptions) {
+        await setViewOptions({ viewType: 'FILTER', objectId: filter.id, ...viewOptions })
+    }
+
     if (!isQuiet())
         console.log(
             `Updated: ${filter.name}${options.name ? ` -> ${options.name}` : ''} (id:${filter.id})`,
