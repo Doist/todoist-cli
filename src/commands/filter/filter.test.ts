@@ -12,7 +12,12 @@ vi.mock('../../lib/api/filters.js', () => ({
     deleteFilter: vi.fn(),
 }))
 
+vi.mock('../../lib/api/view-options.js', () => ({
+    setViewOptions: vi.fn(),
+}))
+
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
+import { setViewOptions } from '../../lib/api/view-options.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
@@ -22,6 +27,7 @@ const mockFetchFilters = vi.mocked(fetchFilters)
 const mockAddFilter = vi.mocked(addFilter)
 const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
+const mockSetViewOptions = vi.mocked(setViewOptions)
 
 function createProgram() {
     return createTestProgram(registerFilterCommand)
@@ -819,5 +825,125 @@ describe('filter --dry-run', () => {
 
         expect(mockUpdateFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update filter'))
+    })
+})
+
+describe('filter view options', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('sets board layout grouped by assignee on create', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-team', name: 'Team', query: 'p1 | p2' }),
+        )
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Team',
+            '--query',
+            'p1 | p2',
+            '--view-mode',
+            'board',
+            '--group-by',
+            'assignee',
+        ])
+
+        expect(mockSetViewOptions).toHaveBeenCalledWith({
+            viewType: 'FILTER',
+            objectId: 'filter-team',
+            viewMode: 'BOARD',
+            groupedBy: 'ASSIGNEE',
+        })
+    })
+
+    it('normalizes kebab-case values to the uppercase enums the API expects', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Work',
+            '--sort-by',
+            'due-date',
+            '--sort-order',
+            'desc',
+        ])
+
+        expect(mockSetViewOptions).toHaveBeenCalledWith({
+            viewType: 'FILTER',
+            objectId: 'filter-1',
+            sortedBy: 'DUE_DATE',
+            sortOrder: 'DESC',
+        })
+    })
+
+    it('updates view options without touching the filter itself', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+
+        await program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--view-mode', 'list'])
+
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+        expect(mockSetViewOptions).toHaveBeenCalledWith({
+            viewType: 'FILTER',
+            objectId: 'filter-1',
+            viewMode: 'LIST',
+        })
+    })
+
+    it('rejects an unknown value and lists the allowed ones', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+
+        await expect(
+            program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--group-by', 'colour']),
+        ).rejects.toThrow(/colour/)
+
+        expect(mockSetViewOptions).not.toHaveBeenCalled()
+    })
+
+    it('does not call the view options API when no view flag is given', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-plain', name: 'Plain', query: 'today' }),
+        )
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Plain',
+            '--query',
+            'today',
+        ])
+
+        expect(mockSetViewOptions).not.toHaveBeenCalled()
     })
 })
