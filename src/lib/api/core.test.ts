@@ -116,3 +116,27 @@ describe('wrapApiError → MISSING_SCOPE (billing)', () => {
         expect(wrapped.hints?.[0]).not.toContain('billing:read_write')
     })
 })
+
+describe('wrapApiError → API_ERROR', () => {
+    it('surfaces a string error from the API response body', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError('HTTP 400: Bad Request', 400, {
+                error: 'completion date range must not exceed 3 months',
+            }),
+        )) as CliError
+
+        expect(wrapped.code).toBe('API_ERROR')
+        expect(wrapped.message).toBe('completion date range must not exceed 3 months')
+    })
+
+    it('falls back to the SDK error when the response has no string error', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError('HTTP 500: Internal Server Error', 500, {
+                error: { message: 'unexpected shape' },
+            }),
+        )) as CliError
+
+        expect(wrapped.code).toBe('API_ERROR')
+        expect(wrapped.message).toBe('HTTP 500: Internal Server Error')
+    })
+})

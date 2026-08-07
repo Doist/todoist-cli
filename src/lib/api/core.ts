@@ -265,7 +265,15 @@ export async function wrapApiError(error: unknown, methodName?: string): Promise
         if (status === 429) {
             return new CliError('RATE_LIMITED', error.message, ['Wait a moment and retry'])
         }
-        return new CliError('API_ERROR', error.message)
+        const responseMessage =
+            typeof error.responseData === 'string'
+                ? error.responseData
+                : typeof error.responseData === 'object' &&
+                    error.responseData !== null &&
+                    typeof (error.responseData as { error?: unknown }).error === 'string'
+                  ? (error.responseData as { error: string }).error
+                  : undefined
+        return new CliError('API_ERROR', responseMessage || error.message)
     }
     return error instanceof Error ? error : new Error(String(error))
 }

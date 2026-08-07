@@ -19,10 +19,64 @@ interface CompletedListOptions extends PaginatedViewOptions {
     search?: string
 }
 
+const MAX_COMPLETION_DATE_RANGE_DAYS = 93
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+
 function getLocalDate(daysOffset = 0): string {
     const date = new Date()
     date.setDate(date.getDate() + daysOffset)
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function parseDateOption(value: string, option: '--since' | '--until'): number {
+    const match = DATE_PATTERN.exec(value)
+    if (!match) {
+        throw new CliError('INVALID_DATE', `Invalid ${option} date: "${value}"`, [
+            `Use YYYY-MM-DD format, for example: ${option} 2026-08-07`,
+        ])
+    }
+
+    const [, yearString, monthString, dayString] = match
+    const year = Number(yearString)
+    const month = Number(monthString)
+    const day = Number(dayString)
+    const timestamp = Date.UTC(year, month - 1, day)
+    const parsed = new Date(timestamp)
+
+    if (
+        parsed.getUTCFullYear() !== year ||
+        parsed.getUTCMonth() !== month - 1 ||
+        parsed.getUTCDate() !== day
+    ) {
+        throw new CliError('INVALID_DATE', `Invalid ${option} date: "${value}"`, [
+            `Use a valid calendar date in YYYY-MM-DD format`,
+        ])
+    }
+
+    return timestamp
+}
+
+function validateCompletionDateRange(since: string, until: string): void {
+    const sinceTimestamp = parseDateOption(since, '--since')
+    const untilTimestamp = parseDateOption(until, '--until')
+    const rangeDays = (untilTimestamp - sinceTimestamp) / DAY_IN_MS
+
+    if (rangeDays <= 0) {
+        throw new CliError('INVALID_DATE_RANGE', '--until must be later than --since', [
+            `Received --since ${since} --until ${until}`,
+        ])
+    }
+
+    if (rangeDays > MAX_COMPLETION_DATE_RANGE_DAYS) {
+        throw new CliError(
+            'INVALID_DATE_RANGE',
+            'Completed-task date ranges cannot exceed 3 months',
+            [
+                `Query a range of ${MAX_COMPLETION_DATE_RANGE_DAYS} days or fewer, then repeat for earlier periods.`,
+            ],
+        )
+    }
 }
 
 export async function listCompleted(options: CompletedListOptions): Promise<void> {
@@ -39,8 +93,6 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
         )
     }
 
-    const api = await getApi()
-
     const targetLimit = options.all
         ? Number.MAX_SAFE_INTEGER
         : options.limit
@@ -49,6 +101,12 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
 
     const since = isSearch ? undefined : (options.since ?? getLocalDate(0))
     const until = isSearch ? undefined : (options.until ?? getLocalDate(1))
+
+    if (!isSearch) {
+        validateCompletionDateRange(since!, until!)
+    }
+
+    const api = await getApi()
 
     let projectId: string | undefined
     if (!isSearch && options.project) {
