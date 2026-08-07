@@ -232,6 +232,18 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
 const STANDARD_REMEDIATION =
     'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.'
 
+function extractApiResponseMessage(data: unknown): string | undefined {
+    if (typeof data === 'string') return data
+    if (
+        typeof data === 'object' &&
+        data !== null &&
+        typeof (data as { error?: unknown }).error === 'string'
+    ) {
+        return (data as { error: string }).error
+    }
+    return undefined
+}
+
 async function getScopeRemediation(methodName: string | undefined): Promise<string> {
     const requiredFlag = methodName ? METHOD_REQUIRED_FLAG[methodName] : undefined
     if (!requiredFlag) {
@@ -265,14 +277,7 @@ export async function wrapApiError(error: unknown, methodName?: string): Promise
         if (status === 429) {
             return new CliError('RATE_LIMITED', error.message, ['Wait a moment and retry'])
         }
-        const responseMessage =
-            typeof error.responseData === 'string'
-                ? error.responseData
-                : typeof error.responseData === 'object' &&
-                    error.responseData !== null &&
-                    typeof (error.responseData as { error?: unknown }).error === 'string'
-                  ? (error.responseData as { error: string }).error
-                  : undefined
+        const responseMessage = extractApiResponseMessage(error.responseData)
         return new CliError('API_ERROR', responseMessage || error.message)
     }
     return error instanceof Error ? error : new Error(String(error))

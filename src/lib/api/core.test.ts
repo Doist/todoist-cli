@@ -129,6 +129,19 @@ describe('wrapApiError → API_ERROR', () => {
         expect(wrapped.message).toBe('completion date range must not exceed 3 months')
     })
 
+    it('surfaces a plain-string API response body', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError(
+                'HTTP 400: Bad Request',
+                400,
+                'completion date range must not exceed 3 months',
+            ),
+        )) as CliError
+
+        expect(wrapped.code).toBe('API_ERROR')
+        expect(wrapped.message).toBe('completion date range must not exceed 3 months')
+    })
+
     it('falls back to the SDK error when the response has no string error', async () => {
         const wrapped = (await wrapApiError(
             new TodoistRequestError('HTTP 500: Internal Server Error', 500, {

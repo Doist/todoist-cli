@@ -123,8 +123,6 @@ td completed list --search "meeting notes"
 td activity --type task --event completed
 \`\`\`
 
-\`td completed list --since ... --until ...\` accepts a completion-date range of up to 3 months (93 days). Query longer periods as multiple shorter ranges.
-
 ### Tasks
 \`\`\`bash
 td task add "Buy milk" --due tomorrow

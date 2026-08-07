@@ -109,6 +109,9 @@ describe('completed command', () => {
         ).rejects.toMatchObject({
             code: 'INVALID_DATE_RANGE',
             message: 'Completed-task date ranges cannot exceed 3 months',
+            hints: [
+                'Retry the same command with --since 2026-05-05 --until 2026-08-06 for the most recent 93-day segment.',
+            ],
         })
         expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
     })

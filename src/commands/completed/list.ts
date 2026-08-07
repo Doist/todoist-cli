@@ -69,11 +69,14 @@ function validateCompletionDateRange(since: string, until: string): void {
     }
 
     if (rangeDays > MAX_COMPLETION_DATE_RANGE_DAYS) {
+        const suggestedSince = new Date(untilTimestamp - MAX_COMPLETION_DATE_RANGE_DAYS * DAY_IN_MS)
+            .toISOString()
+            .slice(0, 10)
         throw new CliError(
             'INVALID_DATE_RANGE',
             'Completed-task date ranges cannot exceed 3 months',
             [
-                `Query a range of ${MAX_COMPLETION_DATE_RANGE_DAYS} days or fewer, then repeat for earlier periods.`,
+                `Retry the same command with --since ${suggestedSince} --until ${until} for the most recent ${MAX_COMPLETION_DATE_RANGE_DAYS}-day segment.`,
             ],
         )
     }
