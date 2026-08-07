@@ -93,6 +93,90 @@ describe('completed command', () => {
         )
     })
 
+    it('rejects date ranges longer than the API maximum', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'completed',
+                '--since',
+                '2026-01-01',
+                '--until',
+                '2026-08-06',
+            ]),
+        ).rejects.toMatchObject({
+            code: 'INVALID_DATE_RANGE',
+            message: 'Completed-task date ranges cannot exceed 3 months',
+            hints: [
+                'Retry the same command with --since 2026-05-05 --until 2026-08-06 for the most recent 93-day segment.',
+            ],
+        })
+        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+    })
+
+    it('accepts a date range at the 93-day API boundary', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'completed',
+            '--since',
+            '2026-01-01',
+            '--until',
+            '2026-04-04',
+        ])
+
+        expect(mockApi.getCompletedTasksByCompletionDate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                since: '2026-01-01',
+                until: '2026-04-04',
+            }),
+        )
+    })
+
+    it('rejects invalid calendar dates', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'completed',
+                '--since',
+                '2026-02-30',
+                '--until',
+                '2026-03-01',
+            ]),
+        ).rejects.toMatchObject({
+            code: 'INVALID_DATE',
+            message: 'Invalid --since date: "2026-02-30"',
+        })
+        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+    })
+
+    it('rejects ranges where until is not later than since', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'completed',
+                '--since',
+                '2026-08-07',
+                '--until',
+                '2026-08-07',
+            ]),
+        ).rejects.toMatchObject({
+            code: 'INVALID_DATE_RANGE',
+            message: '--until must be later than --since',
+        })
+        expect(mockApi.getCompletedTasksByCompletionDate).not.toHaveBeenCalled()
+    })
+
     it('shows "No completed tasks" when empty', async () => {
         const program = createProgram()
 

@@ -28,6 +28,7 @@ export type ErrorCode =
     | 'INVALID_AUTO_REMINDER'
     | 'INVALID_BOOLEAN'
     | 'INVALID_DATE'
+    | 'INVALID_DATE_RANGE'
     | 'INVALID_DATETIME'
     | 'INVALID_DATE_FORMAT'
     | 'INVALID_DAY'
