@@ -22,6 +22,8 @@ interface FilterSection {
     nextCursor: string | null
 }
 
+const FILTER_SECTION_CONCURRENCY = 6
+
 /**
  * Split Todoist's multi-list filter syntax without reimplementing its query parser.
  * Todoist defines each unescaped comma as a list separator and uses backslashes
@@ -55,13 +57,7 @@ function formatFilterSectionsJson(
     full = false,
     showUrls = false,
 ): string {
-    return formatJson({
-        sections: sections.map((section) => ({
-            query: section.query,
-            results: section.results.map((task) => processJsonItem(task, 'task', full, showUrls)),
-            nextCursor: section.nextCursor,
-        })),
-    })
+    return formatJson({ sections: processFilterSections(sections, full, showUrls) })
 }
 
 function formatFilterSectionsNdjson(
@@ -69,13 +65,37 @@ function formatFilterSectionsNdjson(
     full = false,
     showUrls = false,
 ): string {
-    return formatNdjson(
-        sections.map((section) => ({
-            query: section.query,
-            results: section.results.map((task) => processJsonItem(task, 'task', full, showUrls)),
-            nextCursor: section.nextCursor,
-        })),
+    return formatNdjson(processFilterSections(sections, full, showUrls))
+}
+
+function processFilterSections(sections: FilterSection[], full: boolean, showUrls: boolean) {
+    return sections.map((section) => ({
+        query: section.query,
+        results: section.results.map((task) => processJsonItem(task, 'task', full, showUrls)),
+        nextCursor: section.nextCursor,
+    }))
+}
+
+async function mapFilterSections(
+    queries: string[],
+    loadSection: (query: string) => Promise<FilterSection>,
+): Promise<FilterSection[]> {
+    const sections: FilterSection[] = []
+    let nextIndex = 0
+
+    // Workers claim indexes before awaiting, which caps request bursts while keeping
+    // results in saved-filter order even when later sections finish first.
+    const workers = Array.from(
+        { length: Math.min(FILTER_SECTION_CONCURRENCY, queries.length) },
+        async () => {
+            while (nextIndex < queries.length) {
+                const index = nextIndex++
+                sections[index] = await loadSection(queries[index])
+            }
+        },
     )
+    await Promise.all(workers)
+    return sections
 }
 
 export async function showFilter(nameOrId: string, options: PaginatedViewOptions): Promise<void> {
@@ -102,22 +122,20 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
     let sections: FilterSection[]
 
     try {
-        // Section cursors are independent, so fetch sections concurrently. paginate()
-        // still serializes pages within a section. Any section failure rejects the view.
-        sections = await Promise.all(
-            queries.map(async (query) => {
-                const result = await paginate(
-                    (cursor, limit) =>
-                        api.getTasksByFilter({
-                            query,
-                            cursor: cursor ?? undefined,
-                            limit,
-                        }),
-                    { limit: targetLimit, startCursor: options.cursor },
-                )
-                return { query, ...result }
-            }),
-        )
+        // Section cursors are independent; pages within one section remain serial.
+        // Any section failure rejects the view so partial output never looks complete.
+        sections = await mapFilterSections(queries, async (query) => {
+            const result = await paginate(
+                (cursor, limit) =>
+                    api.getTasksByFilter({
+                        query,
+                        cursor: cursor ?? undefined,
+                        limit,
+                    }),
+                { limit: targetLimit, startCursor: options.cursor },
+            )
+            return { query, ...result }
+        })
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         if (message.includes('400')) {
@@ -129,9 +147,6 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
         }
         throw err
     }
-
-    // Do not deduplicate: Todoist can intentionally show one task in multiple lists.
-    const tasks = sections.flatMap((section) => section.results)
 
     if (options.json) {
         if (hasMultipleSections) {
@@ -167,6 +182,9 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
         return
     }
 
+    // Do not deduplicate: Todoist can intentionally show one task in multiple lists.
+    const tasks = sections.flatMap((section) => section.results)
+
     console.log(chalk.bold(`${filter.name}`))
     console.log(chalk.dim(`Query: ${filter.query}`))
     console.log(chalk.dim(`URL:   ${filterUrl(filter.id)}`))
@@ -180,14 +198,13 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
         }
     }
 
-    const { results: projects } = await api.getProjects()
     const projectMap = new Map<string, Project>()
-    for (const p of projects) {
-        projectMap.set(p.id, p)
-    }
-
     const collaboratorCache = new CollaboratorCache()
-    await collaboratorCache.preload(api, tasks, projectMap)
+    if (tasks.length > 0) {
+        const { results: projects } = await api.getProjects()
+        for (const project of projects) projectMap.set(project.id, project)
+        await collaboratorCache.preload(api, tasks, projectMap)
+    }
 
     for (const [index, section] of sections.entries()) {
         if (hasMultipleSections) {

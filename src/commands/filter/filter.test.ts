@@ -14,9 +14,10 @@ vi.mock('../../lib/api/filters.js', () => ({
 
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
-import { makeFilter } from '../../test-support/fixtures.js'
+import { fixtures, makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerFilterCommand } from './index.js'
+import { splitFilterQueries } from './view.js'
 
 const mockFetchFilters = vi.mocked(fetchFilters)
 const mockAddFilter = vi.mocked(addFilter)
@@ -26,6 +27,24 @@ const mockDeleteFilter = vi.mocked(deleteFilter)
 function createProgram() {
     return createTestProgram(registerFilterCommand)
 }
+
+describe('splitFilterQueries', () => {
+    it('ignores empty filter sections', () => {
+        expect(splitFilterQueries('today,,  , tomorrow')).toEqual(['today', 'tomorrow'])
+    })
+
+    it('only splits commas preceded by an even number of backslashes', () => {
+        expect(splitFilterQueries(String.raw`#Research\, Inc, today`)).toEqual([
+            String.raw`#Research\, Inc`,
+            'today',
+        ])
+        expect(splitFilterQueries(String.raw`#Research\\, Inc, today`)).toEqual([
+            String.raw`#Research\\`,
+            'Inc',
+            'today',
+        ])
+    })
+})
 
 describe('filter list', () => {
     beforeEach(() => {
@@ -506,11 +525,9 @@ describe('filter show', () => {
             .mockResolvedValueOnce({
                 results: [
                     {
+                        ...fixtures.tasks.basic,
                         id: 'task-today',
                         content: 'Due today',
-                        projectId: 'proj-1',
-                        priority: 1,
-                        labels: [],
                     },
                 ],
                 nextCursor: null,
@@ -518,11 +535,9 @@ describe('filter show', () => {
             .mockResolvedValueOnce({
                 results: [
                     {
+                        ...fixtures.tasks.basic,
                         id: 'task-tomorrow',
                         content: 'Due tomorrow',
-                        projectId: 'proj-1',
-                        priority: 1,
-                        labels: [],
                     },
                 ],
                 nextCursor: null,
@@ -558,6 +573,49 @@ describe('filter show', () => {
         expect(output).toContain('No tasks match this section.')
     })
 
+    it('does not load projects when every filter section is empty', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: 'today, tomorrow' }),
+        ])
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard'])
+
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map(([line]) => String(line)).join('\n')
+        expect(output).toContain('--- today ---')
+        expect(output).toContain('--- tomorrow ---')
+        expect(output.match(/No tasks match this section\./g)).toHaveLength(2)
+    })
+
+    it('caps concurrent filter section requests while keeping them parallel', async () => {
+        const program = createProgram()
+        captureConsole()
+        const queries = Array.from({ length: 7 }, (_, index) => `query-${index + 1}`)
+        let activeRequests = 0
+        let maxActiveRequests = 0
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: queries.join(',') }),
+        ])
+        mockApi.getTasksByFilter.mockImplementation(async () => {
+            activeRequests++
+            maxActiveRequests = Math.max(maxActiveRequests, activeRequests)
+            await Promise.resolve()
+            activeRequests--
+            return { results: [], nextCursor: null }
+        })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard', '--json'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledTimes(queries.length)
+        expect(maxActiveRequests).toBeGreaterThan(1)
+        expect(maxActiveRequests).toBeLessThan(queries.length)
+    })
+
     it('groups comma-separated filter sections in JSON output', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
@@ -567,11 +625,10 @@ describe('filter show', () => {
         ])
 
         const matchingTask = {
+            ...fixtures.tasks.basic,
             id: 'task-1',
             content: 'Urgent today',
-            projectId: 'proj-1',
             priority: 4,
-            labels: [],
         }
         mockApi.getTasksByFilter
             .mockResolvedValueOnce({ results: [matchingTask], nextCursor: null })
