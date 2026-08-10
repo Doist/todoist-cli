@@ -490,6 +490,189 @@ describe('filter show', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Work task 1'))
     })
 
+    it('shows comma-separated filter sections', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({
+                id: 'filter-1',
+                name: 'Dashboard',
+                query: 'due today, due tomorrow, no date',
+            }),
+        ])
+
+        mockApi.getTasksByFilter
+            .mockResolvedValueOnce({
+                results: [
+                    {
+                        id: 'task-today',
+                        content: 'Due today',
+                        projectId: 'proj-1',
+                        priority: 1,
+                        labels: [],
+                    },
+                ],
+                nextCursor: null,
+            })
+            .mockResolvedValueOnce({
+                results: [
+                    {
+                        id: 'task-tomorrow',
+                        content: 'Due tomorrow',
+                        projectId: 'proj-1',
+                        priority: 1,
+                        labels: [],
+                    },
+                ],
+                nextCursor: null,
+            })
+            .mockResolvedValueOnce({ results: [], nextCursor: null })
+
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work Project' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ query: 'due today' }),
+        )
+        expect(mockApi.getTasksByFilter).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ query: 'due tomorrow' }),
+        )
+        expect(mockApi.getTasksByFilter).toHaveBeenNthCalledWith(
+            3,
+            expect.objectContaining({ query: 'no date' }),
+        )
+
+        const output = consoleSpy.mock.calls.map(([line]) => String(line)).join('\n')
+        expect(output).toContain('--- due today ---')
+        expect(output).toContain('Due today')
+        expect(output).toContain('--- due tomorrow ---')
+        expect(output).toContain('Due tomorrow')
+        expect(output).toContain('--- no date ---')
+        expect(output).toContain('No tasks match this section.')
+    })
+
+    it('groups comma-separated filter sections in JSON output', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: 'today, p1' }),
+        ])
+
+        const matchingTask = {
+            id: 'task-1',
+            content: 'Urgent today',
+            projectId: 'proj-1',
+            priority: 4,
+            labels: [],
+        }
+        mockApi.getTasksByFilter
+            .mockResolvedValueOnce({ results: [matchingTask], nextCursor: null })
+            .mockResolvedValueOnce({ results: [matchingTask], nextCursor: 'next-p1' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'show',
+            'Dashboard',
+            '--json',
+            '--limit',
+            '1',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed).toEqual({
+            sections: [
+                {
+                    query: 'today',
+                    results: [expect.objectContaining({ id: 'task-1' })],
+                    nextCursor: null,
+                },
+                {
+                    query: 'p1',
+                    results: [expect.objectContaining({ id: 'task-1' })],
+                    nextCursor: 'next-p1',
+                },
+            ],
+        })
+    })
+
+    it('outputs one NDJSON record per filter section', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: 'today, tomorrow' }),
+        ])
+        mockApi.getTasksByFilter
+            .mockResolvedValueOnce({ results: [], nextCursor: null })
+            .mockResolvedValueOnce({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard', '--ndjson'])
+
+        const records = consoleSpy.mock.calls[0][0]
+            .split('\n')
+            .map((line: string) => JSON.parse(line))
+        expect(records).toEqual([
+            { query: 'today', results: [], nextCursor: null },
+            { query: 'tomorrow', results: [], nextCursor: null },
+        ])
+    })
+
+    it('does not split escaped commas in filter queries', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({
+                id: 'filter-1',
+                name: 'Dashboard',
+                query: '#Research\\, Inc, today',
+            }),
+        ])
+        mockApi.getTasksByFilter.mockResolvedValue({ results: [], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard', '--json'])
+
+        expect(mockApi.getTasksByFilter).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ query: '#Research\\, Inc' }),
+        )
+        expect(mockApi.getTasksByFilter).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ query: 'today' }),
+        )
+    })
+
+    it('rejects --cursor for filters with multiple sections', async () => {
+        const program = createProgram()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: 'today, tomorrow' }),
+        ])
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'filter',
+                'show',
+                'Dashboard',
+                '--cursor',
+                'next-page',
+            ]),
+        ).rejects.toHaveProperty('code', 'INVALID_OPTIONS')
+        expect(mockApi.getTasksByFilter).not.toHaveBeenCalled()
+    })
+
     it('shows "No tasks match this filter" when empty', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()

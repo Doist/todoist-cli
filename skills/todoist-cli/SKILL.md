@@ -259,6 +259,8 @@ td section delete id:123 --yes
 td section browse id:123
 ```
 
+Saved filters can contain multiple comma-separated queries. `td filter view` shows each query as a separate section and applies `--limit` to each section. Under `--json`, multi-section filters return `{ sections: [{ query, results, nextCursor }] }`; under `--ndjson`, each line is one section with the same fields. Because each section has its own pagination cursor, use `--all` instead of `--cursor` for multi-section filters.
+
 Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs. Use `td label rename-shared` and `td label remove-shared` for shared labels.
 
 ### Comments, Attachments, Notifications, And Reminders
