@@ -70,8 +70,8 @@
     "@types/node": "25.9.5",
     "conventional-changelog-conventionalcommits": "10.2.1",
     "lefthook": "2.1.10",
-    "oxfmt": "0.61.0",
-    "oxlint": "1.76.0",
+    "oxfmt": "0.62.0",
+    "oxlint": "1.77.0",
     "semantic-release": "25.0.9",
     "typescript": "7.0.2",
     "vitest": "4.1.10"
