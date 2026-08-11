@@ -72,7 +72,7 @@ export function registerFilterCommand(program: Command): void {
         .command('view [ref]', { isDefault: true })
         .alias('show')
         .description('Show tasks matching a filter')
-        .option('--limit <n>', 'Limit number of results (default: 300)')
+        .option('--limit <n>', 'Limit results per filter section (default: 300)')
         .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
