@@ -235,6 +235,8 @@ td label remove-shared "oldname" --yes
 
 td filter list
 td filter view "Urgent work"
+td filter view "Urgent work" --sort priority --sort-order desc   # override the view's sorting
+td filter view "Urgent work" --sort none                         # keep the raw API order
 td filter create --name "Urgent work" --query "p1 & #Work"
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter delete "Urgent work" --yes
@@ -260,6 +262,8 @@ td section browse id:123
 ```
 
 Saved filters can contain multiple comma-separated queries, each displayed as a separate filter section. `td filter view` preserves those sections and applies `--limit` to each one. Under `--json`, multi-section filters return `{ sections: [{ query, results, nextCursor }] }`; under `--ndjson`, each line is one section with the same fields. Because each section has its own pagination cursor, use `--all` instead of `--cursor` for multi-section filters.
+
+`td filter view` orders tasks the way the Todoist apps do: it applies the sorting saved on that filter's view, and falls back to Todoist's default hierarchy (priority, then date, then deadline, then project and task order; date first for filters that query dates). `--sort` overrides it with `default`, `priority`, `date`, `deadline`, `date-added`, `name`, `project`, `assignee`, `workspace`, or `none` for the raw API order, and `--sort-order asc|desc` sets the direction of whichever field is in play (`default` and `none` have no direction). Sorting is applied to the tasks that were fetched, so pair it with `--all` when a filter has more results than the limit.
 
 Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs. Use `td label rename-shared` and `td label remove-shared` for shared labels.
 

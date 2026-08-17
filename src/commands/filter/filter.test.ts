@@ -12,7 +12,16 @@ vi.mock('../../lib/api/filters.js', () => ({
     deleteFilter: vi.fn(),
 }))
 
+// Saved view options decide the sort order; default to "none saved" so every
+// other test keeps the Todoist default ordering and stays off the network.
+vi.mock('../../lib/api/view-options.js', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../lib/api/view-options.js')>()),
+    fetchViewOptions: vi.fn(async () => []),
+    fetchViewOptionsSafely: vi.fn(async () => []),
+}))
+
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
+import { fetchViewOptionsSafely, type SavedViewOptions } from '../../lib/api/view-options.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures, makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
@@ -20,6 +29,7 @@ import { registerFilterCommand } from './index.js'
 import { splitFilterQueries } from './view.js'
 
 const mockFetchFilters = vi.mocked(fetchFilters)
+const mockFetchViewOptions = vi.mocked(fetchViewOptionsSafely)
 const mockAddFilter = vi.mocked(addFilter)
 const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
@@ -27,6 +37,12 @@ const mockDeleteFilter = vi.mocked(deleteFilter)
 function createProgram() {
     return createTestProgram(registerFilterCommand)
 }
+
+// Runs ahead of the per-suite `vi.clearAllMocks()`, which clears calls but
+// keeps implementations — without this a saved sort leaks into later tests.
+beforeEach(() => {
+    mockFetchViewOptions.mockResolvedValue([])
+})
 
 describe('splitFilterQueries', () => {
     it('ignores empty filter sections', () => {
@@ -852,6 +868,241 @@ describe('filter show', () => {
         await expect(
             program.parseAsync(['node', 'td', 'filter', 'show', 'Bad']),
         ).rejects.toHaveProperty('code', 'INVALID_FILTER_QUERY')
+    })
+})
+
+describe('filter show sorting', () => {
+    let mockApi: MockApi
+
+    const tasks = [
+        { ...fixtures.tasks.basic, id: 'task-p4', content: 'Low', priority: 1 },
+        { ...fixtures.tasks.basic, id: 'task-p1', content: 'Urgent', priority: 4 },
+        { ...fixtures.tasks.basic, id: 'task-p3', content: 'Medium', priority: 2 },
+    ]
+
+    function makeViewOptions(overrides: Partial<SavedViewOptions>): SavedViewOptions {
+        return {
+            viewType: 'FILTER',
+            objectId: 'filter-1',
+            sortedBy: null,
+            sortOrder: null,
+            groupedBy: null,
+            viewMode: 'LIST',
+            ...overrides,
+        }
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '##work & p4 & !subtask' }),
+        ])
+        mockApi.getTasksByFilter.mockResolvedValue({ results: tasks, nextCursor: null })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work Project' }],
+            nextCursor: null,
+        })
+    })
+
+    function orderedIds(consoleSpy: ReturnType<typeof captureConsole>): string[] {
+        const output = consoleSpy.mock.calls.map(([line]) => String(line)).join('\n')
+        return tasks.map((task) => task.id).sort((a, b) => output.indexOf(a) - output.indexOf(b))
+    }
+
+    it('applies the Todoist default ordering when the view has no saved sort', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([makeViewOptions({})])
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--show-urls'])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p1', 'task-p3', 'task-p4'])
+    })
+
+    it('applies the sorting saved on the view in Todoist', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([
+            makeViewOptions({ sortedBy: 'ALPHABETICALLY', sortOrder: 'ASC' }),
+        ])
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--show-urls'])
+
+        // Low, Medium, Urgent
+        expect(orderedIds(consoleSpy)).toEqual(['task-p4', 'task-p3', 'task-p1'])
+        const output = consoleSpy.mock.calls.map(([line]) => String(line)).join('\n')
+        expect(output).toContain('Sort:  Name (A-Z)')
+    })
+
+    it('reads the sorting saved on a workspace filter view', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([
+            makeViewOptions({
+                viewType: 'WORKSPACE_FILTER',
+                sortedBy: 'PRIORITY',
+                sortOrder: 'ASC',
+            }),
+        ])
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--show-urls'])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p4', 'task-p3', 'task-p1'])
+    })
+
+    it('ignores view options saved for a different view', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([
+            makeViewOptions({ objectId: 'filter-2', sortedBy: 'ALPHABETICALLY' }),
+            makeViewOptions({
+                viewType: 'PROJECT',
+                objectId: 'filter-1',
+                sortedBy: 'ALPHABETICALLY',
+            }),
+        ])
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--show-urls'])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p1', 'task-p3', 'task-p4'])
+    })
+
+    it('lets --sort override the saved sorting', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([makeViewOptions({ sortedBy: 'PRIORITY' })])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'show',
+            'Work',
+            '--sort',
+            'name',
+            '--show-urls',
+        ])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p4', 'task-p3', 'task-p1'])
+        expect(mockFetchViewOptions).not.toHaveBeenCalled()
+    })
+
+    it('lets --sort-order flip the saved sorting', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([makeViewOptions({ sortedBy: 'PRIORITY' })])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'show',
+            'Work',
+            '--sort-order',
+            'asc',
+            '--show-urls',
+        ])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p4', 'task-p3', 'task-p1'])
+    })
+
+    it('keeps the API order with --sort none', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'show',
+            'Work',
+            '--sort',
+            'none',
+            '--show-urls',
+        ])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p4', 'task-p1', 'task-p3'])
+    })
+
+    it('sorts JSON output the same way', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.results.map((task: { id: string }) => task.id)).toEqual([
+            'task-p1',
+            'task-p3',
+            'task-p4',
+        ])
+    })
+
+    it('sorts each comma-separated section on its own', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Dashboard', query: 'today, @work' }),
+        ])
+        const dueSoon = {
+            ...fixtures.tasks.basic,
+            id: 'task-soon',
+            content: 'Soon',
+            priority: 1,
+            due: { date: '2026-02-01', string: 'Feb 1', isRecurring: false },
+        }
+        const dueLater = {
+            ...fixtures.tasks.basic,
+            id: 'task-later',
+            content: 'Later',
+            priority: 4,
+            due: { date: '2026-02-09', string: 'Feb 9', isRecurring: false },
+        }
+        mockApi.getTasksByFilter
+            .mockResolvedValueOnce({ results: [dueLater, dueSoon], nextCursor: null })
+            .mockResolvedValueOnce({ results: [dueSoon, dueLater], nextCursor: null })
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Dashboard', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        // "today" is date-driven, so date wins; "@work" is not, so priority wins.
+        expect(parsed.sections[0].results.map((task: { id: string }) => task.id)).toEqual([
+            'task-soon',
+            'task-later',
+        ])
+        expect(parsed.sections[1].results.map((task: { id: string }) => task.id)).toEqual([
+            'task-later',
+            'task-soon',
+        ])
+    })
+
+    it('does not fetch projects for a sort that does not need them', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'show',
+            'Work',
+            '--json',
+            '--sort',
+            'name',
+        ])
+
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+    })
+
+    it('still renders when the saved view options cannot be read', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        mockFetchViewOptions.mockResolvedValue([])
+
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--show-urls'])
+
+        expect(orderedIds(consoleSpy)).toEqual(['task-p1', 'task-p3', 'task-p4'])
     })
 })
 

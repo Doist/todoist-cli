@@ -1,5 +1,10 @@
 import chalk from 'chalk'
 import { getApi, type Project, type Task } from '../../lib/api/core.js'
+import {
+    fetchViewOptionsSafely,
+    findViewOptions,
+    type SavedViewOptions,
+} from '../../lib/api/view-options.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
@@ -13,8 +18,29 @@ import {
     processJsonItem,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
+import { fetchProjects } from '../../lib/task-list.js'
+import {
+    buildProjectOrder,
+    defaultDirectionFor,
+    formatTaskSort,
+    parseTaskSortDirection,
+    parseTaskSortField,
+    queryUsesDates,
+    sortNeedsCollaborators,
+    sortNeedsProjects,
+    sortTasks,
+    type TaskSort,
+    type TaskSortDirection,
+    type TaskSortField,
+    taskSortFromViewOptions,
+} from '../../lib/task-sort.js'
 import { filterUrl } from '../../lib/urls.js'
 import { resolveFilterRef } from './helpers.js'
+
+export interface FilterViewOptions extends PaginatedViewOptions {
+    sort?: string
+    sortOrder?: string
+}
 
 interface FilterSection {
     query: string
@@ -98,8 +124,44 @@ async function mapFilterSections(
     return sections
 }
 
-export async function showFilter(nameOrId: string, options: PaginatedViewOptions): Promise<void> {
-    const filter = await resolveFilterRef(nameOrId)
+/**
+ * Flag beats saved view, saved view beats the Todoist default. `--sort-order`
+ * on its own re-points the direction of whichever field is already in play.
+ */
+function resolveSort(
+    filterId: string,
+    requested: { field?: TaskSortField; direction?: TaskSortDirection },
+    viewOptions: SavedViewOptions[],
+): TaskSort {
+    if (requested.field) {
+        return {
+            field: requested.field,
+            direction: requested.direction ?? defaultDirectionFor(requested.field),
+        }
+    }
+
+    const saved = taskSortFromViewOptions(
+        findViewOptions(viewOptions, {
+            viewTypes: ['FILTER', 'WORKSPACE_FILTER'],
+            objectId: filterId,
+        }),
+    )
+    return requested.direction ? { field: saved.field, direction: requested.direction } : saved
+}
+
+export async function showFilter(nameOrId: string, options: FilterViewOptions): Promise<void> {
+    const requested = {
+        field: options.sort ? parseTaskSortField(options.sort) : undefined,
+        direction: options.sortOrder ? parseTaskSortDirection(options.sortOrder) : undefined,
+    }
+
+    // An explicit --sort makes the saved view options moot, so only pay for
+    // them when they can still change the order.
+    const [filter, viewOptions] = await Promise.all([
+        resolveFilterRef(nameOrId),
+        requested.field ? Promise.resolve<SavedViewOptions[]>([]) : fetchViewOptionsSafely(),
+    ])
+    const sort = resolveSort(filter.id, requested, viewOptions)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -148,6 +210,40 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
         throw err
     }
 
+    // Do not deduplicate: Todoist can intentionally show one task in multiple lists.
+    const tasks = sections.flatMap((section) => section.results)
+    const isPretty = !options.json && !options.ndjson
+
+    // Rendering needs the projects and collaborators for every task; sorting
+    // needs them only for some fields. Fetch when either side asks, never when
+    // there is nothing to order or draw.
+    const projectMap =
+        tasks.length > 0 && (isPretty || sortNeedsProjects(sort.field))
+            ? await fetchProjects(api)
+            : new Map<string, Project>()
+    const collaboratorCache = new CollaboratorCache()
+    if (tasks.length > 0 && (isPretty || sortNeedsCollaborators(sort.field))) {
+        await collaboratorCache.preload(api, tasks, projectMap)
+    }
+
+    // Each section is its own list in the Todoist apps, sorted on its own.
+    const projectOrder = buildProjectOrder(projectMap.values())
+    sections = sections.map((section) => ({
+        ...section,
+        results: sortTasks(section.results, sort, {
+            ...projectOrder,
+            dateDriven: queryUsesDates(section.query),
+            assigneeName: (task) =>
+                task.responsibleUid
+                    ? (collaboratorCache.getUserName({
+                          userId: task.responsibleUid,
+                          projectId: task.projectId,
+                          projects: projectMap,
+                      }) ?? task.responsibleUid)
+                    : null,
+        }),
+    }))
+
     if (options.json) {
         if (hasMultipleSections) {
             console.log(formatFilterSectionsJson(sections, options.full, options.showUrls))
@@ -182,12 +278,10 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
         return
     }
 
-    // Do not deduplicate: Todoist can intentionally show one task in multiple lists.
-    const tasks = sections.flatMap((section) => section.results)
-
     console.log(chalk.bold(`${filter.name}`))
     console.log(chalk.dim(`Query: ${filter.query}`))
     console.log(chalk.dim(`URL:   ${filterUrl(filter.id)}`))
+    console.log(chalk.dim(`Sort:  ${formatTaskSort(sort)}`))
     console.log('')
 
     if (tasks.length === 0) {
@@ -196,14 +290,6 @@ export async function showFilter(nameOrId: string, options: PaginatedViewOptions
             console.log(formatNextCursorFooter(sections[0].nextCursor))
             return
         }
-    }
-
-    const projectMap = new Map<string, Project>()
-    const collaboratorCache = new CollaboratorCache()
-    if (tasks.length > 0) {
-        const { results: projects } = await api.getProjects()
-        for (const project of projects) projectMap.set(project.id, project)
-        await collaboratorCache.preload(api, tasks, projectMap)
     }
 
     for (const [index, section] of sections.entries()) {
