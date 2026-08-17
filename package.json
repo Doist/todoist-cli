@@ -61,7 +61,7 @@
     "date-fns": "4.4.0",
     "marked": "18.0.9",
     "marked-terminal-renderer": "2.2.0",
-    "oauth4webapi": "3.8.6",
+    "oauth4webapi": "3.8.7",
     "open": "11.0.0"
   },
   "devDependencies": {
