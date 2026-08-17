@@ -1,5 +1,6 @@
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import type { SortedBy, SortOrder } from '@doist/todoist-sdk'
+import { parseISO } from 'date-fns/parseISO'
 import type { Project, Task } from './api/core.js'
 import type { SavedViewOptions } from './api/view-options.js'
 import { CliError } from './errors.js'
@@ -115,11 +116,15 @@ export function formatTaskSort(sort: TaskSort): string {
     return FIELD_LABELS[sort.field][sort.direction]
 }
 
-/** Sorting by project, workspace, or the default hierarchy needs the project list. */
+/**
+ * Every sort but `none` needs the project list. Project order is the fourth
+ * criterion of the default hierarchy, and the default hierarchy is the
+ * tie-break under every named sort, so skipping the fetch for, say, a name
+ * sort would order equal names differently from the same sort in another
+ * output mode. Assignee sorting needs it too, to resolve collaborators.
+ */
 export function sortNeedsProjects(field: TaskSortField): boolean {
-    return (
-        field === 'default' || field === 'project' || field === 'workspace' || field === 'assignee'
-    )
+    return field !== 'none'
 }
 
 /** Only assignee sorting needs collaborator names resolved. */
@@ -255,14 +260,17 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * Comparable instant for a due or deadline value. Date-only values become
- * midnight UTC and floating datetimes are read as UTC, so an all-day task
- * sorts ahead of a timed task on the same day.
+ * Comparable instant for a due or deadline value.
+ *
+ * `parseISO` reads date-only values and floating datetimes in the local zone
+ * and resolves `Z`/offset datetimes to their real instant, which puts all
+ * three on one axis: a task due at 09:00 in Tokyo sorts against a floating
+ * 09:00 by when it actually falls, and an all-day task still leads the timed
+ * tasks on its day. `Date.parse` can't do this because it reads date-only
+ * values as UTC and floating datetimes as local.
  */
 function timestampOf(value: string): number {
-    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
-    const normalized = value.includes('T') ? (hasZone ? value : `${value}Z`) : `${value}T00:00:00Z`
-    const parsed = Date.parse(normalized)
+    const parsed = parseISO(value).getTime()
     return Number.isNaN(parsed) ? NO_VALUE : parsed
 }
 
@@ -361,7 +369,7 @@ function comparePrimary(field: TaskSortField, a: Task, b: Task, context: TaskOrd
  * list (no date, no assignee) move to the top when reversed.
  */
 export function sortTasks(tasks: Task[], sort: TaskSort, context: TaskOrderContext = {}): Task[] {
-    if (sort.field === 'none') return tasks
+    if (sort.field === 'none') return [...tasks]
 
     const reverse = sort.direction === 'desc' ? -1 : 1
 
@@ -394,13 +402,15 @@ const DATE_QUERY_PATTERN = new RegExp(
 )
 
 /**
- * Project, label, and section names can contain date words ("#May launch"),
- * so those tokens are dropped before the query is inspected.
+ * Names and free-text searches can contain date words ("#May launch",
+ * "search: due diligence"), so those operands are dropped before the query is
+ * inspected. A `search:` term runs to the next boolean operator or list comma.
  */
 function stripNamedRefs(query: string): string {
     return query
         .replace(/"[^"]*"/g, ' ')
         .replace(/'[^']*'/g, ' ')
+        .replace(/\bsearch\s*:[^&|(),]*/gi, ' ')
         .replace(/[#@/]{1,2}[^\s&|()!,]+/g, ' ')
 }
 

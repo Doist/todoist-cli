@@ -89,7 +89,7 @@ export async function fetchViewOptions(): Promise<SavedViewOptions[]> {
 /**
  * Saved view options are a display nicety: when they can't be read, callers
  * should still render the list rather than fail. Returns `[]` on any error and
- * leaves a breadcrumb behind `-v`.
+ * leaves a breadcrumb behind `-vv`.
  */
 export async function fetchViewOptionsSafely(): Promise<SavedViewOptions[]> {
     try {
@@ -102,10 +102,14 @@ export async function fetchViewOptionsSafely(): Promise<SavedViewOptions[]> {
     }
 }
 
-/** Find the saved options for one view, e.g. the FILTER view of a filter id. */
+/**
+ * Find the saved options for one view, e.g. the FILTER view of a filter id.
+ * `objectId` defaults to `null` so the singleton views (Today, Upcoming),
+ * which the API stores with no object, can be looked up the same way.
+ */
 export function findViewOptions(
     viewOptions: SavedViewOptions[],
-    { viewTypes, objectId }: { viewTypes: ViewType[]; objectId: string },
+    { viewTypes, objectId = null }: { viewTypes: ViewType[]; objectId?: string | null },
 ): SavedViewOptions | undefined {
     return viewOptions.find(
         (entry) => entry.objectId === objectId && viewTypes.includes(entry.viewType),

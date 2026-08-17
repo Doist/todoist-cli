@@ -137,6 +137,42 @@ describe('sortTasks', () => {
         ])
     })
 
+    it('orders a zoned datetime by the instant it falls on', () => {
+        // Noon in Tokyo is 03:00 UTC, so it lands between the all-day task and
+        // a floating 09:00, which the CLI reads in the local zone (UTC here).
+        const tasks = [
+            makeTask({
+                id: 'floating-9am',
+                due: {
+                    date: '2026-02-01',
+                    datetime: '2026-02-01T09:00:00',
+                    string: '',
+                    isRecurring: false,
+                },
+            }),
+            makeTask({
+                id: 'tokyo-noon',
+                due: {
+                    date: '2026-02-01',
+                    datetime: '2026-02-01T12:00:00+09:00',
+                    timezone: 'Asia/Tokyo',
+                    string: '',
+                    isRecurring: false,
+                },
+            }),
+            makeTask({
+                id: 'all-day',
+                due: { date: '2026-02-01', string: '', isRecurring: false },
+            }),
+        ]
+
+        expect(ids(sortTasks(tasks, { field: 'date', direction: 'asc' }))).toEqual([
+            'all-day',
+            'tokyo-noon',
+            'floating-9am',
+        ])
+    })
+
     it('parks undated tasks at the end, and at the front when reversed', () => {
         const tasks = [
             makeTask({ id: 'undated' }),
@@ -248,16 +284,62 @@ describe('sortTasks', () => {
         ).toEqual(['ana', 'zoe', 'unassigned'])
     })
 
+    it('moves unassigned tasks to the front when the assignee sort is reversed', () => {
+        const tasks = [
+            makeTask({ id: 'unassigned' }),
+            makeTask({ id: 'zoe', responsibleUid: 'user-z' }),
+            makeTask({ id: 'ana', responsibleUid: 'user-a' }),
+        ]
+        const names: Record<string, string> = { 'user-a': 'Ana', 'user-z': 'Zoe' }
+
+        expect(
+            ids(
+                sortTasks(
+                    tasks,
+                    { field: 'assignee', direction: 'desc' },
+                    {
+                        assigneeName: (task) =>
+                            task.responsibleUid ? names[task.responsibleUid] : null,
+                    },
+                ),
+            ),
+        ).toEqual(['unassigned', 'zoe', 'ana'])
+    })
+
+    it('sorts by workspace, personal projects first', () => {
+        const order = buildProjectOrder([
+            makeProject({ id: 'personal-1', childOrder: 0 }),
+            makeProject({ id: 'ws-a-1', workspaceId: 'ws-a', childOrder: 0 }),
+            makeProject({ id: 'ws-b-1', workspaceId: 'ws-b', childOrder: 0 }),
+        ])
+        const tasks = [
+            makeTask({ id: 'in-ws-b', projectId: 'ws-b-1' }),
+            makeTask({ id: 'in-personal', projectId: 'personal-1' }),
+            makeTask({ id: 'in-ws-a', projectId: 'ws-a-1' }),
+        ]
+
+        expect(ids(sortTasks(tasks, { field: 'workspace', direction: 'asc' }, order))).toEqual([
+            'in-personal',
+            'in-ws-a',
+            'in-ws-b',
+        ])
+        expect(ids(sortTasks(tasks, { field: 'workspace', direction: 'desc' }, order))).toEqual([
+            'in-ws-b',
+            'in-ws-a',
+            'in-personal',
+        ])
+    })
+
     it('leaves the API order untouched for "none"', () => {
         const tasks = [
             makeTask({ id: 'second', priority: 1 }),
             makeTask({ id: 'first', priority: 4 }),
         ]
+        const sorted = sortTasks(tasks, { field: 'none', direction: 'asc' })
 
-        expect(ids(sortTasks(tasks, { field: 'none', direction: 'asc' }))).toEqual([
-            'second',
-            'first',
-        ])
+        expect(ids(sorted)).toEqual(['second', 'first'])
+        // A copy, so a caller reversing the result can't reorder the input.
+        expect(sorted).not.toBe(tasks)
     })
 
     it('does not mutate the input list', () => {
@@ -353,6 +435,13 @@ describe('queryUsesDates', () => {
         expect(queryUsesDates('#May Launch')).toBe(false)
         expect(queryUsesDates('@monday-meeting & p1')).toBe(false)
     })
+
+    it('ignores date words inside a search term', () => {
+        expect(queryUsesDates('search: due diligence')).toBe(false)
+        expect(queryUsesDates('search: today notes & p1')).toBe(false)
+        // The search operand ends at the operator, so a real date query still counts.
+        expect(queryUsesDates('search: invoice & today')).toBe(true)
+    })
 })
 
 describe('sort option parsing', () => {
@@ -373,9 +462,11 @@ describe('sort option parsing', () => {
     })
 
     it('knows which sorts need extra lookups', () => {
-        expect(sortNeedsProjects('default')).toBe(true)
-        expect(sortNeedsProjects('project')).toBe(true)
-        expect(sortNeedsProjects('name')).toBe(false)
+        // Every sort tie-breaks on the default hierarchy, which reads project
+        // order, so only the unsorted path can skip the project fetch.
+        expect(sortNeedsProjects('name')).toBe(true)
+        expect(sortNeedsProjects('assignee')).toBe(true)
+        expect(sortNeedsProjects('none')).toBe(false)
         expect(sortNeedsCollaborators('assignee')).toBe(true)
         expect(sortNeedsCollaborators('default')).toBe(false)
     })
