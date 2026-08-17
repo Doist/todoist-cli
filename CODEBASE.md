@@ -120,7 +120,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `Project`, `Section`, `User`. Paginated response shape
   `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
-  `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`
+  `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`,
+  `view-options.ts` (per-view sorting/grouping, read straight from `/sync`
+  because the SDK's schema rejects the API's `object_id: null`)
 - **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
   `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
   write/clear paths go through `auth-store.ts`.
@@ -169,6 +171,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `commentUrl`, `filterUrl`
 - **`task-list.ts`** — `fetchProjects`, `filterByWorkspaceOrPersonal`,
   `parsePriority`, `PRIORITY_CHOICES` (`"p1"`–`"p4"`; internally p1→4, p4→1)
+- **`task-sort.ts`** — client-side task ordering that matches the Todoist
+  apps: `sortTasks`, `taskSortFromViewOptions`, `buildProjectOrder`,
+  `queryUsesDates`, `TASK_SORT_FIELDS`. The API returns storage order, so
+  every list view sorts locally.
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)
