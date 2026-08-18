@@ -1,3 +1,10 @@
+import {
+    GROUPED_BY_OPTIONS,
+    SORT_ORDERS,
+    SORTED_BY_OPTIONS,
+    VIEW_MODES,
+    VIEW_TYPES,
+} from '@doist/todoist-sdk'
 import type { GroupedBy, SortedBy, SortOrder, ViewMode, ViewType } from '@doist/todoist-sdk'
 import { getApiToken } from '../auth.js'
 import { getLogger } from '../logger.js'
@@ -36,29 +43,44 @@ function asString(value: unknown): string | null {
     return typeof value === 'string' && value.length > 0 ? value : null
 }
 
+/**
+ * Read an enum value only if it is one the SDK still knows about.
+ *
+ * The Sync API can grow a new member before the SDK types catch up, and a
+ * value we don't recognise is better dropped than asserted into a type that
+ * then lies to everything downstream. An unknown `sorted_by` reads as "no
+ * saved sort", which lands the caller on Todoist's default ordering.
+ */
+function asMember<T extends string>(value: unknown, allowed: readonly T[]): T | null {
+    const candidate = asString(value)
+    return candidate && (allowed as readonly string[]).includes(candidate) ? (candidate as T) : null
+}
+
 function parseViewOptions(raw: RawViewOptions): SavedViewOptions | null {
-    const viewType = asString(raw.view_type)
+    // A view type we can't name is one no caller can ask for, so the row goes.
+    const viewType = asMember<ViewType>(raw.view_type, VIEW_TYPES)
     if (!viewType || raw.is_deleted === true) return null
 
     return {
-        viewType: viewType as ViewType,
+        viewType,
         objectId: asString(raw.object_id),
-        sortedBy: asString(raw.sorted_by) as SortedBy | null,
-        sortOrder: asString(raw.sort_order) as SortOrder | null,
-        groupedBy: asString(raw.grouped_by) as GroupedBy | null,
-        viewMode: asString(raw.view_mode) as ViewMode | null,
+        sortedBy: asMember<SortedBy>(raw.sorted_by, SORTED_BY_OPTIONS),
+        sortOrder: asMember<SortOrder>(raw.sort_order, SORT_ORDERS),
+        groupedBy: asMember<GroupedBy>(raw.grouped_by, GROUPED_BY_OPTIONS),
+        viewMode: asMember<ViewMode>(raw.view_mode, VIEW_MODES),
     }
 }
 
 /**
  * Read every saved view option via the Sync API.
  *
- * This goes to `/sync` directly instead of through `api.sync()` because the
- * SDK's response schema types `object_id` as a required string, while the API
- * returns `null` for Today and Upcoming — so a typed sync that asks for
- * `view_options` throws for anyone who has customised either view. Parsing the
- * handful of fields we need here also means an unknown enum value can never
- * take down a read-only command.
+ * This goes to `/sync` directly instead of through `api.sync()` for one
+ * reason: `ViewOptionsSchema` types `object_id` as a required string, while
+ * the API returns `null` for the singleton views (Today, Upcoming), so a typed
+ * sync asking for `view_options` throws for anyone who has customised either
+ * one. Making that single field nullable in the SDK is the whole fix. Once it
+ * ships, this reader can drop back to `api.sync()` or move into the SDK
+ * outright, and the enum handling below goes with it.
  */
 export async function fetchViewOptions(): Promise<SavedViewOptions[]> {
     const token = await getApiToken()

@@ -94,6 +94,44 @@ describe('fetchViewOptions', () => {
         expect(results.map((entry) => entry.objectId)).toEqual(['kept'])
     })
 
+    // The Sync API can ship a new enum member before the SDK types know it.
+    it('nulls enum values the SDK does not recognise', async () => {
+        respondWith({
+            view_options: [
+                {
+                    view_type: 'FILTER',
+                    object_id: 'filter-1',
+                    sorted_by: 'VIBES',
+                    sort_order: 'SIDEWAYS',
+                    grouped_by: 'PHASE_OF_MOON',
+                    view_mode: 'HOLOGRAM',
+                },
+            ],
+        })
+
+        const [entry] = await fetchViewOptions()
+        expect(entry).toEqual({
+            viewType: 'FILTER',
+            objectId: 'filter-1',
+            sortedBy: null,
+            sortOrder: null,
+            groupedBy: null,
+            viewMode: null,
+        })
+    })
+
+    it('drops rows whose view type is not one we can ask for', async () => {
+        respondWith({
+            view_options: [
+                { view_type: 'INBOX_ZERO_ZONE', object_id: 'x' },
+                { view_type: 'FILTER', object_id: 'kept' },
+            ],
+        })
+
+        const results = await fetchViewOptions()
+        expect(results.map((entry) => entry.objectId)).toEqual(['kept'])
+    })
+
     it('returns an empty list when the payload has no view options', async () => {
         respondWith({})
         await expect(fetchViewOptions()).resolves.toEqual([])

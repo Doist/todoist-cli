@@ -9,7 +9,7 @@ import { CliError } from './errors.js'
  * Client-side task ordering that mirrors the Todoist apps.
  *
  * The API returns tasks in storage order and every Todoist client sorts them
- * locally — first by the sorting saved on the view, and when that is "Manual
+ * locally: first by the sorting saved on the view, and when that is "Manual
  * (default)", by a documented per-view-type hierarchy. Without this, `td`
  * lists tasks in an order no other Todoist client shows.
  *
@@ -143,7 +143,7 @@ export interface TaskOrderContext extends Partial<ProjectOrder> {
     /** Assignee display name, used by assignee sorting. Unassigned sorts last. */
     assigneeName?: (task: Task) => string | null
     /**
-     * True when the list is driven by dates — Today, Upcoming, and filters
+     * True when the list is driven by dates: Today, Upcoming, and filters
      * whose query mentions dates lead with date instead of priority.
      */
     dateDriven?: boolean
@@ -152,7 +152,7 @@ export interface TaskOrderContext extends Partial<ProjectOrder> {
 /**
  * Lay projects out in sidebar order: Inbox, the personal tree, then each
  * workspace. Workspace grouping order isn't exposed by the API, so workspaces
- * are ordered by id — stable across runs, which is what a tie-break needs.
+ * are ordered by id, which is stable across runs and all a tie-break needs.
  */
 export function buildProjectOrder(projects: Iterable<Project>): ProjectOrder {
     const personal: Project[] = []
@@ -208,7 +208,7 @@ function folderKey(project: Project): string {
 /**
  * Depth-first walk of a project tree, siblings in `childOrder` order. Personal
  * projects nest under a parent project; workspace projects sit in folders
- * instead, so they are only kept folder-adjacent — folder order itself isn't
+ * instead, so they are only kept folder-adjacent. Folder order itself is not
  * on the project record.
  */
 function orderProjectTree(projects: Project[]): Project[] {
