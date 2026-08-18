@@ -266,6 +266,8 @@ td comment list "Plan sprint"
 td comment list "Roadmap" --project
 td comment add "Plan sprint" --content "See attached" --file ./report.pdf
 td comment add "Plan sprint" --content "See attached" --file ./report.pdf --file-name "Quarterly report.pdf"
+td comment add "Plan sprint" --content "@Ana could you review?" --notify "Ana"
+td comment add "Plan sprint" --content "Note to self" --no-notify
 td comment update id:123 --content "Updated text"
 td comment delete id:123 --yes
 td comment browse id:123
@@ -293,6 +295,8 @@ td reminder location get id:456
 \`\`\`
 
 \`td attachment view\` prints text attachments directly and encodes binary content as base64. Use \`--json\` for metadata plus content. Prefer this over \`curl\` + \`Read\` on Todoist file URLs — for images in particular, \`Read\` will try to decode the file through the vision pipeline, and if that fails the image stays pinned in conversation context and every retry hits the same error.
+
+Comments notify only the people \`comment add\` is handed. Writing "@Ana" in the text notifies nobody — name her with \`--notify\`. Omit \`--notify\` to notify whoever the Todoist apps would (the task's assignee, assigner and creator on a first comment, or the previous comment's participants on a reply), or pass \`--no-notify\` to stay silent. Notification cannot be sent when editing a comment, only when adding one.
 
 \`td comment view\` flags image attachments with a \`Hint\` line pointing at \`td attachment view\`. In \`--json\` mode the hint is written to stderr so stdout stays parseable — watch the tool output, not just the JSON body.
 

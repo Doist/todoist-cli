@@ -158,7 +158,14 @@ export function formatAssignee({
     return userId
 }
 
-async function fetchCollaboratorsForProject(
+/**
+ * Every user who can see a project: workspace members for a workspace project,
+ * collaborators for a shared personal one. A project that is neither has
+ * nobody but the owner, and returns an empty list — callers decide what that
+ * means for them, since "nobody to assign to" and "nobody to notify" want
+ * different wording.
+ */
+export async function fetchCollaboratorsForProject(
     api: TodoistApi,
     project: Project,
 ): Promise<CollaboratorInfo[]> {
@@ -209,7 +216,7 @@ async function fetchCollaboratorsForProject(
         return users
     }
 
-    throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
+    return []
 }
 
 export async function resolveAssigneeId(
@@ -226,6 +233,9 @@ export async function resolveAssigneeId(
     }
 
     const collaborators = await fetchCollaboratorsForProject(api, project)
+    if (collaborators.length === 0) {
+        throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
+    }
     const lower = ref.toLowerCase()
 
     const exactName = collaborators.find((c) => c.name.toLowerCase() === lower)
@@ -245,4 +255,82 @@ export async function resolveAssigneeId(
     }
 
     throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
+}
+
+/**
+ * Resolve a list of user references — names, emails, `id:xxx` or `me` — to the
+ * user IDs to notify about a comment.
+ *
+ * Pure over an already-fetched collaborator list, so the caller fetches once
+ * and can reuse the same list to render the names back. References are
+ * deduplicated, and every one that cannot be resolved is reported together so
+ * the caller fixes them all in one go rather than one per run.
+ */
+export function resolveNotifyIds({
+    refs,
+    collaborators,
+    currentUserId,
+    projectName,
+}: {
+    refs: string[]
+    collaborators: CollaboratorInfo[]
+    currentUserId: string
+    projectName: string
+}): string[] {
+    const seenRefs = new Set<string>()
+    const resolved: string[] = []
+    const unresolved: string[] = []
+
+    for (const ref of refs) {
+        const trimmed = ref.trim()
+        if (!trimmed) continue
+        const lower = trimmed.toLowerCase()
+        if (seenRefs.has(lower)) continue
+        seenRefs.add(lower)
+
+        if (lower === 'me') {
+            resolved.push(currentUserId)
+            continue
+        }
+        if (isIdRef(trimmed)) {
+            resolved.push(extractId(trimmed))
+            continue
+        }
+
+        const exact =
+            collaborators.find((c) => c.name.toLowerCase() === lower) ??
+            collaborators.find((c) => c.email.toLowerCase() === lower)
+        if (exact) {
+            resolved.push(exact.id)
+            continue
+        }
+
+        const partial = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
+        if (partial.length > 1) {
+            throw new CliError(
+                'AMBIGUOUS_ASSIGNEE',
+                `Multiple users match "${trimmed}":`,
+                partial.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
+            )
+        }
+        if (partial[0]) {
+            resolved.push(partial[0].id)
+            continue
+        }
+
+        unresolved.push(trimmed)
+    }
+
+    if (unresolved.length > 0) {
+        throw new CliError(
+            'ASSIGNEE_NOT_FOUND',
+            `Cannot notify ${unresolved.map((ref) => `"${ref}"`).join(', ')} — not a collaborator on "${projectName}".`,
+            ['Use `td project collaborators` to see who can be notified'],
+        )
+    }
+
+    // No self-exclusion here: naming yourself is an explicit instruction and is
+    // honoured. Leaving yourself out is only right when the recipients were
+    // inferred rather than asked for -- see getDefaultCommentRecipients.
+    return [...new Set(resolved)]
 }
