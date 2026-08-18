@@ -36,12 +36,4 @@ export async function showProjectHealth(ref: string, options: { json?: boolean }
         console.log('  Summary:')
         console.log(`  ${health.description}`)
     }
-
-    if (health.taskRecommendations && health.taskRecommendations.length > 0) {
-        console.log('')
-        console.log('  Recommendations:')
-        for (const rec of health.taskRecommendations) {
-            console.log(`  - ${chalk.dim(`id:${rec.taskId}`)}: ${rec.recommendation}`)
-        }
-    }
 }
