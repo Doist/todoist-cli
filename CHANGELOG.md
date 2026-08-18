@@ -1,3 +1,5 @@
+## [3.2.0](https://github.com/Doist/todoist-cli/compare/v3.1.9...v3.2.0) (2026-08-18)
+
 ## [3.1.9](https://github.com/Doist/todoist-cli/compare/v3.1.8...v3.1.9) (2026-08-17)
 
 ## [3.1.8](https://github.com/Doist/todoist-cli/compare/v3.1.7...v3.1.8) (2026-08-11)
