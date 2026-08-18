@@ -2334,7 +2334,6 @@ describe('project health', () => {
         mockApi.getProjectHealth.mockResolvedValue({
             status: 'ON_TRACK',
             description: 'Project is progressing well',
-            taskRecommendations: [],
             isStale: false,
             updateInProgress: false,
         })
@@ -2364,27 +2363,6 @@ describe('project health', () => {
         await program.parseAsync(['node', 'td', 'project', 'health', 'Work'])
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('stale'))
-    })
-
-    it('shows task recommendations', async () => {
-        const program = createProgram()
-
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-1', name: 'Work' }],
-            nextCursor: null,
-        })
-        mockApi.getProjectHealth.mockResolvedValue({
-            status: 'AT_RISK',
-            description: null,
-            taskRecommendations: [{ taskId: 'task-1', recommendation: 'Set a due date' }],
-            isStale: false,
-            updateInProgress: false,
-        })
-
-        await program.parseAsync(['node', 'td', 'project', 'health', 'Work'])
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Set a due date'))
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('task-1'))
     })
 
     it('outputs JSON with --json', async () => {
