@@ -93,12 +93,6 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
     } else if (options.notify) {
         const project = await api.getProject(targetProjectId)
         notifyCollaborators = await fetchCollaboratorsForProject(api, project)
-        if (notifyCollaborators.length === 0) {
-            throw new CliError(
-                'NOT_SHARED',
-                `Cannot notify anyone on "${project.name}" — it is not shared with anybody.`,
-            )
-        }
         uidsToNotify = resolveNotifyIds({
             refs: options.notify.split(','),
             collaborators: notifyCollaborators,

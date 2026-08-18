@@ -219,6 +219,37 @@ export async function fetchCollaboratorsForProject(
     return []
 }
 
+/**
+ * Match one reference against a collaborator list by exact name, exact email,
+ * then unique partial name. Returns null when nothing matches; an ambiguous
+ * partial is an error rather than a guess.
+ *
+ * Shared by assignment and comment notification so the two cannot drift apart.
+ * Handles neither `me` nor `id:xxx` — both resolve without a collaborator list
+ * at all, so callers short-circuit them before fetching one.
+ */
+function matchCollaboratorRef(
+    ref: string,
+    collaborators: CollaboratorInfo[],
+): CollaboratorInfo | null {
+    const lower = ref.toLowerCase()
+
+    const exact =
+        collaborators.find((c) => c.name.toLowerCase() === lower) ??
+        collaborators.find((c) => c.email.toLowerCase() === lower)
+    if (exact) return exact
+
+    const partial = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
+    if (partial.length > 1) {
+        throw new CliError(
+            'AMBIGUOUS_ASSIGNEE',
+            `Multiple users match "${ref}":`,
+            partial.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
+        )
+    }
+    return partial[0] ?? null
+}
+
 export async function resolveAssigneeId(
     api: TodoistApi,
     ref: string,
@@ -236,25 +267,12 @@ export async function resolveAssigneeId(
     if (collaborators.length === 0) {
         throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
     }
-    const lower = ref.toLowerCase()
 
-    const exactName = collaborators.find((c) => c.name.toLowerCase() === lower)
-    if (exactName) return exactName.id
-
-    const exactEmail = collaborators.find((c) => c.email.toLowerCase() === lower)
-    if (exactEmail) return exactEmail.id
-
-    const partialName = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
-    if (partialName.length === 1) return partialName[0].id
-    if (partialName.length > 1) {
-        throw new CliError(
-            'AMBIGUOUS_ASSIGNEE',
-            `Multiple users match "${ref}":`,
-            partialName.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
-        )
+    const match = matchCollaboratorRef(ref, collaborators)
+    if (!match) {
+        throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
     }
-
-    throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
+    return match.id
 }
 
 /**
@@ -280,6 +298,7 @@ export function resolveNotifyIds({
     const seenRefs = new Set<string>()
     const resolved: string[] = []
     const unresolved: string[] = []
+    const needCollaborators: string[] = []
 
     for (const ref of refs) {
         const trimmed = ref.trim()
@@ -288,6 +307,8 @@ export function resolveNotifyIds({
         if (seenRefs.has(lower)) continue
         seenRefs.add(lower)
 
+        // Resolvable without knowing who shares the project, so these work even
+        // on a personal one.
         if (lower === 'me') {
             resolved.push(currentUserId)
             continue
@@ -297,34 +318,29 @@ export function resolveNotifyIds({
             continue
         }
 
-        const exact =
-            collaborators.find((c) => c.name.toLowerCase() === lower) ??
-            collaborators.find((c) => c.email.toLowerCase() === lower)
-        if (exact) {
-            resolved.push(exact.id)
+        if (collaborators.length === 0) {
+            needCollaborators.push(trimmed)
             continue
         }
 
-        const partial = collaborators.filter((c) => c.name.toLowerCase().includes(lower))
-        if (partial.length > 1) {
-            throw new CliError(
-                'AMBIGUOUS_ASSIGNEE',
-                `Multiple users match "${trimmed}":`,
-                partial.slice(0, 5).map((c) => `"${c.name}" (id:${c.id})`),
-            )
+        const match = matchCollaboratorRef(trimmed, collaborators)
+        if (match) {
+            resolved.push(match.id)
+        } else {
+            unresolved.push(trimmed)
         }
-        if (partial[0]) {
-            resolved.push(partial[0].id)
-            continue
-        }
-
-        unresolved.push(trimmed)
     }
 
+    if (needCollaborators.length > 0) {
+        throw new CliError(
+            'NOT_SHARED',
+            `Cannot notify ${formatRefs(needCollaborators)} — "${projectName}" is not shared with anybody.`,
+        )
+    }
     if (unresolved.length > 0) {
         throw new CliError(
             'ASSIGNEE_NOT_FOUND',
-            `Cannot notify ${unresolved.map((ref) => `"${ref}"`).join(', ')} — not a collaborator on "${projectName}".`,
+            `Cannot notify ${formatRefs(unresolved)} — not a collaborator on "${projectName}".`,
             ['Use `td project collaborators` to see who can be notified'],
         )
     }
@@ -333,4 +349,8 @@ export function resolveNotifyIds({
     // honoured. Leaving yourself out is only right when the recipients were
     // inferred rather than asked for -- see getDefaultCommentRecipients.
     return [...new Set(resolved)]
+}
+
+function formatRefs(refs: string[]): string {
+    return refs.map((ref) => `"${ref}"`).join(', ')
 }

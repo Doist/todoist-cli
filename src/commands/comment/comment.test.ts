@@ -347,6 +347,27 @@ describe('comment add --notify', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Notified: Ana L., Bo T.'))
     })
 
+    it('notifies you on a personal project, where there are no collaborators', async () => {
+        captureConsole()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Personal', isShared: false })
+        mockApi.getProjectCollaborators.mockResolvedValue({ results: [], nextCursor: null })
+
+        await addWith('--notify', 'me')
+
+        // "me" and id: refs resolve without knowing who shares the project.
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: [CURRENT_USER_ID] }),
+        )
+    })
+
+    it('explains that a name cannot be resolved on an unshared project', async () => {
+        captureConsole()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Personal', isShared: false })
+        mockApi.getProjectCollaborators.mockResolvedValue({ results: [], nextCursor: null })
+
+        await expect(addWith('--notify', 'Ana')).rejects.toMatchObject({ code: 'NOT_SHARED' })
+    })
+
     it('previews the notify option unresolved under --dry-run', async () => {
         const consoleSpy = captureConsole()
 
@@ -811,6 +832,92 @@ describe('comment view', () => {
         await expect(
             program.parseAsync(['node', 'td', 'comment', 'view', 'my-comment']),
         ).rejects.toHaveProperty('code', 'INVALID_REF')
+    })
+
+    describe('the Notified line', () => {
+        async function viewComment() {
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-1'])
+        }
+
+        beforeEach(() => {
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                taskId: 'task-1',
+                uidsToNotify: ['user-ana', 'user-bo'],
+            })
+            mockApi.getProjectCollaborators.mockResolvedValue({
+                results: [
+                    { id: 'user-ana', name: 'Ana Lovelace', email: 'ana@example.com' },
+                    { id: 'user-bo', name: 'Bo Turing', email: 'bo@example.com' },
+                ],
+                nextCursor: null,
+            })
+        })
+
+        it('names the recipients', async () => {
+            const consoleSpy = captureConsole()
+
+            await viewComment()
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Notified: Ana L., Bo T.'),
+            )
+        })
+
+        it('finds the project through the task when the comment is on one', async () => {
+            captureConsole()
+
+            await viewComment()
+
+            expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+            expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
+        })
+
+        it('reads a project comment without going via a task', async () => {
+            captureConsole()
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                projectId: 'proj-1',
+                uidsToNotify: ['user-ana'],
+            })
+
+            await viewComment()
+
+            expect(mockApi.getTask).not.toHaveBeenCalled()
+            expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
+        })
+
+        it('falls back to raw IDs when the collaborator lookup fails', async () => {
+            const consoleSpy = captureConsole()
+            mockApi.getProjectCollaborators.mockRejectedValue(new Error('no access'))
+
+            await viewComment()
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Notified: user-ana, user-bo'),
+            )
+        })
+
+        it('says nothing, and looks nothing up, when nobody was notified', async () => {
+            const consoleSpy = captureConsole()
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                taskId: 'task-1',
+                uidsToNotify: [],
+            })
+
+            await viewComment()
+
+            expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Notified:'))
+            expect(mockApi.getProjectCollaborators).not.toHaveBeenCalled()
+        })
     })
 
     it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {
