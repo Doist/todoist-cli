@@ -1,5 +1,7 @@
+import type { Comment, TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
+import { fetchCollaboratorsForProject, formatUserShortName } from '../../lib/collaborators.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatFileSize, formatJson } from '../../lib/output.js'
@@ -46,9 +48,12 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
 
     console.log(chalk.bold('Comment'))
     console.log('')
-    console.log(`ID:      ${comment.id}`)
-    console.log(`Posted:  ${comment.postedAt}`)
-    if (url) console.log(`URL:     ${url}`)
+    console.log(`ID:       ${comment.id}`)
+    console.log(`Posted:   ${comment.postedAt}`)
+    if (comment.uidsToNotify?.length) {
+        console.log(`Notified: ${await describeNotified(api, comment)}`)
+    }
+    if (url) console.log(`URL:      ${url}`)
     console.log('')
     console.log('Content:')
     const content = options.raw ? comment.content : await renderMarkdown(comment.content)
@@ -65,5 +70,23 @@ export async function viewComment(commentId: string, options: ViewOptions): Prom
         if (att.fileUrl && isImageAttachment(att)) {
             console.log(chalk.dim(`  Hint:  ${IMAGE_HINT}`))
         }
+    }
+}
+
+/**
+ * Name the comment's recipients. Only called when there are some, so a thread
+ * that notifies nobody — the common case — costs no extra request. Anyone the
+ * collaborator list does not cover falls back to their raw ID.
+ */
+async function describeNotified(api: TodoistApi, comment: Comment): Promise<string> {
+    const userIds = comment.uidsToNotify ?? []
+    try {
+        const projectId = comment.projectId ?? (await api.getTask(comment.taskId ?? '')).projectId
+        const project = await api.getProject(projectId)
+        const collaborators = await fetchCollaboratorsForProject(api, project)
+        const names = new Map(collaborators.map((c) => [c.id, formatUserShortName(c.name)]))
+        return userIds.map((id) => names.get(id) ?? id).join(', ')
+    } catch {
+        return userIds.join(', ')
     }
 }

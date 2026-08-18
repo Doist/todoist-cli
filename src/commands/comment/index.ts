@@ -47,6 +47,11 @@ Examples:
         .option('--stdin', 'Read comment content from stdin')
         .option('--file <path>', 'Attach a file to the comment')
         .option('--file-name <name>', 'Override the file name sent to the API')
+        .option(
+            '--notify <a,b>',
+            'Notify these users (comma-separated: name, email, id:xxx, or "me")',
+        )
+        .option('--no-notify', 'Post without notifying anyone')
         .option('--json', 'Output the created comment as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {

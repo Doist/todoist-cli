@@ -177,7 +177,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`markdown.ts`** — `preloadMarkdown`, markdown → terminal renderer
 - **`errors.ts`** — `CliError(code, message, hints?)`, `ErrorType` union
 - **`collaborators.ts`** — `CollaboratorCache`, `formatAssignee`,
-  `resolveAssigneeId`
+  `resolveAssigneeId`, `fetchCollaboratorsForProject`, `resolveNotifyIds`
+- **`comment-recipients.ts`** — `getDefaultCommentRecipients`: who a new
+  comment notifies when the caller does not say
 - **`global-args.ts`** — `isJsonMode`, `isNdjsonMode`, `isRawMode`,
   `isQuiet`, `isAccessible`, progress-jsonl target
 - **`logger.ts`** — verbose levels 0–4, `initializeLogger`

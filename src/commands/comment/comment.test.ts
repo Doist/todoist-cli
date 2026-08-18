@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
+    getCurrentUserId: vi.fn(async () => CURRENT_USER_ID),
 }))
 
 import { getApi } from '../../lib/api/core.js'
@@ -29,8 +30,28 @@ afterAll(async () => {
     await rm(attachmentTmpDir, { recursive: true, force: true })
 })
 
+const CURRENT_USER_ID = 'user-me'
+
 function createProgram() {
     return createTestProgram(registerCommentCommand)
+}
+
+/**
+ * The API mock plus the lookups `comment add` makes to work out default
+ * recipients. Defaults describe a solo task with an empty thread, so nobody is
+ * notified unless a test says otherwise.
+ */
+function setupCommentApi(): MockApi {
+    const mockApi = setupApiMock()
+    mockApi.getTask.mockResolvedValue({
+        id: 'task-1',
+        projectId: 'proj-1',
+        responsibleUid: null,
+        assignedByUid: null,
+        addedByUid: CURRENT_USER_ID,
+    })
+    mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work', isShared: true })
+    return mockApi
 }
 
 describe('comment list', () => {
@@ -38,7 +59,7 @@ describe('comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('resolves task and lists comments', async () => {
@@ -121,12 +142,258 @@ describe('comment list', () => {
     })
 })
 
+describe('comment add --notify', () => {
+    let mockApi: MockApi
+
+    const collaborators = [
+        { id: 'user-ana', name: 'Ana Lovelace', email: 'ana@example.com' },
+        { id: 'user-bo', name: 'Bo Turing', email: 'bo@example.com' },
+    ]
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupCommentApi()
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            projectId: 'proj-1',
+            responsibleUid: null,
+            assignedByUid: null,
+            addedByUid: CURRENT_USER_ID,
+        })
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: collaborators,
+            nextCursor: null,
+        })
+        mockApi.addComment.mockResolvedValue({ id: 'comment-new', content: 'Get 2%' })
+    })
+
+    async function addWith(...args: string[]) {
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:task-1',
+            '--content',
+            'Get 2%',
+            ...args,
+        ])
+    }
+
+    it('notifies users named by name, email and id', async () => {
+        captureConsole()
+
+        await addWith('--notify', 'Ana Lovelace,bo@example.com,id:user-zed')
+
+        expect(mockApi.addComment).toHaveBeenCalledWith({
+            taskId: 'task-1',
+            content: 'Get 2%',
+            uidsToNotify: ['user-ana', 'user-bo', 'user-zed'],
+        })
+        // Explicit recipients settle the question, so the thread is never read.
+        expect(mockApi.getComments).not.toHaveBeenCalled()
+    })
+
+    it('resolves "me" and a partial name', async () => {
+        captureConsole()
+
+        await addWith('--notify', 'Ana')
+
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: ['user-ana'] }),
+        )
+    })
+
+    it('collapses a user named more than once', async () => {
+        captureConsole()
+
+        await addWith('--notify', 'Ana Lovelace,ana@example.com, Ana ')
+
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: ['user-ana'] }),
+        )
+        // One collaborator fetch serves the whole list.
+        expect(mockApi.getProjectCollaborators).toHaveBeenCalledTimes(1)
+    })
+
+    it('notifies you when you explicitly ask for it, collapsing "me" and your id', async () => {
+        captureConsole()
+
+        await addWith('--notify', `me,id:${CURRENT_USER_ID},Ana`)
+
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: [CURRENT_USER_ID, 'user-ana'] }),
+        )
+    })
+
+    it('names every unresolvable user in one error', async () => {
+        captureConsole()
+
+        await expect(addWith('--notify', 'Ghost,Phantom')).rejects.toMatchObject({
+            code: 'ASSIGNEE_NOT_FOUND',
+        })
+        expect(mockApi.addComment).not.toHaveBeenCalled()
+    })
+
+    it('reports an ambiguous name rather than guessing', async () => {
+        captureConsole()
+        mockApi.getProjectCollaborators.mockResolvedValue({
+            results: [
+                { id: 'user-a', name: 'Ana Lovelace', email: 'a@example.com' },
+                { id: 'user-b', name: 'Ana Turing', email: 'b@example.com' },
+            ],
+            nextCursor: null,
+        })
+
+        await expect(addWith('--notify', 'Ana')).rejects.toMatchObject({
+            code: 'AMBIGUOUS_ASSIGNEE',
+        })
+    })
+
+    it('omits uidsToNotify entirely with --no-notify', async () => {
+        captureConsole()
+
+        await addWith('--no-notify')
+
+        // An absent field, not an empty one.
+        expect(mockApi.addComment).toHaveBeenCalledWith({
+            taskId: 'task-1',
+            content: 'Get 2%',
+        })
+        expect(mockApi.getComments).not.toHaveBeenCalled()
+        expect(mockApi.getProjectCollaborators).not.toHaveBeenCalled()
+    })
+
+    it("defaults a first comment to the task's assignee, assigner and creator", async () => {
+        captureConsole()
+        mockApi.getTask.mockResolvedValue({
+            id: 'task-1',
+            content: 'Buy milk',
+            projectId: 'proj-1',
+            responsibleUid: 'user-ana',
+            assignedByUid: 'user-bo',
+            addedByUid: 'user-zed',
+        })
+
+        await addWith()
+
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: ['user-ana', 'user-bo', 'user-zed'] }),
+        )
+    })
+
+    it("defaults a reply to the previous comment's participants", async () => {
+        captureConsole()
+        mockApi.getComments.mockResolvedValue({
+            results: [
+                {
+                    id: 'older',
+                    postedAt: new Date('2024-01-01T09:00:00Z'),
+                    postedUid: 'stale-author',
+                    uidsToNotify: ['stale-participant'],
+                },
+                {
+                    id: 'newest',
+                    postedAt: new Date('2024-01-01T15:00:00Z'),
+                    postedUid: 'user-bo',
+                    uidsToNotify: ['user-ana', CURRENT_USER_ID],
+                },
+            ],
+            nextCursor: null,
+        })
+
+        await addWith()
+
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: ['user-ana', 'user-bo'] }),
+        )
+        // An existing thread settles the recipients, so the task is fetched
+        // only to resolve the ref -- never again for its assignee and creator.
+        expect(mockApi.getTask).toHaveBeenCalledTimes(1)
+    })
+
+    it('notifies nobody on a first project comment', async () => {
+        captureConsole()
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Work' }],
+            nextCursor: null,
+        })
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'comment',
+            'add',
+            'id:proj-1',
+            '--project',
+            '--content',
+            'Project note',
+        ])
+
+        expect(mockApi.addComment).toHaveBeenCalledWith({
+            projectId: 'proj-1',
+            content: 'Project note',
+        })
+    })
+
+    it('reports who was notified, by short name', async () => {
+        const consoleSpy = captureConsole()
+
+        await addWith('--notify', 'Ana Lovelace,Bo Turing')
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Notified: Ana L., Bo T.'))
+    })
+
+    it('notifies you on a personal project, where there are no collaborators', async () => {
+        captureConsole()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Personal', isShared: false })
+        mockApi.getProjectCollaborators.mockResolvedValue({ results: [], nextCursor: null })
+
+        await addWith('--notify', 'me')
+
+        // "me" and id: refs resolve without knowing who shares the project.
+        expect(mockApi.addComment).toHaveBeenCalledWith(
+            expect.objectContaining({ uidsToNotify: [CURRENT_USER_ID] }),
+        )
+    })
+
+    it('explains that a name cannot be resolved on an unshared project', async () => {
+        captureConsole()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Personal', isShared: false })
+        mockApi.getProjectCollaborators.mockResolvedValue({ results: [], nextCursor: null })
+
+        await expect(addWith('--notify', 'Ana')).rejects.toMatchObject({ code: 'NOT_SHARED' })
+    })
+
+    it('previews the notify option unresolved under --dry-run', async () => {
+        const consoleSpy = captureConsole()
+
+        await addWith('--notify', 'Ana Lovelace', '--dry-run')
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Ana Lovelace'))
+        expect(mockApi.addComment).not.toHaveBeenCalled()
+        expect(mockGetApi).not.toHaveBeenCalled()
+    })
+
+    it('previews --no-notify as nobody under --dry-run', async () => {
+        const consoleSpy = captureConsole()
+
+        await addWith('--no-notify', '--dry-run')
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(nobody)'))
+        expect(mockGetApi).not.toHaveBeenCalled()
+    })
+})
+
 describe('comment add', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('adds comment to task', async () => {
@@ -177,7 +444,7 @@ describe('comment delete', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('rejects plain text references', async () => {
@@ -226,7 +493,7 @@ describe('comment update', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('rejects plain text references', async () => {
@@ -309,7 +576,7 @@ describe('comment add with attachment', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('uploads file and attaches to comment', async () => {
@@ -442,7 +709,7 @@ describe('comment list with attachments', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('shows [file] marker for comments with attachments', async () => {
@@ -556,7 +823,7 @@ describe('comment view', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('rejects plain text references', async () => {
@@ -565,6 +832,92 @@ describe('comment view', () => {
         await expect(
             program.parseAsync(['node', 'td', 'comment', 'view', 'my-comment']),
         ).rejects.toHaveProperty('code', 'INVALID_REF')
+    })
+
+    describe('the Notified line', () => {
+        async function viewComment() {
+            const program = createProgram()
+            await program.parseAsync(['node', 'td', 'comment', 'view', 'id:comment-1'])
+        }
+
+        beforeEach(() => {
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                taskId: 'task-1',
+                uidsToNotify: ['user-ana', 'user-bo'],
+            })
+            mockApi.getProjectCollaborators.mockResolvedValue({
+                results: [
+                    { id: 'user-ana', name: 'Ana Lovelace', email: 'ana@example.com' },
+                    { id: 'user-bo', name: 'Bo Turing', email: 'bo@example.com' },
+                ],
+                nextCursor: null,
+            })
+        })
+
+        it('names the recipients', async () => {
+            const consoleSpy = captureConsole()
+
+            await viewComment()
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Notified: Ana L., Bo T.'),
+            )
+        })
+
+        it('finds the project through the task when the comment is on one', async () => {
+            captureConsole()
+
+            await viewComment()
+
+            expect(mockApi.getTask).toHaveBeenCalledWith('task-1')
+            expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
+        })
+
+        it('reads a project comment without going via a task', async () => {
+            captureConsole()
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                projectId: 'proj-1',
+                uidsToNotify: ['user-ana'],
+            })
+
+            await viewComment()
+
+            expect(mockApi.getTask).not.toHaveBeenCalled()
+            expect(mockApi.getProject).toHaveBeenCalledWith('proj-1')
+        })
+
+        it('falls back to raw IDs when the collaborator lookup fails', async () => {
+            const consoleSpy = captureConsole()
+            mockApi.getProjectCollaborators.mockRejectedValue(new Error('no access'))
+
+            await viewComment()
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Notified: user-ana, user-bo'),
+            )
+        })
+
+        it('says nothing, and looks nothing up, when nobody was notified', async () => {
+            const consoleSpy = captureConsole()
+            mockApi.getComment.mockResolvedValue({
+                id: 'comment-1',
+                content: 'Please review',
+                postedAt: '2026-01-01T12:00:00Z',
+                taskId: 'task-1',
+                uidsToNotify: [],
+            })
+
+            await viewComment()
+
+            expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Notified:'))
+            expect(mockApi.getProjectCollaborators).not.toHaveBeenCalled()
+        })
     })
 
     it('implicit view: td comment <ref> behaves like td comment view <ref>', async () => {
@@ -814,7 +1167,7 @@ describe('project comment list', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('lists comments on a project with --project flag', async () => {
@@ -865,7 +1218,7 @@ describe('comment add with --stdin', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('reads content from stdin with --stdin flag', async () => {
@@ -954,7 +1307,7 @@ describe('comment add --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('outputs created comment as JSON', async () => {
@@ -1020,7 +1373,7 @@ describe('comment update --json', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('outputs updated comment as JSON', async () => {
@@ -1061,7 +1414,7 @@ describe('project comment add', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('adds comment to project with --project flag', async () => {
@@ -1136,7 +1489,7 @@ describe('comment --dry-run', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = setupApiMock()
+        mockApi = setupCommentApi()
     })
 
     it('comment add --dry-run previews without calling API', async () => {

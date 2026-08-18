@@ -320,6 +320,8 @@ const COMMENT_ESSENTIAL_FIELDS = [
     'id',
     'content',
     'postedAt',
+    'postedUid',
+    'uidsToNotify',
     'taskId',
     'projectId',
     'fileAttachment',
