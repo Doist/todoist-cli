@@ -62,7 +62,7 @@
     "marked": "18.0.9",
     "marked-terminal-renderer": "2.2.0",
     "oauth4webapi": "3.8.7",
-    "open": "11.0.0"
+    "open": "11.0.1"
   },
   "devDependencies": {
     "@semantic-release/changelog": "7.0.0",
