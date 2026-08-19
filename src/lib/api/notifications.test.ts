@@ -5,19 +5,16 @@ vi.mock('./core.js', () => ({
 }))
 
 import type { LiveNotification } from '@doist/todoist-sdk'
-import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
-import { getApi } from './core.js'
+import { setupApiMock } from '../../test-support/api-mock.js'
+import type { MockApi } from '../../test-support/mock-api.js'
 import { fetchNotifications } from './notifications.js'
-
-const mockGetApi = vi.mocked(getApi)
 
 describe('fetchNotifications', () => {
     let mockApi: MockApi
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockApi = createMockApi()
-        mockGetApi.mockResolvedValue(mockApi)
+        mockApi = setupApiMock()
     })
 
     it('maps SDK notification fields, filters deleted entries, and sorts newest first', async () => {
@@ -60,7 +57,7 @@ describe('fetchNotifications', () => {
         ]
         mockApi.sync.mockResolvedValue({ liveNotifications: notifications })
 
-        await expect(fetchNotifications()).resolves.toEqual([
+        await expect(fetchNotifications()).resolves.toStrictEqual([
             {
                 id: 'newer',
                 type: 'share_invitation_sent',
