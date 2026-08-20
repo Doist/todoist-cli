@@ -245,6 +245,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
     }
 
     let sections: FilterSection[]
+    const fetchLimit = sort.field === 'none' ? targetLimit : Number.MAX_SAFE_INTEGER
 
     try {
         // Section cursors are independent; pages within one section remain serial.
@@ -257,7 +258,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
                         cursor: cursor ?? undefined,
                         limit,
                     }),
-                { limit: targetLimit, startCursor: options.cursor },
+                { limit: fetchLimit, startCursor: options.cursor },
             )
             return { query, ...result }
         })
@@ -310,7 +311,10 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
                               projects: projectMap,
                           }) ?? task.responsibleUid)
                         : null,
-            }),
+            }).slice(0, targetLimit),
+            // An API cursor belongs to the API's order, not this local one.
+            // The complete result set is already loaded before sorting.
+            nextCursor: null,
         }))
     }
 
@@ -351,14 +355,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
     console.log(chalk.bold(`${filter.name}`))
     console.log(chalk.dim(`Query: ${filter.query}`))
     console.log(chalk.dim(`URL:   ${filterUrl(filter.id)}`))
-    const truncated = sections.some((section) => section.nextCursor)
-    const sortNotes = [
-        saved.unavailable ? 'saved view options unavailable' : null,
-        // The order can only be right across the tasks we actually hold. A task
-        // still behind a cursor can outrank everything on screen.
-        sorting && truncated ? `ordered over the ${tasks.length} tasks fetched, use --all` : null,
-    ].filter(Boolean)
-    const sortNote = sortNotes.length > 0 ? ` (${sortNotes.join('; ')})` : ''
+    const sortNote = saved.unavailable ? ' (saved view options unavailable)' : ''
     console.log(chalk.dim(`Sort:  ${formatTaskSort(sort)}${sortNote}`))
     console.log('')
 

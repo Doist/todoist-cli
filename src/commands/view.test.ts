@@ -278,6 +278,8 @@ describe('view command', () => {
             '--limit',
             '1',
             '--ndjson',
+            '--sort',
+            'none',
         ])
 
         expect(mockApi.getTasksByFilter).toHaveBeenCalledWith(

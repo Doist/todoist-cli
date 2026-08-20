@@ -651,6 +651,8 @@ describe('filter show', () => {
             '--json',
             '--limit',
             '1',
+            '--sort',
+            'none',
         ])
 
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
@@ -1130,15 +1132,39 @@ describe('filter show sorting', () => {
         )
     })
 
-    it('says so when it only ordered part of the filter', async () => {
+    it('sorts the complete result set before applying the output limit', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
-        mockApi.getTasksByFilter.mockResolvedValue({ results: tasks, nextCursor: 'more' })
+        mockApi.getTasksByFilter
+            .mockResolvedValueOnce({
+                results: [
+                    {
+                        ...fixtures.tasks.basic,
+                        id: 'task-low',
+                        content: 'Low priority',
+                        priority: 1,
+                    },
+                ],
+                nextCursor: 'more',
+            })
+            .mockResolvedValueOnce({
+                results: [
+                    {
+                        ...fixtures.tasks.basic,
+                        id: 'task-urgent',
+                        content: 'Urgent',
+                        priority: 4,
+                    },
+                ],
+                nextCursor: null,
+            })
 
-        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--limit', '3'])
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--json', '--limit', '1'])
 
-        const output = consoleSpy.mock.calls.map(([line]) => String(line)).join('\n')
-        expect(output).toContain('ordered over the 3 tasks fetched, use --all')
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.results.map((task: { id: string }) => task.id)).toEqual(['task-urgent'])
+        expect(parsed.nextCursor).toBeNull()
+        expect(mockApi.getTasksByFilter).toHaveBeenCalledTimes(2)
     })
 
     it('sorts with the account timezone rather than the machine one', async () => {
