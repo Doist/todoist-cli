@@ -50,46 +50,43 @@ export interface Notification {
 }
 
 function parseNotification(n: LiveNotification): Notification {
-    // The SDK type uses passthrough() so extra fields are preserved
-    const raw = n as Record<string, unknown>
-
     let fromUser: NotificationUser | undefined
-    if (n.fromUid) {
-        const fromUserData = raw.from_user as Record<string, unknown> | undefined
+    const fromUserId = n.fromUser?.id ?? n.fromUid
+    if (fromUserId) {
         fromUser = {
-            id: String(n.fromUid),
-            name: String(fromUserData?.full_name ?? fromUserData?.name ?? ''),
-            email: String(fromUserData?.email ?? ''),
+            id: fromUserId,
+            name: n.fromUser?.fullName ?? '',
+            email: n.fromUser?.email ?? '',
         }
     }
 
     let project: NotificationProject | undefined
     if (n.projectId) {
         project = {
-            id: String(n.projectId),
-            name: String(raw.project_name ?? ''),
+            id: n.projectId,
+            name: n.projectName ?? '',
         }
     }
 
     let task: NotificationTask | undefined
     if (n.itemId) {
         task = {
-            id: String(n.itemId),
-            content: String(n.itemContent ?? ''),
+            id: n.itemId,
+            content: n.itemContent ?? '',
         }
     }
 
     return {
-        id: String(n.id),
+        id: n.id,
         type: n.notificationType as NotificationType,
         isUnread: n.isUnread,
-        isDeleted: Boolean(raw.is_deleted ?? false),
+        isDeleted: n.isDeleted ?? false,
         createdAt: n.createdAt,
         fromUser,
         project,
         task,
-        invitationId: n.invitationId ? String(n.invitationId) : undefined,
-        invitationSecret: raw.invitation_secret ? String(raw.invitation_secret) : undefined,
+        invitationId: n.invitationId,
+        invitationSecret: n.invitationSecret,
     }
 }
 
