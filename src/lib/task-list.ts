@@ -13,8 +13,19 @@ import {
 import { LIMITS, paginate } from './pagination.js'
 import { resolveWorkspaceRef } from './refs.js'
 
+/**
+ * Every project the account can see, keyed by id.
+ *
+ * Pages to the end rather than stopping at the first response: callers use
+ * this map to name a task's project and to place it in sidebar order, and a
+ * project missing from the map loses both. Accounts under one page still cost
+ * a single request.
+ */
 export async function fetchProjects(api: TodoistApi): Promise<Map<string, Project>> {
-    const { results: allProjects } = await api.getProjects()
+    const { results: allProjects } = await paginate(
+        (cursor, limit) => api.getProjects({ cursor: cursor ?? undefined, limit }),
+        { limit: Number.MAX_SAFE_INTEGER },
+    )
     return new Map(allProjects.map((p) => [p.id, p]))
 }
 

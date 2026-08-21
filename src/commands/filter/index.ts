@@ -1,5 +1,7 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
+import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { TASK_SORT_DIRECTIONS, TASK_SORT_FIELDS } from '../../lib/task-sort.js'
 import { browseFilter } from './browse.js'
 import { createFilter } from './create.js'
 import { deleteFilterCmd } from './delete.js'
@@ -72,6 +74,21 @@ export function registerFilterCommand(program: Command): void {
         .command('view [ref]', { isDefault: true })
         .alias('show')
         .description('Show tasks matching a filter')
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--sort <field>', "Sort tasks (default: the view's sorting in Todoist)"),
+                [...TASK_SORT_FIELDS],
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--sort-order <direction>',
+                    'Sort direction (the default and none sorts have no direction)',
+                ),
+                [...TASK_SORT_DIRECTIONS],
+            ),
+        )
         .option('--limit <n>', 'Limit results per filter section (default: 300)')
         .option('--cursor <cursor>', CURSOR_DESCRIPTION)
         .option('--all', 'Fetch all results (no limit)')

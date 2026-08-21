@@ -28,6 +28,10 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
             .fn()
             .mockResolvedValue({ items: [], nextCursor: null }),
         searchCompletedTasks: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+        // View options
+        getViewOptions: vi.fn().mockResolvedValue([]),
+        setViewOptions: vi.fn(),
+        deleteViewOptions: vi.fn(),
         // Projects
         getProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getProject: vi.fn(),

@@ -169,6 +169,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `commentUrl`, `filterUrl`
 - **`task-list.ts`** — `fetchProjects`, `filterByWorkspaceOrPersonal`,
   `parsePriority`, `PRIORITY_CHOICES` (`"p1"`–`"p4"`; internally p1→4, p4→1)
+- **`task-sort.ts`** — the CLI half of task ordering: `TASK_SORT_FIELDS`
+  (the `--sort` vocabulary), `taskSortFromViewOptions`, `buildProjectOrder`,
+  `queryUsesDates`, and a `sortTasks` wrapper. The comparators live in the
+  SDK; the API returns storage order, so every list view sorts locally.
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)

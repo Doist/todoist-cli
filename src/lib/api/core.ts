@@ -350,6 +350,33 @@ export async function getCurrentUserId(): Promise<string> {
 
 export function clearCurrentUserCache(): void {
     currentUserIdCache = null
+    accountTimezoneCache = null
+}
+
+let accountTimezoneCache: string | null = null
+
+/**
+ * The IANA timezone on the Todoist account, which is what the apps resolve a
+ * floating due time in. It can differ from the machine clock inside a
+ * container, over SSH, or when someone sets their timezone in Todoist and
+ * travels, so ordering timed tasks by the local clock reverses pairs around
+ * midnight. Falls back to the machine on a failed lookup, and caches for the
+ * life of the process.
+ */
+export async function getAccountTimezone(): Promise<string | undefined> {
+    if (accountTimezoneCache) return accountTimezoneCache
+    try {
+        const api = await getApi()
+        const user = await api.getUser()
+        accountTimezoneCache = user.tzInfo?.timezone || localTimezone()
+    } catch {
+        accountTimezoneCache = localTimezone()
+    }
+    return accountTimezoneCache ?? undefined
+}
+
+function localTimezone(): string | null {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
 }
 
 export async function completeTaskForever(taskId: string): Promise<void> {
