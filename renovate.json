@@ -6,6 +6,11 @@
             "matchPackageNames": ["oxlint", "oxfmt"],
             "groupName": "ox toolchain",
             "description": "Group oxlint and oxfmt updates into a single PR"
+        },
+        {
+            "matchPackageNames": ["conventional-changelog-conventionalcommits"],
+            "allowedVersions": "<10",
+            "description": "10.x requires conventional-changelog-writer@9; semantic-release still pins writer 8, so the preset throws at generateNotes"
         }
     ]
 }
