@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { brotliCompressSync, deflateSync, gzipSync } from 'node:zlib'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { initializeLogger, resetLogger } from './logger.js'
 import { createTrackedFetch, fetchTodoist } from './usage-tracking.js'
 
 // Deliberately no `vi.mock('@doist/todoist-sdk')` in this file, unlike its
@@ -82,6 +83,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+    // `restoreMocks` does not undo `vi.stubEnv`, so without this the worker
+    // keeps the cleared proxy variables for every test file that follows.
+    vi.unstubAllEnvs()
     server.closeAllConnections()
     await new Promise<void>((resolve) => {
         server.close(() => resolve())
@@ -125,5 +129,42 @@ describe('usage tracking over the real transport', () => {
         expect(lastRequestHeaders['user-agent']).toMatch(/^todoist-cli\//)
         expect(lastRequestHeaders['request-id']).toBeTruthy()
         expect(lastRequestHeaders['session-id']).toBeTruthy()
+    })
+
+    it('still logs API traffic when verbose is on', async () => {
+        // The regression this guards: API requests go through the fetch paired
+        // with the dispatcher, never `globalThis.fetch`, so the global patch in
+        // `initializeLogger` cannot see them. Drop the `withHttpLogging` wrap in
+        // `resolveRequestFetch` and `td --verbose` goes silent for every call.
+        const originalGlobalFetch = globalThis.fetch
+        const written: string[] = []
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(((
+            chunk: string | Uint8Array,
+        ) => {
+            written.push(String(chunk))
+            return true
+        }) as typeof process.stderr.write)
+
+        try {
+            vi.stubEnv('TD_VERBOSE', '1')
+            resetLogger()
+            initializeLogger()
+            // Undo the global patch, so a log line can only have come from the
+            // wrapper applied to the paired fetch.
+            globalThis.fetch = originalGlobalFetch
+
+            const response = await createTrackedFetch()(`${baseUrl}/json?encoding=gzip`, {
+                method: 'GET',
+            })
+
+            expect(await response.json()).toEqual(PAYLOAD)
+            expect(written.join('')).toMatch(/fetch GET \/json/)
+            expect(written.join('')).toMatch(/=> 200/)
+        } finally {
+            globalThis.fetch = originalGlobalFetch
+            stderrSpy.mockRestore()
+            vi.stubEnv('TD_VERBOSE', '')
+            resetLogger()
+        }
     })
 })

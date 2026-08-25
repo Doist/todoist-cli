@@ -192,6 +192,25 @@ describe('usage tracking', () => {
             return vi.spyOn(globalThis, 'fetch')
         }
 
+        /** Global fetch stubbed to capture the request options it is given. */
+        function stubGlobalFetch(): {
+            getCaptured: () => RequestInit | undefined
+            spy: ReturnType<typeof spyOnGlobalFetch>
+        } {
+            let captured: RequestInit | undefined
+            const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+                _url: RequestInfo | URL,
+                options?: RequestInit,
+            ) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            }) as typeof fetch)
+            return { getCaptured: () => captured, spy }
+        }
+
         it('sends createTrackedFetch requests through the fetch paired with the dispatcher', async () => {
             const globalFetchSpy = spyOnGlobalFetch()
             const { getCaptured, pairedFetch } = stubPairedTransport()
@@ -267,17 +286,7 @@ describe('usage tracking', () => {
             // Bun reports Node but ships a partial undici: the SDK returns a
             // dispatcher with no paired fetch, and the global fetch is then the
             // correct partner because Bun decompresses natively.
-            let captured: RequestInit | undefined
-            const globalFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (
-                _url: RequestInfo | URL,
-                options?: RequestInit,
-            ) => {
-                captured = options
-                return new Response('{}', {
-                    status: 200,
-                    headers: { 'content-type': 'application/json' },
-                })
-            }) as typeof fetch)
+            const { getCaptured, spy } = stubGlobalFetch()
             getDefaultTransportMock.mockResolvedValue({
                 dispatcher: fakeDispatcher,
                 fetch: undefined,
@@ -285,30 +294,22 @@ describe('usage tracking', () => {
 
             await createTrackedFetch()('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
 
-            expect(globalFetchSpy).toHaveBeenCalled()
-            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+            expect(spy).toHaveBeenCalled()
+            expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
                 fakeDispatcher,
             )
         })
 
         it('uses the global fetch and no dispatcher outside Node', async () => {
-            let captured: RequestInit | undefined
-            const globalFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (
-                _url: RequestInfo | URL,
-                options?: RequestInit,
-            ) => {
-                captured = options
-                return new Response('{}', {
-                    status: 200,
-                    headers: { 'content-type': 'application/json' },
-                })
-            }) as typeof fetch)
+            const { getCaptured, spy } = stubGlobalFetch()
             getDefaultTransportMock.mockResolvedValue(undefined)
 
             await createTrackedFetch()('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
 
-            expect(globalFetchSpy).toHaveBeenCalled()
-            expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBeUndefined()
+            expect(spy).toHaveBeenCalled()
+            expect(
+                (getCaptured() as unknown as { dispatcher?: unknown }).dispatcher,
+            ).toBeUndefined()
         })
 
         it('leaves a dispatcher the caller chose in place', async () => {
