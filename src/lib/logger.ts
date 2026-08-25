@@ -150,19 +150,36 @@ export function initializeLogger(): void {
     const log = getLogger()
     log.initialize()
 
-    // When verbose, patch globalThis.fetch so SDK-internal HTTP calls are also logged.
-    // This is the only way to get HTTP-level visibility for @doist/todoist-sdk
-    // since it uses fetch() internally and doesn't expose hooks.
+    // When verbose, patch globalThis.fetch so HTTP calls made through it are
+    // logged. This covers everything that reaches the runtime's own fetch:
+    // the help centre client, and anything inside our dependencies that calls
+    // fetch directly. Todoist API traffic does not go through the global fetch
+    // — see `withHttpLogging`, which the transport layer applies itself.
     if (log.isEnabled()) {
         patchGlobalFetch()
     }
 }
 
+/** Whether HTTP logging should be applied to a fetch implementation. */
+export function isHttpLoggingEnabled(): boolean {
+    return getLogger().isEnabled()
+}
+
 /** Save original fetch and replace with logging wrapper. */
 function patchGlobalFetch(): void {
-    const originalFetch = globalThis.fetch
+    globalThis.fetch = withHttpLogging(globalThis.fetch)
+}
 
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+/**
+ * Wraps a fetch implementation with request and response logging.
+ *
+ * Used both to patch `globalThis.fetch` and, in the transport layer, to wrap
+ * the fetch the SDK pairs with its dispatcher. That one is undici's own fetch
+ * rather than the runtime's, so it never passes through the global patch and
+ * would otherwise be invisible to `--verbose`.
+ */
+export function withHttpLogging(originalFetch: typeof fetch): typeof fetch {
+    return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const log = getLogger()
         const urlStr =
             typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
