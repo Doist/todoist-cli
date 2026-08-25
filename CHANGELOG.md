@@ -1,3 +1,10 @@
+## [3.3.2](https://github.com/Doist/todoist-cli/compare/v3.3.1...v3.3.2) (2026-08-25)
+
+### Bug Fixes
+
+* pin the changelog preset to a version semantic-release can render ([#493](https://github.com/Doist/todoist-cli/issues/493)) ([0810ecf](https://github.com/Doist/todoist-cli/commit/0810ecf5586d5f5abbc4369939af8faf86e8c6c2))
+* use the fetch the SDK pairs with its dispatcher ([#492](https://github.com/Doist/todoist-cli/issues/492)) ([9f31932](https://github.com/Doist/todoist-cli/commit/9f31932b993e89e76d6ca2486539d18dbae47b86))
+
 ## [3.3.1](https://github.com/Doist/todoist-cli/compare/v3.3.0...v3.3.1) (2026-08-24)
 
 ## [3.3.0](https://github.com/Doist/todoist-cli/compare/v3.2.3...v3.3.0) (2026-08-21)
