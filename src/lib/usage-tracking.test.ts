@@ -1,4 +1,4 @@
-import { getDefaultDispatcher } from '@doist/todoist-sdk'
+import { getDefaultTransport } from '@doist/todoist-sdk'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
     buildUsageTrackingHeaders,
@@ -13,11 +13,11 @@ vi.mock('@doist/todoist-sdk', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@doist/todoist-sdk')>()
     return {
         ...actual,
-        getDefaultDispatcher: vi.fn(() => Promise.resolve(undefined)),
+        getDefaultTransport: vi.fn(() => Promise.resolve(undefined)),
     }
 })
 
-const getDefaultDispatcherMock = vi.mocked(getDefaultDispatcher)
+const getDefaultTransportMock = vi.mocked(getDefaultTransport)
 
 describe('usage tracking', () => {
     it('normalizes commander command paths into header-friendly values', () => {
@@ -149,19 +149,56 @@ describe('usage tracking', () => {
     })
 
     describe('proxy dispatcher injection', () => {
-        const fakeDispatcher = { kind: 'env-http-proxy-agent' } as unknown as NonNullable<
-            Awaited<ReturnType<typeof getDefaultDispatcher>>
-        >
+        type Transport = NonNullable<Awaited<ReturnType<typeof getDefaultTransport>>>
+        const fakeDispatcher = {
+            kind: 'env-http-proxy-agent',
+        } as unknown as Transport['dispatcher']
 
         afterEach(() => {
             vi.restoreAllMocks()
-            getDefaultDispatcherMock.mockReset()
-            getDefaultDispatcherMock.mockResolvedValue(undefined)
+            getDefaultTransportMock.mockReset()
+            getDefaultTransportMock.mockResolvedValue(undefined)
         })
 
-        function spyOnNativeFetch(): () => RequestInit | undefined {
+        /**
+         * Stands in for the SDK's transport: a fetch of our own, paired with a
+         * dispatcher, exactly as undici's own fetch is paired in production.
+         */
+        function stubPairedTransport(): {
+            getCaptured: () => RequestInit | undefined
+            pairedFetch: ReturnType<typeof vi.fn>
+        } {
             let captured: RequestInit | undefined
-            vi.spyOn(globalThis, 'fetch').mockImplementation((async (
+            const pairedFetch = vi.fn(async (_url: RequestInfo | URL, options?: RequestInit) => {
+                captured = options
+                return new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                })
+            })
+            getDefaultTransportMock.mockResolvedValue({
+                dispatcher: fakeDispatcher,
+                fetch: pairedFetch as unknown as Transport['fetch'],
+            })
+            return { getCaptured: () => captured, pairedFetch }
+        }
+
+        /**
+         * Left without an implementation on purpose. If the transport pairing
+         * ever regresses to the global fetch, this makes a real network call
+         * and the test fails loudly instead of passing against a stub.
+         */
+        function spyOnGlobalFetch() {
+            return vi.spyOn(globalThis, 'fetch')
+        }
+
+        /** Global fetch stubbed to capture the request options it is given. */
+        function stubGlobalFetch(): {
+            getCaptured: () => RequestInit | undefined
+            spy: ReturnType<typeof spyOnGlobalFetch>
+        } {
+            let captured: RequestInit | undefined
+            const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (
                 _url: RequestInfo | URL,
                 options?: RequestInit,
             ) => {
@@ -171,17 +208,21 @@ describe('usage tracking', () => {
                     headers: { 'content-type': 'application/json' },
                 })
             }) as typeof fetch)
-            return () => captured
+            return { getCaptured: () => captured, spy }
         }
 
-        it('attaches the env proxy dispatcher when createTrackedFetch uses native fetch', async () => {
-            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
-            const getCaptured = spyOnNativeFetch()
+        it('sends createTrackedFetch requests through the fetch paired with the dispatcher', async () => {
+            const globalFetchSpy = spyOnGlobalFetch()
+            const { getCaptured, pairedFetch } = stubPairedTransport()
 
             const trackedFetch = createTrackedFetch()
             await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
 
-            expect(getDefaultDispatcherMock).toHaveBeenCalled()
+            expect(getDefaultTransportMock).toHaveBeenCalled()
+            expect(pairedFetch).toHaveBeenCalled()
+            // The dispatcher decompresses the body itself, so it must never be
+            // handed to a fetch it was not paired with.
+            expect(globalFetchSpy).not.toHaveBeenCalled()
             // dispatcher is a Node fetch extension not present in RequestInit types
             expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
                 fakeDispatcher,
@@ -200,20 +241,22 @@ describe('usage tracking', () => {
 
             await trackedFetch('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
 
-            expect(getDefaultDispatcherMock).not.toHaveBeenCalled()
+            expect(getDefaultTransportMock).not.toHaveBeenCalled()
             expect(captured).toBeTruthy()
             expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBeUndefined()
         })
 
-        it('attaches the env proxy dispatcher when fetchTodoist uses native fetch', async () => {
-            getDefaultDispatcherMock.mockResolvedValue(fakeDispatcher)
-            const getCaptured = spyOnNativeFetch()
+        it('sends fetchTodoist requests through the fetch paired with the dispatcher', async () => {
+            const globalFetchSpy = spyOnGlobalFetch()
+            const { getCaptured, pairedFetch } = stubPairedTransport()
 
             await fetchTodoist('https://api.todoist.com/api/v1/user', {
                 headers: { Authorization: 'Bearer token' },
             })
 
-            expect(getDefaultDispatcherMock).toHaveBeenCalled()
+            expect(getDefaultTransportMock).toHaveBeenCalled()
+            expect(pairedFetch).toHaveBeenCalled()
+            expect(globalFetchSpy).not.toHaveBeenCalled()
             expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
                 fakeDispatcher,
             )
@@ -235,8 +278,53 @@ describe('usage tracking', () => {
                 fetchImpl,
             )
 
-            expect(getDefaultDispatcherMock).not.toHaveBeenCalled()
+            expect(getDefaultTransportMock).not.toHaveBeenCalled()
             expect((captured as unknown as { dispatcher?: unknown }).dispatcher).toBeUndefined()
+        })
+
+        it('uses the global fetch when the transport has no fetch of its own', async () => {
+            // Bun reports Node but ships a partial undici: the SDK returns a
+            // dispatcher with no paired fetch, and the global fetch is then the
+            // correct partner because Bun decompresses natively.
+            const { getCaptured, spy } = stubGlobalFetch()
+            getDefaultTransportMock.mockResolvedValue({
+                dispatcher: fakeDispatcher,
+                fetch: undefined,
+            })
+
+            await createTrackedFetch()('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
+
+            expect(spy).toHaveBeenCalled()
+            expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+                fakeDispatcher,
+            )
+        })
+
+        it('uses the global fetch and no dispatcher outside Node', async () => {
+            const { getCaptured, spy } = stubGlobalFetch()
+            getDefaultTransportMock.mockResolvedValue(undefined)
+
+            await createTrackedFetch()('https://api.todoist.com/api/v1/tasks', { method: 'GET' })
+
+            expect(spy).toHaveBeenCalled()
+            expect(
+                (getCaptured() as unknown as { dispatcher?: unknown }).dispatcher,
+            ).toBeUndefined()
+        })
+
+        it('leaves a dispatcher the caller chose in place', async () => {
+            const ownDispatcher = { kind: 'caller-supplied' }
+            const { getCaptured, pairedFetch } = stubPairedTransport()
+
+            await fetchTodoist('https://api.todoist.com/api/v1/user', {
+                // dispatcher is a Node fetch extension not present in RequestInit types
+                dispatcher: ownDispatcher,
+            } as RequestInit)
+
+            expect(pairedFetch).toHaveBeenCalled()
+            expect((getCaptured() as unknown as { dispatcher?: unknown }).dispatcher).toBe(
+                ownDispatcher,
+            )
         })
     })
 

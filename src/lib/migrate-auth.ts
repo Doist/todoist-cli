@@ -45,7 +45,9 @@ interface MigrateOptions {
 const USER_ENDPOINT = 'https://api.todoist.com/api/v1/user'
 
 export async function migrateLegacyAuth(opts: MigrateOptions = {}): Promise<MigrateAuthResult> {
-    const fetchImpl = opts.fetchImpl ?? fetch
+    // Left undefined when the caller supplies nothing, so `fetchTodoist`
+    // resolves the SDK's transport rather than the bare global fetch.
+    const fetchImpl = opts.fetchImpl
 
     // Cache the config across the cli-core callbacks: a successful migration
     // hits `hasMigrated`, `loadLegacyPlaintextToken`, `identifyAccount`, and
@@ -108,7 +110,7 @@ interface TodoistUser {
     email: string
 }
 
-async function fetchUser(token: string, fetchImpl: typeof fetch): Promise<TodoistUser> {
+async function fetchUser(token: string, fetchImpl?: typeof fetch): Promise<TodoistUser> {
     const response = await fetchTodoist(
         USER_ENDPOINT,
         { headers: { Authorization: `Bearer ${token}` } },
