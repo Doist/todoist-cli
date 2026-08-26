@@ -2,7 +2,8 @@ import chalk from 'chalk'
 import { fetchNotifications } from '../../lib/api/notifications.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
+import { formatPaginatedJson, formatPaginatedNdjson, outputIds } from '../../lib/output.js'
 import { formatNotificationDetails, formatRelativeTime, stripInvitationSecret } from './helpers.js'
 
 type ListOptions = PaginatedViewOptions & {
@@ -13,6 +14,7 @@ type ListOptions = PaginatedViewOptions & {
 }
 
 export async function listNotifications(options: ListOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     if (options.unread && options.read) {
         throw new CliError('INVALID_OPTIONS', 'Cannot specify both --read and --unread')
     }
@@ -41,7 +43,17 @@ export async function listNotifications(options: ListOptions): Promise<void> {
 
     const sanitized = notifications.map(stripInvitationSecret)
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        const notice = hasMore
+            ? chalk.dim(
+                  `... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${offset + limit} to see more.`,
+              )
+            : ''
+        outputIds(notifications, (notification) => notification.id, notice)
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: sanitized, nextCursor: null },
@@ -53,7 +65,7 @@ export async function listNotifications(options: ListOptions): Promise<void> {
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: sanitized, nextCursor: null },

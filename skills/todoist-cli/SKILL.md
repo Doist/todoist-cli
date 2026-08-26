@@ -22,7 +22,8 @@ metadata:
 
 ## Shared Flags
 
-- Read and list commands commonly support `--json`, but other output and pagination flags vary by family. Many list commands support subsets of `--ndjson`, `--full`, `--raw`, `--limit <n>`, `--all`, `--cursor <cursor>`, or `--show-urls`; check `td <command> --help` for the exact surface.
+- Read and list commands commonly support `--json`, but other output and pagination flags vary by family. Many list commands support subsets of `--ndjson`, `--ids-only`, `--full`, `--raw`, `--limit <n>`, `--all`, `--cursor <cursor>`, or `--show-urls`; check `td <command> --help` for the exact surface.
+- When supported, `--ids-only` prints one stable result ID per line with no empty-state text. Any incomplete-page notice goes to stderr, so stdout remains pipeable. It is mutually exclusive with `--json` and `--ndjson`. Check `td <command> --help` for support and the type of ID returned.
 - Create and update commands commonly support `--json` to return the created or updated entity.
 - Mutating commands support `--dry-run` to preview actions without executing them.
 - Destructive commands typically require `--yes`.

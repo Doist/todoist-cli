@@ -51,6 +51,7 @@ Examples:
         .option('--personal', 'Show only personal projects')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each project')
         .action(listProjects)
@@ -81,6 +82,7 @@ Examples:
         .description('List project collaborators')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action((ref, options) => {
             if (!ref) {
@@ -244,6 +246,7 @@ Examples:
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each project')
         .action(listArchivedProjects)

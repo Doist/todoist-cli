@@ -2,10 +2,13 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    outputIds,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
@@ -15,6 +18,7 @@ import { truncateContent } from './helpers.js'
 type ListOptions = PaginatedViewOptions & { lines?: string; project?: boolean }
 
 export async function listComments(ref: string, options: ListOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     let queryArgs: { taskId: string } | { projectId: string }
@@ -42,7 +46,12 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
         hasAttachment: c.fileAttachment !== null,
     }))
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(comments, (comment) => comment.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: enrichedComments, nextCursor },
@@ -54,7 +63,7 @@ export async function listComments(ref: string, options: ListOptions): Promise<v
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: enrichedComments, nextCursor },

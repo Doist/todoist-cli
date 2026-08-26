@@ -4,11 +4,14 @@ import { getApi, type Project, type Section } from './api/core.js'
 import { CollaboratorCache, formatAssignee } from './collaborators.js'
 import { CliError } from './errors.js'
 import type { PaginatedViewOptions } from './options.js'
+import { resolveOutputMode } from './output-mode.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
+    outputIds,
 } from './output.js'
 import { LIMITS, paginate } from './pagination.js'
 import { resolveWorkspaceRef } from './refs.js'
@@ -293,6 +296,7 @@ export async function listTasksForProject(
     projectId: string | null,
     options: TaskListOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -351,7 +355,12 @@ export async function listTasksForProject(
         filtered = filtered.filter((t) => t.responsibleUid === assigneeId)
     }
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(filtered, (task) => task.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: filtered, nextCursor },
@@ -363,7 +372,7 @@ export async function listTasksForProject(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: filtered, nextCursor },

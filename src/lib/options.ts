@@ -2,6 +2,7 @@ import type { ViewOptions as CoreViewOptions } from '@doist/cli-core'
 
 export type ViewOptions = CoreViewOptions & {
     full?: boolean
+    idsOnly?: boolean
     raw?: boolean
     showUrls?: boolean
 }

@@ -1,7 +1,7 @@
 /**
  * Per-CLI extension of `@doist/cli-core`'s global-args parser.
  *
- * Layers todoist-cli's `--user <ref>` and `--raw` flags on top of the
+ * Layers todoist-cli's `--user <ref>`, `--raw`, and `--ids-only` flags on top of the
  * canonical shape (`--json`, `--ndjson`, `--quiet`/`-q`, `--verbose`/`-v`,
  * `--accessible`, `--no-spinner`, `--progress-jsonl`).
  */
@@ -15,6 +15,7 @@ import {
 } from '@doist/cli-core'
 
 export type TdGlobalArgs = GlobalArgs & {
+    idsOnly: boolean
     raw: boolean
     /** --user <ref> — selects which stored Todoist account to use. */
     user: string | undefined
@@ -24,6 +25,7 @@ export type TdGlobalArgs = GlobalArgs & {
 export type { TdGlobalArgs as GlobalArgs }
 
 type LocalFlags = {
+    idsOnly: boolean
     user: string | undefined
     raw: boolean
     /** Set when `--progress-jsonl <path>` (space form) supplied a value. */
@@ -32,6 +34,7 @@ type LocalFlags = {
 
 function parseTdLocalFlags(argv: string[]): LocalFlags {
     let user: string | undefined
+    let idsOnly = false
     let raw = false
     let progressJsonlPath: string | undefined
     for (let i = 0; i < argv.length; i++) {
@@ -39,6 +42,8 @@ function parseTdLocalFlags(argv: string[]): LocalFlags {
         if (arg === '--') break
         if (arg === '--raw') {
             raw = true
+        } else if (arg === '--ids-only') {
+            idsOnly = true
         } else if (arg === '--user') {
             // Only consume the next arg as the value when it doesn't look
             // like another flag — `td --user --json ...` should leave `user`
@@ -66,7 +71,7 @@ function parseTdLocalFlags(argv: string[]): LocalFlags {
             progressJsonlPath = argv[i]
         }
     }
-    return { user, raw, progressJsonlPath }
+    return { idsOnly, user, raw, progressJsonlPath }
 }
 
 /**
@@ -80,9 +85,10 @@ function parseTdLocalFlags(argv: string[]): LocalFlags {
 export function parseGlobalArgs(argv?: string[]): TdGlobalArgs {
     const args = argv ?? process.argv.slice(2)
     const base = parseCoreGlobalArgs(args)
-    const { user, raw, progressJsonlPath } = parseTdLocalFlags(args)
+    const { idsOnly, user, raw, progressJsonlPath } = parseTdLocalFlags(args)
     return {
         ...base,
+        idsOnly,
         user,
         raw,
         progressJsonl: progressJsonlPath !== undefined ? progressJsonlPath : base.progressJsonl,
@@ -100,6 +106,10 @@ export function isJsonMode(): boolean {
 
 export function isNdjsonMode(): boolean {
     return store.get().ndjson
+}
+
+export function isIdsOnlyMode(): boolean {
+    return store.get().idsOnly
 }
 
 export function isQuiet(): boolean {

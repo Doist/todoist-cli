@@ -3,7 +3,13 @@ import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
+import {
+    formatNextCursorNotice,
+    formatPaginatedJson,
+    formatPaginatedNdjson,
+    outputIds,
+} from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import {
@@ -23,6 +29,7 @@ export async function listReminders(
     taskRef: string | undefined,
     options: ListOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     if (options.cursor && !options.type) {
@@ -86,15 +93,21 @@ export async function listReminders(
     }
     const nextCursor = timeResult.nextCursor || locationResult.nextCursor
 
-    if (options.json) {
-        const allResults = [...reminders, ...locationReminders]
+    const allResults = [...reminders, ...locationReminders]
+
+    if (outputMode === 'ids-only') {
+        outputIds(allResults, (reminder) => reminder.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson({ results: allResults, nextCursor }, 'reminder', options.full),
         )
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         const timeNdjson = formatPaginatedNdjson(
             { results: reminders, nextCursor: timeResult.nextCursor },
             'reminder',

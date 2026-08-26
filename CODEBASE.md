@@ -153,7 +153,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `formatNdjson`, `formatPaginatedJson`, `processJsonItem` (essential-field
   picker used by JSON callers that build composite payloads),
   `formatChildrenBlock`, `processChildrenJson`, `formatDueDate`,
-  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`
+  `formatPriority`, `formatError`, `formatErrorJson`, `outputIds`, `printDryRun`
+- **`output-mode.ts`** — resolves human, JSON, NDJSON, Markdown, and IDs-only
+  output as one mutually exclusive mode before a command performs API work
 - **`children.ts`** — `--include-children` support: `getTaskChildren()`
   (parentId query plus a nesting probe per child), `buildProjectChildren()`
   (pure; groups a pre-fetched personal-project list), `resolveChildren()`
@@ -184,7 +186,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `resolveAssigneeId`, `fetchCollaboratorsForProject`, `resolveNotifyIds`
 - **`comment-recipients.ts`** — `getDefaultCommentRecipients`: who a new
   comment notifies when the caller does not say
-- **`global-args.ts`** — `isJsonMode`, `isNdjsonMode`, `isRawMode`,
+- **`global-args.ts`** — `isJsonMode`, `isNdjsonMode`, `isIdsOnlyMode`, `isRawMode`,
   `isQuiet`, `isAccessible`, progress-jsonl target
 - **`logger.ts`** — verbose levels 0–4, `initializeLogger`
 - **`dates.ts` / `duration.ts`** — date filters, `"2h30m"` parsing/formatting

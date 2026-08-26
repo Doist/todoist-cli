@@ -1,7 +1,8 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatNextCursorFooter } from '../../lib/output.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
+import { formatNextCursorFooter, formatNextCursorNotice, outputIds } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 
@@ -9,6 +10,7 @@ export async function listFolders(
     ref: string | undefined,
     options: PaginatedViewOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -28,12 +30,17 @@ export async function listFolders(
         { limit: targetLimit, startCursor: options.cursor },
     )
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(folders, (folder) => folder.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(JSON.stringify({ results: folders, nextCursor }, null, 2))
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const folder of folders) {
             console.log(JSON.stringify(folder))
         }

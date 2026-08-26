@@ -24,6 +24,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .description('List all workspaces')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action(listWorkspaces)
 
@@ -100,6 +101,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action(
             (
@@ -134,6 +136,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only user IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action(
             (
@@ -158,6 +161,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--project-ids <ids>', 'Comma-separated project IDs to filter')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only task IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action(
             (

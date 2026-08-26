@@ -599,8 +599,26 @@ export function formatPaginatedNdjson<T extends object>(
 }
 
 export function formatNextCursorFooter(nextCursor: string | null): string {
+    const notice = formatNextCursorNotice(nextCursor)
+    return notice ? `\n${notice}` : ''
+}
+
+export function formatNextCursorNotice(nextCursor: string | null): string {
     if (!nextCursor) return ''
-    return chalk.dim(`\n... more items exist. Use --all to fetch everything.`)
+    return chalk.dim('... more items exist. Use --all to fetch everything.')
+}
+
+export function outputIds<T>(
+    items: readonly T[],
+    getId: (item: T) => string,
+    paginationNotice = '',
+): void {
+    for (const item of items) {
+        console.log(getId(item))
+    }
+    if (paginationNotice) {
+        console.error(paginationNotice)
+    }
 }
 
 export function printDryRun(action: string, details: Record<string, string | undefined>): void {

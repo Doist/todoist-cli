@@ -28,6 +28,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--all', 'Fetch all results (no limit)')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .action(
             (

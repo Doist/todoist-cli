@@ -3,6 +3,8 @@ import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
+import { formatNextCursorNotice, outputIds } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 
@@ -10,6 +12,7 @@ export async function listWorkspaceUsers(
     ref: string | undefined,
     options: PaginatedViewOptions & { role?: string },
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -70,7 +73,16 @@ export async function listWorkspaceUsers(
     const users = allUsers.slice(0, targetLimit)
     const hasMore = allUsers.length > targetLimit || cursor !== undefined
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(
+            users,
+            (user) => user.userId,
+            formatNextCursorNotice(hasMore ? (cursor ?? 'has-more') : null),
+        )
+        return
+    }
+
+    if (outputMode === 'json') {
         const output = options.full
             ? users
             : users.map((u) => ({
@@ -85,7 +97,7 @@ export async function listWorkspaceUsers(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const u of users) {
             const output = options.full
                 ? u

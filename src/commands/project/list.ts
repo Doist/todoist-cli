@@ -4,10 +4,13 @@ import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    outputIds,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'
@@ -15,6 +18,7 @@ import { projectUrl } from '../../lib/urls.js'
 type ListOptions = PaginatedViewOptions & { personal?: boolean; search?: string }
 
 export async function listProjects(options: ListOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -35,7 +39,15 @@ export async function listProjects(options: ListOptions): Promise<void> {
         { limit: targetLimit, startCursor: options.cursor },
     )
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        const outputProjects = options.personal
+            ? projects.filter((project) => !isWorkspaceProject(project))
+            : projects
+        outputIds(outputProjects, (project) => project.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: projects, nextCursor },
@@ -47,7 +59,7 @@ export async function listProjects(options: ListOptions): Promise<void> {
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: projects, nextCursor },

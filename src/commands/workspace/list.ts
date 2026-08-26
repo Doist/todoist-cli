@@ -1,15 +1,23 @@
 import chalk from 'chalk'
 import { fetchWorkspaces } from '../../lib/api/workspaces.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
+import { outputIds } from '../../lib/output.js'
 
 export async function listWorkspaces(options: PaginatedViewOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const workspaces = await fetchWorkspaces()
 
     if (workspaces.length === 0) {
         return
     }
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(workspaces, (workspace) => workspace.id)
+        return
+    }
+
+    if (outputMode === 'json') {
         const output = options.full
             ? workspaces
             : workspaces.map((w) => ({
@@ -24,7 +32,7 @@ export async function listWorkspaces(options: PaginatedViewOptions): Promise<voi
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const w of workspaces) {
             const output = options.full
                 ? w

@@ -1,10 +1,13 @@
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { resolveOutputMode } from '../../lib/output-mode.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
+    outputIds,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveProjectId } from '../../lib/refs.js'
@@ -16,6 +19,7 @@ export async function listSections(
     projectRef: string | undefined,
     options: ListSectionOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     let projectId: string | undefined
@@ -42,7 +46,12 @@ export async function listSections(
         { limit: targetLimit },
     )
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(sections, (section) => section.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: sections, nextCursor },
@@ -54,7 +63,7 @@ export async function listSections(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: sections, nextCursor },

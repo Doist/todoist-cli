@@ -5,11 +5,14 @@ import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { getLocalDate, isDueBefore, isDueOnDate } from '../lib/dates.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
+import { resolveOutputMode } from '../lib/output-mode.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
+    outputIds,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'
@@ -21,6 +24,7 @@ interface TodayOptions extends PaginatedViewOptions {
 }
 
 export async function showToday(options: TodayOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -32,9 +36,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
     const baseQuery = 'today | overdue'
     const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
 
-    const needsProjects = Boolean(
-        options.workspace || options.personal || (!options.json && !options.ndjson),
-    )
+    const needsProjects = Boolean(options.workspace || options.personal || outputMode === 'human')
     const [{ results: tasks, nextCursor }, projects] = await Promise.all([
         paginate(
             (cursor, limit) =>
@@ -63,7 +65,12 @@ export async function showToday(options: TodayOptions): Promise<void> {
     const dueToday = filteredTasks.filter((t) => t.due && isDueOnDate(t.due.date, today))
     const allTodayTasks = [...overdue, ...dueToday]
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(allTodayTasks, (task) => task.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: allTodayTasks, nextCursor },
@@ -75,7 +82,7 @@ export async function showToday(options: TodayOptions): Promise<void> {
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: allTodayTasks, nextCursor },
@@ -152,6 +159,7 @@ export function registerTodayCommand(program: Command): void {
         .option('--personal', 'Filter to tasks in personal projects')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .option('--raw', 'Disable markdown rendering')
         .option('--show-urls', 'Show web app URLs for each task')

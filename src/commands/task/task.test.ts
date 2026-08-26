@@ -28,6 +28,57 @@ function createProgram() {
     return createTestProgram(registerTaskCommand)
 }
 
+describe('task list --ids-only', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+    })
+
+    it('prints one task ID per line and sends pagination to stderr', async () => {
+        const consoleSpy = captureConsole()
+        const errorSpy = captureConsole('error')
+        mockApi.getTasks.mockResolvedValue({
+            results: [
+                { id: 'task-1', content: 'One' },
+                { id: 'task-2', content: 'Two' },
+            ],
+            nextCursor: 'next-page',
+        })
+
+        await createProgram().parseAsync([
+            'node',
+            'td',
+            'task',
+            'list',
+            '--ids-only',
+            '--limit',
+            '2',
+        ])
+
+        expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual(['task-1', 'task-2'])
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('more items exist'))
+        expect(mockApi.getProjects).not.toHaveBeenCalled()
+    })
+
+    it('prints nothing for an empty result', async () => {
+        const consoleSpy = captureConsole()
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+
+        await createProgram().parseAsync(['node', 'td', 'task', 'list', '--ids-only'])
+
+        expect(consoleSpy).not.toHaveBeenCalled()
+    })
+
+    it('rejects another machine-output mode', async () => {
+        await expect(
+            createProgram().parseAsync(['node', 'td', 'task', 'list', '--ids-only', '--json']),
+        ).rejects.toThrow('Options --json, --ids-only are mutually exclusive.')
+        expect(mockApi.getTasks).not.toHaveBeenCalled()
+    })
+})
+
 describe('task move command', () => {
     let mockApi: MockApi
 
