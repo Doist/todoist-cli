@@ -1,3 +1,13 @@
+## [4.0.0](https://github.com/Doist/todoist-cli/compare/v3.3.2...v4.0.0) (2026-08-26)
+
+### ⚠ BREAKING CHANGES
+
+* build and parse Todoist URLs with the SDK (#494)
+
+### Features
+
+* build and parse Todoist URLs with the SDK ([#494](https://github.com/Doist/todoist-cli/issues/494)) ([312202b](https://github.com/Doist/todoist-cli/commit/312202b848a984f1771e13aeef58d2366d97a31c))
+
 ## [3.3.2](https://github.com/Doist/todoist-cli/compare/v3.3.1...v3.3.2) (2026-08-25)
 
 ### Bug Fixes
