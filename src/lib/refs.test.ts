@@ -106,6 +106,18 @@ describe('parseTodoistUrl', () => {
         expect(result).toEqual({ entityType: 'filter', id: 'filter1' })
     })
 
+    it('returns null for link types the CLI has no command for', () => {
+        // The SDK recognises these, but there is no `td section` or `td workspace`.
+        expect(parseTodoistUrl('https://app.todoist.com/app/section/to-do-sec1')).toBeNull()
+        expect(parseTodoistUrl('https://app.todoist.com/app/12345')).toBeNull()
+    })
+
+    it('returns null for workspace-scoped links', () => {
+        // Parsed as a filter without this guard, which would report
+        // "Filter not found." instead of an unrecognised URL.
+        expect(parseTodoistUrl('https://app.todoist.com/app/12345/filter/work-filter1')).toBeNull()
+    })
+
     it('returns null for non-Todoist URLs', () => {
         expect(parseTodoistUrl('https://google.com')).toBeNull()
     })

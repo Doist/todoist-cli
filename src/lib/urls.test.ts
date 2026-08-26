@@ -57,7 +57,7 @@ describe('URL builders', () => {
     describe('projectCommentUrl', () => {
         it('generates correct web app URL for project comment', () => {
             expect(projectCommentUrl('project-1', 'comment-2')).toBe(
-                'https://app.todoist.com/app/project/project-1/comments#comment-comment-2',
+                'https://app.todoist.com/app/project/project-1#comment-comment-2',
             )
         })
     })
