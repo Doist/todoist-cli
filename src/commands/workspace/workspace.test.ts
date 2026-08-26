@@ -525,6 +525,49 @@ describe('workspace users', () => {
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Bob'))
     })
 
+    it('does not report another IDs-only page after the final role-filtered page', async () => {
+        const errorSpy = captureConsole('error')
+        mockApi.getWorkspaceUsers
+            .mockResolvedValueOnce({
+                workspaceUsers: [
+                    {
+                        userId: 'user-1',
+                        userEmail: 'member@example.com',
+                        fullName: 'Member',
+                        role: 'MEMBER',
+                    },
+                ],
+                hasMore: true,
+                nextCursor: 'next-page',
+            })
+            .mockResolvedValueOnce({
+                workspaceUsers: [
+                    {
+                        userId: 'user-2',
+                        userEmail: 'admin@example.com',
+                        fullName: 'Admin',
+                        role: 'ADMIN',
+                    },
+                ],
+                hasMore: false,
+            })
+
+        const program = createProgram()
+        await program.parseAsync([
+            'node',
+            'td',
+            'workspace',
+            'users',
+            'Doist',
+            '--role',
+            'ADMIN',
+            '--ids-only',
+        ])
+
+        expect(consoleSpy).toHaveBeenCalledWith('user-2')
+        expect(errorSpy).not.toHaveBeenCalled()
+    })
+
     it('filters by multiple roles', async () => {
         mockApi.getWorkspaceUsers.mockResolvedValue({
             workspaceUsers: [

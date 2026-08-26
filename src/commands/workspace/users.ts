@@ -46,12 +46,13 @@ export async function listWorkspaceUsers(
         fullName: string
         role: string
     }> = []
-    let cursor: string | undefined = options.cursor
+    let requestCursor: string | undefined = options.cursor
+    let nextCursor: string | undefined
 
     while (allUsers.length < targetLimit) {
         const response = await api.getWorkspaceUsers({
             workspaceId: workspace.id,
-            cursor,
+            cursor: requestCursor,
             limit: Math.min(targetLimit - allUsers.length, 200),
         })
 
@@ -66,18 +67,19 @@ export async function listWorkspaceUsers(
             }
         }
 
-        if (!response.hasMore || !response.nextCursor) break
-        cursor = response.nextCursor
+        nextCursor = response.hasMore ? response.nextCursor : undefined
+        if (!nextCursor) break
+        requestCursor = nextCursor
     }
 
     const users = allUsers.slice(0, targetLimit)
-    const hasMore = allUsers.length > targetLimit || cursor !== undefined
+    const hasMore = allUsers.length > targetLimit || nextCursor !== undefined
 
     if (outputMode === 'ids-only') {
         outputIds(
             users,
             (user) => user.userId,
-            formatNextCursorNotice(hasMore ? (cursor ?? 'has-more') : null),
+            formatNextCursorNotice(hasMore ? (nextCursor ?? 'has-more') : null),
         )
         return
     }
@@ -92,7 +94,7 @@ export async function listWorkspaceUsers(
                   role: u.role,
               }))
         console.log(
-            JSON.stringify({ results: output, nextCursor: hasMore ? cursor : null }, null, 2),
+            JSON.stringify({ results: output, nextCursor: hasMore ? nextCursor : null }, null, 2),
         )
         return
     }
@@ -110,7 +112,7 @@ export async function listWorkspaceUsers(
             console.log(JSON.stringify(output))
         }
         if (hasMore) {
-            console.log(JSON.stringify({ _meta: true, nextCursor: cursor }))
+            console.log(JSON.stringify({ _meta: true, nextCursor }))
         }
         return
     }

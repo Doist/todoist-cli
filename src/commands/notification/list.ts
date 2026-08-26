@@ -40,16 +40,19 @@ export async function listNotifications(options: ListOptions): Promise<void> {
     const limit = options.limit ? parseInt(options.limit, 10) : 10
     const hasMore = totalCount > offset + limit
     notifications = notifications.slice(offset, offset + limit)
+    const nextOffset = offset + limit
+    const paginationNotice = hasMore
+        ? `... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${nextOffset} to see more.`
+        : ''
 
     const sanitized = notifications.map(stripInvitationSecret)
 
     if (outputMode === 'ids-only') {
-        const notice = hasMore
-            ? chalk.dim(
-                  `... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${offset + limit} to see more.`,
-              )
-            : ''
-        outputIds(notifications, (notification) => notification.id, notice)
+        outputIds(
+            notifications,
+            (notification) => notification.id,
+            paginationNotice ? chalk.dim(paginationNotice) : '',
+        )
         return
     }
 
@@ -101,12 +104,7 @@ export async function listNotifications(options: ListOptions): Promise<void> {
 
     console.log(blocks.join('\n\n'))
 
-    if (hasMore) {
-        const nextOffset = offset + limit
-        console.log(
-            chalk.dim(
-                `\n... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${nextOffset} to see more.`,
-            ),
-        )
+    if (paginationNotice) {
+        console.log(chalk.dim(`\n${paginationNotice}`))
     }
 }

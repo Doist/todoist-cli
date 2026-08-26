@@ -741,6 +741,8 @@ describe('formatNextCursorFooter', () => {
     })
 
     it('formats a data-output notice without a leading newline', () => {
-        expect(formatNextCursorNotice('some-cursor')).toMatch(/^\.\.\. more items exist/)
+        const result = formatNextCursorNotice('some-cursor')
+        expect(result).toContain('... more items exist')
+        expect(result).not.toContain('\n')
     })
 })
