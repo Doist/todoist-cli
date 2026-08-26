@@ -1,29 +1,41 @@
+import {
+    getFilterUrl,
+    getLabelUrl,
+    getProjectCommentUrl,
+    getProjectUrl,
+    getSectionUrl,
+    getTaskCommentUrl,
+    getTaskUrl,
+} from '@doist/todoist-sdk'
+
+/**
+ * Todoist web links.
+ *
+ * These delegate to the SDK, which is the shared source of the URL rules, so
+ * links stay in step with the other Todoist clients. Only links the SDK has no
+ * builder for are assembled here.
+ */
+
 const BASE_URL = 'https://app.todoist.com/app'
 
-type EntityPath = 'task' | 'project' | 'label' | 'filter' | 'section'
-
-function entityUrl(path: EntityPath, id: string): string {
-    return `${BASE_URL}/${path}/${id}`
-}
-
 export function taskUrl(taskId: string): string {
-    return entityUrl('task', taskId)
+    return getTaskUrl(taskId)
 }
 
 export function projectUrl(projectId: string): string {
-    return entityUrl('project', projectId)
+    return getProjectUrl(projectId)
 }
 
 export function labelUrl(labelId: string): string {
-    return entityUrl('label', labelId)
+    return getLabelUrl(labelId)
 }
 
 export function filterUrl(filterId: string): string {
-    return entityUrl('filter', filterId)
+    return getFilterUrl(filterId)
 }
 
 export function sectionUrl(sectionId: string): string {
-    return entityUrl('section', sectionId)
+    return getSectionUrl(sectionId)
 }
 
 export function appInstallUrl(distributionToken: string): string {
@@ -31,9 +43,9 @@ export function appInstallUrl(distributionToken: string): string {
 }
 
 export function commentUrl(taskId: string, commentId: string): string {
-    return `${entityUrl('task', taskId)}#comment-${commentId}`
+    return getTaskCommentUrl(taskId, commentId)
 }
 
 export function projectCommentUrl(projectId: string, commentId: string): string {
-    return `${entityUrl('project', projectId)}/comments#comment-${commentId}`
+    return getProjectCommentUrl(projectId, commentId)
 }

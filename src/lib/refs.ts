@@ -1,4 +1,9 @@
-import { type AppWithUserCount, TodoistApi, TodoistRequestError } from '@doist/todoist-sdk'
+import {
+    type AppWithUserCount,
+    parseTodoistUrl as parseSdkTodoistUrl,
+    TodoistApi,
+    TodoistRequestError,
+} from '@doist/todoist-sdk'
 import type { Project, Task } from './api/core.js'
 import {
     fetchWorkspaceFolders,
@@ -18,20 +23,21 @@ export interface ParsedTodoistUrl {
     id: string
 }
 
-const TODOIST_URL_PATTERN = new RegExp(
-    `^https?://app\\.todoist\\.com/app/(${URL_ENTITY_TYPES.join('|')})/([^?#]+)`,
-)
+function isUrlEntityType(value: string): value is UrlEntityType {
+    return (URL_ENTITY_TYPES as readonly string[]).includes(value)
+}
 
 export function parseTodoistUrl(url: string): ParsedTodoistUrl | null {
-    const match = url.match(TODOIST_URL_PATTERN)
-    if (!match) return null
+    const parsed = parseSdkTodoistUrl(url)
+    if (!parsed) return null
 
-    const entityType = match[1] as UrlEntityType
-    const slugAndId = match[2]
-    const lastHyphenIndex = slugAndId.lastIndexOf('-')
-    const id = lastHyphenIndex === -1 ? slugAndId : slugAndId.slice(lastHyphenIndex + 1)
+    // The SDK recognises more kinds of link than the CLI has commands for.
+    if (!isUrlEntityType(parsed.type)) return null
 
-    return { entityType, id }
+    // Workspace-scoped links (such as a workspace filter) have no CLI command.
+    if (parsed.workspaceId) return null
+
+    return { entityType: parsed.type, id: parsed.id }
 }
 
 const VIEW_TYPES = ['today', 'upcoming'] as const
