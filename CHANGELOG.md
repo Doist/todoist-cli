@@ -1,3 +1,9 @@
+## [5.1.0](https://github.com/Doist/todoist-cli/compare/v5.0.0...v5.1.0) (2026-08-27)
+
+### Features
+
+* add ids-only output mode ([#495](https://github.com/Doist/todoist-cli/issues/495)) ([d63187c](https://github.com/Doist/todoist-cli/commit/d63187c3177d23a080b1adb9cd00e3f9a585aca6))
+
 ## [5.0.0](https://github.com/Doist/todoist-cli/compare/v4.0.0...v5.0.0) (2026-08-27)
 
 ### ⚠ BREAKING CHANGES
