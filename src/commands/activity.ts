@@ -22,7 +22,6 @@ interface ActivityOptions extends Pagination {
     event?: string
     project?: string
     by?: string
-    markdown?: boolean
     json?: boolean
     ndjson?: boolean
     full?: boolean
@@ -125,76 +124,6 @@ function formatActivityRow(
     return `${line1}\n${line2}`
 }
 
-function normalizeInlineText(text: string): string {
-    return text.replace(/\s+/g, ' ').trim()
-}
-
-function formatMarkdownDay(date: Date): string {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-}
-
-function formatMarkdownTime(date: Date): string {
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${hours}:${minutes}`
-}
-
-function formatActivityMarkdown(
-    events: ActivityEvent[],
-    projects: Map<string, Project>,
-    userNames: Map<string, string>,
-    nextCursor?: string | null,
-): string {
-    const sortedEvents = [...events].sort(
-        (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime(),
-    )
-
-    const lines: string[] = ['# Activity Log']
-    let currentDay: string | null = null
-
-    for (const event of sortedEvents) {
-        const day = formatMarkdownDay(event.eventDate)
-        if (day !== currentDay) {
-            lines.push('', `## ${day}`, '')
-            currentDay = day
-        }
-
-        const objectType = OBJECT_TYPE_LABELS[event.objectType] || event.objectType
-        const content = normalizeInlineText(getEventContent(event))
-        const parts = [
-            `- ${formatMarkdownTime(event.eventDate)} - ${event.eventType} ${objectType}: ${content}`,
-        ]
-
-        if (event.parentProjectId) {
-            const projectName = projects.get(event.parentProjectId)?.name
-            if (projectName) {
-                parts.push(`(project: ${normalizeInlineText(projectName)})`)
-            }
-        }
-
-        if (event.initiatorId && userNames.size > 0) {
-            const fullName = userNames.get(event.initiatorId)
-            if (fullName) {
-                parts.push(`(by: ${normalizeInlineText(formatUserShortName(fullName))})`)
-            }
-        }
-
-        lines.push(parts.join(' '))
-    }
-
-    if (nextCursor) {
-        lines.push(
-            '',
-            '> Note: More items exist. Use --cursor to paginate, or narrow results with --since/--until.',
-        )
-    }
-
-    return lines.join('\n')
-}
-
 export function registerActivityCommand(program: Command): void {
     program
         .command('activity')
@@ -217,18 +146,15 @@ export function registerActivityCommand(program: Command): void {
         .option('--by <user>', 'Filter by initiator (use "me" for yourself)')
         .option('--limit <n>', `Limit results (default: ${ACTIVITY_LIMIT})`)
         .option('--cursor <cursor>', CURSOR_DESCRIPTION)
-        .option('--markdown', 'Output as raw Markdown')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .action(async (options: ActivityOptions) => {
-            const selectedOutputFormats = [options.markdown, options.json, options.ndjson].filter(
-                Boolean,
-            ).length
+            const selectedOutputFormats = [options.json, options.ndjson].filter(Boolean).length
             if (selectedOutputFormats > 1) {
                 throw new CliError(
                     'CONFLICTING_OPTIONS',
-                    'Options --markdown, --json, and --ndjson are mutually exclusive.',
+                    'Options --json and --ndjson are mutually exclusive.',
                 )
             }
 
@@ -287,17 +213,6 @@ export function registerActivityCommand(program: Command): void {
             }
 
             if (events.length === 0) {
-                if (options.markdown) {
-                    const lines = ['# Activity Log']
-                    if (nextCursor) {
-                        lines.push(
-                            '',
-                            '> Note: More items exist. Use --cursor to paginate, or narrow results with --since/--until.',
-                        )
-                    }
-                    console.log(lines.join('\n'))
-                    return
-                }
                 console.log('No activity found.')
                 if (nextCursor) {
                     console.log(
@@ -336,11 +251,6 @@ export function registerActivityCommand(program: Command): void {
                     if (!response.hasMore || !response.nextCursor) break
                     cursor = response.nextCursor
                 }
-            }
-
-            if (options.markdown) {
-                console.log(formatActivityMarkdown(events, projects, userNames, nextCursor))
-                return
             }
 
             console.log(chalk.bold(`Activity (${events.length})`))
