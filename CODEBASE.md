@@ -153,9 +153,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `formatNdjson`, `formatPaginatedJson`, `processJsonItem` (essential-field
   picker used by JSON callers that build composite payloads),
   `formatChildrenBlock`, `processChildrenJson`, `formatDueDate`,
-  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`; re-exports
-  cli-core's `outputIds`. List commands import cli-core's `resolveOutputMode`
-  directly to validate human, JSON, NDJSON, and IDs-only output.
+  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`. List commands
+  import cli-core's `outputIds` and `resolveOutputMode` directly to print IDs and
+  validate human, JSON, NDJSON, and IDs-only output.
 - **`children.ts`** — `--include-children` support: `getTaskChildren()`
   (parentId query plus a nesting probe per child), `buildProjectChildren()`
   (pure; groups a pre-fetched personal-project list), `resolveChildren()`

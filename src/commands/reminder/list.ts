@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import type { LocationReminder } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
@@ -8,7 +8,6 @@ import {
     formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
-    outputIds,
 } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveTaskRef } from '../../lib/refs.js'

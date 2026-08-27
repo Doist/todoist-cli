@@ -1,5 +1,4 @@
 import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
-export { outputIds } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'

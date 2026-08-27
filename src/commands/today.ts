@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'
@@ -12,7 +12,6 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
-    outputIds,
 } from '../lib/output.js'
 import { LIMITS, paginate } from '../lib/pagination.js'
 import { fetchProjects, filterByWorkspaceOrPersonal } from '../lib/task-list.js'

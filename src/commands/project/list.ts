@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
@@ -10,7 +10,6 @@ import {
     formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
-    outputIds,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'

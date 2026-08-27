@@ -1,11 +1,10 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { outputIds } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function listCollaborators(ref: string, options: ViewOptions = {}): Promise<void> {

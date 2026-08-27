@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import {
     findViewOptions,
     isWorkspaceProject,
@@ -20,7 +20,6 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
-    outputIds,
     processJsonItem,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'

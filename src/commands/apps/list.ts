@@ -1,8 +1,6 @@
-import { printEmpty } from '@doist/cli-core'
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, printEmpty, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { outputIds } from '../../lib/output.js'
 
 export interface ListAppsOptions {
     idsOnly?: boolean

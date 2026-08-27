@@ -1,9 +1,9 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { fetchFilters } from '../../lib/api/filters.js'
 import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatPaginatedJson, formatPaginatedNdjson, outputIds } from '../../lib/output.js'
+import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
 import { filterUrl } from '../../lib/urls.js'
 
 export async function listFilters(options: PaginatedViewOptions): Promise<void> {

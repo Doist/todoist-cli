@@ -1,10 +1,10 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { formatNextCursorNotice, outputIds } from '../../lib/output.js'
+import { formatNextCursorNotice } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 

@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { renderMarkdown } from '../../lib/markdown.js'
@@ -8,7 +8,6 @@ import {
     formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
-    outputIds,
 } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'

@@ -1,4 +1,4 @@
-import { resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject, type Task, type TodoistApi } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, type Project, type Section } from './api/core.js'
@@ -11,7 +11,6 @@ import {
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
-    outputIds,
 } from './output.js'
 import { LIMITS, paginate } from './pagination.js'
 import { resolveWorkspaceRef } from './refs.js'
