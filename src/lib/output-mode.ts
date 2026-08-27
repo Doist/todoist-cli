@@ -1,36 +1,32 @@
+import {
+    OUTPUT_MODES as CORE_OUTPUT_MODES,
+    type ListViewOptions,
+    resolveOutputMode as resolveCoreOutputMode,
+} from '@doist/cli-core'
 import { CliError } from './errors.js'
 
 /** Supported CLI output modes. */
-export const OUTPUT_MODES = ['human', 'json', 'ndjson', 'ids-only', 'markdown'] as const
+export const OUTPUT_MODES = [...CORE_OUTPUT_MODES, 'markdown'] as const
 
 /** A supported CLI output mode. */
 export type OutputMode = (typeof OUTPUT_MODES)[number]
 
-export type OutputModeOptions = {
-    idsOnly?: boolean
-    json?: boolean
+export type OutputModeOptions = ListViewOptions & {
     markdown?: boolean
-    ndjson?: boolean
 }
 
-const OUTPUT_FLAGS: ReadonlyArray<{
-    enabled: (options: OutputModeOptions) => boolean
-    flag: string
-    mode: OutputMode
-}> = [
-    { enabled: (options) => Boolean(options.json), flag: '--json', mode: 'json' },
-    { enabled: (options) => Boolean(options.ndjson), flag: '--ndjson', mode: 'ndjson' },
-    { enabled: (options) => Boolean(options.idsOnly), flag: '--ids-only', mode: 'ids-only' },
-    { enabled: (options) => Boolean(options.markdown), flag: '--markdown', mode: 'markdown' },
-]
-
 export function resolveOutputMode(options: OutputModeOptions): OutputMode {
-    const selected = OUTPUT_FLAGS.filter(({ enabled }) => enabled(options))
-    if (selected.length > 1) {
+    if (options.markdown) {
+        const conflictingFlags = [
+            options.json && '--json',
+            options.ndjson && '--ndjson',
+            options.idsOnly && '--ids-only',
+        ].filter((flag): flag is string => Boolean(flag))
+        if (conflictingFlags.length === 0) return 'markdown'
         throw new CliError(
             'CONFLICTING_OPTIONS',
-            `Options ${selected.map(({ flag }) => flag).join(', ')} are mutually exclusive.`,
+            `Options ${[...conflictingFlags, '--markdown'].join(', ')} are mutually exclusive.`,
         )
     }
-    return selected[0]?.mode ?? 'human'
+    return resolveCoreOutputMode(options)
 }

@@ -1,4 +1,5 @@
 import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
+export { outputIds } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
@@ -606,19 +607,6 @@ export function formatNextCursorFooter(nextCursor: string | null): string {
 export function formatNextCursorNotice(nextCursor: string | null): string {
     if (!nextCursor) return ''
     return chalk.dim('... more items exist. Use --all to fetch everything.')
-}
-
-export function outputIds<T>(
-    items: readonly T[],
-    getId: (item: T) => string,
-    paginationNotice = '',
-): void {
-    for (const item of items) {
-        console.log(getId(item))
-    }
-    if (paginationNotice) {
-        console.error(paginationNotice)
-    }
 }
 
 export function printDryRun(action: string, details: Record<string, string | undefined>): void {

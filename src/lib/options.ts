@@ -1,8 +1,7 @@
-import type { ViewOptions as CoreViewOptions } from '@doist/cli-core'
+import type { ListViewOptions as CoreListViewOptions } from '@doist/cli-core'
 
-export type ViewOptions = CoreViewOptions & {
+export type ViewOptions = CoreListViewOptions & {
     full?: boolean
-    idsOnly?: boolean
     raw?: boolean
     showUrls?: boolean
 }

@@ -338,6 +338,7 @@ describe('shouldDisableSpinner', () => {
     })
 
     it.each([
+        ['--ids-only', ['node', 'td', 'today', '--ids-only']],
         ['--json', ['node', 'td', 'today', '--json']],
         ['--ndjson', ['node', 'td', 'today', '--ndjson']],
         ['--no-spinner', ['node', 'td', 'today', '--no-spinner']],

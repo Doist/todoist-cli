@@ -113,10 +113,7 @@ describe('project list', () => {
 
         await createProgram().parseAsync(['node', 'td', 'project', 'list', '--ids-only'])
 
-        expect(consoleSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
-            'proj-1',
-            'proj-2',
-        ])
+        expect(consoleSpy).toHaveBeenCalledWith('proj-1\nproj-2')
         expect(mockFetchWorkspaces).not.toHaveBeenCalled()
     })
 

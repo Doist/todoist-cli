@@ -57,7 +57,7 @@ describe('task list --ids-only', () => {
             '2',
         ])
 
-        expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual(['task-1', 'task-2'])
+        expect(consoleSpy).toHaveBeenCalledWith('task-1\ntask-2')
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('more items exist'))
         expect(mockApi.getProjects).not.toHaveBeenCalled()
     })
