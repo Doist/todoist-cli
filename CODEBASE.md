@@ -154,9 +154,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   picker used by JSON callers that build composite payloads),
   `formatChildrenBlock`, `processChildrenJson`, `formatDueDate`,
   `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`; re-exports
-  cli-core's `outputIds`
-- **`output-mode.ts`** — extends cli-core's human, JSON, NDJSON, and IDs-only
-  resolver with Todoist's Markdown mode before a command performs API work
+  cli-core's `outputIds`. List commands import cli-core's `resolveOutputMode`
+  directly to validate human, JSON, NDJSON, and IDs-only output.
 - **`children.ts`** — `--include-children` support: `getTaskChildren()`
   (parentId query plus a nesting probe per child), `buildProjectChildren()`
   (pure; groups a pre-fetched personal-project list), `resolveChildren()`

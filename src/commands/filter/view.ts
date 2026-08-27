@@ -1,3 +1,4 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import {
     findViewOptions,
     isWorkspaceProject,
@@ -11,7 +12,6 @@ import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import { getLogger } from '../../lib/logger.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { resolveOutputMode } from '../../lib/output-mode.js'
 import {
     formatNextCursorFooter,
     formatNextCursorNotice,

@@ -1,9 +1,9 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi, type Project, type Task } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { resolveOutputMode } from '../../lib/output-mode.js'
 import {
     formatNextCursorFooter,
     formatNextCursorNotice,

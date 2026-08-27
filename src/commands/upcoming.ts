@@ -1,3 +1,4 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Task } from '../lib/api/core.js'
@@ -5,7 +6,6 @@ import { CollaboratorCache, formatAssignee } from '../lib/collaborators.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
-import { resolveOutputMode } from '../lib/output-mode.js'
 import {
     formatNextCursorFooter,
     formatNextCursorNotice,

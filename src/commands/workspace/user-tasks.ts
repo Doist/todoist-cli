@@ -1,7 +1,7 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
-import { resolveOutputMode } from '../../lib/output-mode.js'
 import { outputIds } from '../../lib/output.js'
 import { lenientIdRef, resolveWorkspaceRef } from '../../lib/refs.js'
 import { resolveWorkspaceUserRef } from './helpers.js'

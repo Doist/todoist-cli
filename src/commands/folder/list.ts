@@ -1,7 +1,7 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { resolveOutputMode } from '../../lib/output-mode.js'
 import { formatNextCursorFooter, formatNextCursorNotice, outputIds } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'

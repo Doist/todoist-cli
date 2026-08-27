@@ -1,8 +1,8 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { fetchNotifications } from '../../lib/api/notifications.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
-import { resolveOutputMode } from '../../lib/output-mode.js'
 import { formatPaginatedJson, formatPaginatedNdjson, outputIds } from '../../lib/output.js'
 import { formatNotificationDetails, formatRelativeTime, stripInvitationSecret } from './helpers.js'
 
