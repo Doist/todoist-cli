@@ -1,3 +1,13 @@
+## [5.0.0](https://github.com/Doist/todoist-cli/compare/v4.0.0...v5.0.0) (2026-08-27)
+
+### ⚠ BREAKING CHANGES
+
+* **activity:** remove markdown output mode (#496)
+
+### Features
+
+* **activity:** remove markdown output mode ([#496](https://github.com/Doist/todoist-cli/issues/496)) ([a1cf38d](https://github.com/Doist/todoist-cli/commit/a1cf38d22222d474c39fb086c22f70375647fd84))
+
 ## [4.0.0](https://github.com/Doist/todoist-cli/compare/v3.3.2...v4.0.0) (2026-08-26)
 
 ### ⚠ BREAKING CHANGES
