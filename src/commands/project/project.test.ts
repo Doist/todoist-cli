@@ -102,6 +102,21 @@ describe('project list', () => {
         expect(lines).toHaveLength(2)
     })
 
+    it('outputs only project IDs with --ids-only', async () => {
+        mockApi.getProjects.mockResolvedValue({
+            results: [
+                { id: 'proj-1', name: 'Work' },
+                { id: 'proj-2', name: 'Personal' },
+            ],
+            nextCursor: null,
+        })
+
+        await createProgram().parseAsync(['node', 'td', 'project', 'list', '--ids-only'])
+
+        expect(consoleSpy).toHaveBeenCalledWith('proj-1\nproj-2')
+        expect(mockFetchWorkspaces).not.toHaveBeenCalled()
+    })
+
     it('shows cursor footer when more results exist', async () => {
         const program = createProgram()
 

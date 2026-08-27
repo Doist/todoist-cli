@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { fetchNotifications } from '../../lib/api/notifications.js'
 import { CliError } from '../../lib/errors.js'
@@ -13,6 +14,7 @@ type ListOptions = PaginatedViewOptions & {
 }
 
 export async function listNotifications(options: ListOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     if (options.unread && options.read) {
         throw new CliError('INVALID_OPTIONS', 'Cannot specify both --read and --unread')
     }
@@ -38,10 +40,23 @@ export async function listNotifications(options: ListOptions): Promise<void> {
     const limit = options.limit ? parseInt(options.limit, 10) : 10
     const hasMore = totalCount > offset + limit
     notifications = notifications.slice(offset, offset + limit)
+    const nextOffset = offset + limit
+    const paginationNotice = hasMore
+        ? `... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${nextOffset} to see more.`
+        : ''
 
     const sanitized = notifications.map(stripInvitationSecret)
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(
+            notifications,
+            (notification) => notification.id,
+            paginationNotice ? chalk.dim(paginationNotice) : '',
+        )
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: sanitized, nextCursor: null },
@@ -53,7 +68,7 @@ export async function listNotifications(options: ListOptions): Promise<void> {
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: sanitized, nextCursor: null },
@@ -89,12 +104,7 @@ export async function listNotifications(options: ListOptions): Promise<void> {
 
     console.log(blocks.join('\n\n'))
 
-    if (hasMore) {
-        const nextOffset = offset + limit
-        console.log(
-            chalk.dim(
-                `\n... showing ${offset + 1}-${offset + notifications.length} of ${totalCount}. Use --offset ${nextOffset} to see more.`,
-            ),
-        )
+    if (paginationNotice) {
+        console.log(chalk.dim(`\n${paginationNotice}`))
     }
 }

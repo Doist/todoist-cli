@@ -1,9 +1,11 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
@@ -13,6 +15,7 @@ import { labelUrl } from '../../lib/urls.js'
 import { resolveLabelNameForView } from './helpers.js'
 
 export async function viewLabel(nameOrId: string, options: PaginatedViewOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const resolved = await resolveLabelNameForView(nameOrId)
     const api = await getApi()
 
@@ -32,7 +35,12 @@ export async function viewLabel(nameOrId: string, options: PaginatedViewOptions)
         { limit: targetLimit },
     )
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(tasks, (task) => task.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: tasks, nextCursor },
@@ -44,7 +52,7 @@ export async function viewLabel(nameOrId: string, options: PaginatedViewOptions)
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: tasks, nextCursor },

@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Task } from '../lib/api/core.js'
@@ -7,6 +8,7 @@ import { formatDateHeader, getLocalDate, isDueBefore } from '../lib/dates.js'
 import type { PaginatedViewOptions } from '../lib/options.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
@@ -24,6 +26,7 @@ export async function showUpcoming(
     daysArg: string | undefined,
     options: UpcomingOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const days = daysArg ? parseInt(daysArg, 10) : 7
     if (Number.isNaN(days) || days < 1) {
         console.error('Days must be a positive number')
@@ -44,6 +47,7 @@ export async function showUpcoming(
     const baseQuery = `due before: ${days} days`
     const query = options.anyAssignee ? baseQuery : `(${baseQuery}) & (assigned to: me | !assigned)`
 
+    const needsProjects = Boolean(options.workspace || options.personal || outputMode === 'human')
     const [{ results: tasks, nextCursor }, projects] = await Promise.all([
         paginate(
             (cursor, limit) =>
@@ -54,7 +58,7 @@ export async function showUpcoming(
                 }),
             { limit: targetLimit, startCursor: options.cursor },
         ),
-        fetchProjects(api),
+        needsProjects ? fetchProjects(api) : Promise.resolve(new Map()),
     ])
 
     const filterResult = await filterByWorkspaceOrPersonal({
@@ -67,7 +71,12 @@ export async function showUpcoming(
 
     const relevantTasks = filterResult.tasks
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(relevantTasks, (task) => task.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: relevantTasks, nextCursor },
@@ -79,7 +88,7 @@ export async function showUpcoming(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: relevantTasks, nextCursor },
@@ -176,6 +185,7 @@ export function registerUpcomingCommand(program: Command): void {
         .option('--personal', 'Filter to tasks in personal projects')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .option('--show-urls', 'Show web app URLs for each task')
         .action(showUpcoming)

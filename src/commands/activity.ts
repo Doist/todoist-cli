@@ -1,3 +1,4 @@
+import { resolveOutputMode } from '@doist/cli-core'
 import {
     isWorkspaceProject,
     type ActivityEvent,
@@ -9,7 +10,6 @@ import { getApi, getCurrentUserId, type Project } from '../lib/api/core.js'
 import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
-import { CliError } from '../lib/errors.js'
 import type { Pagination } from '../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { paginate } from '../lib/pagination.js'
@@ -150,13 +150,7 @@ export function registerActivityCommand(program: Command): void {
         .option('--ndjson', 'Output as newline-delimited JSON')
         .option('--full', 'Include all fields in JSON output')
         .action(async (options: ActivityOptions) => {
-            const selectedOutputFormats = [options.json, options.ndjson].filter(Boolean).length
-            if (selectedOutputFormats > 1) {
-                throw new CliError(
-                    'CONFLICTING_OPTIONS',
-                    'Options --json and --ndjson are mutually exclusive.',
-                )
-            }
+            const outputMode = resolveOutputMode(options)
 
             const api = await getApi()
 
@@ -198,14 +192,14 @@ export function registerActivityCommand(program: Command): void {
                 { limit: targetLimit, startCursor: options.cursor },
             )
 
-            if (options.json) {
+            if (outputMode === 'json') {
                 console.log(
                     formatPaginatedJson({ results: events, nextCursor }, undefined, options.full),
                 )
                 return
             }
 
-            if (options.ndjson) {
+            if (outputMode === 'ndjson') {
                 console.log(
                     formatPaginatedNdjson({ results: events, nextCursor }, undefined, options.full),
                 )

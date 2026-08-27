@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
@@ -7,6 +8,7 @@ import type { ViewOptions } from '../../lib/options.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function listCollaborators(ref: string, options: ViewOptions = {}): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
     const project = await resolveProjectRef(api, ref)
 
@@ -39,7 +41,12 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
             cursor = response.nextCursor
         }
 
-        if (options.json) {
+        if (outputMode === 'ids-only') {
+            outputIds(allUsers, (user) => user.userId)
+            return
+        }
+
+        if (outputMode === 'json') {
             const output = options.full
                 ? allUsers
                 : allUsers.map((u) => ({
@@ -52,7 +59,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
             return
         }
 
-        if (options.ndjson) {
+        if (outputMode === 'ndjson') {
             for (const u of allUsers) {
                 const output = options.full
                     ? u
@@ -94,7 +101,12 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
         cursor = response.nextCursor
     }
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(allUsers, (user) => user.id)
+        return
+    }
+
+    if (outputMode === 'json') {
         const output = options.full
             ? allUsers
             : allUsers.map((u) => ({ id: u.id, name: u.name, email: u.email }))
@@ -102,7 +114,7 @@ export async function listCollaborators(ref: string, options: ViewOptions = {}):
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const u of allUsers) {
             console.log(
                 JSON.stringify(options.full ? u : { id: u.id, name: u.name, email: u.email }),

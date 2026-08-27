@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi, type Project, type Task } from '../../lib/api/core.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
@@ -5,6 +6,7 @@ import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatTaskRow,
@@ -83,6 +85,7 @@ function validateCompletionDateRange(since: string, until: string): void {
 }
 
 export async function listCompleted(options: CompletedListOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const isSearch = options.search !== undefined
 
     if (isSearch && !options.search) {
@@ -138,8 +141,13 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
         { limit: targetLimit, startCursor: options.cursor },
     )
 
+    if (outputMode === 'ids-only') {
+        outputIds(tasks, (task) => task.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
     if (tasks.length === 0) {
-        if (options.json) {
+        if (outputMode === 'json') {
             console.log(
                 formatPaginatedJson(
                     { results: [], nextCursor },
@@ -148,7 +156,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
                     options.showUrls,
                 ),
             )
-        } else if (options.ndjson) {
+        } else if (outputMode === 'ndjson') {
             console.log(
                 formatPaginatedNdjson(
                     { results: [], nextCursor },
@@ -181,7 +189,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
         })
     }
 
-    if (options.json) {
+    if (outputMode === 'json') {
         const tasksWithAssignee = tasks.map((task) => ({
             ...task,
             responsibleName: getAssigneeName(task),
@@ -197,7 +205,7 @@ export async function listCompleted(options: CompletedListOptions): Promise<void
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         const tasksWithAssignee = tasks.map((task) => ({
             ...task,
             responsibleName: getAssigneeName(task),

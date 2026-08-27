@@ -28,6 +28,7 @@ Examples:
         .option('--show-urls', 'Show web app URLs for each comment')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .option('--full', 'Include all fields in JSON output')
         .option('--lines <n>', 'Number of content lines to show (default: 3)')
         .option('--raw', 'Disable markdown rendering')

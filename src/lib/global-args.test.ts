@@ -4,6 +4,7 @@ import {
     getRequestedUserRef,
     getVerboseLevel,
     isAccessible,
+    isIdsOnlyMode,
     isJsonMode,
     isNdjsonMode,
     isQuiet,
@@ -43,6 +44,10 @@ describe('parseGlobalArgs', () => {
             expect(parseGlobalArgs(['--raw']).raw).toBe(true)
         })
 
+        it('parses --ids-only', () => {
+            expect(parseGlobalArgs(['--ids-only']).idsOnly).toBe(true)
+        })
+
         it('defaults all flags to false/0', () => {
             const result = parseGlobalArgs([])
             expect(result).toEqual({
@@ -52,6 +57,7 @@ describe('parseGlobalArgs', () => {
                 verbose: 0,
                 accessible: false,
                 noSpinner: false,
+                idsOnly: false,
                 raw: false,
                 progressJsonl: false,
                 user: undefined,
@@ -219,6 +225,11 @@ describe('query functions', () => {
         expect(isNdjsonMode()).toBe(true)
     })
 
+    it('isIdsOnlyMode reads from parsed args', () => {
+        process.argv = ['node', 'td', 'task', 'list', '--ids-only']
+        expect(isIdsOnlyMode()).toBe(true)
+    })
+
     it('isQuiet reads from parsed args', () => {
         process.argv = ['node', 'td', 'task', 'add', '-q', 'Buy milk']
         expect(isQuiet()).toBe(true)
@@ -327,6 +338,7 @@ describe('shouldDisableSpinner', () => {
     })
 
     it.each([
+        ['--ids-only', ['node', 'td', 'today', '--ids-only']],
         ['--json', ['node', 'td', 'today', '--json']],
         ['--ndjson', ['node', 'td', 'today', '--ndjson']],
         ['--no-spinner', ['node', 'td', 'today', '--no-spinner']],

@@ -39,6 +39,7 @@ Requires authenticating with the dev:app_console scope:
         .description('List your registered Todoist apps')
         .option('--json', 'Output as JSON')
         .option('--ndjson', 'Output as newline-delimited JSON')
+        .option('--ids-only', 'Output only IDs, one per line')
         .action(listApps)
 
     apps.command('view [ref]', { isDefault: true })

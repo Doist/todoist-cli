@@ -12,6 +12,7 @@ import {
     formatJson,
     formatNdjson,
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
     formatPriority,
@@ -737,5 +738,11 @@ describe('formatNextCursorFooter', () => {
         const result = formatNextCursorFooter('some-cursor')
         expect(result).toContain('more items exist')
         expect(result).toContain('--all')
+    })
+
+    it('formats a data-output notice without a leading newline', () => {
+        const result = formatNextCursorNotice('some-cursor')
+        expect(result).toContain('... more items exist')
+        expect(result).not.toContain('\n')
     })
 })

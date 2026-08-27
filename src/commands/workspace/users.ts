@@ -1,8 +1,10 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { formatNextCursorNotice } from '../../lib/output.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 import { WORKSPACE_ROLES } from './helpers.js'
 
@@ -10,6 +12,7 @@ export async function listWorkspaceUsers(
     ref: string | undefined,
     options: PaginatedViewOptions & { role?: string },
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -43,12 +46,13 @@ export async function listWorkspaceUsers(
         fullName: string
         role: string
     }> = []
-    let cursor: string | undefined = options.cursor
+    let requestCursor: string | undefined = options.cursor
+    let nextCursor: string | undefined
 
     while (allUsers.length < targetLimit) {
         const response = await api.getWorkspaceUsers({
             workspaceId: workspace.id,
-            cursor,
+            cursor: requestCursor,
             limit: Math.min(targetLimit - allUsers.length, 200),
         })
 
@@ -63,14 +67,24 @@ export async function listWorkspaceUsers(
             }
         }
 
-        if (!response.hasMore || !response.nextCursor) break
-        cursor = response.nextCursor
+        nextCursor = response.hasMore ? response.nextCursor : undefined
+        if (!nextCursor) break
+        requestCursor = nextCursor
     }
 
     const users = allUsers.slice(0, targetLimit)
-    const hasMore = allUsers.length > targetLimit || cursor !== undefined
+    const hasMore = allUsers.length > targetLimit || nextCursor !== undefined
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(
+            users,
+            (user) => user.userId,
+            formatNextCursorNotice(hasMore ? (nextCursor ?? 'has-more') : null),
+        )
+        return
+    }
+
+    if (outputMode === 'json') {
         const output = options.full
             ? users
             : users.map((u) => ({
@@ -80,12 +94,12 @@ export async function listWorkspaceUsers(
                   role: u.role,
               }))
         console.log(
-            JSON.stringify({ results: output, nextCursor: hasMore ? cursor : null }, null, 2),
+            JSON.stringify({ results: output, nextCursor: hasMore ? nextCursor : null }, null, 2),
         )
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const u of users) {
             const output = options.full
                 ? u
@@ -98,7 +112,7 @@ export async function listWorkspaceUsers(
             console.log(JSON.stringify(output))
         }
         if (hasMore) {
-            console.log(JSON.stringify({ _meta: true, nextCursor: cursor }))
+            console.log(JSON.stringify({ _meta: true, nextCursor }))
         }
         return
     }

@@ -153,7 +153,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `formatNdjson`, `formatPaginatedJson`, `processJsonItem` (essential-field
   picker used by JSON callers that build composite payloads),
   `formatChildrenBlock`, `processChildrenJson`, `formatDueDate`,
-  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`
+  `formatPriority`, `formatError`, `formatErrorJson`, `printDryRun`. List commands
+  import cli-core's `outputIds` and `resolveOutputMode` directly to print IDs and
+  validate human, JSON, NDJSON, and IDs-only output.
 - **`children.ts`** — `--include-children` support: `getTaskChildren()`
   (parentId query plus a nesting probe per child), `buildProjectChildren()`
   (pure; groups a pre-fetched personal-project list), `resolveChildren()`
@@ -184,8 +186,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `resolveAssigneeId`, `fetchCollaboratorsForProject`, `resolveNotifyIds`
 - **`comment-recipients.ts`** — `getDefaultCommentRecipients`: who a new
   comment notifies when the caller does not say
-- **`global-args.ts`** — `isJsonMode`, `isNdjsonMode`, `isRawMode`,
-  `isQuiet`, `isAccessible`, progress-jsonl target
+- **`global-args.ts`** — extends cli-core's canonical machine-output parsing with
+  `isJsonMode`, `isNdjsonMode`, `isIdsOnlyMode`, `isRawMode`, `isQuiet`,
+  `isAccessible`, and the Todoist progress-jsonl target
 - **`logger.ts`** — verbose levels 0–4, `initializeLogger`
 - **`dates.ts` / `duration.ts`** — date filters, `"2h30m"` parsing/formatting
 - **`permissions.ts`** — collaborator permission parsing

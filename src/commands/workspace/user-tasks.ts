@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
@@ -9,6 +10,7 @@ export interface WorkspaceUserTasksOptions {
     projectIds?: string
     json?: boolean
     ndjson?: boolean
+    idsOnly?: boolean
     full?: boolean
 }
 
@@ -16,6 +18,7 @@ export async function listWorkspaceUserTasks(
     ref: string | undefined,
     options: WorkspaceUserTasksOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     if (!options.user) {
         throw new CliError('MISSING_ID', 'Missing required --user <ref>.', [
             'Pass an email, full name, or id:xxx, e.g. --user alice@example.com',
@@ -40,7 +43,12 @@ export async function listWorkspaceUserTasks(
     })
     const tasks = response.tasks
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(tasks, (task) => task.id)
+        return
+    }
+
+    if (outputMode === 'json') {
         const output = options.full
             ? tasks
             : tasks.map((t) => ({
@@ -59,7 +67,7 @@ export async function listWorkspaceUserTasks(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const t of tasks) {
             const output = options.full
                 ? t

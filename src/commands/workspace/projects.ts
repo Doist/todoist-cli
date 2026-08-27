@@ -1,8 +1,10 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders } from '../../lib/api/workspaces.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
+import { formatNextCursorNotice } from '../../lib/output.js'
 import { LIMITS, paginate } from '../../lib/pagination.js'
 import { resolveWorkspaceRef } from '../../lib/refs.js'
 
@@ -10,6 +12,7 @@ export async function listWorkspaceProjects(
     ref: string | undefined,
     options: PaginatedViewOptions,
 ): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const workspace = await resolveWorkspaceRef(ref)
     const api = await getApi()
 
@@ -30,11 +33,16 @@ export async function listWorkspaceProjects(
     const allProjects = workspaceProjects.slice(0, targetLimit)
     const nextCursor = workspaceProjects.length > targetLimit ? 'has-more' : null
 
+    if (outputMode === 'ids-only') {
+        outputIds(allProjects, (project) => project.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
     const folders = await fetchWorkspaceFolders()
     const workspaceFolders = folders.filter((f) => f.workspaceId === workspace.id)
     const folderMap = new Map(workspaceFolders.map((f) => [f.id, f.name]))
 
-    if (options.json) {
+    if (outputMode === 'json') {
         const output = options.full
             ? allProjects
             : allProjects.map((p) => ({
@@ -49,7 +57,7 @@ export async function listWorkspaceProjects(
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         for (const p of allProjects) {
             const output = options.full
                 ? p

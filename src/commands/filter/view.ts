@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import {
     findViewOptions,
     isWorkspaceProject,
@@ -13,6 +14,7 @@ import { getLogger } from '../../lib/logger.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatJson,
     formatNdjson,
     formatPaginatedJson,
@@ -197,6 +199,7 @@ async function loadWorkspaceNames(
 }
 
 export async function showFilter(nameOrId: string, options: FilterViewOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const requested = {
         field: options.sort ? parseTaskSortField(options.sort) : undefined,
         direction: options.sortOrder ? parseTaskSortDirection(options.sortOrder) : undefined,
@@ -276,7 +279,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
 
     // Do not deduplicate: Todoist can intentionally show one task in multiple lists.
     const tasks = sections.flatMap((section) => section.results)
-    const isPretty = !options.json && !options.ndjson
+    const isPretty = outputMode === 'human'
 
     // Rendering needs the projects and collaborators for every task; sorting
     // needs them, plus the account timezone, only for some fields. Fetch when
@@ -318,7 +321,17 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
         }))
     }
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        const hasMore = sections.some((section) => section.nextCursor)
+        outputIds(
+            sections.flatMap((section) => section.results),
+            (task) => task.id,
+            formatNextCursorNotice(hasMore ? 'has-more' : null),
+        )
+        return
+    }
+
+    if (outputMode === 'json') {
         if (hasMultipleSections) {
             console.log(formatFilterSectionsJson(sections, options.full, options.showUrls))
             return
@@ -335,7 +348,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         if (hasMultipleSections) {
             console.log(formatFilterSectionsNdjson(sections, options.full, options.showUrls))
             return

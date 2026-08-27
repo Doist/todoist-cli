@@ -5,7 +5,13 @@ import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
 import { BaseCliError, CliError } from './lib/errors.js'
-import { getRequestedUserRef, isJsonMode, isNdjsonMode, isRawMode } from './lib/global-args.js'
+import {
+    getRequestedUserRef,
+    isIdsOnlyMode,
+    isJsonMode,
+    isNdjsonMode,
+    isRawMode,
+} from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
@@ -43,6 +49,7 @@ program
 Note for AI/LLM agents:
   Use "td task add" (not "td add") to create tasks with structured flags.
   Use --json or --ndjson flags for unambiguous, parseable output.
+  Use --ids-only on supported list commands when you only need entity IDs.
   Default JSON shows essential fields; use --full for all fields.
   Use --quiet to suppress success messages (create commands still print the ID).
   Use --user <id|email> on any command to act as a specific stored account.`,
@@ -285,6 +292,7 @@ if (process.argv[2] === 'completion-server') {
                 !noMarkdownCommands.has(commandName) &&
                 !isJsonMode() &&
                 !isNdjsonMode() &&
+                !isIdsOnlyMode() &&
                 !isRawMode()
             const markdownReady = needsMarkdown ? preloadMarkdown() : undefined
 

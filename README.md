@@ -141,11 +141,17 @@ td today                               # tasks due today + overdue
 td inbox                               # inbox tasks
 td task list                           # all tasks
 td task list --project "Work"          # tasks in project
+td task list --project "Work" --ids-only # one task ID per line
 td project list                        # all projects
 td task view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB  # paste a URL
 ```
 
 Run `td --help` or `td <command> --help` for more options.
+
+Supported list commands accept `--ids-only` when each result has a stable ID. It prints one
+ID per line and no human-readable empty-state text. When more pages exist, the pagination
+notice goes to stderr so stdout remains safe for pipes. `--ids-only`, `--json`, and `--ndjson`
+are mutually exclusive.
 
 ## Accessibility
 

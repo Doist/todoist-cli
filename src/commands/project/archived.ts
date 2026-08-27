@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { isWorkspaceProject } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
@@ -6,6 +7,7 @@ import { isAccessible } from '../../lib/global-args.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import {
     formatNextCursorFooter,
+    formatNextCursorNotice,
     formatPaginatedJson,
     formatPaginatedNdjson,
 } from '../../lib/output.js'
@@ -13,6 +15,7 @@ import { LIMITS, paginate } from '../../lib/pagination.js'
 import { projectUrl } from '../../lib/urls.js'
 
 export async function listArchivedProjects(options: PaginatedViewOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const api = await getApi()
 
     const targetLimit = options.all
@@ -26,7 +29,12 @@ export async function listArchivedProjects(options: PaginatedViewOptions): Promi
         { limit: targetLimit, startCursor: options.cursor },
     )
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(projects, (project) => project.id, formatNextCursorNotice(nextCursor))
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: projects, nextCursor },
@@ -38,7 +46,7 @@ export async function listArchivedProjects(options: PaginatedViewOptions): Promi
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: projects, nextCursor },

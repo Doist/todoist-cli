@@ -1,3 +1,4 @@
+import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import chalk from 'chalk'
 import { fetchFilters } from '../../lib/api/filters.js'
 import { isAccessible } from '../../lib/global-args.js'
@@ -6,9 +7,15 @@ import { formatPaginatedJson, formatPaginatedNdjson } from '../../lib/output.js'
 import { filterUrl } from '../../lib/urls.js'
 
 export async function listFilters(options: PaginatedViewOptions): Promise<void> {
+    const outputMode = resolveOutputMode(options)
     const filters = await fetchFilters()
 
-    if (options.json) {
+    if (outputMode === 'ids-only') {
+        outputIds(filters, (filter) => filter.id)
+        return
+    }
+
+    if (outputMode === 'json') {
         console.log(
             formatPaginatedJson(
                 { results: filters, nextCursor: null },
@@ -20,7 +27,7 @@ export async function listFilters(options: PaginatedViewOptions): Promise<void> 
         return
     }
 
-    if (options.ndjson) {
+    if (outputMode === 'ndjson') {
         console.log(
             formatPaginatedNdjson(
                 { results: filters, nextCursor: null },

@@ -1,8 +1,8 @@
 /**
  * Per-CLI extension of `@doist/cli-core`'s global-args parser.
  *
- * Layers todoist-cli's `--user <ref>` and `--raw` flags on top of the
- * canonical shape (`--json`, `--ndjson`, `--quiet`/`-q`, `--verbose`/`-v`,
+ * Layers todoist-cli's `--user <ref>` and `--raw` flags on top of the canonical
+ * shape (`--json`, `--ndjson`, `--ids-only`, `--quiet`/`-q`, `--verbose`/`-v`,
  * `--accessible`, `--no-spinner`, `--progress-jsonl`).
  */
 
@@ -15,6 +15,7 @@ import {
 } from '@doist/cli-core'
 
 export type TdGlobalArgs = GlobalArgs & {
+    idsOnly: boolean
     raw: boolean
     /** --user <ref> — selects which stored Todoist account to use. */
     user: string | undefined
@@ -100,6 +101,10 @@ export function isJsonMode(): boolean {
 
 export function isNdjsonMode(): boolean {
     return store.get().ndjson
+}
+
+export function isIdsOnlyMode(): boolean {
+    return store.get().idsOnly
 }
 
 export function isQuiet(): boolean {
