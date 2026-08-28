@@ -1,3 +1,9 @@
+## [5.1.1](https://github.com/Doist/todoist-cli/compare/v5.1.0...v5.1.1) (2026-08-28)
+
+### Bug Fixes
+
+* update Todoist SDK to 15.0.1 ([#497](https://github.com/Doist/todoist-cli/issues/497)) ([5025a1e](https://github.com/Doist/todoist-cli/commit/5025a1eb4db7e34e0268aa5fd587c983cf68275c))
+
 ## [5.1.0](https://github.com/Doist/todoist-cli/compare/v5.0.0...v5.1.0) (2026-08-27)
 
 ### Features
