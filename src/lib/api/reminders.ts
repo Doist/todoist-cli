@@ -3,6 +3,7 @@ import {
     type LocationReminder,
     type LocationTrigger,
     type Reminder as SdkReminder,
+    type SyncReminder,
 } from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
@@ -24,7 +25,7 @@ export interface Reminder {
     isDeleted: boolean
 }
 
-function toReminder(r: SdkReminder): Reminder {
+function toReminder(r: SyncReminder): Reminder {
     return {
         id: r.id,
         itemId: r.itemId,
