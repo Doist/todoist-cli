@@ -1,3 +1,9 @@
+## [5.2.0](https://github.com/Doist/todoist-cli/compare/v5.1.3...v5.2.0) (2026-09-02)
+
+### Features
+
+* **filter:** add --description to filter create and update ([#486](https://github.com/Doist/todoist-cli/issues/486)) ([2e32cb8](https://github.com/Doist/todoist-cli/commit/2e32cb86954e11c093493d5f1fed76c002b358ea)), closes [Doist/Todoist#29669](https://github.com/Doist/Todoist/issues/29669)
+
 ## [5.1.3](https://github.com/Doist/todoist-cli/compare/v5.1.2...v5.1.3) (2026-08-31)
 
 ### Bug Fixes
