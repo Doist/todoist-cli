@@ -157,6 +157,40 @@ describe('filter create --json', () => {
         expect(parsed.query).toBe('today')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
     })
+
+    it('keeps the description in the JSON output', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'My Filter',
+            query: 'today',
+            description: 'Everything for the day job',
+            color: 'charcoal',
+            isFavorite: false,
+            isDeleted: false,
+            isFrozen: false,
+            itemOrder: 0,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'My Filter',
+            '--query',
+            'today',
+            '--description',
+            'Everything for the day job',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.description).toBe('Everything for the day job')
+    })
 })
 
 describe('filter create', () => {
