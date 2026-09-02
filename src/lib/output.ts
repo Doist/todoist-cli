@@ -345,7 +345,14 @@ const LOCATION_REMINDER_ESSENTIAL_FIELDS = [
     'locTrigger',
     'radius',
 ] as const
-const FILTER_ESSENTIAL_FIELDS = ['id', 'name', 'query', 'color', 'isFavorite'] as const
+const FILTER_ESSENTIAL_FIELDS = [
+    'id',
+    'name',
+    'description',
+    'query',
+    'color',
+    'isFavorite',
+] as const
 const FOLDER_ESSENTIAL_FIELDS = ['id', 'name', 'workspaceId', 'defaultOrder', 'childOrder'] as const
 const APP_ESSENTIAL_FIELDS = [
     'id',

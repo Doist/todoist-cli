@@ -6,6 +6,7 @@ export type Filter = SdkFilter
 export interface AddFilterArgs {
     name: string
     query: string
+    description?: string
     color?: ColorKey
     isFavorite?: boolean
 }
@@ -30,6 +31,7 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
                     name: args.name,
                     query: args.query,
                     ...pickDefined({
+                        description: args.description,
                         color: args.color,
                         isFavorite: args.isFavorite,
                     }),
@@ -44,6 +46,7 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
         id,
         name: args.name,
         query: args.query,
+        description: args.description ?? null,
         color: args.color ?? 'charcoal',
         isFavorite: args.isFavorite ?? false,
         isDeleted: false,
@@ -55,6 +58,8 @@ export async function addFilter(args: AddFilterArgs): Promise<Filter> {
 export interface UpdateFilterArgs {
     name?: string
     query?: string
+    /** `null` clears an existing description; omitting the key leaves it alone. */
+    description?: string | null
     color?: ColorKey
     isFavorite?: boolean
 }
@@ -68,6 +73,7 @@ export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<
                 ...pickDefined({
                     name: args.name,
                     query: args.query,
+                    description: args.description,
                     color: args.color,
                     isFavorite: args.isFavorite,
                 }),

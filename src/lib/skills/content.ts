@@ -235,8 +235,10 @@ td filter list
 td filter view "Urgent work"
 td filter view "Urgent work" --sort priority --sort-order desc   # override the view's sorting
 td filter view "Urgent work" --sort none                         # keep the raw API order
-td filter create --name "Urgent work" --query "p1 & #Work"
+td filter create --name "Urgent work" --query "p1 & #Work" --description "Everything blocking the release"
 td filter update "Urgent work" --query "p1 & #Work & today"
+td filter update "Urgent work" --description "Updated scope"     # description-only update
+td filter update "Urgent work" --no-description                  # clear the description
 td filter delete "Urgent work" --yes
 td filter browse "Urgent work"
 

@@ -157,6 +157,40 @@ describe('filter create --json', () => {
         expect(parsed.query).toBe('today')
         expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Created:'))
     })
+
+    it('keeps the description in the JSON output', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockAddFilter.mockResolvedValue({
+            id: 'filter-new',
+            name: 'My Filter',
+            query: 'today',
+            description: 'Everything for the day job',
+            color: 'charcoal',
+            isFavorite: false,
+            isDeleted: false,
+            isFrozen: false,
+            itemOrder: 0,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'My Filter',
+            '--query',
+            'today',
+            '--description',
+            'Everything for the day job',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        expect(parsed.description).toBe('Everything for the day job')
+    })
 })
 
 describe('filter create', () => {
@@ -187,6 +221,32 @@ describe('filter create', () => {
             expect.objectContaining({ name: 'Work', query: '@work' }),
         )
         expect(consoleSpy).toHaveBeenCalledWith('Created: Work')
+    })
+
+    it('creates filter with --description', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockAddFilter.mockResolvedValue(
+            makeFilter({ id: 'filter-new', name: 'Work', query: '@work' }),
+        )
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Work',
+            '--query',
+            '@work',
+            '--description',
+            'Everything for the day job',
+        ])
+
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            expect.objectContaining({ description: 'Everything for the day job' }),
+        )
     })
 
     it('creates filter with --color', async () => {
@@ -351,6 +411,47 @@ describe('filter update', () => {
             name: 'New Name',
         })
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name (id:filter-1)')
+    })
+
+    it('updates filter description', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'filter',
+            'update',
+            'Work',
+            '--description',
+            'Everything for the day job',
+        ])
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            description: 'Everything for the day job',
+        })
+    })
+
+    it('clears the description with --no-description', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+        mockUpdateFilter.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--no-description'])
+
+        // null is the API's "clear it"; an absent key would leave the description alone.
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
+            description: null,
+        })
     })
 
     it('updates filter query', async () => {
