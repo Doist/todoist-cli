@@ -2,6 +2,7 @@ import { isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
 import { getCurrentUserId, type Project, type Task } from './api/core.js'
 import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'
+import { firstCodePoint } from './text.js'
 
 export interface CollaboratorInfo {
     id: string
@@ -132,7 +133,9 @@ export function formatUserShortName(fullName: string): string {
         return parts[0]
     }
     const firstName = parts[0]
-    const lastInitial = parts[parts.length - 1][0]
+    // By code point, not `[0]`: indexing by code unit takes half of an astral
+    // character, so a last name starting with an emoji yields a lone surrogate.
+    const lastInitial = firstCodePoint(parts[parts.length - 1])
     return `${firstName} ${lastInitial}.`
 }
 
