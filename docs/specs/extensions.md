@@ -55,7 +55,7 @@ The user-facing word is **extension**, not plugin. It matches `gh`, it avoids im
 td goals                     # runs td-goals with no args
 td goals add "Ship v5" --by 2026-12-01
 td goals --help              # forwarded verbatim; td never interprets args after the name
-td --user scott@doist.com goals list   # global flags before the name are td's
+td --user alice@example.com goals list   # global flags before the name are td's
 ```
 
 Rules:
@@ -82,11 +82,11 @@ td extension exec <name> [args...]
 
 `<source>` is one of:
 
-| Form          | Example                                        | Result                                                                            |
-| ------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
-| `owner/repo`  | `Doist/td-goals`                               | GitHub. Binary release if the latest release has a matching asset, else git clone |
-| Full URL      | `https://github.com/scottlovegrove/td-standup` | Same as above; also allows non-github.com hosts via git                           |
-| `.` or a path | `td extension install .`                       | Local development install: a symlink to the directory                             |
+| Form          | Example                                 | Result                                                                            |
+| ------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `owner/repo`  | `Doist/td-goals`                        | GitHub. Binary release if the latest release has a matching asset, else git clone |
+| Full URL      | `https://github.com/example/td-standup` | Same as above; also allows non-github.com hosts via git                           |
+| `.` or a path | `td extension install .`                | Local development install: a symlink to the directory                             |
 
 Repository names must start with `td-`. The command name is the repository name without the prefix. The same rule applies to local installs: the directory's basename must be `td-<name>`, it must contain an executable of the same name, and the name is validated with the same pattern and errors as a GitHub install.
 
@@ -117,7 +117,7 @@ Review the source before use.
 ```
 NAME        SOURCE                       VERSION   KIND
 goals       Doist/td-goals               v0.3.0    binary
-standup     scottlovegrove/td-standup    a1b2c3d4  git (pinned)
+standup     example/td-standup           a1b2c3d4  git (pinned)
 scratch     ~/code/td-scratch            —         local
 weekly      example/td-weekly            0.1.0     git · shadowed by built-in "weekly"
 ```
@@ -160,7 +160,7 @@ ${XDG_DATA_HOME:-~/.local/share}/todoist-cli/extensions/
 │  ├─ td-extension.json     # optional, authored by the extension
 │  ├─ package.json          # optional; triggers npm ci on install/upgrade
 │  └─ node_modules/
-└─ td-scratch -> /home/scott/code/td-scratch   # local install (symlink)
+└─ td-scratch -> ~/code/td-scratch   # local install (symlink)
 
 ${XDG_STATE_HOME:-~/.local/state}/todoist-cli/extensions/
 └─ td-goals.json            # { pinned, checkedForUpdateAt, latestRelease }
@@ -350,7 +350,6 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ## References
 
-- Original proposal: https://comms.todoist.com/69/msg/B7NxtduFCfeD3nWmyUvxb/m/CegmRSdTDjy5nHiPWXNvM
 - `gh extension` manual: https://cli.github.com/manual/gh_extension
 - Creating GitHub CLI extensions: https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions
 - cli/cli extension manager source: https://github.com/cli/cli/tree/trunk/pkg/cmd/extension
