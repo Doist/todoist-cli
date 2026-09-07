@@ -21,8 +21,8 @@ From the original proposal:
 Concretely:
 
 1. **Prototyping.** A feature behind a server-side flag, or one that is still being designed, can ship as `Doist/td-goals` today and be used by the people testing it, without a release of `td` and without dead code in `main` when the experiment ends. If the feature graduates, the extension is either promoted into core or stays an extension.
-2. **Community.** People already script `td` in shell and Python. An extension mechanism gives those scripts a home (`td standup`, `td weekly-review`, `td export-obsidian`) and a discovery path, with no obligation on Doist to maintain them.
-3. **Consistency with the other Doist CLIs.** One implementation in cli-core means `tdc` and `tda` gain the same feature for free, with the same commands and the same on-disk layout.
+2. **Community.** People already script `td` in shell and Python. An extension mechanism gives those scripts a home (`td standup`, `td weekly-review`, `td export-obsidian`) and a discovery path, with no obligation on Todoist to maintain them.
+3. **Consistency with the other Todoist CLIs.** One implementation in cli-core means `tdc` and `tda` gain the same feature for free, with the same commands and the same on-disk layout.
 
 ### Non-goals
 
@@ -100,14 +100,14 @@ Install steps for a GitHub source:
 6. If the clone contains `package.json`, run `npm ci --omit=dev` (falling back to `npm install --omit=dev` when there is no lockfile) inside it. Lifecycle scripts are allowed to run: native dependencies need them, and the trust decision was already made at step 3. `npm` is expected because `td` is normally installed with it, but it is not guaranteed (Debian packages Node and npm separately, and some setups use pnpm or corepack). A missing `npm` fails with `EXTENSION_NPM_MISSING` and a hint to install npm or to vendor the dependencies. Any other failure is `EXTENSION_INSTALL_FAILED` with the npm output attached as hints.
 7. Move the staging directory into place and print the install location.
 
-`GH_TOKEN` / `GITHUB_TOKEN` are honoured for the GitHub API and asset downloads so that private repositories work. This matters for Doist-internal prototypes. Git clones use the user's own git credential setup.
+`GH_TOKEN` / `GITHUB_TOKEN` are honoured for the GitHub API and asset downloads so that private repositories work. This matters for Todoist-internal prototypes. Git clones use the user's own git credential setup.
 
 The trust warning is printed on every install and upgrade:
 
 ```
 Installed td-goals from Doist/td-goals (v0.3.0) to ~/.local/share/todoist-cli/extensions/td-goals
 
-Extensions are not reviewed, signed, or endorsed by Doist. Installing one runs
+Extensions are not reviewed, signed, or endorsed by Todoist. Installing one runs
 code from its publisher with your permissions and your Todoist credentials.
 Review the source before use.
 ```
@@ -328,7 +328,7 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 - **Argument completion.** With `"completion": true` in the manifest, the completion server runs the executable with `TD_COMPLETE_LINE=<line>` and `TD_COMPLETE_POINT=<cursor>` set and no arguments, and takes newline-separated candidates from stdout. Simple enough for a bash script to implement, and it stays out of the way for everyone else.
 - **Agent skills.** An extension may ship `SKILL.md`; `td skill install` and `td skill update` append installed extensions' skill content under an "Extensions" heading so agents learn the new commands. This is the piece that no other CLI's extension system has and it fits the direction `td` is already taking.
-- **npm as an install source.** `td extension install npm:@doist/td-goals`, installing into the extension directory with `npm install --prefix`. Gives Doist a provenance-attested publishing path without GitHub releases. Deferred because GitHub covers the first use cases and the local-path flow already works for development.
+- **npm as an install source.** `td extension install npm:@doist/td-goals`, installing into the extension directory with `npm install --prefix`. Gives Todoist a provenance-attested publishing path without GitHub releases. Deferred because GitHub covers the first use cases and the local-path flow already works for development.
 
 ## Alternatives considered
 
@@ -343,9 +343,9 @@ An unknown command that is not an extension keeps Commander's current message, w
 ## Open questions
 
 1. **cli-core first, or todoist-cli first?** The spec proposes building the generic manager in cli-core from the start. If iteration speed matters more, build in `src/lib/extensions/` here and move it once the shape settles; the cost is one extra PR later.
-2. **Official extensions.** Should extensions under the `Doist` GitHub organisation get a visible marker in `list` and `search`, and be exempt from the trust warning? `gh` marks official ones for telemetry only. A `✓ Doist` column is low cost and useful for the prototyping use case; suggest yes for `list`, but keep the warning.
+2. **Official extensions.** Should extensions under the `Doist` GitHub organisation get a visible marker in `list` and `search`, and be exempt from the trust warning? `gh` marks official ones for telemetry only. A `✓ Todoist` column is low cost and useful for the prototyping use case; suggest yes for `list`, but keep the warning.
 3. **Windows.** The README lists Windows Credential Manager as a supported store, so Windows is a target. The Node-shebang shortcut and the `sh.exe` fallback both need testing there before phase 1 ships; is that a blocker for phase 1 or acceptable as a known gap?
-4. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Doist-owned ones, mirroring `gh`.
+4. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`.
 5. **Name.** `extension` (with `ext`) as specified, or `plugin`? Decide before anything ships; renaming later means aliases for ever.
 
 ## References
