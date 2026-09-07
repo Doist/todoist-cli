@@ -1,3 +1,9 @@
+## [5.2.2](https://github.com/Doist/todoist-cli/compare/v5.2.1...v5.2.2) (2026-09-07)
+
+### Bug Fixes
+
+* **deps:** update dependency @napi-rs/keyring to v2 ([#510](https://github.com/Doist/todoist-cli/issues/510)) ([01d5e76](https://github.com/Doist/todoist-cli/commit/01d5e76c316d6b2058bed92a15577404dca22453))
+
 ## [5.2.1](https://github.com/Doist/todoist-cli/compare/v5.2.0...v5.2.1) (2026-09-04)
 
 ### Bug Fixes
