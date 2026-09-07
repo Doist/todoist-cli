@@ -40,6 +40,7 @@ Everything below is modelled on `gh extension` (cli/cli `pkg/cmd/extension`), wh
 | Help text for extensions    | Fixed string `Extension <name>`            | Optional `td-extension.json` manifest supplies a description and a minimum host version                                                                      |
 | Node extensions             | No special handling; deps must be vendored | If the clone has a `package.json`, install runs `npm ci --omit=dev`; shebang `#!/usr/bin/env node` scripts run under the host's own `node` on every platform |
 | Release asset verification  | None                                       | Verify against a `checksums.txt` / `*.sha256` release asset when one exists; warn when it does not                                                           |
+| Trust warning               | Printed after install                      | Printed before any step that can run repository code                                                                                                         |
 | Argument completion         | None                                       | Optional, opt-in protocol (phase 3)                                                                                                                          |
 
 ## Terminology
@@ -87,16 +88,17 @@ td extension exec <name> [args...]
 | Full URL      | `https://github.com/scottlovegrove/td-standup` | Same as above; also allows non-github.com hosts via git                           |
 | `.` or a path | `td extension install .`                       | Local development install: a symlink to the directory                             |
 
-Repository names must start with `td-`. The command name is the repository name without the prefix.
+Repository names must start with `td-`. The command name is the repository name without the prefix. The same rule applies to local installs: the directory's basename must be `td-<name>`, it must contain an executable of the same name, and the name is validated with the same pattern and errors as a GitHub install.
 
 Install steps for a GitHub source:
 
 1. Validate the name: must match `^td-[a-z0-9][a-z0-9-]*$`, and the command name must not match a built-in command or alias. Refuse with `EXTENSION_NAME_RESERVED` and a hint pointing at `td extension exec` if the extension is already installed and a later `td` release added a core command with the same name.
 2. If an extension with this command name is already installed from a different owner, refuse with `EXTENSION_ALREADY_INSTALLED` (`--force` replaces it). Same owner: report already installed, suggest `upgrade`.
-3. Query `GET /repos/{owner}/{repo}/releases/latest`. If it has an asset whose name ends in `<platform>-<arch>[.exe]` for the current machine, treat it as a **binary extension**: download the asset to `<dir>/td-<name>[.exe]`, `chmod 0755`, verify the checksum when the release also carries `checksums.txt` or `<asset>.sha256`, and write `manifest.json`. Platform names use Node's `process.platform` / `process.arch` values (`linux-x64`, `darwin-arm64`, `win32-x64`) rather than Go's, since extension authors building with Node will already have those in hand. A release workflow template (phase 2) produces both spellings so a single repo can serve both `gh` and `td` if the author wants.
-4. Otherwise, confirm the repository exists and has a root file named `td-<name>`, then `git clone` it. This is a **script extension**. With `--pin <ref>`, resolve the ref, check it out, and record the SHA.
-5. If the clone contains `package.json`, run `npm ci --omit=dev` (falling back to `npm install --omit=dev` when there is no lockfile) inside it. `npm` is guaranteed to exist because `td` is itself installed with it. Failure here is a hard install failure with the npm output attached as hints.
-6. Print the trust warning (below) and the install location.
+3. Print the trust warning (below). It goes out before any step that can run code from the repository, so a user sees it even if a later step fails or executes something.
+4. Query `GET /repos/{owner}/{repo}/releases/latest`, or `GET /repos/{owner}/{repo}/releases/tags/{ref}` when `--pin <ref>` is given. If the release has an asset whose name ends in `<platform>-<arch>[.exe]` for the current machine, treat it as a **binary extension**: download the asset to `<dir>/td-<name>[.exe]`, `chmod 0755`, verify the checksum when the release also carries `checksums.txt` or `<asset>.sha256`, fetch the repository's `td-extension.json` at the release tag (`GET /repos/{owner}/{repo}/contents/td-extension.json?ref={tag}`, optional, a 404 is not an error), and write `manifest.json` including any `description` and `requires` found there. A pinned tag with no release falls through to the git path below. Platform names use Node's `process.platform` / `process.arch` values (`linux-x64`, `darwin-arm64`, `win32-x64`) rather than Go's, since extension authors building with Node will already have those in hand. A release workflow template (phase 2) produces both spellings so a single repo can serve both `gh` and `td` if the author wants.
+5. Otherwise `git clone` it into a staging directory. This is a **script extension**. With `--pin <ref>`, check out the ref and record the SHA. A clone failure surfaces git's own error as `EXTENSION_NOT_INSTALLABLE` hints. If the clone has no root file named `td-<name>`, the staging directory is removed and install fails with `EXTENSION_NOT_INSTALLABLE`; there is no separate pre-clone check because the clone already proves the repository is reachable.
+6. If the clone contains `package.json`, run `npm ci --omit=dev` (falling back to `npm install --omit=dev` when there is no lockfile) inside it. Lifecycle scripts are allowed to run: native dependencies need them, and the trust decision was already made at step 3. `npm` is expected because `td` is normally installed with it, but it is not guaranteed (Debian packages Node and npm separately, and some setups use pnpm or corepack). A missing `npm` fails with `EXTENSION_NPM_MISSING` and a hint to install npm or to vendor the dependencies. Any other failure is `EXTENSION_INSTALL_FAILED` with the npm output attached as hints.
+7. Move the staging directory into place and print the install location.
 
 `GH_TOKEN` / `GITHUB_TOKEN` are honoured for the GitHub API and asset downloads so that private repositories work. This matters for Doist-internal prototypes. Git clones use the user's own git credential setup.
 
@@ -127,7 +129,7 @@ No network access. `--json` returns the manifest fields plus `path`, `kind`, `sh
 - Git extensions: `git pull --ff-only`; with `--force`, `git fetch` and `git reset --hard origin/HEAD`. Re-run the `npm ci` step if `package.json` changed.
 - Binary extensions: repeat the release lookup and download when the tag differs.
 - Pinned extensions are skipped with a note unless `--force`. Local extensions are always skipped.
-- `--all` checks every extension, fetching release metadata concurrently under a single spinner.
+- `--all` checks every extension, fetching release metadata through a small worker pool (four at a time) under a single spinner. Bounding it avoids a request burst against GitHub's secondary rate limits when many extensions are installed.
 - `--dry-run` reports what would change and exits 0.
 
 #### `remove`
@@ -181,7 +183,9 @@ The config file is untouched. Nothing in this design needs a new config key, so 
     "pinned": false,
     "asset": "td-goals_v0.3.0_linux-x64",
     "sha256": "…",
-    "installedAt": "2026-09-07T10:12:00Z"
+    "installedAt": "2026-09-07T10:12:00Z",
+    "description": "Track quarterly goals against Todoist projects",
+    "requires": { "td": ">=4.0.0" }
 }
 ```
 
@@ -195,7 +199,7 @@ The config file is untouched. Nothing in this design needs a new config key, so 
 }
 ```
 
-- `description` is shown in `td --help` and `td extension list`.
+- `description` is shown in `td --help` and `td extension list`. For binary installs it is copied into `manifest.json` at install time, since the binary asset does not carry the file.
 - `requires.td` is a semver range. When the running `td` does not satisfy it, dispatch still happens, but a warning goes to stderr first. Refusing outright would make a `td` upgrade break a working extension for no good reason; the extension can enforce it itself using `TD_VERSION` if it must.
 - `completion` opts in to the argument-completion protocol (phase 3).
 
@@ -210,7 +214,8 @@ The child process inherits the parent's environment plus:
 | `TD_EXTENSION`                              | `1`                                  | Lets a script know it was launched by `td` (adjust usage strings, skip its own update checks, and so on)                                                                                                                  |
 | `TD_EXTENSION_NAME`                         | `goals`                              | The command name, so one executable can be installed under several names                                                                                                                                                  |
 | `TD_EXTENSION_DIR`                          | absolute path                        | The extension's own directory, for locating bundled assets                                                                                                                                                                |
-| `TD_PATH`                                   | absolute path to the `td` executable | Call the host without depending on `PATH`. Set to `process.argv[1]` resolved, with `process.execPath` available as `TD_NODE` for scripts that need to spawn Node explicitly                                               |
+| `TD_PATH`                                   | absolute path to `td`'s entry script | `process.argv[1]` resolved, so `dist/index.js` of the running install. Directly executable on POSIX (shebang + exec bit). Not directly spawnable on Windows, so use it with `TD_NODE`                                     |
+| `TD_NODE`                                   | absolute path to the Node binary     | `process.execPath`. `spawn(TD_NODE, [TD_PATH, ...args])` is the portable way to call the host from any platform and guarantees the Node version `td` itself runs on                                                       |
 | `TD_VERSION`                                | `4.0.0`                              | Feature detection                                                                                                                                                                                                         |
 | `TD_CONFIG_DIR`                             | `~/.config/todoist-cli`              | Read-only interest, such as finding `config.json` for the default workspace. Extensions must not write here                                                                                                               |
 | `TD_USER`                                   | id or email                          | Set only when `--user` was passed before the extension name. `td` itself gains support for reading `TD_USER` as the fallback for `--user`, so nested `td` calls act as the same account with no plumbing in the extension |
@@ -218,7 +223,10 @@ The child process inherits the parent's environment plus:
 
 Deliberately **not** set:
 
-- **The API token.** Putting a secret in the environment hands it to every grandchild process and to anything that dumps the environment. Extensions that need the raw token run `td auth token view`, which is explicit, already exists, and honours `--user` and `TODOIST_API_TOKEN`. Most extensions should not need it at all; `td … --json` covers the common cases and keeps them insulated from API changes.
+- **The API token.** Putting a secret in the environment hands it to every grandchild process and to anything that dumps the environment. `td` never reads the keyring on an extension's behalf. Extensions that need the raw token run `td auth token view`, which is explicit, already exists, and honours `--user` and `TODOIST_API_TOKEN`. Most extensions should not need it at all; `td … --json` covers the common cases and keeps them insulated from API changes.
+
+One explicit exception: when the user has set `TODOIST_API_TOKEN` themselves, it is inherited like any other variable. Stripping it would break nested `td` calls for people who authenticate that way, and a user who puts a token in the environment has already chosen to expose it to every process they start. The rule is that `td` does not inject secrets, not that it scrubs the user's environment.
+
 - **Output mode.** `--json` after the extension name is the extension's flag to interpret. `td` has no opinion.
 
 ### Calling `td` from an extension
@@ -228,18 +236,22 @@ This is the intended data path and the reason non-TypeScript extensions are prac
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-td="${TD_PATH:-td}"
-"$td" task list --filter "today" --json --full | jq -r '.[] | .content'
+td=(td)
+if [[ -n "${TD_NODE:-}" && -n "${TD_PATH:-}" ]]; then td=("$TD_NODE" "$TD_PATH"); fi
+"${td[@]}" task list --filter "today" --json --full | jq -r '.[] | .content'
 ```
 
 ```js
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-const td = process.env.TD_PATH ?? 'td'
-const { stdout } = await promisify(execFile)(td, ['project', 'list', '--json'])
+const { TD_NODE, TD_PATH } = process.env
+const [cmd, prefix] = TD_NODE && TD_PATH ? [TD_NODE, [TD_PATH]] : ['td', []]
+const { stdout } = await promisify(execFile)(cmd, [...prefix, 'project', 'list', '--json'])
 const projects = JSON.parse(stdout)
 ```
+
+On POSIX, `"$TD_PATH" task list` also works because the entry script has a shebang and an exec bit. The two-part form above is the one that works everywhere, including Windows where npm installs `td` as a `.cmd` shim that is not on the child's path as a plain executable.
 
 Because `td` already treats `--json` output and `CliError` JSON envelopes as a stable contract for AI agents, extensions get the same guarantee.
 
@@ -247,7 +259,7 @@ Because `td` already treats `--json` output and `CliError` JSON envelopes as a s
 
 ### Startup cost
 
-`td` starts by registering placeholders for its built-in commands without importing them. Extensions are discovered by a single `readdir` of the extensions directory, which costs well under a millisecond and returns nothing for the majority of users who have no extensions. Discovery runs on every invocation because it is needed for `--help`, for completion, and for the unknown-command path. Manifests are read lazily and only for `list`, `--help`, and the shadowing check.
+`td` starts by registering placeholders for its built-in commands without importing them. Extensions are discovered by a single `readdir` of the extensions directory, which costs well under a millisecond and returns nothing for the majority of users who have no extensions. Discovery runs on every invocation because it is needed for `--help`, for completion, and for the unknown-command path. Manifests are read lazily: for `list`, `--help`, the shadowing check, and at dispatch for the one extension being run (a single small file, needed for the `requires.td` warning).
 
 ### Registration
 
@@ -259,7 +271,7 @@ Each discovered extension whose name does not collide with a built-in command is
 
 Registering real commands, rather than catching the unknown-command error, is what `gh` does and it is the right call here too: it makes `--help` and name completion work with no special cases, and it keeps the existing dispatcher's "find the command token in argv" logic intact. A colliding name is skipped and surfaces as `shadowed` in `list`.
 
-The existing pre-parse `--user` stripping in `src/index.ts` needs one adjustment: it must only consider arguments before the extension name, since anything after it is opaque.
+The existing pre-parse `--user` handling in `src/index.ts` needs one adjustment: both the value lookup (`getRequestedUserRef`, which today scans all of argv) and the stripping (`stripUserFlag`) must only consider arguments before the extension name. Anything after it is opaque, so `td goals --user alice` must reach the extension untouched and must not set `TD_USER`.
 
 ### Spawning
 
@@ -272,7 +284,7 @@ The spawn helper is new: nothing in the repo currently shells out apart from `op
 
 ### Error mapping
 
-New `CliError` codes: `EXTENSION_NOT_FOUND`, `EXTENSION_NAME_INVALID`, `EXTENSION_NAME_RESERVED`, `EXTENSION_ALREADY_INSTALLED`, `EXTENSION_NOT_INSTALLABLE`, `EXTENSION_NOT_EXECUTABLE`, `EXTENSION_NEEDS_SHELL`, `EXTENSION_INSTALL_FAILED`, `EXTENSION_CHECKSUM_MISMATCH`, `EXTENSION_PINNED`. All render through the existing JSON and pretty error formatters.
+New `CliError` codes: `EXTENSION_NOT_FOUND`, `EXTENSION_NAME_INVALID`, `EXTENSION_NAME_RESERVED`, `EXTENSION_ALREADY_INSTALLED`, `EXTENSION_NOT_INSTALLABLE`, `EXTENSION_NOT_EXECUTABLE`, `EXTENSION_NEEDS_SHELL`, `EXTENSION_INSTALL_FAILED`, `EXTENSION_NPM_MISSING`, `EXTENSION_CHECKSUM_MISMATCH`, `EXTENSION_PINNED`. All render through the existing JSON and pretty error formatters.
 
 An unknown command that is not an extension keeps Commander's current message, with one added hint when the extensions directory is empty: `Run "td extension install <owner/repo>" to add commands from extensions.` Cheap, and it is how people learn the feature exists.
 
@@ -284,12 +296,12 @@ An unknown command that is not an extension keeps Commander's current message, w
 ## Authoring guide (summary; the full guide is a separate doc when the feature ships)
 
 1. Create a repository named `td-<name>` with an executable `td-<name>` at its root. Add the `td-extension` topic.
-2. Read `TD_PATH` and call `td` for data. Prefer `--json`. Treat `--user` as `td`'s job.
+2. Call `td` for data, using `TD_NODE` + `TD_PATH` as shown in the environment contract so it works on every platform. Prefer `--json`. Treat `--user` as `td`'s job.
 3. Honour `--json` on your own output if you produce data. Write data to stdout and diagnostics to stderr. Exit non-zero on failure. If you emit JSON errors, use `td`'s shape: `{ "error": { "code", "message", "hints" } }`.
 4. Do not prompt when stdin is not a TTY. `td` is non-interactive by design and agents will call your extension.
 5. Node authors: a shebang script plus `package.json` is enough. Dependencies are installed by `td` on install. `@doist/cli-core` is on npm and gives you the same spinner, JSON formatting, and error classes `td` uses, if you want the output to match.
 6. Compiled authors: publish release assets named `td-<name>_<tag>_<platform>-<arch>[.exe]` for at least `linux-x64`, `darwin-arm64`, `darwin-x64`, `win32-x64`, plus a `checksums.txt`.
-7. Test locally with `td extension install .` and iterate; the symlink means every edit is live.
+7. Test locally with `td extension install .` from a directory named `td-<name>` and iterate; the symlink means every edit is live.
 
 `td extension create <name> [--template node|bash|compiled]` (phase 2) scaffolds all of this, including the release workflow for compiled extensions.
 
@@ -301,7 +313,7 @@ An unknown command that is not an extension keeps Commander's current message, w
 - cli-core: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands.
 - todoist-cli: wire it in `src/index.ts`; add `TD_USER` env support to the user resolver; adjust `--user` stripping; add the unknown-command hint; doctor checks; `SKILL_CONTENT` entries for `td extension …`; `CODEBASE.md` registration-pattern update.
 - Trust warning on install/upgrade. Checksum verification when a checksums asset exists.
-- Tests: manager unit tests with a fake filesystem and stubbed GitHub API; dispatch tests asserting argv passthrough, env contract, and exit-code propagation; a fixture extension in `src/test-support/` for end-to-end runs.
+- Tests: manager unit tests with a fake filesystem and stubbed GitHub API, including a mismatched or truncated release asset refusing to install with `EXTENSION_CHECKSUM_MISMATCH`, and `--pin` resolving a tagged release rather than latest; dispatch tests asserting argv passthrough, env contract, `--user` scoping, and exit-code propagation; a fixture extension in `src/test-support/` for end-to-end runs.
 - Dogfood: `Doist/td-goals` (or whichever prototype is live) rebuilt as an extension before the release, so the first release is validated by a real consumer.
 
 ### Phase 2 — ergonomics
