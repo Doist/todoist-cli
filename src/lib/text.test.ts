@@ -9,9 +9,6 @@ import { describe, expect, it } from 'vitest'
 
 import { firstCodePoint, truncateForDisplay } from './text.js'
 
-/** A high surrogate with no low surrogate after it, or the reverse. */
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
-
 describe('firstCodePoint', () => {
     it('keeps an astral character whole', () => {
         expect(firstCodePoint('🌴')).toBe('🌴')
@@ -47,13 +44,14 @@ describe('truncateForDisplay', () => {
         // where `slice(0, 80)` used to bisect it.
         const straddling = `${'x'.repeat(79)}🌴 tail`
         const out = truncateForDisplay(straddling, 80)
-        expect(LONE_SURROGATE.test(out)).toBe(false)
+        expect(out.isWellFormed()).toBe(true)
         expect(out).toBe(`${'x'.repeat(79)}🌴...`)
 
-        // MUST STAY SILENT: the same content with the emoji clear of the
-        // boundary is unaffected either way.
+        // MUST STAY SILENT: 76 code points fit under the limit, so this must
+        // come back byte-identical. Asserting only "no lone surrogate" would
+        // pass even if the input had been mangled into a different valid string.
         const clear = `${'x'.repeat(70)}🌴 tail`
-        expect(LONE_SURROGATE.test(truncateForDisplay(clear, 80))).toBe(false)
+        expect(truncateForDisplay(clear, 80)).toBe(clear)
     })
 
     it('counts in the same unit it cuts, so the check cannot disagree with the slice', () => {
@@ -62,6 +60,6 @@ describe('truncateForDisplay', () => {
         const emoji = '🌴'.repeat(40)
         expect(truncateForDisplay(emoji, 40)).toBe(emoji)
         expect(truncateForDisplay(emoji, 10)).toBe(`${'🌴'.repeat(10)}...`)
-        expect(LONE_SURROGATE.test(truncateForDisplay(emoji, 10))).toBe(false)
+        expect(truncateForDisplay(emoji, 10).isWellFormed()).toBe(true)
     })
 })

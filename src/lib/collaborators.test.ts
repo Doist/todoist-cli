@@ -10,8 +10,6 @@ import { describe, expect, it } from 'vitest'
 
 import { formatUserShortName } from './collaborators.js'
 
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
-
 describe('formatUserShortName', () => {
     it.each([
         ['Omar | 🌴', 'Omar 🌴.'],
@@ -22,9 +20,9 @@ describe('formatUserShortName', () => {
         expect(formatUserShortName(input)).toBe(expected)
     })
 
-    it('never returns a lone surrogate', () => {
+    it('always returns well-formed output', () => {
         for (const name of ['Omar | 🌴', 'Ada Lovelace', 'Rui', 'Yuki 🎌 Tanaka', 'A 👨‍👩‍👧']) {
-            expect(LONE_SURROGATE.test(formatUserShortName(name))).toBe(false)
+            expect(formatUserShortName(name).isWellFormed()).toBe(true)
         }
     })
 

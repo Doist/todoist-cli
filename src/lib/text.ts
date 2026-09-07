@@ -24,7 +24,10 @@
 
 /** The first code point of `text`, or `''` when empty. Never half a surrogate pair. */
 export function firstCodePoint(text: string): string {
-    return Array.from(text)[0] ?? ''
+    // String iteration steps by code point, so this reads one character rather
+    // than materialising every code point in the string to discard all but one.
+    for (const character of text) return character
+    return ''
 }
 
 /**
@@ -36,6 +39,10 @@ export function firstCodePoint(text: string): string {
  * string containing an emoji.
  */
 export function truncateForDisplay(text: string, maxCodePoints: number): string {
+    // A string's UTF-16 length is never below its code-point count, so anything
+    // fitting by code unit certainly fits by code point. This keeps the common
+    // already-fits path an O(1) check rather than an allocation.
+    if (text.length <= maxCodePoints) return text
     const points = Array.from(text)
     if (points.length <= maxCodePoints) return text
     return `${points.slice(0, maxCodePoints).join('')}...`

@@ -59,6 +59,43 @@ describe('activity command', () => {
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Buy groceries'))
     })
 
+    it('does not split an emoji when truncating long activity content', async () => {
+        // The call-site guard for `truncateContent`. The default limit is 100 and
+        // the cut lands at 97, so this content puts a palm tree exactly across
+        // that boundary, which is where a code-unit slice used to bisect it.
+        const straddling = `${'x'.repeat(96)}\u{1F334} and more text past the limit`
+        const program = createProgram()
+
+        mockApi.getActivityLogs.mockResolvedValue({
+            results: [
+                {
+                    id: 'event-1',
+                    objectType: 'task',
+                    objectId: 'task-1',
+                    eventType: 'added',
+                    eventDate: new Date('2025-01-10T14:30:00Z'),
+                    parentProjectId: 'proj-1',
+                    parentItemId: null,
+                    initiatorId: 'user-1',
+                    extraData: { content: straddling },
+                },
+            ],
+            nextCursor: null,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj-1', name: 'Shopping' }],
+            nextCursor: null,
+        })
+
+        await program.parseAsync(['node', 'td', 'activity'])
+
+        const printed = consoleSpy.mock.calls.flat().join('\n')
+        expect(printed.isWellFormed()).toBe(true)
+        // It truncated (so the guard is exercised) and kept the emoji whole.
+        expect(printed).toContain('...')
+        expect(printed).toContain('\u{1F334}')
+    })
+
     it('shows "No activity found" when empty', async () => {
         const program = createProgram()
 
