@@ -1325,7 +1325,7 @@ describe('filter show sorting', () => {
         ])
     })
 
-    it('does not look up the timezone when nothing is sorted', async () => {
+    it('does not look up the timezone or the language when nothing is sorted', async () => {
         const program = createProgram()
         captureConsole()
 
@@ -1341,6 +1341,7 @@ describe('filter show sorting', () => {
         ])
 
         expect(mockAccountTimezone).not.toHaveBeenCalled()
+        expect(mockAccountLanguage).not.toHaveBeenCalled()
     })
 
     it('skips the project fetch when nothing is sorted', async () => {

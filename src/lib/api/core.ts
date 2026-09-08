@@ -351,7 +351,6 @@ export async function getCurrentUserId(): Promise<string> {
 export function clearCurrentUserCache(): void {
     currentUserIdCache = null
     accountTimezoneCache = null
-    accountLanguageCache = null
     accountUserPromise = null
 }
 
@@ -401,24 +400,22 @@ export async function getAccountTimezone(): Promise<string | undefined> {
     return accountTimezoneCache ?? undefined
 }
 
-let accountLanguageCache: string | null = null
-
 /**
  * The language the Todoist account writes filter queries in. The API parses a
  * saved filter in it when the request carries no `lang`, and the date keywords
  * that decide a filter's default ordering are localized, so classifying a
  * query needs it. Undefined on a failed lookup, which reads the query as
- * English. Caches for the life of the process.
+ * English.
+ *
+ * No cache of its own: `getAccountUser` already holds the record this reads.
  */
 export async function getAccountLanguage(): Promise<string | undefined> {
-    if (accountLanguageCache) return accountLanguageCache
     try {
         const user = await getAccountUser()
-        accountLanguageCache = user.lang || null
+        return user.lang || undefined
     } catch {
-        accountLanguageCache = null
+        return undefined
     }
-    return accountLanguageCache ?? undefined
 }
 
 function localTimezone(): string | null {
