@@ -8,7 +8,6 @@ import {
     formatTaskSort,
     parseTaskSortDirection,
     parseTaskSortField,
-    queryUsesDates,
     sortTasks,
     taskSortFromViewOptions,
 } from './task-sort.js'
@@ -253,42 +252,6 @@ describe('taskSortFromViewOptions', () => {
         expect(taskSortFromViewOptions(makeViewOptions({ sortedBy: 'DUE_DATE' })).direction).toBe(
             'asc',
         )
-    })
-})
-
-describe('queryUsesDates', () => {
-    it.each([
-        'today',
-        'due before: next week',
-        'overdue | today',
-        '@work & 7 days',
-        'no date',
-        'deadline: today',
-    ])('treats %s as date-driven', (query) => {
-        expect(queryUsesDates(query)).toBe(true)
-    })
-
-    it.each(['##work & p4 & !subtask', '@waiting', '#Marketing & p1', 'search: invoice'])(
-        'treats %s as priority-driven',
-        (query) => {
-            expect(queryUsesDates(query)).toBe(false)
-        },
-    )
-
-    it('ignores date words inside project and label names', () => {
-        expect(queryUsesDates('#May Launch')).toBe(false)
-        expect(queryUsesDates('@monday-meeting & p1')).toBe(false)
-        // A name runs to the operator, so "date" here belongs to the project.
-        expect(queryUsesDates('#due date')).toBe(false)
-        expect(queryUsesDates('#due date & p1')).toBe(false)
-        expect(queryUsesDates('#due date & today')).toBe(true)
-    })
-
-    it('ignores date words inside a search term', () => {
-        expect(queryUsesDates('search: due diligence')).toBe(false)
-        expect(queryUsesDates('search: today notes & p1')).toBe(false)
-        // The search operand ends at the operator, so a real date query still counts.
-        expect(queryUsesDates('search: invoice & today')).toBe(true)
     })
 })
 

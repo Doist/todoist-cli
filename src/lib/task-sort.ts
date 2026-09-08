@@ -8,9 +8,9 @@ import { CliError } from './errors.js'
  *
  * The comparators themselves live in the SDK (`sortTasks`), which is where
  * every Todoist client can share them. What stays here is the vocabulary the
- * `--sort` flag speaks, the mapping from a saved view to that vocabulary, the
- * sidebar layout the SDK wants as a lookup, and the guess at whether a filter
- * query is date-driven, which the SDK asks the caller to decide.
+ * `--sort` flag speaks, the mapping from a saved view to that vocabulary, and
+ * the sidebar layout the SDK wants as a lookup. Whether a query is date-driven
+ * is the SDK's answer too, via `isDateDrivenQuery`.
  *
  * @see https://www.todoist.com/help/articles/default-sorting-order-for-todoist-tasks-mqmgerY7
  */
@@ -303,46 +303,4 @@ export function sortTasks(tasks: Task[], sort: TaskSort, context: TaskOrderConte
             timezone: context.timezone,
         } satisfies TaskSortContext,
     )
-}
-
-/**
- * Tokens that make a filter query date-driven, which switches the default
- * ordering from priority-first to date-first.
- *
- * Known limitation: these are the English keywords. The backend parses a saved
- * query in the account's language when the request carries no `lang`, so a
- * filter written as "hoy" or "heute" reads as priority-first here. Classifying
- * properly means the query parser, which is Filterist's job rather than a
- * regex's, so the fix belongs in the SDK. Until then the cost is one of two
- * default hierarchies, not a wrong result set.
- */
-const DATE_QUERY_PATTERN = new RegExp(
-    [
-        String.raw`\b(?:today|tomorrow|yesterday|overdue|due|dated?|datetime|deadlines?|recurring)\b`,
-        String.raw`\b(?:mon|tue|wed|thu|fri|sat|sun)\b`,
-        String.raw`\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b`,
-        String.raw`\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b`,
-        String.raw`\b(?:before|after)\s*:`,
-        String.raw`\b\d+\s*(?:days?|hours?|weeks?|months?)\b`,
-        String.raw`\b(?:next|last)\s+(?:week|month|year|\d+)`,
-    ].join('|'),
-    'i',
-)
-
-/**
- * Names and free-text searches can contain date words ("#May launch",
- * "#due date", "search: due diligence"), so those operands are dropped before
- * the query is inspected. Todoist ends a name at an operator rather than at a
- * space, so these run to the next one and take the whole name with them.
- */
-function stripNamedRefs(query: string): string {
-    return query
-        .replace(/"[^"]*"/g, ' ')
-        .replace(/'[^']*'/g, ' ')
-        .replace(/\bsearch\s*:[^&|(),]*/gi, ' ')
-        .replace(/[#@/]{1,2}[^&|(),]*/g, ' ')
-}
-
-export function queryUsesDates(query: string): boolean {
-    return DATE_QUERY_PATTERN.test(stripNamedRefs(query))
 }
