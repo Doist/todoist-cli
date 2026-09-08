@@ -1,3 +1,9 @@
+## [5.3.0](https://github.com/Doist/todoist-cli/compare/v5.2.2...v5.3.0) (2026-09-08)
+
+### Features
+
+* **filter:** read a filter query in the account language ([#513](https://github.com/Doist/todoist-cli/issues/513)) ([f048347](https://github.com/Doist/todoist-cli/commit/f04834700d82d50ef92d578211d5609fe434111a))
+
 ## [5.2.2](https://github.com/Doist/todoist-cli/compare/v5.2.1...v5.2.2) (2026-09-07)
 
 ### Bug Fixes
