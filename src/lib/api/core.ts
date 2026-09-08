@@ -351,6 +351,33 @@ export async function getCurrentUserId(): Promise<string> {
 export function clearCurrentUserCache(): void {
     currentUserIdCache = null
     accountTimezoneCache = null
+    accountLanguageCache = null
+    accountUserPromise = null
+}
+
+/** What `getUser` actually returns, which is wider than the exported `User`. */
+type AccountUser = Awaited<ReturnType<TodoistApi['getUser']>>
+
+let accountUserPromise: Promise<AccountUser> | null = null
+
+/**
+ * One `getUser` per process, shared by the callers that only want a field off
+ * it. A command that needs both the timezone and the language would otherwise
+ * pay two round trips for the same record. A failed lookup clears the memo so
+ * the next caller can try again.
+ */
+function getAccountUser(): Promise<AccountUser> {
+    const cached = accountUserPromise
+    if (cached) return cached
+
+    const lookup = getApi()
+        .then((api) => api.getUser())
+        .catch((error: unknown) => {
+            if (accountUserPromise === lookup) accountUserPromise = null
+            throw error
+        })
+    accountUserPromise = lookup
+    return lookup
 }
 
 let accountTimezoneCache: string | null = null
@@ -366,13 +393,32 @@ let accountTimezoneCache: string | null = null
 export async function getAccountTimezone(): Promise<string | undefined> {
     if (accountTimezoneCache) return accountTimezoneCache
     try {
-        const api = await getApi()
-        const user = await api.getUser()
+        const user = await getAccountUser()
         accountTimezoneCache = user.tzInfo?.timezone || localTimezone()
     } catch {
         accountTimezoneCache = localTimezone()
     }
     return accountTimezoneCache ?? undefined
+}
+
+let accountLanguageCache: string | null = null
+
+/**
+ * The language the Todoist account writes filter queries in. The API parses a
+ * saved filter in it when the request carries no `lang`, and the date keywords
+ * that decide a filter's default ordering are localized, so classifying a
+ * query needs it. Undefined on a failed lookup, which reads the query as
+ * English. Caches for the life of the process.
+ */
+export async function getAccountLanguage(): Promise<string | undefined> {
+    if (accountLanguageCache) return accountLanguageCache
+    try {
+        const user = await getAccountUser()
+        accountLanguageCache = user.lang || null
+    } catch {
+        accountLanguageCache = null
+    }
+    return accountLanguageCache ?? undefined
 }
 
 function localTimezone(): string | null {

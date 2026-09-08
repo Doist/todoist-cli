@@ -1,12 +1,19 @@
 import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import {
     findViewOptions,
+    isDateDrivenQuery,
     isWorkspaceProject,
     type TodoistApi,
     type ViewOptions as SavedViewOptions,
 } from '@doist/todoist-sdk'
 import chalk from 'chalk'
-import { getAccountTimezone, getApi, type Project, type Task } from '../../lib/api/core.js'
+import {
+    getAccountLanguage,
+    getAccountTimezone,
+    getApi,
+    type Project,
+    type Task,
+} from '../../lib/api/core.js'
 import { fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { CollaboratorCache, formatAssignee } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
@@ -30,7 +37,6 @@ import {
     formatTaskSort,
     parseTaskSortDirection,
     parseTaskSortField,
-    queryUsesDates,
     sortNeedsCollaborators,
     sortNeedsProjects,
     sortTasks,
@@ -282,13 +288,14 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
     const isPretty = outputMode === 'human'
 
     // Rendering needs the projects and collaborators for every task; sorting
-    // needs them, plus the account timezone, only for some fields. Fetch when
-    // either side asks, never when there is nothing to order or draw.
+    // needs them, plus the account timezone and language, only for some fields.
+    // Fetch when either side asks, never when there is nothing to order or draw.
     const needsProjects = tasks.length > 0 && (isPretty || sortNeedsProjects(sort.field))
     const sorting = tasks.length > 0 && sort.field !== 'none'
-    const [projectMap, timezone] = await Promise.all([
+    const [projectMap, timezone, lang] = await Promise.all([
         needsProjects ? fetchProjects(api) : Promise.resolve(new Map<string, Project>()),
         sorting ? getAccountTimezone() : Promise.resolve(undefined),
+        sorting ? getAccountLanguage() : Promise.resolve(undefined),
     ])
     const collaboratorCache = new CollaboratorCache()
     if (tasks.length > 0 && (isPretty || sortNeedsCollaborators(sort.field))) {
@@ -305,7 +312,7 @@ export async function showFilter(nameOrId: string, options: FilterViewOptions): 
             results: sortTasks(section.results, sort, {
                 ...projectOrder,
                 timezone,
-                dateDriven: queryUsesDates(section.query),
+                dateDriven: isDateDrivenQuery(section.query, { lang }),
                 assigneeName: (task) =>
                     task.responsibleUid
                         ? (collaboratorCache.getUserName({

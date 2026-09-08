@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
     getAccountTimezone: vi.fn(async () => 'US/Pacific'),
+    getAccountLanguage: vi.fn(async () => 'en'),
 }))
 
 vi.mock('../../lib/api/workspaces.js', () => ({
@@ -18,7 +19,7 @@ vi.mock('../../lib/api/filters.js', () => ({
 }))
 
 import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
-import { getAccountTimezone } from '../../lib/api/core.js'
+import { getAccountLanguage, getAccountTimezone } from '../../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures, makeFilter } from '../../test-support/fixtures.js'
@@ -28,6 +29,7 @@ import { splitFilterQueries } from './view.js'
 
 const mockFetchFilters = vi.mocked(fetchFilters)
 const mockAccountTimezone = vi.mocked(getAccountTimezone)
+const mockAccountLanguage = vi.mocked(getAccountLanguage)
 const mockAddFilter = vi.mocked(addFilter)
 const mockUpdateFilter = vi.mocked(updateFilter)
 const mockDeleteFilter = vi.mocked(deleteFilter)
@@ -1275,6 +1277,52 @@ describe('filter show sorting', () => {
         await program.parseAsync(['node', 'td', 'filter', 'show', 'Work', '--json'])
 
         expect(mockAccountTimezone).toHaveBeenCalled()
+    })
+
+    /** Sets up a two-task filter where date-first and priority-first disagree. */
+    async function orderUnderQuery(query: string, lang: string): Promise<string[]> {
+        mockAccountLanguage.mockResolvedValue(lang)
+        mockFetchFilters.mockResolvedValue([makeFilter({ id: 'filter-1', name: 'Q', query })])
+        mockApi.getTasksByFilter.mockResolvedValue({
+            // p1 due Jan 9 and p3 due Jan 1: priority puts the first one on
+            // top, date puts the second.
+            results: [fixtures.tasks.withDue, fixtures.tasks.overdue],
+            nextCursor: null,
+        })
+        mockApi.getViewOptions.mockResolvedValue([makeViewOptions({})])
+
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+        await program.parseAsync(['node', 'td', 'filter', 'show', 'Q', '--json'])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0])
+        return parsed.results.map((task: { id: string }) => task.id)
+    }
+
+    it('leads with the date for a Spanish query the English keywords missed', async () => {
+        // Doist/todoist-sdk-typescript#669: the old table matched no English
+        // keyword in "hoy | vencidas", so this fell to priority and the p1 led.
+        expect(await orderUnderQuery('hoy | vencidas', 'es')).toEqual([
+            fixtures.tasks.overdue.id,
+            fixtures.tasks.withDue.id,
+        ])
+    })
+
+    // "sin fecha" is a keyword under es and an unknown phrase under en, and an
+    // unknown phrase reads as a bare date. The pair below only comes out in
+    // different orders if `lang` reaches the classifier.
+    it('sends the account language, so a localized keyword is not read as a date', async () => {
+        expect(await orderUnderQuery('sin fecha', 'es')).toEqual([
+            fixtures.tasks.withDue.id,
+            fixtures.tasks.overdue.id,
+        ])
+    })
+
+    it('reads the same query as a bare date under the wrong language', async () => {
+        expect(await orderUnderQuery('sin fecha', 'en')).toEqual([
+            fixtures.tasks.overdue.id,
+            fixtures.tasks.withDue.id,
+        ])
     })
 
     it('does not look up the timezone when nothing is sorted', async () => {
