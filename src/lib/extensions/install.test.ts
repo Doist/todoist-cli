@@ -126,6 +126,7 @@ describe('installExtension', () => {
                 await readFile(join(extensionsDir, 'td-goals', '.td-manifest.json'), 'utf8'),
             )
             expect(manifest).toMatchObject({
+                manifestVersion: 1,
                 owner: 'Doist',
                 name: 'td-goals',
                 host: 'github.com',
@@ -145,6 +146,26 @@ describe('installExtension', () => {
             )
             expect(manifest.description).toBe('Track goals')
             expect(manifest.requires).toEqual({ td: '>=4.0.0' })
+        })
+
+        it('installs an extension whose manifest format is newer, and says what it ignored', async () => {
+            const github = stubGitHub({
+                authoredManifest: JSON.stringify({
+                    manifestVersion: 99,
+                    description: 'from the future',
+                }),
+            })
+
+            await expect(
+                installExtension('Doist/td-goals', {}, contextFor(github.impl)),
+            ).resolves.toMatchObject({ kind: 'binary' })
+
+            expect(warnings.some((warning) => warning.includes('format newer than'))).toBe(true)
+            const manifest = JSON.parse(
+                await readFile(join(extensionsDir, 'td-goals', '.td-manifest.json'), 'utf8'),
+            )
+            // The fields this version knows are still kept.
+            expect(manifest.description).toBe('from the future')
         })
 
         it('installs without a manifest when the repository ships none', async () => {

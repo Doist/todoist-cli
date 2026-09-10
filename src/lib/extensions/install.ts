@@ -33,6 +33,7 @@ import {
     sha256,
     verifyChecksum,
 } from './github.js'
+import { isFromNewerFormat, MANIFEST_VERSION } from './manifest-format.js'
 import { pickAuthoredFields, writeInstalledManifest } from './manifest.js'
 import { installDependencies } from './npm.js'
 import {
@@ -235,7 +236,7 @@ export async function installBinary(
             } catch {
                 parsedManifest = undefined
             }
-            const picked = pickAuthoredFields(parsedManifest)
+            const picked = await pickAuthoredFields(parsedManifest)
             if (picked) {
                 authored = picked
             } else {
@@ -246,6 +247,7 @@ export async function installBinary(
         }
 
         await writeInstalledManifest(staged, context.binName, {
+            manifestVersion: MANIFEST_VERSION,
             owner: parsed.owner,
             name: dirName,
             host: parsed.host,
@@ -258,6 +260,12 @@ export async function installBinary(
             requires: authored.requires,
             completion: authored.completion,
         })
+
+        if (isFromNewerFormat(authored)) {
+            context.warn(
+                `${parsed.owner}/${parsed.repo} declares a ${authoredManifestFileName(context.binName)} format newer than this ${context.binName} understands, so some of its metadata was ignored.`,
+            )
+        }
 
         const displaced = await moveIntoPlace(staged, destination, existing)
         try {
