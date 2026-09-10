@@ -10,7 +10,7 @@ import type { InstallContext } from './install.js'
 import { installDependencies } from './npm.js'
 import { run } from './run.js'
 import { readState, writeState } from './state.js'
-import { mapWithConcurrency, upgradeExtension } from './upgrade.js'
+import { upgradeExtension } from './upgrade.js'
 
 // Dependency installation is a real npm run; the upgrade tests only care that
 // it is triggered by the right change, so stand in for it here.
@@ -61,36 +61,6 @@ function stubGitHub(latestTag: string) {
     }) as unknown as typeof fetch
 }
 
-describe('mapWithConcurrency', () => {
-    it('never runs more than the limit at once', async () => {
-        let active = 0
-        let peak = 0
-
-        await mapWithConcurrency(
-            Array.from({ length: 12 }, (_, i) => i),
-            4,
-            async (item) => {
-                active += 1
-                peak = Math.max(peak, active)
-                await new Promise((resolve) => setTimeout(resolve, 5))
-                active -= 1
-                return item
-            },
-        )
-
-        expect(peak).toBeLessThanOrEqual(4)
-    })
-
-    it('keeps results in the order of the input', async () => {
-        const results = await mapWithConcurrency([3, 1, 2], 2, async (item) => {
-            await new Promise((resolve) => setTimeout(resolve, item))
-            return item * 10
-        })
-
-        expect(results).toEqual([30, 10, 20])
-    })
-})
-
 describe('upgradeExtension', () => {
     let root: string
     let extensionsDir: string
@@ -137,7 +107,13 @@ describe('upgradeExtension', () => {
         const workspace = join(root, 'code')
         await mkdir(workspace, { recursive: true })
         const target = await writeFixtureExtension(workspace, 'scratch')
-        await symlink(target, join(extensionsDir, 'td-scratch'), 'dir')
+        // Matching installLocal, which writes a path file on Windows because
+        // symlinks there need rights the test runner will not have.
+        if (process.platform === 'win32') {
+            await writeFile(join(extensionsDir, 'td-scratch'), target, 'utf8')
+        } else {
+            await symlink(target, join(extensionsDir, 'td-scratch'), 'dir')
+        }
 
         const result = await upgradeExtension(
             await find('scratch'),
@@ -164,7 +140,7 @@ describe('upgradeExtension', () => {
         expect(result).toMatchObject({ outcome: 'skipped', detail: 'pinned to v1.0.0' })
     })
 
-    it('upgrades past a pin only when forced', async () => {
+    it('upgrades past a pin only when forced, and clears the pin it moved off', async () => {
         await writeFixtureExtension(extensionsDir, 'goals', {
             installedManifest: manifestFor('v1.0.0'),
         })
@@ -177,6 +153,16 @@ describe('upgradeExtension', () => {
         )
 
         expect(result).toMatchObject({ outcome: 'upgraded', from: 'v1.0.0', to: 'v2.0.0' })
+
+        // A pin left behind would make every later upgrade skip this
+        // extension, forever.
+        await expect(readState(stateDir, 'td-goals')).resolves.not.toHaveProperty('pinned')
+        const next = await upgradeExtension(
+            await find('goals'),
+            {},
+            contextFor(stubGitHub('v3.0.0')),
+        )
+        expect(next.outcome).not.toBe('skipped')
     })
 
     it('reports an up-to-date binary without downloading anything', async () => {
@@ -342,12 +328,23 @@ describe.skipIf(!HAS_GIT)('upgradeExtension for git clones', () => {
         expect(executable).toContain('echo v2')
     })
 
-    it('prints the trust warning before pulling new code', async () => {
-        await advanceOrigin()
+    it('prints the trust warning before it runs any of the new code', async () => {
+        await advanceOrigin({ 'package.json': JSON.stringify({ name: 'td-cloned' }) })
+        const order: string[] = []
+        const context = contextFor()
+        context.warn = (message) => {
+            order.push(`warn:${message}`)
+            warnings.push(message)
+        }
+        vi.mocked(installDependencies).mockImplementation(async () => {
+            order.push('install-dependencies')
+        })
 
-        await upgradeExtension(await find('cloned'), {}, contextFor())
+        await upgradeExtension(await find('cloned'), {}, context)
 
-        expect(warnings).toEqual(['trust warning'])
+        // Dependency installation runs the repository's own lifecycle scripts,
+        // so the warning has to come first, not merely be present.
+        expect(order).toEqual(['warn:trust warning', 'install-dependencies'])
     })
 
     it('reports what a dry run would do without moving the clone', async () => {
@@ -391,5 +388,102 @@ describe.skipIf(!HAS_GIT)('upgradeExtension for git clones', () => {
         await expect(readState(stateDir, 'td-cloned')).resolves.not.toHaveProperty('pinned')
         const afterClearing = await upgradeExtension(await find('cloned'), {}, contextFor())
         expect(afterClearing.outcome).not.toBe('skipped')
+    })
+})
+
+describe.skipIf(!HAS_GIT)('upgradeExtension failure handling', () => {
+    let root: string
+    let extensionsDir: string
+    let stateDir: string
+    let origin: string
+    let warnings: string[]
+
+    function contextFor(): InstallContext {
+        return {
+            binName: 'td',
+            extensionsDir,
+            stateDir,
+            officialSource: OFFICIAL,
+            client: createGitHubClient(stubGitHub('v1')),
+            reservedNames: () => [],
+            log: () => undefined,
+            warn: (message) => warnings.push(message),
+            trustWarning: 'trust warning',
+        }
+    }
+
+    const commit = async (dir: string, message: string) => {
+        await run('git', ['add', '.'], { cwd: dir })
+        await run(
+            'git',
+            [
+                '-c',
+                'user.email=t@example.com',
+                '-c',
+                'user.name=T',
+                'commit',
+                '--quiet',
+                '-m',
+                message,
+            ],
+            { cwd: dir },
+        )
+    }
+
+    const find = async (name: string) => {
+        const found = await discoverExtensions({
+            extensionsDir,
+            stateDir,
+            binName: 'td',
+            officialSource: OFFICIAL,
+        })
+        const extension = found.find((candidate) => candidate.name === name)
+        if (!extension) throw new Error(`fixture ${name} not discovered`)
+        return extension
+    }
+
+    beforeEach(async () => {
+        warnings = []
+        root = await mkdtemp(join(tmpdir(), 'td-ext-upgrade-fail-'))
+        extensionsDir = join(root, 'extensions')
+        stateDir = join(root, 'state')
+        await mkdir(extensionsDir, { recursive: true })
+
+        origin = join(root, 'origin', 'td-cloned')
+        await mkdir(origin, { recursive: true })
+        await writeFile(join(origin, 'td-cloned'), '#!/bin/sh\necho v1\n', { mode: 0o755 })
+        await run('git', ['init', '--quiet', '--initial-branch=main'], { cwd: origin })
+        await commit(origin, 'first')
+        await run('git', ['clone', '--quiet', `file://${origin}`, join(extensionsDir, 'td-cloned')])
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    it('puts the clone back when installing dependencies fails', async () => {
+        const before = await headSha(join(extensionsDir, 'td-cloned'))
+        await writeFile(join(origin, 'package.json'), JSON.stringify({ name: 'td-cloned' }))
+        await commit(origin, 'add dependencies')
+        vi.mocked(installDependencies).mockRejectedValueOnce(new Error('npm exploded'))
+
+        await expect(upgradeExtension(await find('cloned'), {}, contextFor())).rejects.toThrow(
+            'npm exploded',
+        )
+
+        // Left at the new commit, the next upgrade would see nothing to do and
+        // never retry the dependencies its code now needs.
+        await expect(headSha(join(extensionsDir, 'td-cloned'))).resolves.toBe(before)
+    })
+
+    it('reports that it could not check, rather than claiming up to date', async () => {
+        await run('git', ['remote', 'set-url', 'origin', 'file:///nonexistent/repo.git'], {
+            cwd: join(extensionsDir, 'td-cloned'),
+        })
+
+        const result = await upgradeExtension(await find('cloned'), { dryRun: true }, contextFor())
+
+        expect(result.outcome).toBe('skipped')
+        expect(result.detail).toMatch(/could not reach the remote/)
     })
 })

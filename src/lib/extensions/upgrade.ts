@@ -7,15 +7,17 @@
  * explicitly forces past it.
  */
 
-import { changedFiles, headSha, pull, remoteHeadSha, resetToRemote } from './git.js'
+import { mapWithConcurrency } from './concurrency.js'
+import { headSha, pathsChanged, pull, remoteHeadSha, resetToRemote } from './git.js'
 import { assetSuffixes, pickAsset } from './github.js'
 import { installBinary, type InstallContext } from './install.js'
 import { installDependencies } from './npm.js'
+import { run } from './run.js'
 import { readState, writeState } from './state.js'
 import type { Extension, UpgradeOptions, UpgradeResult } from './types.js'
 
 /** Files whose change means the extension's dependencies must be reinstalled. */
-const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json'])
+const DEPENDENCY_FILES = ['package.json', 'package-lock.json']
 
 /**
  * The trust warning belongs on upgrades as much as installs — an upgrade
@@ -32,30 +34,6 @@ export function createTrustWarner(context: InstallContext): () => void {
     }
 }
 
-/**
- * Run `worker` over every item, at most `limit` at a time. Upgrades hit the
- * GitHub API once per extension, and firing all of them at once is what
- * triggers secondary rate limits.
- */
-export async function mapWithConcurrency<T, R>(
-    items: T[],
-    limit: number,
-    worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-    const results = Array.from<R>({ length: items.length })
-    let next = 0
-
-    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-        while (next < items.length) {
-            const index = next++
-            results[index] = await worker(items[index])
-        }
-    })
-
-    await Promise.all(runners)
-    return results
-}
-
 async function upgradeGit(
     extension: Extension,
     options: UpgradeOptions,
@@ -67,7 +45,16 @@ async function upgradeGit(
             headSha(extension.dir),
             remoteHeadSha(extension.dir),
         ])
-        if (!remote || !before || remote === before) {
+        if (!remote) {
+            // Offline, or the remote refused: reporting "up to date" would
+            // claim something this run never established.
+            return {
+                name: extension.name,
+                outcome: 'skipped',
+                detail: 'could not reach the remote to check for updates',
+            }
+        }
+        if (!before || remote === before) {
             return { name: extension.name, outcome: 'up-to-date' }
         }
         return {
@@ -81,14 +68,6 @@ async function upgradeGit(
     warnTrust()
     const result = options.force ? await resetToRemote(extension.dir) : await pull(extension.dir)
 
-    if (options.force && extension.pinned) {
-        // A forced upgrade moved the clone off the pinned commit, so the pin no
-        // longer describes anything. Leaving it would make every later upgrade
-        // skip this extension.
-        const state = await readState(context.stateDir, extension.dirName)
-        await writeState(context.stateDir, extension.dirName, { ...state, pinned: undefined })
-    }
-
     if (result.error) {
         return { name: extension.name, outcome: 'skipped', detail: result.error }
     }
@@ -96,10 +75,29 @@ async function upgradeGit(
         return { name: extension.name, outcome: 'up-to-date' }
     }
 
+    if (options.force && extension.pinned) {
+        // Only now that the clone has actually moved: clearing the pin after a
+        // reset that failed or did nothing would quietly unpin the extension.
+        const state = await readState(context.stateDir, extension.dirName)
+        await writeState(context.stateDir, extension.dirName, { ...state, pinned: undefined })
+    }
+
     if (result.from && result.to) {
-        const changed = await changedFiles(extension.dir, result.from, result.to)
-        if (changed.some((file) => DEPENDENCY_FILES.has(file))) {
-            await installDependencies(extension.dir)
+        const changed = await pathsChanged(extension.dir, result.from, result.to, DEPENDENCY_FILES)
+        // "Could not tell" reinstalls: a slow upgrade costs less than an
+        // extension left with dependencies that no longer match its code.
+        if (changed !== false) {
+            try {
+                await installDependencies(extension.dir)
+            } catch (error) {
+                // The clone has already moved, and a later upgrade would find
+                // it up to date and never retry, so put it back where its
+                // dependencies still match its code.
+                await run('git', ['reset', '--quiet', '--hard', result.from], {
+                    cwd: extension.dir,
+                })
+                throw error
+            }
         }
     }
 
