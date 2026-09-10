@@ -57,6 +57,11 @@ export type ExtensionListing = Extension & {
     shadowed: boolean
     /** False when the executable is missing or lacks the executable bit. */
     executable: boolean
+    /**
+     * True when the extension's manifest declares a format newer than this
+     * CLI understands, so some of its metadata is being ignored.
+     */
+    manifestFromNewerFormat: boolean
 }
 
 export type InstallOptions = {

@@ -112,6 +112,31 @@ describe('createExtensionManager', () => {
         expect(listing.find((entry) => entry.name === 'unbuilt')?.executable).toBe(false)
     })
 
+    it('flags an extension whose manifest format is newer than this CLI knows', async () => {
+        await writeFixtureExtension(extensionsDir, 'future', {
+            authoredManifest: { manifestVersion: 99, description: 'still described' },
+        })
+        await writeFixtureExtension(extensionsDir, 'ordinary', {
+            authoredManifest: { description: 'ordinary' },
+        })
+
+        const listing = await makeManager().list()
+
+        expect(listing.find((e) => e.name === 'future')?.manifestFromNewerFormat).toBe(true)
+        expect(listing.find((e) => e.name === 'ordinary')?.manifestFromNewerFormat).toBe(false)
+        // Still described, and still runnable: only the fields this version
+        // does not understand are lost.
+        expect(listing.find((e) => e.name === 'future')?.description).toBe('still described')
+    })
+
+    it('runs an extension whose manifest format is newer than this CLI knows', async () => {
+        await writeFixtureExtension(extensionsDir, 'future', {
+            authoredManifest: { manifestVersion: 99 },
+        })
+
+        await expect(makeManager().dispatch('future', [], { env: quiet() })).resolves.toBe(0)
+    })
+
     it('reports the release tag as the version of a binary install', async () => {
         await writeFixtureExtension(extensionsDir, 'goals', {
             installedManifest: {

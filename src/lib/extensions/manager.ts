@@ -17,6 +17,8 @@ import { isExecutable } from './fs-utils.js'
 import { headSha } from './git.js'
 import { createGitHubClient } from './github.js'
 import { installExtension, type InstallContext, isEmpty } from './install.js'
+import { isFromNewerFormat } from './manifest-format.js'
+import { readAuthoredManifest } from './manifest.js'
 import { removeExtension } from './remove.js'
 import { normalizeSelector } from './source.js'
 import type {
@@ -145,6 +147,12 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
             version: await describeVersion(extension),
             shadowed: reserved.has(extension.name),
             executable: await isExecutable(extension.executablePath),
+            // Read here rather than warned about on every run: an extension
+            // whose metadata is newer still works, and listing is where
+            // someone looks to find out why a description is missing.
+            manifestFromNewerFormat: isFromNewerFormat(
+                await readAuthoredManifest(extension.dir, binName),
+            ),
         }))
     }
 
