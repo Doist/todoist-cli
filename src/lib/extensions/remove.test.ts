@@ -118,10 +118,11 @@ describe('removeExtension', () => {
 
         it('refuses when it cannot tell whether the clone is dirty', async () => {
             const dir = await writeFixtureExtension(extensionsDir, 'broken')
-            // A `.git` that git cannot read: discovery still sees a clone, but
-            // its state cannot be established, and deleting on that basis is
-            // how uncommitted work gets lost.
-            await writeFile(join(dir, '.git'), 'not a git directory')
+            // A `.git` directory git cannot make sense of: discovery still
+            // sees a clone, but its state cannot be established, and deleting
+            // on that basis is how uncommitted work gets lost.
+            await mkdir(join(dir, '.git'), { recursive: true })
+            await writeFile(join(dir, '.git', 'HEAD'), 'nonsense')
 
             await expect(
                 removeExtension(await find('broken'), {}, context()),

@@ -16,9 +16,20 @@ describe.skipIf(process.platform === 'win32')('installDependencies', () => {
 
     async function fakeNpmOnPath(exitCode = 0): Promise<void> {
         const binDir = join(root, 'bin')
+        // `export -p` is a shell builtin, so the dump works whatever the
+        // stubbed PATH contains. Using `env` here would silently record
+        // nothing and make the credential assertions pass vacuously.
         await writeFile(
             join(binDir, 'npm'),
-            `#!/bin/sh\n{ echo "ARGS:$*"; env; } > "${recordPath}"\nexit ${exitCode}\n`,
+            [
+                '#!/bin/sh',
+                // The availability probe must succeed even when the install is
+                // meant to fail, or the test would exercise the wrong branch.
+                'if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi',
+                `{ echo "ARGS:$*"; export -p; } > "${recordPath}"`,
+                `exit ${exitCode}`,
+                '',
+            ].join('\n'),
         )
         await chmod(join(binDir, 'npm'), 0o755)
         vi.stubEnv('PATH', binDir)
@@ -70,10 +81,21 @@ describe.skipIf(process.platform === 'win32')('installDependencies', () => {
         expect(await record()).toContain('ARGS:install --omit=dev --no-package-lock')
     })
 
+    it('records the environment it was given, so the credential test cannot pass vacuously', async () => {
+        vi.stubEnv('XX_CANARY', 'canary-value')
+        await writeFile(join(extensionDir, 'package.json'), '{}')
+        await fakeNpmOnPath()
+
+        await installDependencies(extensionDir)
+
+        expect(await record()).toContain('canary-value')
+    })
+
     it('keeps the CLI’s own credentials away from lifecycle scripts', async () => {
         vi.stubEnv('TODOIST_API_TOKEN', 'secret-todoist-token')
         vi.stubEnv('GH_TOKEN', 'secret-github-token')
         vi.stubEnv('GITHUB_TOKEN', 'secret-github-token')
+        vi.stubEnv('gh_token', 'secret-lowercase-token')
         await writeFile(join(extensionDir, 'package.json'), '{}')
         await fakeNpmOnPath()
 
@@ -82,11 +104,13 @@ describe.skipIf(process.platform === 'win32')('installDependencies', () => {
         const environment = await record()
         expect(environment).not.toContain('secret-todoist-token')
         expect(environment).not.toContain('secret-github-token')
+        expect(environment).not.toContain('secret-lowercase-token')
     })
 
     it('reports a missing npm as its own failure', async () => {
         await writeFile(join(extensionDir, 'package.json'), '{}')
         vi.stubEnv('PATH', join(root, 'empty'))
+        vi.stubEnv('ComSpec', join(root, 'empty', 'cmd.exe'))
 
         await expect(installDependencies(extensionDir)).rejects.toMatchObject({
             code: 'EXTENSION_NPM_MISSING',

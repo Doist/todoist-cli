@@ -35,6 +35,25 @@ export type GitHubClient = {
 
 const API_ROOT = 'https://api.github.com'
 
+/**
+ * Turn a repository-relative path into one URL path segment at a time.
+ *
+ * Encoding alone is not enough, because `..` is made of unreserved characters
+ * and survives `encodeURIComponent` intact. Left in, it would climb out of
+ * `/contents/` and point this authenticated request — which carries the
+ * user's GitHub token — at a different repository.
+ */
+export function encodeRepoPath(path: string): string {
+    const segments = path.split('/').filter(Boolean)
+    if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+        throw new CliError(
+            'EXTENSION_NOT_INSTALLABLE',
+            `"${path}" is not a valid path inside a repository.`,
+        )
+    }
+    return segments.map(encodeURIComponent).join('/')
+}
+
 function authHeaders(): Record<string, string> {
     const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
     return token ? { authorization: `Bearer ${token}` } : {}
@@ -104,7 +123,7 @@ export function createGitHubClient(fetchImpl: typeof fetch = fetch): GitHubClien
 
         async fetchRepoFile(owner, repo, path, ref) {
             const query = ref ? `?ref=${encodeURIComponent(ref)}` : ''
-            const url = `${API_ROOT}/repos/${owner}/${repo}/contents/${path}${query}`
+            const url = `${API_ROOT}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeRepoPath(path)}${query}`
             const response = await request(url, 'application/vnd.github.raw')
             if (response.status === 404) return undefined
             if (!response.ok) throw failed(response, `${owner}/${repo} ${path}`)
@@ -135,29 +154,59 @@ export function pickAsset(assets: ReleaseAsset[], suffixes: string[]): ReleaseAs
 }
 
 /**
- * The checksum a release publishes for one asset, from either a shared
- * `checksums.txt` or a per-asset `<asset>.sha256`. Returns undefined when the
- * release publishes neither, which is not an error — only a mismatch is.
+ * What a release says the checksum of one asset should be, from either a
+ * per-asset `<asset>.sha256` or a shared checksum file.
  */
+export type ChecksumLookup = {
+    /** True when the release publishes checksums at all. */
+    published: boolean
+    /** The checksum for this asset, when the release names it. */
+    hash?: string
+}
+
 export async function findExpectedChecksum(
     client: GitHubClient,
     release: Release,
     assetName: string,
-): Promise<string | undefined> {
+): Promise<ChecksumLookup> {
     const perAsset = release.assets.find((asset) => asset.name === `${assetName}.sha256`)
     if (perAsset) {
         const text = await client.fetchAssetText(perAsset)
-        return text.trim().split(/\s+/)[0]?.toLowerCase()
+        const hash = findChecksumLine(text, assetName) ?? text.trim().split(/\s+/)[0]?.toLowerCase()
+        return hash ? { published: true, hash } : { published: true }
     }
 
     const combined = release.assets.find(
         (asset) => asset.name === 'checksums.txt' || asset.name.endsWith('_checksums.txt'),
     )
-    if (!combined) return undefined
+    if (!combined) return { published: false }
 
     const text = await client.fetchAssetText(combined)
-    for (const line of text.split('\n')) {
-        const [hash, ...rest] = line.trim().split(/\s+/)
+    const hash = findChecksumLine(text, assetName)
+    // A published checksum file that says nothing about this asset is a
+    // problem with the release, not an absence of checksums: treating it as
+    // "none published" would install an unverified binary and say so
+    // inaccurately.
+    return hash ? { published: true, hash } : { published: true }
+}
+
+/**
+ * Both spellings a checksum file comes in: the coreutils form
+ * `<hash>  <name>`, and the BSD form `SHA256 (<name>) = <hash>` that macOS
+ * and some release tooling produce.
+ */
+function findChecksumLine(text: string, assetName: string): string | undefined {
+    for (const rawLine of text.split('\n')) {
+        const line = rawLine.trim()
+        if (!line) continue
+
+        const bsd = line.match(/^\w+\s*\(([^)]+)\)\s*=\s*([0-9a-fA-F]+)$/)
+        if (bsd) {
+            if (bsd[1] === assetName) return bsd[2].toLowerCase()
+            continue
+        }
+
+        const [hash, ...rest] = line.split(/\s+/)
         const name = rest.join(' ').replace(/^\*/, '')
         if (name === assetName) return hash.toLowerCase()
     }
@@ -168,12 +217,30 @@ export function sha256(data: Buffer): string {
     return createHash('sha256').update(data).digest('hex')
 }
 
-export function verifyChecksum(
-    data: Buffer,
-    expected: string | undefined,
-    assetName: string,
-): void {
-    if (!expected) return
+/**
+ * Check a download against what the release published.
+ *
+ * A release that publishes checksums but names no entry for this asset is
+ * refused rather than installed unverified: the file the user is about to run
+ * was meant to be covered and is not.
+ */
+export function verifyChecksum(data: Buffer, lookup: ChecksumLookup, assetName: string): void {
+    if (!lookup.published) return
+
+    if (!lookup.hash) {
+        throw new CliError(
+            'EXTENSION_CHECKSUM_MISMATCH',
+            `This release publishes checksums but lists none for ${assetName}.`,
+            {
+                hints: [
+                    'The release is incomplete, so the download cannot be verified.',
+                    'Ask the extension author to publish a checksum for every asset.',
+                ],
+            },
+        )
+    }
+
+    const expected = lookup.hash
     const actual = sha256(data)
     if (actual !== expected) {
         throw new CliError(

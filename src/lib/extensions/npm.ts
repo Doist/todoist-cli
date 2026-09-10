@@ -24,12 +24,17 @@ export async function hasPackageJson(dir: string): Promise<boolean> {
  * settings), so naming what must not travel is both safer in practice and
  * easier to keep correct than naming everything that may.
  */
-const SECRET_ENV_VARS = ['TODOIST_API_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN']
+const SECRET_ENV_VARS = new Set(['TODOIST_API_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN'])
 
+/**
+ * Compared without regard to case: Windows environment lookups are
+ * case-insensitive, so a token exported as `gh_token` is still the token, and
+ * an exact-key delete would leave it in place.
+ */
 function environmentWithoutSecrets(): NodeJS.ProcessEnv {
-    const env = { ...process.env }
-    for (const name of SECRET_ENV_VARS) delete env[name]
-    return env
+    return Object.fromEntries(
+        Object.entries(process.env).filter(([name]) => !SECRET_ENV_VARS.has(name.toUpperCase())),
+    )
 }
 
 /**
@@ -51,8 +56,35 @@ function npmCommand(): { command: string; prefix: string[] } {
  * clone is a git working tree, and writing a lockfile into it would leave the
  * extension looking modified for every later `remove` and `upgrade`.
  */
+/**
+ * Whether npm can be run at all.
+ *
+ * On Windows npm is reached through the command interpreter, so a missing npm
+ * looks like an ordinary non-zero exit rather than a program that could not be
+ * spawned. Asking first keeps the "npm is not installed" message reachable
+ * there instead of surfacing cmd's own wording as an install failure.
+ */
+async function npmIsAvailable(): Promise<boolean> {
+    const { command, prefix } = npmCommand()
+    const probe = await run(command, [...prefix, '--version'])
+    return !probe.missing && probe.code === 0
+}
+
 export async function installDependencies(dir: string): Promise<void> {
     if (!(await hasPackageJson(dir))) return
+
+    if (!(await npmIsAvailable())) {
+        throw new CliError(
+            'EXTENSION_NPM_MISSING',
+            'This extension has dependencies but npm was not found on PATH.',
+            {
+                hints: [
+                    'Install npm, then run the install again.',
+                    'Extension authors can avoid this by vendoring dependencies or shipping a release binary.',
+                ],
+            },
+        )
+    }
 
     const hasLockfile = await exists(join(dir, 'package-lock.json'))
     const args = hasLockfile ? ['ci', '--omit=dev'] : ['install', '--omit=dev', '--no-package-lock']
