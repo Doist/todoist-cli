@@ -95,7 +95,7 @@ Install steps for a GitHub source:
 1. Validate the name: must match `^td-[a-z0-9][a-z0-9-]*$`, and the command name must not match a built-in command or alias. Refuse with `EXTENSION_NAME_RESERVED` and a hint pointing at `td extension exec` if the extension is already installed and a later `td` release added a core command with the same name.
 2. If an extension with this command name is already installed from a different owner, refuse with `EXTENSION_ALREADY_INSTALLED` (`--force` replaces it). Same owner: report already installed, suggest `upgrade`.
 3. Print the trust warning (below). It goes out before any step that can run code from the repository, so a user sees it even if a later step fails or executes something.
-4. Query `GET /repos/{owner}/{repo}/releases/latest`, or `GET /repos/{owner}/{repo}/releases/tags/{ref}` when `--pin <ref>` is given. If the release has an asset whose name ends in `<platform>-<arch>[.exe]` for the current machine, treat it as a **binary extension**: download the asset to `<dir>/td-<name>[.exe]`, `chmod 0755`, verify the checksum when the release also carries `checksums.txt` or `<asset>.sha256`, fetch the repository's `td-extension.json` at the release tag (`GET /repos/{owner}/{repo}/contents/td-extension.json?ref={tag}`, optional, a 404 is not an error), and write `manifest.json` including any `description` and `requires` found there. A pinned tag with no release falls through to the git path below. Platform names use Node's `process.platform` / `process.arch` values (`linux-x64`, `darwin-arm64`, `win32-x64`) rather than Go's, since extension authors building with Node will already have those in hand. A release workflow template (phase 2) produces both spellings so a single repo can serve both `gh` and `td` if the author wants.
+4. Query `GET /repos/{owner}/{repo}/releases/latest`, or `GET /repos/{owner}/{repo}/releases/tags/{ref}` when `--pin <ref>` is given. If the release has an asset whose name ends in `<platform>-<arch>[.exe]` for the current machine, treat it as a **binary extension**: download the asset to `<dir>/td-<name>[.exe]`, `chmod 0755`, verify the checksum when the release also carries `checksums.txt` or `<asset>.sha256`, fetch the repository's `td-extension.json` at the release tag (`GET /repos/{owner}/{repo}/contents/td-extension.json?ref={tag}`, optional, a 404 is not an error), and write `.td-manifest.json` including any `description` and `requires` found there. A pinned tag with no release falls through to the git path below. Platform names use Node's `process.platform` / `process.arch` values (`linux-x64`, `darwin-arm64`, `win32-x64`) rather than Go's, since extension authors building with Node will already have those in hand. A release workflow template (phase 2) produces both spellings so a single repo can serve both `gh` and `td` if the author wants.
 5. Otherwise `git clone` it into a staging directory. This is a **script extension**. With `--pin <ref>`, check out the ref and record the SHA. A clone failure surfaces git's own error as `EXTENSION_NOT_INSTALLABLE` hints. If the clone has no root file named `td-<name>`, the staging directory is removed and install fails with `EXTENSION_NOT_INSTALLABLE`; there is no separate pre-clone check because the clone already proves the repository is reachable.
 6. If the clone contains `package.json`, run `npm ci --omit=dev` (falling back to `npm install --omit=dev` when there is no lockfile) inside it. Lifecycle scripts are allowed to run: native dependencies need them, and the trust decision was already made at step 3. `npm` is expected because `td` is normally installed with it, but it is not guaranteed (Debian packages Node and npm separately, and some setups use pnpm or corepack). A missing `npm` fails with `EXTENSION_NPM_MISSING` and a hint to install npm or to vendor the dependencies. Any other failure is `EXTENSION_INSTALL_FAILED` with the npm output attached as hints.
 7. Move the staging directory into place and print the install location.
@@ -126,7 +126,7 @@ No network access. `--json` returns the manifest fields plus `path`, `kind`, `sh
 
 #### `upgrade`
 
-- Git extensions: `git pull --ff-only`; with `--force`, `git fetch` and `git reset --hard origin/HEAD`. Re-run the `npm ci` step if `package.json` changed.
+- Git extensions: `git pull --ff-only`; with `--force`, `git fetch` and `git reset --hard origin/HEAD`. Re-run the `npm ci` step if `package.json` or `package-lock.json` changed.
 - Binary extensions: repeat the release lookup and download when the tag differs.
 - Pinned extensions are skipped with a note unless `--force`. Local extensions are always skipped.
 - `--all` checks every extension, fetching release metadata through a small worker pool (four at a time) under a single spinner. Bounding it avoids a request burst against GitHub's secondary rate limits when many extensions are installed.
@@ -134,7 +134,13 @@ No network access. `--json` returns the manifest fields plus `path`, `kind`, `sh
 
 #### `remove`
 
-Deletes the extension directory and its state file. Accepts `name`, `td-name`, or `owner/td-name`. Requires no confirmation; the operation is reversible by reinstalling and the repo convention is `--yes` only for data-destroying commands.
+Accepts `name`, `td-name`, or `owner/td-name`. What gets deleted depends on the kind:
+
+- **Local**: only the symlink (or the path file on Windows). The target directory is the user's own working copy and is never touched.
+- **Git**: the clone and its state file. If the clone has uncommitted changes (`git status --porcelain` is non-empty), `remove` refuses with `EXTENSION_DIRTY` and a hint to pass `--force` or commit first, so an extension that was edited in place is not lost.
+- **Binary**: the directory and its state file.
+
+No `--yes` prompt: with the rules above nothing the user authored is deleted without `--force`, which matches the repo convention of reserving `--yes` for data-destroying commands and matches `gh`.
 
 #### `exec`
 
@@ -153,7 +159,7 @@ Deletes the extension directory and its state file. Accepts `name`, `td-name`, o
 ${XDG_DATA_HOME:-~/.local/share}/todoist-cli/extensions/
 ├─ td-goals/
 │  ├─ td-goals              # executable (binary or script)
-│  └─ manifest.json         # written by td for binary installs
+│  └─ .td-manifest.json     # written by td for binary installs
 ├─ td-standup/              # git clone
 │  ├─ .git/
 │  ├─ td-standup
@@ -168,11 +174,11 @@ ${XDG_STATE_HOME:-~/.local/state}/todoist-cli/extensions/
 
 On Windows the data root is `%LOCALAPPDATA%\todoist-cli`, and a local install writes a plain text file containing the target path instead of a symlink, as `gh` does, because symlinks need elevated rights there.
 
-Kind is inferred from the directory: `manifest.json` means binary; a `.git` directory means git; a symlink or path file means local. No central registry file, so a broken or hand-deleted extension cannot corrupt the others, and `rm -rf` of a directory is a valid uninstall.
+Kind is inferred from the directory, checked in this order: a symlink or path file means local; a `.git` directory means git; `.td-manifest.json` means binary. The file is td-owned and dot-prefixed so it cannot collide with a file the extension itself ships (a cloned repo may well contain its own `manifest.json`), and checking `.git` first means a clone is never misread as a binary install whatever it contains. No central registry file, so a broken or hand-deleted extension cannot corrupt the others, and `rm -rf` of a directory is a valid uninstall.
 
 The config file is untouched. Nothing in this design needs a new config key, so `validateConfigForDoctor` and `KNOWN_CONFIG_KEYS` are unaffected.
 
-### `manifest.json` (written by `td`, binary extensions only)
+### `.td-manifest.json` (written by `td`, binary extensions only)
 
 ```json
 {
@@ -199,7 +205,7 @@ The config file is untouched. Nothing in this design needs a new config key, so 
 }
 ```
 
-- `description` is shown in `td --help` and `td extension list`. For binary installs it is copied into `manifest.json` at install time, since the binary asset does not carry the file.
+- `description` is shown in `td --help` and `td extension list`. For binary installs it is copied into `.td-manifest.json` at install time, since the binary asset does not carry the file.
 - `requires.td` is a semver range. When the running `td` does not satisfy it, dispatch still happens, but a warning goes to stderr first. Refusing outright would make a `td` upgrade break a working extension for no good reason; the extension can enforce it itself using `TD_VERSION` if it must.
 - `completion` opts in to the argument-completion protocol (phase 3).
 
@@ -269,9 +275,19 @@ Each discovered extension whose name does not collide with a built-in command is
 - `.allowUnknownOption()`, `.passThroughOptions()`, and `.helpOption(false)`, so Commander touches nothing after the name.
 - An action that spawns the executable.
 
-Registering real commands, rather than catching the unknown-command error, is what `gh` does and it is the right call here too: it makes `--help` and name completion work with no special cases, and it keeps the existing dispatcher's "find the command token in argv" logic intact. A colliding name is skipped and surfaces as `shadowed` in `list`.
+Registering real commands, rather than catching the unknown-command error, is what `gh` does and it is the right call here too: it makes `--help` and name completion work with no special cases. A colliding name is skipped and surfaces as `shadowed` in `list`.
 
-The existing pre-parse `--user` handling in `src/index.ts` needs one adjustment: both the value lookup (`getRequestedUserRef`, which today scans all of argv) and the stripping (`stripUserFlag`) must only consider arguments before the extension name. Anything after it is opaque, so `td goals --user alice` must reach the extension untouched and must not set `TD_USER`.
+### Command token lookup
+
+The lazy loader in `src/index.ts` currently finds the built-in to load by scanning all of argv for the first token that matches a known command name. That is wrong once extensions exist: `td goals task list` would match `task`, import the task module, start the early spinner, and only then hand off to `goals`. The lookup changes to:
+
+1. Walk argv from the start, skipping global flags and the values of the ones that take a value (`--user <ref>`, `--progress-jsonl [path]`).
+2. The first remaining token is the command token. Nothing after it is inspected.
+3. If it names a built-in, load that module as today. If it names an installed extension, load nothing, start no spinner, and dispatch. Otherwise fall through to Commander's unknown-command error.
+
+The same rule applies to the `--user` handling described below and to the completion server's "which module to load" shortcut.
+
+The pre-parse `--user` handling in `src/index.ts` follows the same boundary: both the value lookup (`getRequestedUserRef`, which today scans all of argv) and the stripping (`stripUserFlag`) must only consider arguments before the command token. Anything after it is opaque, so `td goals --user alice` must reach the extension untouched and must not set `TD_USER`.
 
 ### Spawning
 
@@ -284,7 +300,7 @@ The spawn helper is new: nothing in the repo currently shells out apart from `op
 
 ### Error mapping
 
-New `CliError` codes: `EXTENSION_NOT_FOUND`, `EXTENSION_NAME_INVALID`, `EXTENSION_NAME_RESERVED`, `EXTENSION_ALREADY_INSTALLED`, `EXTENSION_NOT_INSTALLABLE`, `EXTENSION_NOT_EXECUTABLE`, `EXTENSION_NEEDS_SHELL`, `EXTENSION_INSTALL_FAILED`, `EXTENSION_NPM_MISSING`, `EXTENSION_CHECKSUM_MISMATCH`, `EXTENSION_PINNED`. All render through the existing JSON and pretty error formatters.
+New `CliError` codes: `EXTENSION_NOT_FOUND`, `EXTENSION_NAME_INVALID`, `EXTENSION_NAME_RESERVED`, `EXTENSION_ALREADY_INSTALLED`, `EXTENSION_NOT_INSTALLABLE`, `EXTENSION_NOT_EXECUTABLE`, `EXTENSION_NEEDS_SHELL`, `EXTENSION_INSTALL_FAILED`, `EXTENSION_NPM_MISSING`, `EXTENSION_CHECKSUM_MISMATCH`, `EXTENSION_PINNED`, `EXTENSION_DIRTY`. All render through the existing JSON and pretty error formatters.
 
 An unknown command that is not an extension keeps Commander's current message, with one added hint when the extensions directory is empty: `Run "td extension install <owner/repo>" to add commands from extensions.` Cheap, and it is how people learn the feature exists.
 
