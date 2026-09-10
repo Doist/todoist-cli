@@ -1,3 +1,9 @@
+## [5.3.1](https://github.com/Doist/todoist-cli/compare/v5.3.0...v5.3.1) (2026-09-10)
+
+### Bug Fixes
+
+* **deps:** update dependency commander to v15 ([#516](https://github.com/Doist/todoist-cli/issues/516)) ([8364e18](https://github.com/Doist/todoist-cli/commit/8364e18cb6f0d6c9045e86c5c50f030b50b555a4))
+
 ## [5.3.0](https://github.com/Doist/todoist-cli/compare/v5.2.2...v5.3.0) (2026-09-08)
 
 ### Features
