@@ -64,7 +64,14 @@ export function parseRepoRef(
 ): { host: string; owner: string; repo: string } | undefined {
     const scpLike = url.match(/^(?:[^@]+@)?([^:/]+):(.+?)\/([^/]+?)(?:\.git)?$/)
     if (scpLike && !url.includes('://')) {
-        return { host: scpLike[1], owner: scpLike[2], repo: stripGitSuffix(scpLike[3]) }
+        // Hostnames are case-insensitive, and `new URL` lowercases them, so the
+        // scp-like form has to as well. Otherwise whether an extension counts
+        // as first-party would depend on how the user typed the remote.
+        return {
+            host: scpLike[1].toLowerCase(),
+            owner: scpLike[2],
+            repo: stripGitSuffix(scpLike[3]),
+        }
     }
 
     try {

@@ -5,8 +5,9 @@
  * uninstall, and so a `git pull` can never clobber it.
  */
 
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { isRecord, readJsonValue, writeJsonFile } from './json-file.js'
 
 export type ExtensionState = {
     /** Git ref or release tag this extension is held at, if pinned. */
@@ -19,15 +20,23 @@ export function stateFilePath(stateDir: string, dirName: string): string {
     return join(stateDir, 'extensions', `${dirName}.json`)
 }
 
+/**
+ * The recorded state, or an empty one. The file is in the user's state
+ * directory and can be edited by hand, so each field is taken only when it is
+ * the type the rest of the system expects; anything else is treated as absent
+ * rather than being handed on as a string that is not a string.
+ */
 export async function readState(stateDir: string, dirName: string): Promise<ExtensionState> {
-    try {
-        const raw = await readFile(stateFilePath(stateDir, dirName), 'utf8')
-        const parsed: unknown = JSON.parse(raw)
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
-        return parsed as ExtensionState
-    } catch {
-        return {}
+    const value = await readJsonValue(stateFilePath(stateDir, dirName))
+    if (!isRecord(value)) return {}
+
+    const state: ExtensionState = {}
+    if (typeof value.pinned === 'string') state.pinned = value.pinned
+    if (typeof value.checkedForUpdateAt === 'string') {
+        state.checkedForUpdateAt = value.checkedForUpdateAt
     }
+    if (typeof value.latestRelease === 'string') state.latestRelease = value.latestRelease
+    return state
 }
 
 export async function writeState(
@@ -37,7 +46,7 @@ export async function writeState(
 ): Promise<void> {
     const path = stateFilePath(stateDir, dirName)
     await mkdir(dirname(path), { recursive: true })
-    await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 })
+    await writeJsonFile(path, state)
 }
 
 export async function removeState(stateDir: string, dirName: string): Promise<void> {

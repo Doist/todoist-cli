@@ -3,7 +3,8 @@
  * path exist, and can it be run.
  */
 
-import { stat } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { access, stat } from 'node:fs/promises'
 
 export async function exists(path: string): Promise<boolean> {
     try {
@@ -23,14 +24,17 @@ export async function isDirectory(path: string): Promise<boolean> {
 }
 
 /**
- * True when the path is a file the operating system will run. Windows has no
- * executable bit, so there existence is the only signal available.
+ * True when the path is a file this process can actually run.
+ *
+ * `access` is asked rather than the mode bits, because permission can come
+ * from an access-control list the mode does not describe, and on Windows it
+ * reduces to an existence check, which is the only signal available there.
  */
 export async function isExecutable(path: string): Promise<boolean> {
     try {
-        const stats = await stat(path)
-        if (!stats.isFile()) return false
-        return process.platform === 'win32' ? true : (stats.mode & 0o111) !== 0
+        if (!(await stat(path)).isFile()) return false
+        await access(path, constants.X_OK)
+        return true
     } catch {
         return false
     }

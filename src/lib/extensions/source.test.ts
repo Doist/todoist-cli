@@ -66,37 +66,59 @@ describe('parseSource', () => {
     })
 
     it('parses a full GitHub URL and strips the .git suffix', () => {
-        const parsed = parseSource('https://github.com/example/td-standup.git')
-        expect(parsed).toMatchObject({
+        // The whole object, because `url` is what install clones from.
+        expect(parseSource('https://github.com/example/td-standup.git')).toEqual({
             type: 'git',
             host: 'github.com',
             owner: 'example',
             repo: 'td-standup',
+            url: 'https://github.com/example/td-standup.git',
             isGitHub: true,
         })
     })
 
     it('marks a non-GitHub host so the API is never used for it', () => {
-        const parsed = parseSource('https://git.example.com/Doist/td-x')
-        expect(parsed).toMatchObject({ host: 'git.example.com', owner: 'Doist', isGitHub: false })
+        expect(parseSource('https://git.example.com/Doist/td-x')).toEqual({
+            type: 'git',
+            host: 'git.example.com',
+            owner: 'Doist',
+            repo: 'td-x',
+            url: 'https://git.example.com/Doist/td-x',
+            isGitHub: false,
+        })
     })
 
     it('parses scp-style git remotes', () => {
-        expect(parseSource('git@github.com:Doist/td-goals.git')).toMatchObject({
+        expect(parseSource('git@github.com:Doist/td-goals.git')).toEqual({
             type: 'git',
             host: 'github.com',
             owner: 'Doist',
             repo: 'td-goals',
+            url: 'git@github.com:Doist/td-goals.git',
             isGitHub: true,
         })
     })
 
-    it.each(['.', './td-scratch', '../td-scratch', '/tmp/td-scratch', '~/code/td-scratch'])(
-        'treats %s as a local path',
-        (source) => {
-            expect(parseSource(source)).toEqual({ type: 'local', path: source })
-        },
-    )
+    it('recognises the host however it was capitalised', () => {
+        expect(parseSource('git@GitHub.com:Doist/td-goals.git')).toMatchObject({
+            host: 'github.com',
+            isGitHub: true,
+        })
+        expect(parseRepoRef('https://GITHUB.com/Doist/td-goals')?.host).toBe('github.com')
+    })
+
+    it.each([
+        '.',
+        './td-scratch',
+        '../td-scratch',
+        '/tmp/td-scratch',
+        '~/code/td-scratch',
+        '.\\td-scratch',
+        '..\\td-scratch',
+        'C:\\code\\td-scratch',
+    ])('treats %s as a local path', (source) => {
+        expect(parseSource(source)).toEqual({ type: 'local', path: source })
+    })
 
     it('refuses input that names neither a repository nor a path', () => {
         expect(() => parseSource('not a source')).toThrow(/Cannot work out/)
