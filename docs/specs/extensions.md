@@ -365,11 +365,11 @@ An unknown command that is not an extension keeps Commander's current message, w
 1. **Build here first, extract to cli-core later.** The manager and the command registration both live in `src/lib/extensions/` with host-specific values injected through the manager's options object and no imports from the rest of `td`, so moving them is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then.
 2. **First-party marker, yes.** Extensions whose install source is the `Doist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
 3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
+4. **The name is `extension`.** With `ext` as the alias, as the Terminology section says. `plugin` is not used anywhere in code, commands, or docs.
 
 ## Open questions
 
-1. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`.
-2. **Name.** `extension` (with `ext`) as specified, or `plugin`? Decide before anything ships; renaming later means aliases for ever.
+1. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`. Not decided yet; phase 1 can ship without recording extension runs at all.
 
 ## References
 
