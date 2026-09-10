@@ -7,7 +7,7 @@ import { writeFixtureExtension } from '../../test-support/extension-fixture.js'
 import { createGitHubClient } from './github.js'
 import { installExtension, type InstallContext } from './install.js'
 import { run } from './run.js'
-import { readState } from './state.js'
+import { readState, writeState } from './state.js'
 
 // Resolved once: a machine without git skips the clone tests visibly rather
 // than passing them vacuously.
@@ -241,22 +241,65 @@ describe('installExtension', () => {
             await expect(
                 installExtension('Doist/td-goals', { force: true }, contextFor(github.impl)),
             ).resolves.toMatchObject({ kind: 'binary' })
+
+            // The fixture really is gone, not merely reported as replaced.
+            const executable = await readFile(join(extensionsDir, 'td-goals', 'td-goals'))
+            expect(executable.equals(BINARY)).toBe(true)
+        })
+
+        it('puts the previous install back when the replacement cannot be finished', async () => {
+            await mkdir(extensionsDir, { recursive: true })
+            await writeFixtureExtension(extensionsDir, 'goals', {
+                authoredManifest: { description: 'the original' },
+            })
+            const github = stubGitHub()
+            const context = contextFor(github.impl)
+            // The state directory is a file, so recording the install fails
+            // after the new version is already in place.
+            await writeFile(stateDir, 'not a directory')
+
+            await expect(
+                installExtension('Doist/td-goals', { force: true }, context),
+            ).rejects.toThrow()
+
+            const manifest = JSON.parse(
+                await readFile(join(extensionsDir, 'td-goals', 'td-extension.json'), 'utf8'),
+            )
+            expect(manifest.description).toBe('the original')
         })
     })
 
     describe('local installs', () => {
-        it('links the directory instead of copying it', async () => {
+        it.skipIf(process.platform === 'win32')(
+            'links the directory instead of copying it',
+            async () => {
+                const workspace = join(root, 'code')
+                await mkdir(workspace, { recursive: true })
+                const target = await writeFixtureExtension(workspace, 'scratch')
+                const github = stubGitHub()
+
+                const result = await installExtension(target, {}, contextFor(github.impl))
+
+                expect(result).toMatchObject({ name: 'scratch', kind: 'local', dir: target })
+                const entry = join(extensionsDir, 'td-scratch')
+                expect((await lstat(entry)).isSymbolicLink()).toBe(true)
+                expect(github.calls).toEqual([])
+            },
+        )
+
+        it('clears state left behind by whatever was installed under that name', async () => {
             const workspace = join(root, 'code')
             await mkdir(workspace, { recursive: true })
-            const target = await writeFixtureExtension(workspace, 'scratch')
-            const github = stubGitHub()
+            const target = await writeFixtureExtension(workspace, 'goals')
+            await mkdir(extensionsDir, { recursive: true })
+            await writeFixtureExtension(extensionsDir, 'goals')
+            await writeState(stateDir, 'td-goals', { pinned: 'v1.0.0' })
 
-            const result = await installExtension(target, {}, contextFor(github.impl))
+            await installExtension(target, { force: true }, contextFor(stubGitHub().impl))
 
-            expect(result).toMatchObject({ name: 'scratch', kind: 'local', dir: target })
-            const entry = join(extensionsDir, 'td-scratch')
-            expect((await lstat(entry)).isSymbolicLink()).toBe(true)
-            expect(github.calls).toEqual([])
+            // A stale pin would otherwise make the new local install report as
+            // pinned and be skipped by every upgrade.
+            await expect(readState(stateDir, 'td-goals')).resolves.toEqual({})
         })
 
         it('warns when the directory has no executable yet, but still links it', async () => {
@@ -277,6 +320,16 @@ describe('installExtension', () => {
             await expect(
                 installExtension(workspace, {}, contextFor(github.impl)),
             ).rejects.toMatchObject({ code: 'EXTENSION_NAME_INVALID' })
+        })
+
+        it('refuses a plain file, which could never be dispatched', async () => {
+            const file = join(root, 'code', 'td-file')
+            await mkdir(join(root, 'code'), { recursive: true })
+            await writeFile(file, 'not a directory')
+
+            await expect(
+                installExtension(file, {}, contextFor(stubGitHub().impl)),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NOT_INSTALLABLE' })
         })
 
         it('refuses a directory that does not exist', async () => {
@@ -312,7 +365,7 @@ describe('installExtension', () => {
             return repo
         }
 
-        it('clones when the repository publishes no matching asset', async () => {
+        it('clones a repository given as a file URL', async () => {
             const repo = await makeRepo('td-cloned')
             const github = stubGitHub({ assetName: 'td-cloned_v1_other-arch' })
 
@@ -321,6 +374,34 @@ describe('installExtension', () => {
             expect(result).toMatchObject({ kind: 'git', name: 'cloned' })
             await expect(stat(join(extensionsDir, 'td-cloned', 'td-cloned'))).resolves.toBeTruthy()
             await expect(stat(join(extensionsDir, 'td-cloned', '.git'))).resolves.toBeTruthy()
+        })
+
+        it('refuses a repository whose entry point is not executable', async () => {
+            const repo = join(root, 'origin', 'Doist', 'td-unexecutable')
+            await mkdir(repo, { recursive: true })
+            await writeFile(join(repo, 'td-unexecutable'), '#!/bin/sh\necho hi\n', { mode: 0o644 })
+            await run('git', ['init', '--quiet', '--initial-branch=main'], { cwd: repo })
+            await run('git', ['add', '.'], { cwd: repo })
+            await run(
+                'git',
+                [
+                    '-c',
+                    'user.email=t@example.com',
+                    '-c',
+                    'user.name=T',
+                    'commit',
+                    '--quiet',
+                    '-m',
+                    'init',
+                ],
+                { cwd: repo },
+            )
+
+            await expect(
+                installExtension(`file://${repo}`, {}, contextFor(stubGitHub().impl)),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NOT_INSTALLABLE' })
+
+            await expect(stat(join(extensionsDir, 'td-unexecutable'))).rejects.toThrow()
         })
 
         it('refuses a repository with no executable at its root, leaving nothing behind', async () => {

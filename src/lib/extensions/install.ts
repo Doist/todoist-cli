@@ -8,12 +8,22 @@
  * extension behind and never destroys the one already installed.
  */
 
-import { chmod, mkdir, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+    chmod,
+    lstat,
+    mkdir,
+    mkdtemp,
+    readdir,
+    rename,
+    rm,
+    symlink,
+    writeFile,
+} from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { CliError } from '@doist/cli-core'
-import { discoverExtensions } from './discover.js'
-import { exists, isDirectory } from './fs-utils.js'
+import { findExtension } from './discover.js'
+import { exists, isDirectory, isExecutable } from './fs-utils.js'
 import { checkout, clone, headSha, resolveRef } from './git.js'
 import {
     assetSuffixes,
@@ -23,7 +33,7 @@ import {
     sha256,
     verifyChecksum,
 } from './github.js'
-import { writeInstalledManifest } from './manifest.js'
+import { pickAuthoredFields, writeInstalledManifest } from './manifest.js'
 import { installDependencies } from './npm.js'
 import {
     authoredManifestFileName,
@@ -31,7 +41,7 @@ import {
     toCommandName,
     validateExtensionName,
 } from './source.js'
-import { writeState } from './state.js'
+import { removeState, writeState } from './state.js'
 import type { AuthoredManifest, Extension, InstallOptions, InstallResult } from './types.js'
 
 export type InstallContext = {
@@ -75,13 +85,14 @@ async function preflight(
         )
     }
 
-    const installed = await discoverExtensions({
+    // Only the entry that could collide, rather than describing every
+    // installed extension to find out about one.
+    const existing = await findExtension(name, {
         extensionsDir: context.extensionsDir,
         stateDir: context.stateDir,
         binName: context.binName,
         officialSource: context.officialSource,
     })
-    const existing = installed.find((extension) => extension.name === name)
     if (existing && !options.force) {
         throw new CliError(
             'EXTENSION_ALREADY_INSTALLED',
@@ -99,10 +110,9 @@ async function preflight(
 
 async function stagingDir(extensionsDir: string, dirName: string): Promise<string> {
     await mkdir(extensionsDir, { recursive: true })
-    const path = join(extensionsDir, `.staging-${dirName}-${process.pid}-${Date.now()}`)
-    await rm(path, { recursive: true, force: true })
-    await mkdir(path, { recursive: true })
-    return path
+    // mkdtemp picks a name nothing else can be holding, which hand-rolling one
+    // from the process id and the clock does not guarantee.
+    return mkdtemp(join(extensionsDir, `.staging-${dirName}-`))
 }
 
 /**
@@ -112,19 +122,49 @@ async function stagingDir(extensionsDir: string, dirName: string): Promise<strin
  * part-way through leaves something to put back instead of leaving the user
  * with no extension at all.
  */
+/** True when anything at all occupies the path, a dangling symlink included. */
+async function occupied(path: string): Promise<boolean> {
+    try {
+        await lstat(path)
+        return true
+    } catch {
+        return false
+    }
+}
+
+type Displaced = { discard: () => Promise<void>; restore: () => Promise<void> }
+
+const NOTHING_DISPLACED: Displaced = {
+    discard: async () => undefined,
+    restore: async () => undefined,
+}
+
+/**
+ * Put the staged directory in place of whatever is installed, and hand back
+ * the means to finish or undo it.
+ *
+ * The old install is moved aside rather than deleted, and stays there until
+ * the caller has finished everything that could still fail. A failure part-way
+ * through therefore leaves something to put back, instead of leaving the user
+ * with no extension at all.
+ */
 async function moveIntoPlace(
     staged: string,
     destination: string,
     existing: Extension | undefined,
-): Promise<void> {
-    const displaced = `${destination}.replaced-${process.pid}-${Date.now()}`
+): Promise<Displaced> {
+    // A dot prefix keeps the set-aside copy from looking like an installed
+    // extension if anything stops this run before it is cleaned up.
+    const displaced = join(dirname(destination), `.replaced-${basename(destination)}-${Date.now()}`)
     let movedAside = false
 
     if (existing && existing.entryPath !== destination) {
         await rm(existing.entryPath, { recursive: true, force: true })
     }
 
-    if (await exists(destination)) {
+    // lstat, not stat: a local install whose target has been deleted is a
+    // dangling link, which still occupies the destination.
+    if (await occupied(destination)) {
         await rename(destination, displaced)
         movedAside = true
     }
@@ -136,7 +176,17 @@ async function moveIntoPlace(
         throw error
     }
 
-    if (movedAside) await rm(displaced, { recursive: true, force: true })
+    if (!movedAside) return NOTHING_DISPLACED
+
+    return {
+        discard: async () => {
+            await rm(displaced, { recursive: true, force: true })
+        },
+        restore: async () => {
+            await rm(destination, { recursive: true, force: true })
+            await rename(displaced, destination).catch(() => undefined)
+        },
+    }
 }
 
 export async function installBinary(
@@ -164,7 +214,7 @@ export async function installBinary(
         ])
 
         verifyChecksum(data, expected, asset.name)
-        if (!expected) {
+        if (!expected.published) {
             context.warn(
                 `${parsed.owner}/${parsed.repo} publishes no checksums, so the download could not be verified.`,
             )
@@ -177,11 +227,20 @@ export async function installBinary(
 
         let authored: AuthoredManifest = {}
         if (authoredRaw) {
+            // Parsed and then sifted, because a file that is valid JSON can
+            // still be null, an array, or full of the wrong types.
+            let parsedManifest: unknown
             try {
-                authored = JSON.parse(authoredRaw) as AuthoredManifest
+                parsedManifest = JSON.parse(authoredRaw)
             } catch {
+                parsedManifest = undefined
+            }
+            const picked = pickAuthoredFields(parsedManifest)
+            if (picked) {
+                authored = picked
+            } else {
                 context.warn(
-                    `Ignoring ${authoredManifestFileName(context.binName)} in ${parsed.owner}/${parsed.repo}: it is not valid JSON.`,
+                    `Ignoring ${authoredManifestFileName(context.binName)} in ${parsed.owner}/${parsed.repo}: it is not a JSON object.`,
                 )
             }
         }
@@ -200,10 +259,18 @@ export async function installBinary(
             completion: authored.completion,
         })
 
-        await moveIntoPlace(staged, destination, existing)
-        await writeState(context.stateDir, dirName, {
-            pinned: options.pin ? release.tag : undefined,
-        })
+        const displaced = await moveIntoPlace(staged, destination, existing)
+        try {
+            await writeState(context.stateDir, dirName, {
+                pinned: options.pin ? release.tag : undefined,
+            })
+        } catch (error) {
+            // Nothing is installed rather than half-installed: the previous
+            // extension goes back, and the command reports the failure.
+            await displaced.restore()
+            throw error
+        }
+        await displaced.discard()
 
         return {
             name: toCommandName(context.binName, dirName),
@@ -240,14 +307,20 @@ async function installGit(
             pinnedSha = await resolveRef(staged, 'HEAD')
         }
 
-        if (!(await exists(join(staged, dirName)))) {
+        // Executable, not merely present: a directory or an unexecutable file
+        // by that name would install happily and only fail when run.
+        if (!(await isExecutable(join(staged, dirName)))) {
+            const present = await exists(join(staged, dirName))
             throw new CliError(
                 'EXTENSION_NOT_INSTALLABLE',
-                `${parsed.owner}/${parsed.repo} has no executable named "${dirName}" at its root.`,
+                present
+                    ? `"${dirName}" in ${parsed.owner}/${parsed.repo} is not an executable file.`
+                    : `${parsed.owner}/${parsed.repo} has no executable named "${dirName}" at its root.`,
                 {
                     hints: [
                         `An extension repository must contain a file named ${dirName} that ${context.binName} can run.`,
-                    ],
+                        present ? 'Give it an executable bit: chmod +x it and commit that.' : '',
+                    ].filter(Boolean),
                 },
             )
         }
@@ -255,11 +328,17 @@ async function installGit(
         await installDependencies(staged)
 
         const version = (await headSha(staged))?.slice(0, 8)
-        await moveIntoPlace(staged, destination, existing)
+        const displaced = await moveIntoPlace(staged, destination, existing)
         moved = true
-        await writeState(context.stateDir, dirName, {
-            pinned: options.pin ? (pinnedSha ?? options.pin) : undefined,
-        })
+        try {
+            await writeState(context.stateDir, dirName, {
+                pinned: options.pin ? (pinnedSha ?? options.pin) : undefined,
+            })
+        } catch (error) {
+            await displaced.restore()
+            throw error
+        }
+        await displaced.discard()
 
         return {
             name: toCommandName(context.binName, dirName),
@@ -308,16 +387,32 @@ async function installLocal(
 
     await mkdir(context.extensionsDir, { recursive: true })
     const destination = join(context.extensionsDir, dirName)
-    if (existing) await rm(existing.entryPath, { recursive: true, force: true })
-    await rm(destination, { recursive: true, force: true })
 
+    // Built beside the destination and renamed over it, so a failure leaves
+    // the extension that is already installed alone.
+    const pending = join(context.extensionsDir, `.pending-${dirName}-${Date.now()}`)
     if (process.platform === 'win32') {
         // Symlinks need elevated rights on Windows, so record the target in a
         // plain file and resolve it at discovery time instead.
-        await writeFile(destination, target, 'utf8')
+        await writeFile(pending, target, 'utf8')
     } else {
-        await symlink(target, destination, 'dir')
+        await symlink(target, pending, 'dir')
     }
+
+    try {
+        if (existing && existing.entryPath !== destination) {
+            await rm(existing.entryPath, { recursive: true, force: true })
+        }
+        await rm(destination, { recursive: true, force: true })
+        await rename(pending, destination)
+    } catch (error) {
+        await rm(pending, { recursive: true, force: true })
+        throw error
+    }
+
+    // A local install tracks a directory, so any pin or update bookkeeping
+    // left by whatever was installed here before no longer describes anything.
+    if (existing) await removeState(context.stateDir, dirName)
 
     return {
         name: toCommandName(context.binName, dirName),
