@@ -71,7 +71,25 @@ describe('createExtensionManager', () => {
     it('throws a not-found error that points at the list command', async () => {
         await expect(makeManager().require('ghost')).rejects.toMatchObject({
             code: 'EXTENSION_NOT_FOUND',
+            hints: [expect.stringContaining('extension list')],
         })
+    })
+
+    it('reports an unknown selector the same way when upgrading', async () => {
+        await expect(makeManager().upgrade(['ghost'])).rejects.toMatchObject({
+            code: 'EXTENSION_NOT_FOUND',
+            hints: [expect.stringContaining('extension list')],
+        })
+    })
+
+    it('upgrades an extension once however many names it was given by', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals')
+
+        const results = await makeManager().upgrade(['goals', 'td-goals', 'Doist/td-goals'])
+
+        // Two upgrades of one directory at once would write over each other.
+        expect(results).toHaveLength(1)
+        expect(results[0].name).toBe('goals')
     })
 
     it('flags an extension whose name a built-in command owns', async () => {

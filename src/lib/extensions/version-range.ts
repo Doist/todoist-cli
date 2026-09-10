@@ -68,13 +68,27 @@ export function satisfiesRange(version: string, range: string | undefined): bool
     const trimmed = range?.trim()
     if (!trimmed || trimmed === '*' || trimmed === 'x') return true
 
-    return trimmed.split('||').some((clause) => {
-        const comparators = clause.trim().split(/\s+/).filter(Boolean).map(parseComparator)
-        if (comparators.length === 0) return true
-        // An unparseable comparator makes the whole clause pass; see the note
-        // at the top about preferring false positives.
+    // An operator may be written apart from its version, so `>= 4.0.0` is one
+    // comparator rather than two tokens.
+    const clauses = trimmed
+        .split('||')
+        .map((clause) => clause.trim().replace(/(>=|<=|>|<|=|\^|~)\s+/g, '$1'))
+        .filter(Boolean)
+
+    // A range made only of separators asks for nothing, so nothing is unmet.
+    if (clauses.length === 0) return true
+
+    return clauses.some((clause) => {
+        const comparators = clause.split(/\s+/).filter(Boolean).map(parseComparator)
+
+        // A clause this checker cannot read in full counts as satisfied rather
+        // than half-enforced. A hyphen range such as `4.0.0 - 5.0.0` would
+        // otherwise read as two exact-match comparators and warn about a
+        // version that sits inside it.
+        if (comparators.some((comparator) => comparator === undefined)) return true
+
         return comparators.every(
-            (comparator) => comparator === undefined || satisfiesComparator(version, comparator),
+            (comparator) => comparator !== undefined && satisfiesComparator(version, comparator),
         )
     })
 }

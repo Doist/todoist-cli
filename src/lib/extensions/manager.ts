@@ -10,7 +10,8 @@
 
 import { join } from 'node:path'
 import { CliError } from '@doist/cli-core'
-import { discoverExtensions } from './discover.js'
+import { mapWithConcurrency } from './concurrency.js'
+import { discoverExtensions, findExtension } from './discover.js'
 import { buildExtensionEnv, dispatchExtension } from './dispatch.js'
 import { isExecutable } from './fs-utils.js'
 import { headSha } from './git.js'
@@ -31,7 +32,7 @@ import type {
     UpgradeOptions,
     UpgradeResult,
 } from './types.js'
-import { mapWithConcurrency, upgradeExtensions } from './upgrade.js'
+import { upgradeExtensions } from './upgrade.js'
 import { satisfiesRange } from './version-range.js'
 
 export type ExtensionManager = {
@@ -111,20 +112,21 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
         return discoverExtensions(discoverOptions)
     }
 
+    function notFound(name: string): CliError {
+        return new CliError('EXTENSION_NOT_FOUND', `No extension named "${name}" is installed.`, {
+            hints: [`Run \`${binName} extension list\` to see what is installed.`],
+        })
+    }
+
+    /** Inspect the one entry that could match, rather than describing them all. */
     async function find(selector: string): Promise<Extension | undefined> {
-        const name = normalizeSelector(binName, selector)
-        return (await discover()).find((extension) => extension.name === name)
+        return findExtension(normalizeSelector(binName, selector), discoverOptions)
     }
 
     async function requireExtension(selector: string): Promise<Extension> {
-        const extension = await find(selector)
-        if (!extension) {
-            throw new CliError(
-                'EXTENSION_NOT_FOUND',
-                `No extension named "${normalizeSelector(binName, selector)}" is installed.`,
-                { hints: [`Run \`${binName} extension list\` to see what is installed.`] },
-            )
-        }
+        const name = normalizeSelector(binName, selector)
+        const extension = await find(name)
+        if (!extension) throw notFound(name)
         return extension
     }
 
@@ -178,21 +180,21 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
         },
 
         async upgrade(selectors, upgradeOptions = {}) {
-            // One scan for the whole set: resolving each selector separately
-            // would re-read every installed extension once per name.
+            // Deduplicated first: `goals` and `td-goals` name one extension,
+            // and two upgrades of one directory at once would write over each
+            // other.
+            const names = [
+                ...new Set(selectors.map((selector) => normalizeSelector(binName, selector))),
+            ]
+
+            // One scan for the whole set, rather than one per name.
             const installed = await discover()
-            const extensions = selectors.map((selector) => {
-                const name = normalizeSelector(binName, selector)
+            const extensions = names.map((name) => {
                 const extension = installed.find((candidate) => candidate.name === name)
-                if (!extension) {
-                    throw new CliError(
-                        'EXTENSION_NOT_FOUND',
-                        `No extension named "${name}" is installed.`,
-                        { hints: [`Run \`${binName} extension list\` to see what is installed.`] },
-                    )
-                }
+                if (!extension) throw notFound(name)
                 return extension
             })
+
             return upgradeExtensions(extensions, upgradeOptions, installContext)
         },
 
@@ -217,7 +219,7 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
                 extension,
                 user: dispatchOptions.user,
                 accessible: isAccessible(),
-                extra: dispatchOptions.env,
+                env: dispatchOptions.env,
             })
 
             return dispatchExtension(extension, args, env)

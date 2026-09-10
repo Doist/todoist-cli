@@ -21,12 +21,33 @@ describe('satisfiesRange', () => {
         expect(satisfiesRange(version, range)).toBe(expected)
     })
 
-    it('applies caret rules, including the 0.x special case', () => {
+    it('applies caret rules, narrowing as the version approaches zero', () => {
         expect(satisfiesRange('4.9.0', '^4.1.0')).toBe(true)
         expect(satisfiesRange('5.0.0', '^4.1.0')).toBe(false)
         expect(satisfiesRange('4.0.0', '^4.1.0')).toBe(false)
         expect(satisfiesRange('0.2.9', '^0.2.3')).toBe(true)
         expect(satisfiesRange('0.3.0', '^0.2.3')).toBe(false)
+        // ^0.0.3 allows nothing above itself.
+        expect(satisfiesRange('0.0.3', '^0.0.3')).toBe(true)
+        expect(satisfiesRange('0.0.4', '^0.0.3')).toBe(false)
+    })
+
+    it('reads an operator written apart from its version', () => {
+        expect(satisfiesRange('5.3.1', '>= 4.0.0')).toBe(true)
+        expect(satisfiesRange('3.0.0', '>= 4.0.0')).toBe(false)
+        expect(satisfiesRange('4.5.0', '>= 4.0.0 < 5.0.0')).toBe(true)
+    })
+
+    it('does not enforce half of a clause it cannot read in full', () => {
+        // A hyphen range read as two exact matches would warn about a version
+        // that actually sits inside it.
+        expect(satisfiesRange('4.5.0', '4.0.0 - 5.0.0')).toBe(true)
+    })
+
+    it('ignores empty alternatives rather than letting them satisfy the range', () => {
+        expect(satisfiesRange('3.0.0', '>=9.0.0 ||')).toBe(false)
+        expect(satisfiesRange('3.0.0', '|| >=9.0.0')).toBe(false)
+        expect(satisfiesRange('9.1.0', '>=9.0.0 ||')).toBe(true)
     })
 
     it('applies tilde rules', () => {
