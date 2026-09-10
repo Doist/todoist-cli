@@ -14,8 +14,19 @@
  */
 export type ExtensionKind = 'binary' | 'git' | 'local'
 
-/** Metadata an extension author ships in `<bin>-extension.json`. */
+/**
+ * Metadata an extension author ships in `<bin>-extension.json`.
+ *
+ * `manifestVersion` is what makes a breaking change to this format possible
+ * later. It cannot be migrated, because the file lives in someone else's
+ * repository, so it exists to let two shapes coexist: the CLI reads the
+ * version first and interprets the rest accordingly. It governs how the
+ * metadata is read and never whether the extension runs, because an extension
+ * is an executable and this file only describes it.
+ */
 export type AuthoredManifest = {
+    /** Format version. Absent means 1, the version this CLI writes and reads. */
+    manifestVersion?: number
     description?: string
     /** Host version ranges, keyed by binary name, e.g. `{ td: '>=4.0.0' }`. */
     requires?: Record<string, string>

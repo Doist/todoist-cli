@@ -13,6 +13,31 @@ import { authoredManifestFileName, manifestFileName } from './source.js'
 import type { AuthoredManifest, InstalledManifest } from './types.js'
 
 /**
+ * The manifest format this CLI writes and knows how to read in full.
+ *
+ * A file without a version is this one: the field was introduced with the
+ * format, so its absence can only mean the first version.
+ */
+export const MANIFEST_VERSION = 1
+
+/** The version a manifest declares, defaulting to the original format. */
+export function manifestVersionOf(manifest: AuthoredManifest | undefined): number {
+    return manifest?.manifestVersion ?? MANIFEST_VERSION
+}
+
+/**
+ * True when a manifest was written to a format newer than this CLI knows.
+ *
+ * Such a manifest is still read for the fields this version understands. The
+ * extension itself is an executable and runs regardless: refusing to run it
+ * over the shape of a metadata file would break a working extension on a CLI
+ * downgrade, which is the failure the `requires` warning already avoids.
+ */
+export function isFromNewerFormat(manifest: AuthoredManifest | undefined): boolean {
+    return manifestVersionOf(manifest) > MANIFEST_VERSION
+}
+
+/**
  * Take only the fields this system understands, and only when they are the
  * right type. A manifest is written by hand, so a wrong type is likelier than
  * a missing field and neither should stop an extension from working.
@@ -20,6 +45,11 @@ import type { AuthoredManifest, InstalledManifest } from './types.js'
 export function pickAuthoredFields(value: unknown): AuthoredManifest | undefined {
     if (!isRecord(value)) return undefined
     const manifest: AuthoredManifest = {}
+    // Kept whatever it says, including a version this CLI does not know, so
+    // callers can tell the user why some of the metadata was ignored.
+    if (typeof value.manifestVersion === 'number' && Number.isInteger(value.manifestVersion)) {
+        manifest.manifestVersion = value.manifestVersion
+    }
     if (typeof value.description === 'string') manifest.description = value.description
     if (isRecord(value.requires)) {
         const requires: Record<string, string> = {}
@@ -71,6 +101,14 @@ export async function readInstalledManifest(
     if (strings.some((field) => typeof value[field] !== 'string')) return undefined
     if (typeof value.pinned !== 'boolean') return undefined
     if (value.sha256 !== undefined && typeof value.sha256 !== 'string') return undefined
+
+    // This file is written by the CLI, so a version it does not recognise
+    // means a newer CLI wrote it. Reading it as though it were this format
+    // would be guessing; treating it as absent makes callers say the
+    // extension needs reinstalling, which is the truth.
+    if (typeof value.manifestVersion === 'number' && value.manifestVersion > MANIFEST_VERSION) {
+        return undefined
+    }
 
     return {
         owner: value.owner as string,

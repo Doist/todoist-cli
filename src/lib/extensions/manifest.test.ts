@@ -4,6 +4,9 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
     findManifestProblems,
+    isFromNewerFormat,
+    MANIFEST_VERSION,
+    manifestVersionOf,
     readAuthoredManifest,
     readInstalledManifest,
     writeInstalledManifest,
@@ -18,6 +21,82 @@ describe('manifests', () => {
 
     afterEach(async () => {
         await rm(dir, { recursive: true, force: true })
+    })
+
+    describe('format version', () => {
+        it('treats a manifest without a version as the original format', async () => {
+            await writeFile(join(dir, 'td-extension.json'), JSON.stringify({ description: 'x' }))
+
+            const manifest = await readAuthoredManifest(dir, 'td')
+
+            expect(manifest?.manifestVersion).toBeUndefined()
+            expect(manifestVersionOf(manifest)).toBe(MANIFEST_VERSION)
+            expect(isFromNewerFormat(manifest)).toBe(false)
+        })
+
+        it('keeps a version it does not understand, so callers can explain themselves', async () => {
+            await writeFile(
+                join(dir, 'td-extension.json'),
+                JSON.stringify({ manifestVersion: 99, description: 'from the future' }),
+            )
+
+            const manifest = await readAuthoredManifest(dir, 'td')
+
+            // Still read for the fields this version knows: the extension is
+            // an executable, and its metadata being newer is not a reason to
+            // stop it working.
+            expect(manifest?.description).toBe('from the future')
+            expect(isFromNewerFormat(manifest)).toBe(true)
+        })
+
+        it('ignores a version that is not a whole number', async () => {
+            await writeFile(
+                join(dir, 'td-extension.json'),
+                JSON.stringify({ manifestVersion: '2', description: 'x' }),
+            )
+
+            const manifest = await readAuthoredManifest(dir, 'td')
+
+            expect(manifest?.manifestVersion).toBeUndefined()
+            expect(isFromNewerFormat(manifest)).toBe(false)
+        })
+
+        it('refuses an install manifest written by a newer CLI', async () => {
+            await writeFile(
+                join(dir, '.td-manifest.json'),
+                JSON.stringify({
+                    manifestVersion: MANIFEST_VERSION + 1,
+                    owner: 'Doist',
+                    name: 'td-goals',
+                    host: 'github.com',
+                    tag: 'v1',
+                    pinned: false,
+                    asset: 'a',
+                    installedAt: 'now',
+                }),
+            )
+
+            // Reading it as though it were this format would be guessing.
+            await expect(readInstalledManifest(dir, 'td')).resolves.toBeUndefined()
+        })
+
+        it('accepts an install manifest at the version it writes', async () => {
+            await writeInstalledManifest(dir, 'td', {
+                manifestVersion: MANIFEST_VERSION,
+                owner: 'Doist',
+                name: 'td-goals',
+                host: 'github.com',
+                tag: 'v1',
+                pinned: false,
+                asset: 'a',
+                installedAt: 'now',
+            })
+
+            await expect(readInstalledManifest(dir, 'td')).resolves.toMatchObject({
+                manifestVersion: MANIFEST_VERSION,
+                tag: 'v1',
+            })
+        })
     })
 
     it('reads the dedicated author manifest', async () => {
