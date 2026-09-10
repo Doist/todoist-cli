@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { writeFakeGitRepo, writeFixtureExtension } from '../../test-support/extension-fixture.js'
-import { discoverExtensions } from './discover.js'
+import { discoverExtensions, findExtension } from './discover.js'
 import { writeState } from './state.js'
 
 const OFFICIAL = { host: 'github.com', owner: 'Doist' }
@@ -93,18 +93,21 @@ describe('discoverExtensions', () => {
         expect(extension.official).toBe(true)
     })
 
-    it('follows a local install to its target and never marks it official', async () => {
-        const workspace = join(root, 'code')
-        await mkdir(workspace, { recursive: true })
-        const target = await writeFixtureExtension(workspace, 'scratch')
-        await writeFakeGitRepo(target, 'https://github.com/Doist/td-scratch.git')
-        await symlink(target, join(extensionsDir, 'td-scratch'), 'dir')
+    it.skipIf(process.platform === 'win32')(
+        'follows a local install to its target and never marks it official',
+        async () => {
+            const workspace = join(root, 'code')
+            await mkdir(workspace, { recursive: true })
+            const target = await writeFixtureExtension(workspace, 'scratch')
+            await writeFakeGitRepo(target, 'https://github.com/Doist/td-scratch.git')
+            await symlink(target, join(extensionsDir, 'td-scratch'), 'dir')
 
-        const [extension] = await discover()
-        expect(extension).toMatchObject({ name: 'scratch', kind: 'local', official: false })
-        expect(extension.dir).toBe(target)
-        expect(extension.executablePath).toBe(join(target, 'td-scratch'))
-    })
+            const [extension] = await discover()
+            expect(extension).toMatchObject({ name: 'scratch', kind: 'local', official: false })
+            expect(extension.dir).toBe(target)
+            expect(extension.executablePath).toBe(join(target, 'td-scratch'))
+        },
+    )
 
     it('follows a Windows-style path file for a local install', async () => {
         const workspace = join(root, 'code')
@@ -114,6 +117,55 @@ describe('discoverExtensions', () => {
 
         const [extension] = await discover()
         expect(extension).toMatchObject({ kind: 'local', dir: target })
+    })
+
+    it('resolves a relative path file against its own directory, not the cwd', async () => {
+        const target = await writeFixtureExtension(extensionsDir, 'sibling')
+        await writeFile(join(extensionsDir, 'td-scratch'), 'td-sibling', 'utf8')
+
+        const found = await discover()
+        const scratch = found.find((extension) => extension.name === 'scratch')
+        expect(scratch?.dir).toBe(target)
+    })
+
+    it('treats a plain file named .git as part of a binary install', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals', {
+            files: { '.git': 'gitdir: elsewhere' },
+            installedManifest: {
+                owner: 'Doist',
+                name: 'td-goals',
+                host: 'github.com',
+                tag: 'v1',
+                pinned: false,
+                asset: 'a',
+                installedAt: 'now',
+            },
+        })
+
+        const [extension] = await discover()
+        expect(extension.kind).toBe('binary')
+        expect(extension.source).toBe('Doist/td-goals')
+    })
+
+    it('reports a failure to read the extensions directory rather than hiding it', async () => {
+        await writeFile(join(root, 'not-a-directory'), 'x')
+
+        await expect(
+            discoverExtensions({
+                extensionsDir: join(root, 'not-a-directory'),
+                stateDir,
+                binName: 'td',
+                officialSource: OFFICIAL,
+            }),
+        ).rejects.toThrow()
+    })
+
+    it('records what a pinned extension is pinned to', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals')
+        await writeState(stateDir, 'td-goals', { pinned: 'v1.2.3' })
+
+        const [extension] = await discover()
+        expect(extension.pinnedRef).toBe('v1.2.3')
     })
 
     it('prefers the authored manifest over the one written at install time', async () => {
@@ -142,6 +194,29 @@ describe('discoverExtensions', () => {
 
         const [extension] = await discover()
         expect(extension.pinned).toBe(true)
+    })
+
+    describe('findExtension', () => {
+        const find = (name: string) =>
+            findExtension(name, {
+                extensionsDir,
+                stateDir,
+                binName: 'td',
+                officialSource: OFFICIAL,
+            })
+
+        it('describes only the extension asked for', async () => {
+            await writeFixtureExtension(extensionsDir, 'goals')
+            await writeFixtureExtension(extensionsDir, 'standup')
+
+            await expect(find('goals')).resolves.toMatchObject({ name: 'goals' })
+        })
+
+        it('returns nothing when that extension is not installed', async () => {
+            await writeFixtureExtension(extensionsDir, 'goals')
+
+            await expect(find('missing')).resolves.toBeUndefined()
+        })
     })
 
     it('sorts by command name', async () => {

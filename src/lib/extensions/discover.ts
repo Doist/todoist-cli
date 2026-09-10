@@ -9,10 +9,12 @@
  */
 
 import { lstat, readdir, readFile, realpath } from 'node:fs/promises'
-import { isAbsolute, join, resolve } from 'node:path'
-import { exists } from './fs-utils.js'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { mapWithConcurrency } from './concurrency.js'
+import { exists, isDirectory } from './fs-utils.js'
+import { isMissingFile } from './json-file.js'
 import { readAuthoredManifest, readInstalledManifest } from './manifest.js'
-import { parseRepoRef, toCommandName } from './source.js'
+import { parseRepoRef, toCommandName, toDirName } from './source.js'
 import { readState } from './state.js'
 import type { Extension, ExtensionKind } from './types.js'
 
@@ -55,15 +57,20 @@ async function resolveLocalTarget(entryPath: string, isLink: boolean): Promise<s
     try {
         const target = (await readFile(entryPath, 'utf8')).trim()
         if (!target) return undefined
-        return isAbsolute(target) ? target : resolve(target)
+        // Relative to the path file itself, not to wherever the CLI happens to
+        // have been run from, so the install points at one directory always.
+        return isAbsolute(target) ? target : resolve(dirname(entryPath), target)
     } catch {
         return undefined
     }
 }
 
-async function inferKind(entryPath: string, isDirectory: boolean): Promise<ExtensionKind> {
-    if (!isDirectory) return 'local'
-    if (await exists(join(entryPath, '.git'))) return 'git'
+async function inferKind(entryPath: string, entryIsDirectory: boolean): Promise<ExtensionKind> {
+    if (!entryIsDirectory) return 'local'
+    // A directory, not merely a `.git` of some kind: a release binary is free
+    // to ship a file by that name, and misreading it as a clone would hide its
+    // manifest and its source.
+    if (await isDirectory(join(entryPath, '.git'))) return 'git'
     return 'binary'
 }
 
@@ -95,10 +102,13 @@ async function describe(entry: string, options: DiscoverOptions): Promise<Extens
     const dir =
         kind === 'local' ? ((await resolveLocalTarget(entryPath, isLink)) ?? entryPath) : entryPath
 
-    const [authored, installed, state] = await Promise.all([
+    // Every per-extension read at once: they are independent, and discovery
+    // runs on every invocation of the CLI.
+    const [authored, installed, state, remote] = await Promise.all([
         readAuthoredManifest(dir, binName),
         kind === 'binary' ? readInstalledManifest(dir, binName) : Promise.resolve(undefined),
         readState(stateDir, entry),
+        kind === 'git' ? readGitRemote(dir) : Promise.resolve(undefined),
     ])
 
     let host: string | undefined
@@ -110,7 +120,6 @@ async function describe(entry: string, options: DiscoverOptions): Promise<Extens
         owner = installed.owner
         source = `${installed.owner}/${installed.name}`
     } else if (kind === 'git') {
-        const remote = await readGitRemote(dir)
         const parsed = remote ? parseRepoRef(remote) : undefined
         host = parsed?.host
         owner = parsed?.owner
@@ -133,6 +142,7 @@ async function describe(entry: string, options: DiscoverOptions): Promise<Extens
         host,
         owner,
         pinned: Boolean(state.pinned ?? installed?.pinned),
+        pinnedRef: state.pinned ?? (installed?.pinned ? installed.tag : undefined),
         official,
         description: authored?.description ?? installed?.description,
         requires: authored?.requires ?? installed?.requires,
@@ -140,20 +150,54 @@ async function describe(entry: string, options: DiscoverOptions): Promise<Extens
     }
 }
 
+/**
+ * How many extensions to inspect at once. Each one is a handful of small
+ * reads, and the number installed is up to the user.
+ */
+const DISCOVERY_CONCURRENCY = 8
+
+function candidateEntries(entries: string[], binName: string): string[] {
+    const prefix = `${binName}-`
+    return entries.filter((entry) => entry.startsWith(prefix) && entry !== prefix)
+}
+
 /** Every extension installed for this CLI, sorted by command name. */
 export async function discoverExtensions(options: DiscoverOptions): Promise<Extension[]> {
     let entries: string[]
     try {
         entries = await readdir(options.extensionsDir)
-    } catch {
-        return []
+    } catch (error) {
+        // No extensions directory is the ordinary case and means no
+        // extensions. Anything else — a permission problem, a broken mount —
+        // is a real failure, and reporting it as "none installed" would leave
+        // the user wondering where their extensions went.
+        if (isMissingFile(error)) return []
+        throw error
     }
 
-    const prefix = `${options.binName}-`
-    const candidates = entries.filter((entry) => entry.startsWith(prefix) && entry !== prefix)
-    const described = await Promise.all(candidates.map((entry) => describe(entry, options)))
+    const described = await mapWithConcurrency(
+        candidateEntries(entries, options.binName),
+        DISCOVERY_CONCURRENCY,
+        (entry) => describe(entry, options),
+    )
 
     return described
         .filter((extension): extension is Extension => extension !== undefined)
         .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * One extension by command name, inspecting only the entry that could match.
+ *
+ * `dispatch`, `remove` and a targeted `upgrade` all know which extension they
+ * want, and reading every other extension's manifests and git remote to find
+ * it would be work done for nothing.
+ */
+export async function findExtension(
+    name: string,
+    options: DiscoverOptions,
+): Promise<Extension | undefined> {
+    const entry = toDirName(options.binName, name)
+    if (!(await exists(join(options.extensionsDir, entry)))) return undefined
+    return describe(entry, options)
 }

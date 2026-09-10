@@ -9,6 +9,7 @@
 
 import { chmod, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { authoredManifestFileName, manifestFileName, toDirName } from '../lib/extensions/source.js'
 
 export type FixtureOptions = {
     /** Host binary name the extension belongs to. Defaults to `td`. */
@@ -41,16 +42,17 @@ const report = JSON.stringify({ args, env, cwd: process.cwd() })
 const exitFlag = args.indexOf('--exit-code')
 const code = exitFlag === -1 ? 0 : Number(args[exitFlag + 1])
 if (args.includes('--fail')) process.stderr.write('fixture failed')
-// Dynamic import works whether node loads this as CommonJS or ESM, which
-// depends on whatever package.json happens to sit above the fixture.
+// Setting exitCode rather than calling process.exit, so a report written to a
+// pipe is flushed before the process ends. Dynamic import works whether node
+// loads this as CommonJS or ESM, which depends on whatever package.json
+// happens to sit above the fixture.
+process.exitCode = code
 if (process.env.XX_REPORT) {
     import('node:fs').then((fs) => {
         fs.writeFileSync(process.env.XX_REPORT, report)
-        process.exit(code)
     })
 } else {
     process.stdout.write(report)
-    process.exit(code)
 }
 `
 
@@ -70,7 +72,7 @@ export async function writeFixtureExtension(
     options: FixtureOptions = {},
 ): Promise<string> {
     const binName = options.binName ?? 'td'
-    const dirName = `${binName}-${name}`
+    const dirName = toDirName(binName, name)
     const dir = join(parentDir, dirName)
     await mkdir(dir, { recursive: true })
 
@@ -81,13 +83,13 @@ export async function writeFixtureExtension(
 
     if (options.authoredManifest) {
         await writeFile(
-            join(dir, `${binName}-extension.json`),
+            join(dir, authoredManifestFileName(binName)),
             JSON.stringify(options.authoredManifest, null, 2),
         )
     }
     if (options.installedManifest) {
         await writeFile(
-            join(dir, `.${binName}-manifest.json`),
+            join(dir, manifestFileName(binName)),
             JSON.stringify(options.installedManifest, null, 2),
         )
     }
