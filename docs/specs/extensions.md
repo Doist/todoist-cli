@@ -10,7 +10,7 @@ Add a `gh`-style extension system to `td`. An extension is an executable named `
 
 Because the contract between `td` and an extension is the process boundary (argv, environment, stdin/stdout/stderr, exit code) rather than a JavaScript API, extensions can be written in any language: a Node script, a shell script, a Go or Rust binary, a Python program. Anything that can be executed works. Extensions that need Todoist data do what a user would do: they call `td` itself (`td task list --json`, `td auth token view`), so they inherit authentication, account selection, and output conventions without a shared library.
 
-The dispatch and management logic is generic, so it belongs in `@doist/cli-core` where `tdc` and `tda` can adopt it with a one-line registration. `td` is the first host.
+The dispatch and management logic is generic and will eventually live in `@doist/cli-core` so `tdc` and `tda` can adopt it with a one-line registration. It is built in this repo first, behind an interface that takes the host name and directories as parameters, and moves to cli-core once the shape has settled.
 
 ## Motivation
 
@@ -22,7 +22,7 @@ Concretely:
 
 1. **Prototyping.** A feature behind a server-side flag, or one that is still being designed, can ship as `Doist/td-goals` today and be used by the people testing it, without a release of `td` and without dead code in `main` when the experiment ends. If the feature graduates, the extension is either promoted into core or stays an extension.
 2. **Community.** People already script `td` in shell and Python. An extension mechanism gives those scripts a home (`td standup`, `td weekly-review`, `td export-obsidian`) and a discovery path, with no obligation on Todoist to maintain them.
-3. **Consistency with the other Todoist CLIs.** One implementation in cli-core means `tdc` and `tda` gain the same feature for free, with the same commands and the same on-disk layout.
+3. **Consistency with the other Todoist CLIs.** One implementation, extracted to cli-core once proven here, means `tdc` and `tda` gain the same feature with the same commands and the same on-disk layout.
 
 ### Non-goals
 
@@ -116,13 +116,15 @@ Review the source before use.
 
 ```
 NAME        SOURCE                       VERSION   KIND
-goals       Doist/td-goals               v0.3.0    binary
+goals       Doist/td-goals               v0.3.0    binary   ✓ Todoist
 standup     example/td-standup           a1b2c3d4  git (pinned)
 scratch     ~/code/td-scratch            —         local
 weekly      example/td-weekly            0.1.0     git · shadowed by built-in "weekly"
 ```
 
-No network access. `--json` returns the manifest fields plus `path`, `kind`, `shadowed`, and `executable` (false when the file is missing or not executable, which is the usual state of a freshly cloned Go extension that has not been built).
+Extensions published by Todoist carry a `✓ Todoist` marker, in `--accessible` mode rendered as the literal text `official`. The check is the install source's owner: the `Doist` GitHub organisation until it is renamed, held in one constant so the rename is a one-line change. It is an ownership label, not a signature, and it does not suppress the trust warning.
+
+No network access. `--json` returns the manifest fields plus `path`, `kind`, `shadowed`, `official`, and `executable` (false when the file is missing or not executable, which is the usual state of a freshly cloned Go extension that has not been built).
 
 #### `upgrade`
 
@@ -296,7 +298,7 @@ The pre-parse `--user` handling in `src/index.ts` follows the same boundary: bot
 - Other scripts on Windows: run through `sh.exe -c '"$0" "$@"'` if `sh.exe` is on `PATH`, else fail with `EXTENSION_NEEDS_SHELL` and a hint to install Git for Windows. Same behaviour as `gh`.
 - `.cmd` / `.exe` on Windows: spawn directly.
 
-The spawn helper is new: nothing in the repo currently shells out apart from `open` for the browser and cli-core's update command. It lives in cli-core next to the extension manager.
+The spawn helper is new: nothing in the repo currently shells out apart from `open` for the browser and cli-core's update command. It lives next to the extension manager and moves with it.
 
 ### Error mapping
 
@@ -325,10 +327,11 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ### Phase 1 — core (ships the feature)
 
-- cli-core: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch. Generic over the host name so `tdc`/`tda` reuse it.
-- cli-core: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands.
-- todoist-cli: wire it in `src/index.ts`; add `TD_USER` env support to the user resolver; adjust `--user` stripping; add the unknown-command hint; doctor checks; `SKILL_CONTENT` entries for `td extension …`; `CODEBASE.md` registration-pattern update.
-- Trust warning on install/upgrade. Checksum verification when a checksums asset exists.
+- `src/lib/extensions/`: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames, officialOwners })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch. Nothing in it may import from `src/commands/` or read `td`-specific config directly: every host-specific value comes in through that options object, and its only dependencies are Node built-ins and what `@doist/cli-core` already exports. That is what makes the later move to cli-core a file move rather than a rewrite.
+- `src/commands/extension/`: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands, following the usual group-command layout.
+- Wire it in `src/index.ts`; add `TD_USER` env support to the user resolver; adjust `--user` stripping; add the unknown-command hint; doctor checks; `SKILL_CONTENT` entries for `td extension …`; `CODEBASE.md` registration-pattern update.
+- Trust warning on install/upgrade. Checksum verification when a checksums asset exists. `✓ Todoist` marker in `list`.
+- Windows is best effort in this phase: the path-file local install, the Node-shebang shortcut, the `sh.exe` fallback, and `.exe` asset matching are all specified and implemented, but the release does not wait on a full Windows pass. `td doctor` reports extensions as experimental on Windows until that pass is done.
 - Tests: manager unit tests with a fake filesystem and stubbed GitHub API, including a mismatched or truncated release asset refusing to install with `EXTENSION_CHECKSUM_MISMATCH`, and `--pin` resolving a tagged release rather than latest; dispatch tests asserting argv passthrough, env contract, `--user` scoping, and exit-code propagation; a fixture extension in `src/test-support/` for end-to-end runs.
 - Dogfood: `Doist/td-goals` (or whichever prototype is live) rebuilt as an extension before the release, so the first release is validated by a real consumer.
 
@@ -338,7 +341,8 @@ An unknown command that is not an extension keeps Commander's current message, w
 - `td extension search` over the `td-extension` topic.
 - Non-blocking update notice after an extension runs, at most once per 24 hours, suppressed in CI and non-TTY. Same rules as `gh`.
 - `TD_EXTENSION` handling in `td` itself: skip the `td update` nag when running as a nested call.
-- `tdc` and `tda` adopt the cli-core module.
+- Extract `src/lib/extensions/` to `@doist/cli-core` once the API has stopped moving, then `tdc` and `tda` adopt it.
+- Full Windows verification of the fixture extension and the four Windows-specific paths; drop the experimental label in `doctor`.
 
 ### Phase 3 — optional integrations
 
@@ -356,13 +360,16 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 **A single `~/.config/todoist-cli/extensions.json` registry.** Rejected in favour of directory-as-truth so that partial failures and manual cleanup cannot desynchronise a registry from the filesystem.
 
+## Decisions
+
+1. **Build here first, extract to cli-core later.** The manager lives in `src/lib/extensions/` with host-specific values injected through its options object and no imports from the rest of `td`, so moving it is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then.
+2. **First-party marker, yes.** Extensions whose install source is owned by the `Doist` GitHub organisation show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The owner name is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
+3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
+
 ## Open questions
 
-1. **cli-core first, or todoist-cli first?** The spec proposes building the generic manager in cli-core from the start. If iteration speed matters more, build in `src/lib/extensions/` here and move it once the shape settles; the cost is one extra PR later.
-2. **Official extensions.** Should extensions under the `Doist` GitHub organisation get a visible marker in `list` and `search`, and be exempt from the trust warning? `gh` marks official ones for telemetry only. A `✓ Todoist` column is low cost and useful for the prototyping use case; suggest yes for `list`, but keep the warning.
-3. **Windows.** The README lists Windows Credential Manager as a supported store, so Windows is a target. The Node-shebang shortcut and the `sh.exe` fallback both need testing there before phase 1 ships; is that a blocker for phase 1 or acceptable as a known gap?
-4. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`.
-5. **Name.** `extension` (with `ext`) as specified, or `plugin`? Decide before anything ships; renaming later means aliases for ever.
+1. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`.
+2. **Name.** `extension` (with `ext`) as specified, or `plugin`? Decide before anything ships; renaming later means aliases for ever.
 
 ## References
 
