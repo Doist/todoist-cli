@@ -130,6 +130,15 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   pointer) and `getEffectiveDefaultUserId` (pinned-else-sole-account, used for
   the `(default)` marker in `accounts list`/`current`, `auth status`,
   `config view`).
+- **`extensions/`** — the extension system: `manager.ts`
+  (`createExtensionManager`, the only entry point a host needs), plus
+  `discover`, `install`, `upgrade`, `remove`, `dispatch`, `github`, `git`,
+  `npm`, `manifest`, `state`, `source`, `version-range`, `run`, `fs-utils`.
+  Host-agnostic by design: the binary name, directories, version, reserved
+  command names and first-party source all arrive through the manager's
+  options, and nothing in the directory imports from the rest of the repo, so
+  it can move to `@doist/cli-core` as a file move. See
+  `docs/specs/extensions.md`.
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
