@@ -224,3 +224,69 @@ describe('manifests', () => {
         await expect(readInstalledManifest(dir, 'td')).resolves.toBeUndefined()
     })
 })
+
+describe('schema validation', () => {
+    let dir: string
+
+    beforeEach(async () => {
+        dir = await mkdtemp(join(tmpdir(), 'td-ext-schema-'))
+    })
+
+    afterEach(async () => {
+        await rm(dir, { recursive: true, force: true })
+    })
+
+    it('keeps unknown keys out without rejecting the manifest that carries them', async () => {
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ description: 'fine', somethingNewer: { deeply: 'nested' } }),
+        )
+
+        // The format has to be able to grow without older CLIs refusing it.
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({ description: 'fine' })
+    })
+
+    it('drops one malformed requires entry rather than the whole field', async () => {
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ requires: { td: 42, tdc: '>=1.0.0' } }),
+        )
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
+            requires: { tdc: '>=1.0.0' },
+        })
+    })
+
+    it('treats an empty requires map as asking for nothing', async () => {
+        await writeFile(join(dir, 'td-extension.json'), JSON.stringify({ requires: {} }))
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({})
+    })
+
+    it.each([
+        ['a JSON array', '[]'],
+        ['a bare string', '"nope"'],
+        ['null', 'null'],
+    ])('treats %s as no manifest at all', async (_label, contents) => {
+        await writeFile(join(dir, 'td-extension.json'), contents)
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toBeUndefined()
+    })
+
+    it('rejects an install manifest with an empty required field', async () => {
+        await writeFile(
+            join(dir, '.td-manifest.json'),
+            JSON.stringify({
+                owner: '',
+                name: 'td-goals',
+                host: 'github.com',
+                tag: 'v1',
+                pinned: false,
+                asset: 'a',
+                installedAt: 'now',
+            }),
+        )
+
+        await expect(readInstalledManifest(dir, 'td')).resolves.toBeUndefined()
+    })
+})

@@ -7,14 +7,10 @@
 
 import { mkdir, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { isRecord, readJsonValue, writeJsonFile } from './json-file.js'
+import { readJsonValue, writeJsonFile } from './json-file.js'
+import type { ExtensionState } from './schemas.js'
 
-export type ExtensionState = {
-    /** Git ref or release tag this extension is held at, if pinned. */
-    pinned?: string
-    checkedForUpdateAt?: string
-    latestRelease?: string
-}
+export type { ExtensionState }
 
 export function stateFilePath(stateDir: string, dirName: string): string {
     return join(stateDir, 'extensions', `${dirName}.json`)
@@ -28,15 +24,9 @@ export function stateFilePath(stateDir: string, dirName: string): string {
  */
 export async function readState(stateDir: string, dirName: string): Promise<ExtensionState> {
     const value = await readJsonValue(stateFilePath(stateDir, dirName))
-    if (!isRecord(value)) return {}
-
-    const state: ExtensionState = {}
-    if (typeof value.pinned === 'string') state.pinned = value.pinned
-    if (typeof value.checkedForUpdateAt === 'string') {
-        state.checkedForUpdateAt = value.checkedForUpdateAt
-    }
-    if (typeof value.latestRelease === 'string') state.latestRelease = value.latestRelease
-    return state
+    // No file, nothing to validate, and no reason to load a validator.
+    if (value === undefined) return {}
+    return (await import('./schemas.js')).parseExtensionState(value)
 }
 
 export async function writeState(

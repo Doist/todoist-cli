@@ -15,37 +15,13 @@
 export type ExtensionKind = 'binary' | 'git' | 'local'
 
 /**
- * Metadata an extension author ships in `<bin>-extension.json`.
- *
- * `manifestVersion` is what makes a breaking change to this format possible
- * later. It cannot be migrated, because the file lives in someone else's
- * repository, so it exists to let two shapes coexist: the CLI reads the
- * version first and interprets the rest accordingly. It governs how the
- * metadata is read and never whether the extension runs, because an extension
- * is an executable and this file only describes it.
+ * The two manifest shapes are defined by their schemas, so the type and the
+ * validation cannot drift. Re-exported as types only, which TypeScript erases,
+ * so naming one here never pulls the validation library into the startup path.
  */
-export type AuthoredManifest = {
-    /** Format version. Absent means 1, the version this CLI writes and reads. */
-    manifestVersion?: number
-    description?: string
-    /** Host version ranges, keyed by binary name, e.g. `{ td: '>=4.0.0' }`. */
-    requires?: Record<string, string>
-    /** Opt-in to the argument-completion protocol. Unused for now. */
-    completion?: boolean
-}
+import type { AuthoredManifest, InstalledManifest } from './schemas.js'
 
-/** Metadata the CLI writes for binary installs, in `.<bin>-manifest.json`. */
-export type InstalledManifest = AuthoredManifest & {
-    owner: string
-    /** Directory name, e.g. `td-goals`. */
-    name: string
-    host: string
-    tag: string
-    pinned: boolean
-    asset: string
-    sha256?: string
-    installedAt: string
-}
+export type { AuthoredManifest, InstalledManifest }
 
 /** One installed extension, as discovered on disk. */
 export type Extension = {
