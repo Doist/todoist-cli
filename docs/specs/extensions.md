@@ -115,14 +115,14 @@ Review the source before use.
 #### `list`
 
 ```
-NAME        SOURCE                       VERSION   KIND
-goals       Doist/td-goals               v0.3.0    binary   ✓ Todoist
+NAME        SOURCE                       VERSION   KIND                                  OFFICIAL
+goals       Doist/td-goals               v0.3.0    binary                                ✓ Todoist
 standup     example/td-standup           a1b2c3d4  git (pinned)
 scratch     ~/code/td-scratch            —         local
 weekly      example/td-weekly            0.1.0     git · shadowed by built-in "weekly"
 ```
 
-Extensions published by Todoist carry a `✓ Todoist` marker, in `--accessible` mode rendered as the literal text `official`. The check is the install source's owner: the `Doist` GitHub organisation until it is renamed, held in one constant so the rename is a one-line change. It is an ownership label, not a signature, and it does not suppress the trust warning.
+Extensions published by Todoist show `✓ Todoist` in the `OFFICIAL` column (`Todoist` without the tick in `--accessible` mode). An extension is official when its install source is the `Doist` organisation on `github.com`: both host and owner must match, taken from `.td-manifest.json` for binary installs and from the parsed `remote.origin.url` for git installs. Owner alone is not enough, because `install` accepts any git host and `https://git.example/Doist/td-x` must not pass. Local installs are never official. The host and owner pair is one constant so the organisation rename is a one-line change. It is an ownership label, not a signature, and it does not suppress the trust warning.
 
 No network access. `--json` returns the manifest fields plus `path`, `kind`, `shadowed`, `official`, and `executable` (false when the file is missing or not executable, which is the usual state of a freshly cloned Go extension that has not been built).
 
@@ -327,8 +327,8 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ### Phase 1 — core (ships the feature)
 
-- `src/lib/extensions/`: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames, officialOwners })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch. Nothing in it may import from `src/commands/` or read `td`-specific config directly: every host-specific value comes in through that options object, and its only dependencies are Node built-ins and what `@doist/cli-core` already exports. That is what makes the later move to cli-core a file move rather than a rewrite.
-- `src/commands/extension/`: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands, following the usual group-command layout.
+- `src/lib/extensions/`: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames, officialSource })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch, where `officialSource` is `{ host: 'github.com', owner: 'Doist' }`. Nothing in it may import from `src/commands/` or read `td`-specific config directly: every host-specific value comes in through that options object, and its only dependencies are Node built-ins and what `@doist/cli-core` already exports. That is what makes the later move to cli-core a file move rather than a rewrite.
+- `src/lib/extensions/commands.ts`: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands. It lives with the manager, under the same no-host-imports rule, so it is extracted with it and another CLI really does adopt the feature with one call. `src/commands/extension/index.ts` is the usual group-command entry point and does nothing but call it.
 - Wire it in `src/index.ts`; add `TD_USER` env support to the user resolver; adjust `--user` stripping; add the unknown-command hint; doctor checks; `SKILL_CONTENT` entries for `td extension …`; `CODEBASE.md` registration-pattern update.
 - Trust warning on install/upgrade. Checksum verification when a checksums asset exists. `✓ Todoist` marker in `list`.
 - Windows is best effort in this phase: the path-file local install, the Node-shebang shortcut, the `sh.exe` fallback, and `.exe` asset matching are all specified and implemented, but the release does not wait on a full Windows pass. `td doctor` reports extensions as experimental on Windows until that pass is done.
@@ -362,8 +362,8 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ## Decisions
 
-1. **Build here first, extract to cli-core later.** The manager lives in `src/lib/extensions/` with host-specific values injected through its options object and no imports from the rest of `td`, so moving it is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then.
-2. **First-party marker, yes.** Extensions whose install source is owned by the `Doist` GitHub organisation show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The owner name is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
+1. **Build here first, extract to cli-core later.** The manager and the command registration both live in `src/lib/extensions/` with host-specific values injected through the manager's options object and no imports from the rest of `td`, so moving them is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then.
+2. **First-party marker, yes.** Extensions whose install source is the `Doist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
 3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
 
 ## Open questions
