@@ -1,3 +1,9 @@
+## [5.3.2](https://github.com/Doist/todoist-cli/compare/v5.3.1...v5.3.2) (2026-09-10)
+
+### Bug Fixes
+
+* **deps:** update dependency oauth4webapi to v3.8.8 ([#518](https://github.com/Doist/todoist-cli/issues/518)) ([10dc574](https://github.com/Doist/todoist-cli/commit/10dc574f00e4b7b0cf1a334c5fa13deb355dbebf))
+
 ## [5.3.1](https://github.com/Doist/todoist-cli/compare/v5.3.0...v5.3.1) (2026-09-10)
 
 ### Bug Fixes
