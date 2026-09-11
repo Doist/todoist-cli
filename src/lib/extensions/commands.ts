@@ -16,7 +16,7 @@ import { join } from 'node:path'
 import { CliError, formatJson, printEmpty } from '@doist/cli-core'
 import type { Command } from 'commander'
 import type { ExtensionManager } from './manager.js'
-import type { ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
+import type { DispatchOptions, ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
 
 /** Neither column has a value worth showing, so say so once, the same way. */
 const NOTHING = '—'
@@ -30,13 +30,14 @@ const NOTHING = '—'
  * it requires `enablePositionalOptions` on the parent, which makes ordinary
  * commands reject the global flags they accept today.
  *
- * The search starts after the subcommand token so that a value elsewhere on
- * the line cannot be mistaken for the name.
+ * `marker` is the subcommand the name follows, so that a value elsewhere on
+ * the line cannot be mistaken for it. An extension invoked directly has no
+ * marker: its name is the first thing on the line that is not a global flag.
  */
-function argsAfter(marker: string, name: string): string[] {
-    const markerIndex = process.argv.indexOf(marker, 2)
-    if (markerIndex === -1) return []
-    const nameIndex = process.argv.indexOf(name, markerIndex + 1)
+function argsAfter(name: string, marker?: string): string[] {
+    const start = marker ? process.argv.indexOf(marker, 2) : 1
+    if (start === -1) return []
+    const nameIndex = process.argv.indexOf(name, start + 1)
     return nameIndex === -1 ? [] : process.argv.slice(nameIndex + 1)
 }
 
@@ -335,8 +336,114 @@ Examples:
             // `require` first, so an unknown name is a clean error rather than
             // a failed spawn.
             const target = await manager.require(name)
-            process.exitCode = await manager.dispatch(target.name, argsAfter('exec', name))
+            process.exitCode = await manager.dispatch(target.name, argsAfter(name, 'exec'))
         })
 
     return extension
+}
+
+/** What a host needs to route an invocation to an extension. */
+export type ExtensionCommands = {
+    /** The names registered as commands, for the host to match against argv. */
+    readonly names: ReadonlySet<string>
+    /** Run one and resolve to the exit code the host should exit with. */
+    dispatch(name: string, args: string[], options?: DispatchOptions): Promise<number>
+}
+
+/**
+ * How commander opens the message it writes for an unknown command.
+ *
+ * Matching on the rendered text is not ideal — the error code would be
+ * steadier — but `outputError` is handed the finished string and nothing else,
+ * and it is the only hook that runs before commander exits. Naming the prefix
+ * at least puts it somewhere a commander upgrade can be checked against, and
+ * the tests pin it.
+ */
+export const UNKNOWN_COMMAND_PREFIX = 'error: unknown command'
+
+/**
+ * Point at the feature from the one place someone will be looking when they
+ * have mistyped a command, and only when they have no extensions — anyone who
+ * has installed one does not need telling.
+ *
+ * Commander writes this error and exits without the promise from `parseAsync`
+ * ever rejecting, so there is nothing to catch. `outputError` runs first and
+ * is the one place to add to the message while leaving commander's own
+ * wording, and its "did you mean" suggestion, exactly as they are.
+ */
+function addInstallHint(program: Command, binName: string): void {
+    const base = program.configureOutput().outputError
+    if (!base) return
+
+    program.configureOutput({
+        outputError(message, write) {
+            base(message, write)
+            if (message.startsWith(UNKNOWN_COMMAND_PREFIX)) {
+                write(
+                    `\nRun \`${binName} extension install <owner/repo>\` to add commands from extensions.\n`,
+                )
+            }
+        },
+    })
+}
+
+/**
+ * Register one command per installed extension, so that `--help` lists them
+ * and name completion works with no special cases.
+ *
+ * A name a built-in already uses is skipped rather than replacing it; `list`
+ * reports it as shadowed, and `exec` still runs it.
+ *
+ * Note what is deliberately absent: `passThroughOptions`, which looks like
+ * exactly the right tool. It cannot be used, because commander requires
+ * `enablePositionalOptions` on the parent for it, and that makes every
+ * ordinary command reject the global flags it accepts today. The arguments
+ * are read from argv instead.
+ */
+export async function registerExtensionPassThrough(
+    program: Command,
+    manager: ExtensionManager,
+): Promise<ExtensionCommands> {
+    const extensions = await manager.discover()
+
+    // Snapshotted before anything is added, so two extensions cannot be
+    // measured against each other.
+    const taken = new Set(
+        program.commands.flatMap((command) => [command.name(), ...command.aliases()]),
+    )
+    const names = new Set<string>()
+
+    for (const extension of extensions) {
+        if (taken.has(extension.name)) continue
+        names.add(extension.name)
+
+        program
+            .command(extension.name)
+            .description(extension.description ?? `Extension ${extension.name}`)
+            .helpGroup('Extensions:')
+            // Nothing after the name is commander's to read, including
+            // `--help`, which the extension answers itself.
+            .allowUnknownOption()
+            .allowExcessArguments()
+            .helpOption(false)
+            .action(async () => {
+                process.exitCode = await manager.dispatch(extension.name, argsAfter(extension.name))
+            })
+    }
+
+    if (extensions.length === 0) addInstallHint(program, manager.binName)
+
+    return {
+        names,
+        dispatch: (name, args, options) => manager.dispatch(name, args, options),
+    }
+}
+
+/** The whole feature in one call, for a host that wants it that way. */
+export async function registerExtensionCommands(
+    program: Command,
+    manager: ExtensionManager,
+): Promise<ExtensionCommands> {
+    registerExtensionGroup(program, manager)
+    return registerExtensionPassThrough(program, manager)
 }
