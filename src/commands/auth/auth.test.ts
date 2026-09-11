@@ -509,6 +509,27 @@ describe('auth command', () => {
                 })
             })
 
+            it('falls back to getApi() when TD_USER is set, as it does for --user', async () => {
+                // Without this, status would report the default account while
+                // every other command acted as the one TD_USER names.
+                const overrideUser = { id: '99999', email: 'other@example.com', fullName: 'Other' }
+                const liveApi = createMockApi({
+                    getUser: vi.fn().mockResolvedValue(overrideUser),
+                })
+                mockGetApi.mockResolvedValue(liveApi)
+
+                vi.stubEnv('TD_USER', overrideUser.email)
+                try {
+                    await programWithSnapshot().parseAsync(['node', 'td', 'auth', 'status'])
+                } finally {
+                    vi.unstubAllEnvs()
+                }
+
+                expect(mockCreateApiForToken).not.toHaveBeenCalled()
+                expect(mockGetApi).toHaveBeenCalled()
+                expect(consoleSpy).toHaveBeenCalledWith(`  Email: ${overrideUser.email}`)
+            })
+
             it('falls back to getApi() when --user is set so the snapshot default is overridden', async () => {
                 // Stash --user in process.argv so global-args picks it up.
                 const overrideUser = { id: '99999', email: 'other@example.com', fullName: 'Other' }

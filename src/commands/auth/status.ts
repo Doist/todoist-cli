@@ -7,6 +7,7 @@ import {
     toTodoistAccount,
     type TodoistAccount,
     type TodoistTokenStore,
+    USER_ENV_VAR,
 } from '../../lib/auth-store.js'
 import {
     type AuthMetadata,
@@ -131,10 +132,14 @@ export function attachTodoistStatusCommand(auth: Command, store: TodoistTokenSto
         store,
         description: 'Show current authentication status',
         fetchLive: async ({ token }) => {
-            // Snapshot's token only matches `--user` when no selector is set.
-            // Re-resolve via getApi when --user is present so the displayed
-            // account is the requested one, not the snapshot's default.
-            const userOverride = getRequestedUserRef() !== undefined
+            // Snapshot's token only matches the default account when nothing
+            // selects another one. Re-resolve via getApi when something does,
+            // so the displayed account is the one every other command acts as.
+            // `TD_USER` counts here exactly as `--user` does: without it,
+            // status would report the default while the rest of the CLI used
+            // the account the environment named.
+            const userOverride =
+                getRequestedUserRef() !== undefined || Boolean(process.env[USER_ENV_VAR])
             data = await gatherStatusData(userOverride ? undefined : token)
             return toTodoistAccount({
                 id: data.user.id,

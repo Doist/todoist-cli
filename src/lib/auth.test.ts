@@ -258,6 +258,34 @@ describe('lib/auth', () => {
         await expect(resolveActiveUser()).resolves.toMatchObject({ id: '222' })
     })
 
+    it('the --user flag beats TD_USER', async () => {
+        // Through argv rather than through `opts.ref`: production callers pass
+        // no ref, so the flag reaches the resolver via the global-args store,
+        // and that is the precedence worth pinning.
+        const realArgv = process.argv
+        process.argv = ['node', 'td', '--user', '111', 'task', 'list']
+        vi.stubEnv('TD_USER', '222')
+        setConfig({
+            config_version: 2,
+            users: [
+                { id: '111', email: 'a@b.c' },
+                { id: '222', email: 'd@e.f' },
+            ],
+        })
+        entryFor(keyring, 'user-111').token = 'token-111'
+
+        const { resetGlobalArgs } = await import('./global-args.js')
+        resetGlobalArgs()
+        const { resolveActiveUser } = await import('./auth.js')
+
+        try {
+            await expect(resolveActiveUser()).resolves.toMatchObject({ id: '111' })
+        } finally {
+            process.argv = realArgv
+            resetGlobalArgs()
+        }
+    })
+
     it('an explicit ref beats TD_USER', async () => {
         vi.stubEnv('TD_USER', '222')
         setConfig({
