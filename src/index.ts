@@ -4,19 +4,15 @@ import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
-import { USER_ENV_VAR } from './lib/auth-store.js'
 import { findCommandToken, needsExtensionLookup } from './lib/command-token.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import type { ExtensionCommands } from './lib/extensions/commands.js'
 import {
     getRequestedUserRef,
-    getVerboseLevel,
     isIdsOnlyMode,
     isJsonMode,
     isNdjsonMode,
     isRawMode,
-    setHostArgvLength,
-    shouldDisableSpinner,
 } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
@@ -250,33 +246,29 @@ const { token: commandToken, index: commandTokenIndex } = findCommandToken(rawAr
 const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefined
 
 let extensions: ExtensionCommands | undefined
-if (needsExtensionLookup(rawArgs, builtInCommand)) {
-    const { setUpExtensionDispatch } = await import('./commands/extension/dispatch.js')
-    extensions = await setUpExtensionDispatch(program)
+if (needsExtensionLookup(rawArgs, builtInCommand, commandTokenIndex)) {
+    try {
+        const { setUpExtensionDispatch } = await import('./commands/extension/dispatch.js')
+        extensions = await setUpExtensionDispatch(program)
+    } catch (err) {
+        // Discovery reports a directory it cannot read rather than pretending
+        // nothing is installed, and that has to be formatted like any other
+        // failure instead of surfacing as an unhandled rejection.
+        reportFatal(err)
+    }
 }
 
 // Run the extension here rather than through commander, so that everything
 // after its name reaches it exactly as typed. Commander would consume any
 // global flag it recognises on the way past.
 if (commandToken && extensions?.names.has(commandToken)) {
-    // Only the arguments before the name are td's. `--json` or `--user` after
-    // it belong to the extension, and must not change how td behaves or what
-    // account it passes on.
-    setHostArgvLength(commandTokenIndex)
-
-    const verbose = getVerboseLevel()
     try {
         process.exit(
-            await extensions.dispatch(commandToken, rawArgs.slice(commandTokenIndex + 1), {
-                user: getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined),
-                // The manager sets TD_ACCESSIBLE itself; these two are the
-                // host's own flags, translated into the variables td reads
-                // when the extension calls back into it.
-                env: {
-                    TD_VERBOSE: verbose > 0 ? String(verbose) : undefined,
-                    TD_SPINNER: shouldDisableSpinner() ? 'false' : undefined,
-                },
-            }),
+            await extensions.dispatch(
+                commandToken,
+                rawArgs.slice(commandTokenIndex + 1),
+                commandTokenIndex,
+            ),
         )
     } catch (err) {
         reportFatal(err)
@@ -291,7 +283,10 @@ if (commandToken && extensions?.names.has(commandToken)) {
 // usage errors that the parser can detect now but commander never will
 // because it never sees the flag — bare `--user`, `--user=` (empty), and
 // `--user <known-subcommand>` (almost always a forgotten value).
-{
+// `extension` is skipped entirely: `td extension exec goals --user alice`
+// passes that flag to `goals`, and stripping it here would take it away before
+// the extension could be given it.
+if (builtInCommand !== 'extension') {
     const originalArgs = process.argv.slice(2)
     const sawUserFlag = originalArgs.some((a) => a === '--user' || a.startsWith('--user='))
     if (sawUserFlag) {

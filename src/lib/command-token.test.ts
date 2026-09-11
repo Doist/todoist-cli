@@ -187,6 +187,17 @@ describe('needsExtensionLookup', () => {
         expect(needsExtensionLookup(['-V'], undefined)).toBe(false)
     })
 
+    it('still does the lookup when --version comes after the token', () => {
+        // `td goals --version` is asking the extension for its version, and it
+        // can only be asked if the extension is found first.
+        expect(needsExtensionLookup(['goals', '--version'], undefined, 0)).toBe(true)
+        expect(needsExtensionLookup(['goals', '-V'], undefined, 0)).toBe(true)
+    })
+
+    it('skips it when --version comes before the token', () => {
+        expect(needsExtensionLookup(['--version', 'goals'], undefined, 1)).toBe(false)
+    })
+
     it('does the lookup for bare `td` and for --help, which list extensions', () => {
         expect(needsExtensionLookup([], undefined)).toBe(true)
         expect(needsExtensionLookup(['--help'], undefined)).toBe(true)

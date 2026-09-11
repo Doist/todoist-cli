@@ -82,8 +82,15 @@ export function findCommandToken(
  * It lives here, beside the token scan and away from anything that imports the
  * extension system, so that asking the question costs nothing.
  */
-export function needsExtensionLookup(argv: string[], builtIn: string | undefined): boolean {
+export function needsExtensionLookup(
+    argv: string[],
+    builtIn: string | undefined,
+    tokenIndex: number = argv.length,
+): boolean {
     if (builtIn) return false
-    // `--version` prints one line and lists nothing.
-    return !argv.some((arg) => arg === '--version' || arg === '-V')
+    // `--version` prints one line and lists nothing — but only when it is the
+    // CLI's own flag. After the command token it belongs to whatever the token
+    // names, and `td goals --version` has to reach `goals` like any other
+    // argument would.
+    return !argv.slice(0, tokenIndex).some((arg) => arg === '--version' || arg === '-V')
 }

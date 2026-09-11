@@ -21,6 +21,17 @@ import { getDataDir, getStateDir } from '../../lib/paths.js'
 const OFFICIAL_SOURCE = { host: 'github.com', owner: 'Doist' }
 
 /**
+ * Names no extension may take, whatever happens to be registered right now.
+ *
+ * `extension` and `ext` name this group, whose placeholder has already been
+ * removed by the time the lazy loader builds the manager. `completion-server`
+ * is internal and never registered at all, yet it is what the shell invokes on
+ * every tab press, so an extension answering to it would be run constantly
+ * with the whole environment inherited.
+ */
+const ALWAYS_RESERVED = ['extension', 'ext', 'completion-server']
+
+/**
  * The entry script, resolved through whatever symlink npm installed as `td`,
  * so `TD_PATH` names a file an extension can actually run. Falls back to the
  * unresolved path, which is still right for a direct `node dist/index.js`.
@@ -37,9 +48,10 @@ function resolveHostPath(): string {
 export function buildExtensionManager(program: Command): ExtensionManager {
     // Snapshot the names already taken before any extension is registered, so
     // an extension can never be measured as shadowing itself.
-    const reserved = new Set(
-        program.commands.flatMap((command) => [command.name(), ...command.aliases()]),
-    )
+    const reserved = new Set([
+        ...program.commands.flatMap((command) => [command.name(), ...command.aliases()]),
+        ...ALWAYS_RESERVED,
+    ])
 
     return createExtensionManager({
         binName: 'td',
