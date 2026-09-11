@@ -22,14 +22,6 @@
  * fix. Reach for `Intl.Segmenter` if that ever matters.
  */
 
-/** The first code point of `text`, or `''` when empty. Never half a surrogate pair. */
-export function firstCodePoint(text: string): string {
-    // String iteration steps by code point, so this reads one character rather
-    // than materialising every code point in the string to discard all but one.
-    for (const character of text) return character
-    return ''
-}
-
 /**
  * `text` shortened to `maxCodePoints` with a trailing ellipsis, or unchanged
  * when it already fits.

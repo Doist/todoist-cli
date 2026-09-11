@@ -22,6 +22,9 @@ describe('formatUserShortName', () => {
         ['Ada ooo', 'Ada'],
         ['Ada Lovelace OOO', 'Ada L.'],
         ['Ada (nickname) (OOO Friday)', 'Ada'],
+        ['Ada (nickname) OOO', 'Ada'],
+        ['Ada OOO (nickname)', 'Ada'],
+        ['Ada OOO (nickname) OOO', 'Ada'],
     ])('omits status text in %j, returning %j', (input, expected) => {
         expect(formatUserShortName(input)).toBe(expected)
     })
@@ -45,6 +48,9 @@ describe('formatUserShortName', () => {
         ['Omar | 🌴', 'Omar'],
         ['A 👨‍👩‍👧', 'A'],
         ['Ada 123', 'Ada'],
+        ['Ada (nickname) Lovelace', 'Ada'],
+        ['Ada 🎌Lovelace', 'Ada'],
+        ['Ada 1Lovelace', 'Ada'],
     ])('abbreviates %j to %j without splitting graphemes', (input, expected) => {
         const result = formatUserShortName(input)
         expect(result).toBe(expected)

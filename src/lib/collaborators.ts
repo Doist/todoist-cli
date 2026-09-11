@@ -132,18 +132,18 @@ const nameSegmenter = new Intl.Segmenter('en', { granularity: 'grapheme' })
 export function formatUserShortName(fullName: string): string {
     // Require spaces around separators so hyphenated names stay intact.
     let name = fullName.trim().split(/\s+[|–—-]\s+/)[0]
-    // A display name can carry more than one trailing parenthesized suffix.
-    while (/\s+\([^()]*\)$/.test(name)) {
-        name = name.replace(/\s+\([^()]*\)$/, '').trimEnd()
+    // Remove mixed suffixes repeatedly, regardless of their order.
+    const statusSuffix = /\s+(?:\([^()]*\)|OOO)$/i
+    while (statusSuffix.test(name)) {
+        name = name.replace(statusSuffix, '').trimEnd()
     }
-    name = name.replace(/\s+OOO$/i, '')
 
     // Match the web client's first/second-token rule after removing statuses.
     const [firstName, secondName] = name.split(/\s+/)
-    if (!secondName || !/\p{L}/u.test(secondName)) return firstName
+    if (!secondName) return firstName
 
     const initial = nameSegmenter.segment(secondName)[Symbol.iterator]().next().value?.segment
-    return initial ? `${firstName} ${initial}.` : firstName
+    return initial && /\p{L}/u.test(initial) ? `${firstName} ${initial}.` : firstName
 }
 
 export interface FormatAssigneeOptions {
