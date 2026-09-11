@@ -4,6 +4,7 @@ import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
+import { findCommandToken } from './lib/command-token.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import {
     getRequestedUserRef,
@@ -200,6 +201,15 @@ for (const [name, [, , aliases]] of Object.entries(commands)) {
     for (const alias of aliases ?? []) commandAliases[alias] = name
 }
 
+/**
+ * The canonical command a token names, or undefined. `Object.hasOwn` rather
+ * than `in`, so a token like `constructor` cannot resolve through the
+ * prototype chain to something that is not a command.
+ */
+function resolveCommandName(token: string): string | undefined {
+    return Object.hasOwn(commandAliases, token) ? commandAliases[token] : undefined
+}
+
 // Register placeholders so --help lists all commands
 for (const [name, [description, , aliases]] of Object.entries(commands)) {
     const placeholder = program.command(name).description(description)
@@ -248,8 +258,8 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
 if (process.argv[2] === 'completion-server') {
     const { parseCompLine } = await import('./lib/completion.js')
     const compWords = parseCompLine(process.env.COMP_LINE ?? '')
-    const compToken = compWords.find((w) => !w.startsWith('-') && w in commandAliases)
-    const compCmd = compToken ? commandAliases[compToken] : undefined
+    const compToken = findCommandToken(compWords).token
+    const compCmd = compToken ? resolveCommandName(compToken) : undefined
 
     const toLoad = ['completion', ...(compCmd && compCmd !== 'completion' ? [compCmd] : [])]
     for (const name of toLoad) {
@@ -263,12 +273,12 @@ if (process.argv[2] === 'completion-server') {
         }),
     )
 } else {
-    // Find which command (if any) is being invoked — match only known command names
-    // to avoid treating option values (e.g. --progress-jsonl /tmp/out) as commands
-    const commandToken = process.argv
-        .slice(2)
-        .find((a) => !a.startsWith('-') && a in commandAliases)
-    const commandName = commandToken ? commandAliases[commandToken] : undefined
+    // Find which command (if any) is being invoked. Only the first argument
+    // that is neither a global flag nor a flag's value can name one, and
+    // nothing after it is inspected — `td --progress-jsonl out today` runs
+    // `today`, not the `task` that an all-of-argv scan would have found.
+    const commandToken = findCommandToken(process.argv.slice(2)).token
+    const commandName = commandToken ? resolveCommandName(commandToken) : undefined
 
     if (commandName && commands[commandName]) {
         // Remove placeholder, load real command module, register it
