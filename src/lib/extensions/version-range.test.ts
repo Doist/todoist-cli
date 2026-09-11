@@ -61,6 +61,21 @@ describe('satisfiesRange', () => {
         expect(satisfiesRange('5.1.0', '^4.0.0 || >=5.0.0')).toBe(true)
     })
 
+    it('treats a range the version parser rejects as satisfied, rather than throwing', () => {
+        // The comparator pattern accepts these, but `parseVersion` does not,
+        // and the check only ever drives a warning — so it must never be the
+        // thing that stops an extension running.
+        for (const range of ['1.x', '>=1.2.x', '~1.2.x', '^1.x', '>=1.2.3.4', '1.2.3.4']) {
+            expect(satisfiesRange('5.3.2', range)).toBe(true)
+        }
+    })
+
+    it('still evaluates a two-part version rather than giving up on it', () => {
+        expect(satisfiesRange('5.3.2', '>=1.2')).toBe(true)
+        expect(satisfiesRange('5.3.2', '^1.2')).toBe(false)
+        expect(satisfiesRange('5.3.2', '~2')).toBe(false)
+    })
+
     it('passes ranges it cannot parse, since the check only drives a warning', () => {
         expect(satisfiesRange('5.3.1', 'next')).toBe(true)
         expect(satisfiesRange('5.3.1', '>=4.0.0-alpha.x.y.z.what')).toBe(true)

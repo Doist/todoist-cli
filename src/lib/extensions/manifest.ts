@@ -35,18 +35,22 @@ export async function readAuthoredManifest(
     binName: string,
 ): Promise<AuthoredManifest | undefined> {
     const dedicatedValue = await readJsonValue(join(dir, authoredManifestFileName(binName)))
-    const packageJson =
-        dedicatedValue === undefined ? await readJsonValue(join(dir, 'package.json')) : undefined
 
-    // Nothing to validate, so nothing to load a validator for.
-    if (dedicatedValue === undefined && !isRecord(packageJson)) return undefined
-
-    const { parseAuthoredManifest } = await schemas()
     if (dedicatedValue !== undefined) {
-        const dedicated = parseAuthoredManifest(dedicatedValue)
-        if (dedicated) return dedicated
+        const dedicated = (await schemas()).parseAuthoredManifest(dedicatedValue)
+        // Taken only when it actually says something. A file written for a
+        // later format parses to an empty object here, because every key it
+        // carries is one this version strips, and letting that win would throw
+        // away the `package.json` metadata the same author wrote in a form
+        // this version can read.
+        if (dedicated && Object.keys(dedicated).length > 0) return dedicated
     }
-    return isRecord(packageJson) ? parseAuthoredManifest(packageJson[binName]) : undefined
+
+    const packageJson = await readJsonValue(join(dir, 'package.json'))
+    // Nothing to validate, so nothing to load a validator for.
+    if (!isRecord(packageJson)) return undefined
+
+    return (await schemas()).parseAuthoredManifest(packageJson[binName])
 }
 
 /**
