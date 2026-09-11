@@ -12,10 +12,11 @@
  */
 
 import { homedir } from 'node:os'
-import { formatJson, printEmpty } from '@doist/cli-core'
+import { join } from 'node:path'
+import { CliError, formatJson, printEmpty } from '@doist/cli-core'
 import type { Command } from 'commander'
 import type { ExtensionManager } from './manager.js'
-import type { ExtensionListing } from './types.js'
+import type { ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
 
 /** Neither column has a value worth showing, so say so once, the same way. */
 const NOTHING = '—'
@@ -152,6 +153,113 @@ async function listExtensions(
     for (const line of body) console.log(line)
 }
 
+/** `1 extension`, `3 extensions`. */
+function count(n: number, noun: string): string {
+    return `${n} ${noun}${n === 1 ? '' : 's'}`
+}
+
+async function installExtension(
+    manager: ExtensionManager,
+    source: string,
+    options: { pin?: string; force?: boolean; json?: boolean },
+): Promise<void> {
+    const result = await manager.install(source, { pin: options.pin, force: options.force })
+
+    if (options.json) {
+        console.log(formatJson(result))
+        return
+    }
+
+    // A local install is a link to a directory the user already had, so say
+    // where the link is rather than repeating the directory they gave.
+    const destination = shorten(
+        result.kind === 'local' ? join(manager.extensionsDir, result.dirName) : result.dir,
+    )
+    const version = result.version ? ` (${result.version})` : ''
+    const verb = result.kind === 'local' ? 'Linked' : 'Installed'
+    console.log(
+        `${verb} ${result.dirName} from ${shorten(result.source)}${version} to ${destination}`,
+    )
+}
+
+const OUTCOME_LABELS: Record<UpgradeResult['outcome'], string> = {
+    upgraded: 'upgraded',
+    'up-to-date': 'up to date',
+    skipped: 'skipped',
+    'would-upgrade': 'would upgrade',
+}
+
+/** What changed, or why nothing did. */
+function describeOutcome(result: UpgradeResult): string {
+    if (result.from && result.to) return `${result.from} → ${result.to}`
+    return result.detail ?? ''
+}
+
+async function upgradeExtensions(
+    manager: ExtensionManager,
+    names: string[],
+    options: { all?: boolean; force?: boolean; dryRun?: boolean; json?: boolean },
+): Promise<void> {
+    if (options.all && names.length > 0) {
+        throw new CliError(
+            'CONFLICTING_OPTIONS',
+            'Name the extensions to upgrade, or pass --all, but not both.',
+        )
+    }
+
+    const upgradeOptions = { force: options.force, dryRun: options.dryRun }
+    const results = options.all
+        ? await manager.upgradeAll(upgradeOptions)
+        : await manager.upgrade(names, upgradeOptions)
+
+    if (options.json) {
+        console.log(formatJson(results))
+        return
+    }
+
+    if (results.length === 0) {
+        console.log('No extensions installed.')
+        return
+    }
+
+    if (options.dryRun) {
+        const changing = results.filter((result) => result.outcome === 'would-upgrade').length
+        console.log(
+            manager.theme.yellow(`[dry-run] Would upgrade ${count(changing, 'extension')}:`),
+        )
+    }
+
+    const indent = options.dryRun ? '  ' : ''
+    for (const line of alignRows(
+        results.map((result) => [
+            result.name,
+            OUTCOME_LABELS[result.outcome],
+            describeOutcome(result),
+        ]),
+    )) {
+        console.log(`${indent}${line}`)
+    }
+
+    if (options.dryRun) console.log(manager.theme.dim('Run without --dry-run to execute.'))
+}
+
+/** Removing a local install takes the link and leaves the user's own copy. */
+function describeRemoval(result: RemoveResult, manager: ExtensionManager): string {
+    const path = shorten(join(manager.extensionsDir, `${manager.binName}-${result.name}`))
+    return result.removed === 'link'
+        ? `Removed the link for ${result.name} at ${path}. Its directory was left alone.`
+        : `Removed ${result.name} from ${path}`
+}
+
+async function removeExtension(
+    manager: ExtensionManager,
+    name: string,
+    options: { force?: boolean; json?: boolean },
+): Promise<void> {
+    const result = await manager.remove(name, { force: options.force })
+    console.log(options.json ? formatJson(result) : describeRemoval(result, manager))
+}
+
 export function registerExtensionGroup(program: Command, manager: ExtensionManager): Command {
     const { binName } = manager
 
@@ -181,6 +289,36 @@ Examples:
         .description('List installed extensions')
         .option('--json', 'Output as JSON')
         .action((options) => listExtensions(manager, options))
+
+    extension
+        .command('install <source>')
+        .description('Install an extension from a repository or a local directory')
+        .option('--pin <ref>', 'Install and hold at a release tag or git ref')
+        .option('--force', 'Replace an extension that is already installed')
+        .option('--json', 'Output as JSON')
+        .action((source, options) => installExtension(manager, source, options))
+
+    const upgradeCmd = extension
+        .command('upgrade [names...]')
+        .description('Upgrade installed extensions')
+        .option('--all', 'Upgrade every installed extension')
+        .option('--force', 'Upgrade past a pin, and reset a clone that has diverged')
+        .option('--dry-run', 'Report what would change without changing it')
+        .option('--json', 'Output as JSON')
+        .action((names: string[], options) => {
+            if (names.length === 0 && !options.all) {
+                upgradeCmd.help()
+                return
+            }
+            return upgradeExtensions(manager, names, options)
+        })
+
+    extension
+        .command('remove <name>')
+        .description('Remove an installed extension')
+        .option('--force', 'Remove a clone that has uncommitted changes')
+        .option('--json', 'Output as JSON')
+        .action((name, options) => removeExtension(manager, name, options))
 
     extension
         .command('exec <name> [args...]')
