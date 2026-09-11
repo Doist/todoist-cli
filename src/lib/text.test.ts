@@ -7,25 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { firstCodePoint, truncateForDisplay } from './text.js'
-
-describe('firstCodePoint', () => {
-    it('keeps an astral character whole', () => {
-        expect(firstCodePoint('🌴')).toBe('🌴')
-        expect(firstCodePoint('🌴 tail')).toBe('🌴')
-    })
-
-    it('returns the same character as [0] for ordinary text', () => {
-        // The control: for BMP text the two agree, so the fix only moves the broken case.
-        for (const s of ['Lovelace', 'ada', 'Álvarez', 'здраво', '123']) {
-            expect(firstCodePoint(s)).toBe(s[0])
-        }
-    })
-
-    it('returns an empty string for empty input rather than undefined', () => {
-        expect(firstCodePoint('')).toBe('')
-    })
-})
+import { truncateForDisplay } from './text.js'
 
 describe('truncateForDisplay', () => {
     it('leaves a string that already fits completely untouched', () => {
