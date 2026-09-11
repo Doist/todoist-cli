@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { writeFakeGitRepo, writeFixtureExtension } from '../../test-support/extension-fixture.js'
 import { registerExtensionGroup } from './commands.js'
 import { createExtensionManager, type ExtensionManager } from './manager.js'
+import { run as runProcess } from './run.js'
 
 describe('registerExtensionGroup', () => {
     let root: string
@@ -176,7 +177,35 @@ describe('registerExtensionGroup', () => {
             expect(lines().join('\n')).toContain('manifest needs a newer td')
         })
 
-        it('shows the pin, and the short SHA for a clone', async () => {
+        it('shows the short SHA of a clone', async () => {
+            const dir = await writeFixtureExtension(extensionsDir, 'standup', {})
+            await runProcess('git', ['init', '--quiet', '--initial-branch=main'], { cwd: dir })
+            await runProcess('git', ['add', '.'], { cwd: dir })
+            await runProcess(
+                'git',
+                [
+                    '-c',
+                    'user.email=t@example.com',
+                    '-c',
+                    'user.name=T',
+                    'commit',
+                    '--quiet',
+                    '-m',
+                    'init',
+                ],
+                { cwd: dir },
+            )
+            const head = (
+                await runProcess('git', ['rev-parse', 'HEAD'], { cwd: dir })
+            ).stdout.trim()
+
+            await run(makeManager(), ['extension', 'list'])
+            const row = lines().find((line) => line.startsWith('standup'))
+            expect(row).toContain(head.slice(0, 8))
+            expect(row).toContain('git')
+        })
+
+        it('shows the pin, and the repository a clone came from', async () => {
             const dir = await writeFixtureExtension(extensionsDir, 'standup', {})
             await writeFakeGitRepo(dir, 'https://github.com/example/td-standup.git')
             await writeFixtureExtension(extensionsDir, 'goals', {
@@ -264,6 +293,14 @@ describe('registerExtensionGroup', () => {
                 '--raw',
             ])
             expect((await reported()).args).toEqual(['--json', '-q', '--accessible', '--', '--raw'])
+        })
+
+        it('forwards --help rather than answering it', async () => {
+            // The only way to reach the usage of an extension a built-in
+            // command is hiding, so commander must not take the flag first.
+            await writeFixtureExtension(extensionsDir, 'goals', {})
+            await run(makeManager(), ['extension', 'exec', 'goals', '--help'])
+            expect((await reported()).args).toEqual(['--help'])
         })
 
         it('runs an extension with no arguments at all', async () => {

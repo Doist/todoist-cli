@@ -275,7 +275,65 @@ describe('buildSpawnPlan on Windows', () => {
         const plan = await buildSpawnPlan(cmd, ['a', 'b'])
 
         expect(plan.command).toMatch(/cmd\.exe$/i)
-        expect(plan.args).toEqual(['/d', '/s', '/c', cmd, 'a', 'b'])
+        expect(plan.args).toEqual(['/d', '/s', '/c', `"${cmd}" "a" "b"`])
+        // The line is written for cmd.exe, so node must not quote it again.
+        expect(plan.verbatim).toBe(true)
+    })
+
+    it('quotes a batch argument that cmd.exe would otherwise read as a command', async () => {
+        const dir = await writeFixtureExtension(root, 'batch')
+        const cmd = join(dir, 'td-batch.cmd')
+        await writeFile(cmd, '@echo off\r\n')
+        await chmod(cmd, 0o755)
+        asWindows()
+
+        // Node quotes an argument only when it contains a space, so `&whoami`
+        // would reach cmd.exe bare and the `&` would start a second command.
+        const plan = await buildSpawnPlan(cmd, ['&whoami', 'a b'])
+
+        expect(plan.args[3]).toBe(`"${cmd}" "&whoami" "a b"`)
+    })
+
+    it('doubles an embedded quote so it cannot end the quoting', async () => {
+        const dir = await writeFixtureExtension(root, 'batch')
+        const cmd = join(dir, 'td-batch.cmd')
+        await writeFile(cmd, '@echo off\r\n')
+        await chmod(cmd, 0o755)
+        asWindows()
+
+        const plan = await buildSpawnPlan(cmd, ['say "hi"'])
+
+        expect(plan.args[3]).toBe(`"${cmd}" "say ""hi"""`)
+    })
+
+    it('refuses a batch argument that quoting cannot contain', async () => {
+        const dir = await writeFixtureExtension(root, 'batch')
+        const cmd = join(dir, 'td-batch.cmd')
+        await writeFile(cmd, '@echo off\r\n')
+        await chmod(cmd, 0o755)
+        asWindows()
+
+        // cmd.exe expands these from inside quotes, so there is no escaping
+        // that holds; refusing is the only honest answer.
+        for (const argument of ['%PATH%', 'a!b', 'one\ntwo']) {
+            await expect(buildSpawnPlan(cmd, [argument])).rejects.toMatchObject({
+                code: 'EXTENSION_NOT_EXECUTABLE',
+            })
+        }
+    })
+
+    it('leaves the other Windows paths taking arguments unchanged', async () => {
+        const dir = await writeFixtureExtension(root, 'compiled')
+        const exe = join(dir, 'td-compiled.exe')
+        await writeFile(exe, 'MZ fake binary')
+        await chmod(exe, 0o755)
+        asWindows()
+
+        // Only the batch path goes through cmd.exe, so only it needs quoting.
+        const plan = await buildSpawnPlan(exe, ['&whoami', '%PATH%'])
+
+        expect(plan.args).toEqual(['&whoami', '%PATH%'])
+        expect(plan.verbatim).toBeUndefined()
     })
 
     it('runs a shell script through sh, keeping arguments as positional parameters', async () => {

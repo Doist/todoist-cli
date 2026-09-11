@@ -190,6 +190,9 @@ Examples:
         // so that `--help` describes the shape.
         .allowUnknownOption()
         .allowExcessArguments()
+        // `--help` included: an extension that ships its own usage can only be
+        // asked for it through here when a built-in command hides its name.
+        .helpOption(false)
         .action(async (name: string) => {
             // `require` first, so an unknown name is a clean error rather than
             // a failed spawn.
