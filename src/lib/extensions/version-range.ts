@@ -65,6 +65,21 @@ function satisfiesComparator(version: string, comparator: Comparator): boolean {
  * form this checker does not understand.
  */
 export function satisfiesRange(version: string, range: string | undefined): boolean {
+    try {
+        return evaluateRange(version, range)
+    } catch {
+        // `parseVersion` reads a partial version such as `1.2`, but refuses
+        // other shapes the comparator pattern happily accepts — a wildcard
+        // like `1.x`, or a fourth part as in `>=1.2.3.4` — and throws rather
+        // than returning. Anything it will not read counts as satisfied, which
+        // is what the rest of this module promises and what the caller is
+        // built for: the check only ever produces a warning, so a range nobody
+        // can evaluate must not become a failure.
+        return true
+    }
+}
+
+function evaluateRange(version: string, range: string | undefined): boolean {
     const trimmed = range?.trim()
     if (!trimmed || trimmed === '*' || trimmed === 'x') return true
 

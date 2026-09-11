@@ -26,27 +26,50 @@ export async function pickAuthoredFields(value: unknown): Promise<AuthoredManife
 }
 
 /**
+ * The fields that carry meaning. `manifestVersion` is deliberately not one of
+ * them: it says which format a file is written in, not what the file has to
+ * say, and a file carrying nothing else has told this version of the CLI
+ * nothing it can use.
+ */
+const CONTENT_FIELDS = ['description', 'requires', 'completion'] as const
+
+function saysSomething(manifest: AuthoredManifest | undefined): boolean {
+    return manifest !== undefined && CONTENT_FIELDS.some((field) => manifest[field] !== undefined)
+}
+
+/**
  * Author metadata for an extension, from `<bin>-extension.json` or, for Node
  * extensions that would rather not carry a second file, the `<bin>` key of
- * `package.json`. The dedicated file wins when both exist.
+ * `package.json`.
+ *
+ * The dedicated file wins whenever it says anything this version understands.
+ * When it does not — the shape a file written for a later format takes, since
+ * every key it carries but the version marker is stripped here — the
+ * `package.json` metadata is used instead, rather than being shadowed by a
+ * file that turned out to be empty. The version marker survives that fall
+ * back, so `list` and `doctor` still report that some of the metadata is from
+ * a format this version cannot read.
  */
 export async function readAuthoredManifest(
     dir: string,
     binName: string,
 ): Promise<AuthoredManifest | undefined> {
     const dedicatedValue = await readJsonValue(join(dir, authoredManifestFileName(binName)))
-    const packageJson =
-        dedicatedValue === undefined ? await readJsonValue(join(dir, 'package.json')) : undefined
+    const dedicated =
+        dedicatedValue === undefined ? undefined : await pickAuthoredFields(dedicatedValue)
 
-    // Nothing to validate, so nothing to load a validator for.
-    if (dedicatedValue === undefined && !isRecord(packageJson)) return undefined
+    if (saysSomething(dedicated)) return dedicated
 
-    const { parseAuthoredManifest } = await schemas()
-    if (dedicatedValue !== undefined) {
-        const dedicated = parseAuthoredManifest(dedicatedValue)
-        if (dedicated) return dedicated
-    }
-    return isRecord(packageJson) ? parseAuthoredManifest(packageJson[binName]) : undefined
+    const packageJson = await readJsonValue(join(dir, 'package.json'))
+    // Nothing left to validate, so nothing to load a validator for.
+    if (!isRecord(packageJson)) return dedicated
+
+    const fromPackage = await pickAuthoredFields(packageJson[binName])
+    if (!saysSomething(fromPackage)) return dedicated ?? fromPackage
+
+    return dedicated?.manifestVersion === undefined
+        ? fromPackage
+        : { ...fromPackage, manifestVersion: dedicated.manifestVersion }
 }
 
 /**

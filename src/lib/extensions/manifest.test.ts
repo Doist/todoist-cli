@@ -128,6 +128,61 @@ describe('manifests', () => {
         await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({ description: 'Wins' })
     })
 
+    // Both shapes reach the same branch: the dedicated file parses to
+    // something that says nothing this version can use.
+    it.each([
+        ['a file written for a later format', { somethingFromTheFuture: true }],
+        ['an empty object', {}],
+    ])('falls back to package.json for %s', async (_label, dedicated) => {
+        await writeFile(join(dir, 'td-extension.json'), JSON.stringify(dedicated))
+        await writeFile(
+            join(dir, 'package.json'),
+            JSON.stringify({ td: { description: 'From package.json' } }),
+        )
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
+            description: 'From package.json',
+        })
+    })
+
+    it('falls back even when the later-format file declares its version', async () => {
+        // The shape a later format actually takes: a version marker plus keys
+        // this version strips. The marker alone is not something to say.
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ manifestVersion: 2, somethingFromTheFuture: true }),
+        )
+        await writeFile(
+            join(dir, 'package.json'),
+            JSON.stringify({ td: { description: 'From package.json' } }),
+        )
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
+            description: 'From package.json',
+            // Kept, so `list` and `doctor` still say some metadata was skipped.
+            manifestVersion: 2,
+        })
+    })
+
+    it('keeps the version marker when there is nothing to fall back to', async () => {
+        await writeFile(join(dir, 'td-extension.json'), JSON.stringify({ manifestVersion: 2 }))
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({ manifestVersion: 2 })
+    })
+
+    it('does not fall back when the dedicated file says something', async () => {
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ manifestVersion: 2, description: 'Wins' }),
+        )
+        await writeFile(join(dir, 'package.json'), JSON.stringify({ td: { description: 'Loses' } }))
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
+            manifestVersion: 2,
+            description: 'Wins',
+        })
+    })
+
     it('ignores fields of the wrong type instead of failing', async () => {
         await writeFile(
             join(dir, 'td-extension.json'),
