@@ -19,6 +19,16 @@ export function redactUrl(url: string): string {
 }
 
 /**
+ * Git's own message for a failure, safe to carry into a result that will be
+ * printed. A remote URL can hold `user:token@` credentials and git echoes the
+ * URL back in several of its errors, so these go through the same redaction
+ * that `clone` and `checkout` already apply to theirs.
+ */
+function gitError(result: RunResult): string {
+    return outputHints(result).map(redactUrl).join(' ')
+}
+
+/**
  * Refuse an argument that git would read as an option.
  *
  * Repository URLs and refs arrive from manifests and from the command line. A
@@ -94,7 +104,7 @@ export async function pull(dir: string): Promise<PullResult> {
     const result = await run('git', ['pull', '--quiet', '--ff-only'], { cwd: dir })
     requireGit(result)
     if (result.code !== 0) {
-        return { changed: false, from, error: outputHints(result).join(' ') }
+        return { changed: false, from, error: gitError(result) }
     }
     const to = await headSha(dir)
     return { changed: from !== to, from, to }
@@ -115,7 +125,7 @@ export async function resetToRemote(dir: string): Promise<PullResult> {
     const fetched = await run('git', ['fetch', '--quiet', 'origin'], { cwd: dir })
     requireGit(fetched)
     if (fetched.code !== 0) {
-        return { changed: false, from, error: outputHints(fetched).join(' ') }
+        return { changed: false, from, error: gitError(fetched) }
     }
 
     const target = await remoteHeadSha(dir)
@@ -125,7 +135,7 @@ export async function resetToRemote(dir: string): Promise<PullResult> {
 
     const reset = await run('git', ['reset', '--quiet', '--hard', target], { cwd: dir })
     if (reset.code !== 0) {
-        return { changed: false, from, error: outputHints(reset).join(' ') }
+        return { changed: false, from, error: gitError(reset) }
     }
 
     // Ignored files are left alone: they are build output and caches, not

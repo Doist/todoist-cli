@@ -78,9 +78,27 @@ export async function run(
     })
 }
 
+/**
+ * Control characters, other than tab and newline: the C0 and C1 ranges and
+ * delete.
+ *
+ * These strings are the output of a program reached over the network — a git
+ * remote's error text arrives verbatim — and they are printed to a terminal,
+ * which acts on escape sequences rather than showing them. A hostile remote
+ * could otherwise move the cursor, recolour the screen, or overwrite the lines
+ * around its own message.
+ */
+// oxlint-disable-next-line no-control-regex
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g
+
+/** Make a program's output safe to print. */
+export function sanitizeOutput(text: string): string {
+    return text.replace(CONTROL_CHARACTERS, '')
+}
+
 /** The last few lines of a failed command's output, for use as error hints. */
 export function outputHints(result: RunResult, limit = 4): string[] {
-    return `${result.stderr}\n${result.stdout}`
+    return sanitizeOutput(`${result.stderr}\n${result.stdout}`)
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
