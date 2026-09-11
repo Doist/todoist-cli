@@ -10,6 +10,7 @@ import {
     registerExtensionCommands,
     registerExtensionGroup,
     registerExtensionPassThrough,
+    UNKNOWN_COMMAND_PREFIX,
 } from './commands.js'
 import { createExtensionManager, type ExtensionManager } from './manager.js'
 import { run as runProcess } from './run.js'
@@ -630,6 +631,19 @@ describe('registerExtensionPassThrough', () => {
 
         it('keeps commander own message', async () => {
             expect(await unknownCommandOutput()).toContain("error: unknown command 'nope'")
+        })
+
+        it('keys off wording commander still uses', async () => {
+            // Without this, a reworded commander message would drop the hint
+            // silently rather than failing here.
+            const program = createTestProgram(() => undefined)
+            program.command('task')
+            const stderr = captureStream('stderr')
+            await program.parseAsync(['node', 'td', 'nope']).catch(() => undefined)
+
+            expect(stderr.mock.calls.map((call) => String(call[0])).join('')).toContain(
+                UNKNOWN_COMMAND_PREFIX,
+            )
         })
 
         it('stays quiet for someone who already has an extension', async () => {

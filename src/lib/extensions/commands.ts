@@ -351,6 +351,17 @@ export type ExtensionCommands = {
 }
 
 /**
+ * How commander opens the message it writes for an unknown command.
+ *
+ * Matching on the rendered text is not ideal — the error code would be
+ * steadier — but `outputError` is handed the finished string and nothing else,
+ * and it is the only hook that runs before commander exits. Naming the prefix
+ * at least puts it somewhere a commander upgrade can be checked against, and
+ * the tests pin it.
+ */
+export const UNKNOWN_COMMAND_PREFIX = 'error: unknown command'
+
+/**
  * Point at the feature from the one place someone will be looking when they
  * have mistyped a command, and only when they have no extensions — anyone who
  * has installed one does not need telling.
@@ -367,7 +378,7 @@ function addInstallHint(program: Command, binName: string): void {
     program.configureOutput({
         outputError(message, write) {
             base(message, write)
-            if (message.startsWith('error: unknown command')) {
+            if (message.startsWith(UNKNOWN_COMMAND_PREFIX)) {
                 write(
                     `\nRun \`${binName} extension install <owner/repo>\` to add commands from extensions.\n`,
                 )
