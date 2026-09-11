@@ -39,8 +39,8 @@ import { installDependencies } from './npm.js'
 import {
     authoredManifestFileName,
     parseSource,
+    requireUsableName,
     toCommandName,
-    validateExtensionName,
 } from './source.js'
 import { removeState, writeState } from './state.js'
 import type { AuthoredManifest, Extension, InstallOptions, InstallResult } from './types.js'
@@ -70,21 +70,13 @@ async function preflight(
     context: InstallContext,
     options: InstallOptions,
 ): Promise<Extension | undefined> {
-    validateExtensionName(context.binName, dirName)
-    const name = toCommandName(context.binName, dirName)
-
-    const reserved = new Set(context.reservedNames())
-    if (reserved.has(name)) {
-        throw new CliError(
-            'EXTENSION_NAME_RESERVED',
-            `"${name}" is the name of a built-in ${context.binName} command.`,
-            {
-                hints: [
-                    `An extension cannot take that name. It would only be reachable as \`${context.binName} extension exec ${name}\`.`,
-                ],
-            },
-        )
-    }
+    const name = requireUsableName(
+        context.binName,
+        dirName,
+        context.reservedNames,
+        (taken) =>
+            `An extension cannot take that name. It would only be reachable as \`${context.binName} extension exec ${taken}\`.`,
+    )
 
     // Only the entry that could collide, rather than describing every
     // installed extension to find out about one.

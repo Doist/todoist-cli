@@ -98,7 +98,7 @@ Resolution order: \`--user <ref>\` > \`TD_USER\` > \`user.defaultUser\` from con
 - Templates and files: \`td template ...\`, \`td attachment view <file-url>\`, \`td backup ...\`
 - Help Center: \`td hc locales/search/view\`
 - Account and tooling: \`td stats\`, \`td settings ...\`, \`td config view\`, \`td accounts ...\`, \`td completion ...\`, \`td view <todoist-url>\`, \`td doctor\`, \`td update\`, \`td changelog\`
-- Extensions: \`td extension install/list/upgrade/remove/exec\` (alias: \`td ext\`)
+- Extensions: \`td extension create/install/list/upgrade/remove/exec\` (alias: \`td ext\`)
 - Developer apps: \`td apps list/view\` (requires \`td auth login --additional-scopes=app-management\`)
 - Backups: \`td backup list/download\` (requires \`td auth login --additional-scopes=backups\`)
 - Billing: \`td billing subscription/plan/prices/pricing\` (requires \`td auth login --additional-scopes=billing\`)
@@ -396,6 +396,7 @@ The \`billing\` command surface is **read-only** and requires the \`billing\` OA
 An extension is an executable named \`td-<name>\` that td runs as \`td <name> ...\`. It can be written in any language; the contract is the process boundary, not a JavaScript API.
 
 \`\`\`bash
+td extension create goals              # scaffold one (--template bash|node)
 td extension install owner/td-goals    # from a GitHub release or a clone
 td extension install --pin v0.3.0 owner/td-goals
 td extension install ./td-scratch      # a local directory, symlinked, for development

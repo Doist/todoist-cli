@@ -8,6 +8,7 @@
  */
 
 import { realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
@@ -77,6 +78,21 @@ export function buildExtensionManager(program: Command): ExtensionManager {
     })
 }
 
+/**
+ * Where the scaffold templates live, resolved from this module rather than
+ * from the working directory.
+ *
+ * Three levels up lands on the package root from `dist/commands/extension/`
+ * and on the repository root from `src/commands/extension/`, so the same path
+ * works whether td is running from a build or from source under vitest. The
+ * directory ships because `templates` is listed in `files`.
+ */
+export function templatesDir(): string {
+    return fileURLToPath(new URL('../../../templates/extension/', import.meta.url))
+}
+
 export function registerExtensionCommand(program: Command): void {
-    registerExtensionGroup(program, buildExtensionManager(program))
+    registerExtensionGroup(program, buildExtensionManager(program), {
+        templatesDir: templatesDir(),
+    })
 }

@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
@@ -266,6 +266,71 @@ describe('registerExtensionGroup', () => {
             expect(entry).not.toHaveProperty('description')
             expect(entry).not.toHaveProperty('version')
             expect(entry).toMatchObject({ name: 'goals', executable: true, shadowed: false })
+        })
+    })
+
+    describe('create', () => {
+        it('is not offered when the host ships no templates', () => {
+            const program = makeProgram(makeManager())
+            const group = program.commands.find((command) => command.name() === 'extension')
+            expect(group?.commands.map((command) => command.name())).not.toContain('create')
+        })
+
+        it('scaffolds and says what to do next', async () => {
+            const templatesDir = join(root, 'templates', 'plain')
+            await mkdir(templatesDir, { recursive: true })
+            await writeFile(join(templatesDir, 'executable'), '#!/bin/sh\necho {{NAME}}\n')
+
+            const manager = makeManager()
+            const program = createTestProgram((p) => {
+                registerExtensionGroup(p, manager, { templatesDir: join(root, 'templates') })
+            })
+            const argv = ['node', 'td', 'extension', 'create', 'goals']
+            vi.spyOn(process, 'argv', 'get').mockReturnValue(argv)
+            // `create` writes into the working directory, so move there and
+            // put it back — vitest shares one process across this file.
+            const cwd = process.cwd()
+            process.chdir(root)
+            try {
+                await program.parseAsync(argv)
+            } finally {
+                process.chdir(cwd)
+            }
+
+            const rendered = lines().join('\n')
+            expect(rendered).toContain('Created td-goals from the plain template')
+            expect(rendered).toContain('td extension install .')
+            await expect(readFile(join(root, 'td-goals', 'td-goals'), 'utf8')).resolves.toContain(
+                'echo goals',
+            )
+        })
+    })
+
+    it('reports what it made as JSON', async () => {
+        const templatesDir = join(root, 'templates', 'plain')
+        await mkdir(templatesDir, { recursive: true })
+        await writeFile(join(templatesDir, 'executable'), '#!/bin/sh\necho {{NAME}}\n')
+
+        const manager = makeManager()
+        const program = createTestProgram((p) => {
+            registerExtensionGroup(p, manager, { templatesDir: join(root, 'templates') })
+        })
+        const argv = ['node', 'td', 'extension', 'create', 'goals', '--json']
+        vi.spyOn(process, 'argv', 'get').mockReturnValue(argv)
+        const cwd = process.cwd()
+        process.chdir(root)
+        try {
+            await program.parseAsync(argv)
+        } finally {
+            process.chdir(cwd)
+        }
+
+        expect(JSON.parse(lines().join(''))).toEqual({
+            name: 'goals',
+            dirName: 'td-goals',
+            dir: join(root, 'td-goals'),
+            template: 'plain',
+            files: ['td-goals'],
         })
     })
 

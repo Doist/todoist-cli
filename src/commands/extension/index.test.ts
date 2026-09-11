@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { listTemplates } from '../../lib/extensions/create.js'
 import { writeFixtureExtension } from '../../test-support/extension-fixture.js'
-import { buildExtensionManager, registerExtensionCommand } from './index.js'
+import { buildExtensionManager, registerExtensionCommand, templatesDir } from './index.js'
 
 describe('buildExtensionManager', () => {
     let root: string
@@ -66,6 +67,15 @@ describe('buildExtensionManager', () => {
     })
 })
 
+describe('templatesDir', () => {
+    it('resolves to the templates the package actually ships', async () => {
+        // The path is relative to this module's own location, so moving the
+        // command file would break `extension create` at runtime while every
+        // test that recomputes the URL itself still passed.
+        await expect(listTemplates(templatesDir())).resolves.toEqual(['bash', 'node'])
+    })
+})
+
 describe('registerExtensionCommand', () => {
     beforeEach(() => {
         captureConsole('log')
@@ -77,6 +87,7 @@ describe('registerExtensionCommand', () => {
         expect(group).toBeDefined()
         expect(group?.aliases()).toContain('ext')
         expect(group?.commands.map((command) => command.name()).sort()).toEqual([
+            'create',
             'exec',
             'install',
             'list',

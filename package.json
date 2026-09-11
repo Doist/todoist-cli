@@ -1,80 +1,81 @@
 {
-  "name": "@doist/todoist-cli",
-  "version": "5.3.2",
-  "description": "TypeScript CLI for Todoist",
-  "type": "module",
-  "main": "dist/index.js",
-  "bin": {
-    "td": "dist/index.js"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch",
-    "start": "node dist/index.js",
-    "type-check": "tsc --noEmit",
-    "check": "oxlint src && oxfmt --check",
-    "fix": "oxlint src --fix && oxfmt",
-    "postinstall": "node scripts/postinstall.js",
-    "check:skill-sync": "node scripts/check-skill-sync.js",
-    "sync:skill": "npm run build && node scripts/sync-skill.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
-  },
-  "keywords": [
-    "todoist",
-    "cli",
-    "todo",
-    "tasks"
-  ],
-  "author": "Ernesto García <ernesto@ernesto.dev>",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Doist/todoist-cli.git"
-  },
-  "homepage": "https://github.com/Doist/todoist-cli#readme",
-  "bugs": {
-    "url": "https://github.com/Doist/todoist-cli/issues"
-  },
-  "preferGlobal": true,
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "engines": {
-    "node": ">=24",
-    "npm": ">=11"
-  },
-  "files": [
-    "dist",
-    "scripts",
-    "CHANGELOG.md"
-  ],
-  "dependencies": {
-    "@doist/cli-core": "1.4.0",
-    "@doist/todoist-sdk": "15.2.0",
-    "@napi-rs/keyring": "2.0.0",
-    "@pnpm/tabtab": "0.5.4",
-    "chalk": "6.0.0",
-    "commander": "15.0.0",
-    "date-fns": "4.4.0",
-    "marked": "18.0.11",
-    "marked-terminal-renderer": "2.2.0",
-    "oauth4webapi": "3.8.8",
-    "open": "11.0.2",
-    "zod": "4.3.6"
-  },
-  "devDependencies": {
-    "@semantic-release/changelog": "7.0.0",
-    "@semantic-release/git": "11.0.1",
-    "@types/node": "25.9.5",
-    "conventional-changelog-conventionalcommits": "9.3.1",
-    "lefthook": "2.1.12",
-    "oxfmt": "0.66.0",
-    "oxlint": "1.81.0",
-    "semantic-release": "25.0.9",
-    "typescript": "7.0.2",
-    "vitest": "5.0.0"
-  }
+    "name": "@doist/todoist-cli",
+    "version": "5.3.2",
+    "description": "TypeScript CLI for Todoist",
+    "type": "module",
+    "main": "dist/index.js",
+    "bin": {
+        "td": "dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "dev": "tsc -p tsconfig.build.json --watch",
+        "start": "node dist/index.js",
+        "type-check": "tsc --noEmit",
+        "check": "oxlint src && oxfmt --check",
+        "fix": "oxlint src --fix && oxfmt",
+        "postinstall": "node scripts/postinstall.js",
+        "check:skill-sync": "node scripts/check-skill-sync.js",
+        "sync:skill": "npm run build && node scripts/sync-skill.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "prepublishOnly": "npm run build && npm test"
+    },
+    "keywords": [
+        "todoist",
+        "cli",
+        "todo",
+        "tasks"
+    ],
+    "author": "Ernesto Garc\u00eda <ernesto@ernesto.dev>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Doist/todoist-cli.git"
+    },
+    "homepage": "https://github.com/Doist/todoist-cli#readme",
+    "bugs": {
+        "url": "https://github.com/Doist/todoist-cli/issues"
+    },
+    "preferGlobal": true,
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
+    "engines": {
+        "node": ">=24",
+        "npm": ">=11"
+    },
+    "files": [
+        "CHANGELOG.md",
+        "dist",
+        "scripts",
+        "templates"
+    ],
+    "dependencies": {
+        "@doist/cli-core": "1.4.0",
+        "@doist/todoist-sdk": "15.2.0",
+        "@napi-rs/keyring": "2.0.0",
+        "@pnpm/tabtab": "0.5.4",
+        "chalk": "6.0.0",
+        "commander": "15.0.0",
+        "date-fns": "4.4.0",
+        "marked": "18.0.11",
+        "marked-terminal-renderer": "2.2.0",
+        "oauth4webapi": "3.8.8",
+        "open": "11.0.2",
+        "zod": "4.3.6"
+    },
+    "devDependencies": {
+        "@semantic-release/changelog": "7.0.0",
+        "@semantic-release/git": "11.0.1",
+        "@types/node": "25.9.5",
+        "conventional-changelog-conventionalcommits": "9.3.1",
+        "lefthook": "2.1.12",
+        "oxfmt": "0.66.0",
+        "oxlint": "1.81.0",
+        "semantic-release": "25.0.9",
+        "typescript": "7.0.2",
+        "vitest": "5.0.0"
+    }
 }
