@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { captureConsole } from '@doist/cli-core/testing'
@@ -53,6 +53,33 @@ describe('checkExtensions', () => {
         expect(checks).toHaveLength(1)
         expect(checks[0]).toMatchObject({ name: 'extensions', status: 'pass' })
         expect(checks[0].message).toContain('1 extension(s) installed')
+    })
+
+    // Root reads a 0o000 directory regardless, so there is nothing to observe.
+    it.skipIf(process.getuid?.() === 0)(
+        'reports a directory it cannot read rather than saying nothing is installed',
+        async () => {
+            await writeFixtureExtension(extensionsDir, 'goals', {})
+            await chmod(extensionsDir, 0o000)
+
+            try {
+                const checks = await checkExtensions(program())
+                expect(checks).toHaveLength(1)
+                expect(checks[0]).toMatchObject({ status: 'fail' })
+                expect(checks[0].message).toContain('Cannot read')
+            } finally {
+                await chmod(extensionsDir, 0o755)
+            }
+        },
+    )
+
+    it('warns about a manifest that is not a regular file', async () => {
+        const dir = await writeFixtureExtension(extensionsDir, 'goals', {})
+        // An extension chooses what sits in its own directory, and reading a
+        // FIFO or a device would never finish.
+        await symlink('/dev/zero', join(dir, 'td-extension.json'))
+
+        expect(messages(await checkExtensions(program()))).toContain('not a regular file')
     })
 
     it('fails an extension that cannot be run', async () => {

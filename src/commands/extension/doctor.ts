@@ -7,6 +7,7 @@
 
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
+import { mapWithConcurrency } from '../../lib/extensions/concurrency.js'
 import { findManifestProblems } from '../../lib/extensions/manifest.js'
 import { satisfiesRange } from '../../lib/extensions/version-range.js'
 import type { DoctorCheck } from '../doctor.js'
@@ -32,8 +33,10 @@ function windowsCheck(): DoctorCheck | null {
 export async function checkExtensions(program: Command): Promise<DoctorCheck[]> {
     const manager = buildExtensionManager(program)
 
-    if (await manager.isEmpty()) return []
-
+    // `list` rather than `isEmpty` first: `isEmpty` answers "yes" for any
+    // directory it cannot read, which would make a permissions problem look
+    // like having no extensions — exactly the failure this check is for. A
+    // directory that is simply not there yields an empty list, not an error.
     let listing: Awaited<ReturnType<typeof manager.list>>
     try {
         listing = await manager.list()
@@ -48,6 +51,14 @@ export async function checkExtensions(program: Command): Promise<DoctorCheck[]> 
         ]
     }
 
+    if (listing.length === 0) return []
+
+    // Two file reads per extension, and they do not depend on each other.
+    const manifestProblems = await mapWithConcurrency(listing, 4, async (entry) => ({
+        entry,
+        problems: await findManifestProblems(entry.dir, manager.binName),
+    }))
+
     const checks: DoctorCheck[] = [
         {
             name: NAME,
@@ -57,7 +68,7 @@ export async function checkExtensions(program: Command): Promise<DoctorCheck[]> 
         },
     ]
 
-    for (const entry of listing) {
+    for (const { entry, problems } of manifestProblems) {
         const details = { name: entry.name, kind: entry.kind, dir: entry.dir }
 
         if (!entry.executable) {
@@ -78,7 +89,7 @@ export async function checkExtensions(program: Command): Promise<DoctorCheck[]> 
             })
         }
 
-        for (const problem of await findManifestProblems(entry.dir, manager.binName)) {
+        for (const problem of problems) {
             checks.push({
                 name: NAME,
                 status: 'warn',

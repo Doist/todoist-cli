@@ -6,7 +6,7 @@
  * apart, and one place decides what counts as a JSON object.
  */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { open, writeFile } from 'node:fs/promises'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -23,18 +23,46 @@ export type JsonReadResult =
     | { status: 'unreadable'; reason: string }
 
 /**
+ * More than any of these files could honestly need. The point is not the exact
+ * figure: an extension chooses what sits in its own directory, and reading
+ * without a limit lets a large file become a memory problem for whoever runs
+ * `list` or `doctor`.
+ */
+const MAX_BYTES = 1024 * 1024
+
+/**
  * Read a JSON file, keeping "not there" and "there but broken" apart. Callers
  * that only want the value can use `readJsonValue`; `doctor` needs the
  * distinction, because an unreadable manifest is a problem worth reporting and
  * a missing one is not.
+ *
+ * Opened and checked rather than read straight through. An extension can
+ * commit anything under its own name, including a symlink to a device or a
+ * FIFO, and `readFile` on one of those never reaches the end.
  */
 export async function readJsonFile(path: string): Promise<JsonReadResult> {
-    let raw: string
+    let handle: Awaited<ReturnType<typeof open>>
     try {
-        raw = await readFile(path, 'utf8')
+        handle = await open(path, 'r')
     } catch (error) {
         if (isMissingFile(error)) return { status: 'absent' }
         return { status: 'unreadable', reason: (error as Error).message }
+    }
+
+    let raw: string
+    try {
+        const stats = await handle.stat()
+        if (!stats.isFile()) {
+            return { status: 'unreadable', reason: 'not a regular file' }
+        }
+        if (stats.size > MAX_BYTES) {
+            return { status: 'unreadable', reason: `larger than ${MAX_BYTES} bytes` }
+        }
+        raw = await handle.readFile('utf8')
+    } catch (error) {
+        return { status: 'unreadable', reason: (error as Error).message }
+    } finally {
+        await handle.close()
     }
 
     try {
