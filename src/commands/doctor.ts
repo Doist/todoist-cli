@@ -20,15 +20,16 @@ import {
     isNewer,
 } from '../lib/update.js'
 import { getDefaultUserId, NoUserSelectedError } from '../lib/users.js'
+import { checkExtensions } from './extension/doctor.js'
 
-type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip'
 
 interface DoctorOptions {
     json?: boolean
     offline?: boolean
 }
 
-interface DoctorCheck {
+export interface DoctorCheck {
     name: string
     status: CheckStatus
     message: string
@@ -355,18 +356,19 @@ async function checkStoredUsers(): Promise<DoctorCheck[]> {
     return checks
 }
 
-async function runDoctorChecks(options: DoctorOptions): Promise<DoctorCheck[]> {
+async function runDoctorChecks(options: DoctorOptions, program: Command): Promise<DoctorCheck[]> {
     return [
         checkNodeVersion(),
         await checkConfigFile(),
         ...(await checkStoredUsers()),
         await checkAuthentication(Boolean(options.offline)),
+        ...(await checkExtensions(program)),
         await checkForUpdates(Boolean(options.offline)),
     ].filter((check): check is DoctorCheck => check !== null)
 }
 
-export async function doctorAction(options: DoctorOptions): Promise<void> {
-    const checks = await runDoctorChecks(options)
+export async function doctorAction(options: DoctorOptions, program: Command): Promise<void> {
+    const checks = await runDoctorChecks(options, program)
     const summary = summarize(checks)
     const ok = summary.failed === 0
 
@@ -392,5 +394,8 @@ export function registerDoctorCommand(program: Command): void {
         .description('Diagnose common CLI setup and environment issues')
         .option('--json', 'Output diagnostic results as JSON')
         .option('--offline', 'Skip network checks against Todoist and npm')
-        .action(doctorAction)
+        // The program is passed on so the extension checks can see which
+        // command names are taken, which is what decides whether an extension
+        // is being shadowed.
+        .action((options: DoctorOptions) => doctorAction(options, program))
 }
