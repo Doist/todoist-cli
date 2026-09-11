@@ -16,7 +16,7 @@ import { join } from 'node:path'
 import { CliError, formatJson, printEmpty } from '@doist/cli-core'
 import type { Command } from 'commander'
 import type { ExtensionManager } from './manager.js'
-import type { DispatchOptions, ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
+import type { ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
 
 /** Neither column has a value worth showing, so say so once, the same way. */
 const NOTHING = '—'
@@ -34,11 +34,16 @@ const NOTHING = '—'
  * the line cannot be mistaken for it. An extension invoked directly has no
  * marker: its name is the first thing on the line that is not a global flag.
  */
-function argsAfter(name: string, marker?: string): string[] {
+function passThrough(name: string, marker?: string): { args: string[]; hostArgvLength: number } {
     const start = marker ? process.argv.indexOf(marker, 2) : 1
-    if (start === -1) return []
-    const nameIndex = process.argv.indexOf(name, start + 1)
-    return nameIndex === -1 ? [] : process.argv.slice(nameIndex + 1)
+    const nameIndex = start === -1 ? -1 : process.argv.indexOf(name, start + 1)
+    if (nameIndex === -1) return { args: [], hostArgvLength: 0 }
+    return {
+        args: process.argv.slice(nameIndex + 1),
+        // `process.argv` carries the runtime and the script first, which the
+        // host's own argv does not.
+        hostArgvLength: nameIndex - 2,
+    }
 }
 
 /** `/home/alice/code/td-x` reads better as `~/code/td-x`, and fits the column. */
@@ -261,8 +266,13 @@ async function removeExtension(
     console.log(options.json ? formatJson(result) : describeRemoval(result, manager))
 }
 
-export function registerExtensionGroup(program: Command, manager: ExtensionManager): Command {
+export function registerExtensionGroup(
+    program: Command,
+    manager: ExtensionManager,
+    options: PassThroughOptions = {},
+): Command {
     const { binName } = manager
+    const dispatch = options.dispatch ?? ((name, args) => manager.dispatch(name, args))
 
     const extension = program
         .command('extension')
@@ -336,18 +346,37 @@ Examples:
             // `require` first, so an unknown name is a clean error rather than
             // a failed spawn.
             const target = await manager.require(name)
-            process.exitCode = await manager.dispatch(target.name, argsAfter(name, 'exec'))
+            const { args, hostArgvLength } = passThrough(name, 'exec')
+            process.exitCode = await dispatch(target.name, args, hostArgvLength)
         })
 
     return extension
 }
+
+/** How a host runs an extension, given what was typed after its name. */
+export type ExtensionDispatch = (
+    name: string,
+    args: string[],
+    /** How many of `process.argv.slice(2)` belong to the host, not the extension. */
+    hostArgvLength: number,
+) => Promise<number>
 
 /** What a host needs to route an invocation to an extension. */
 export type ExtensionCommands = {
     /** The names registered as commands, for the host to match against argv. */
     readonly names: ReadonlySet<string>
     /** Run one and resolve to the exit code the host should exit with. */
-    dispatch(name: string, args: string[], options?: DispatchOptions): Promise<number>
+    dispatch: ExtensionDispatch
+}
+
+export type PassThroughOptions = {
+    /**
+     * How to run an extension. Supplied by the host so that one definition
+     * serves both the command registered here and a host that dispatches
+     * before commander ever parses. Without it, extensions run with nothing
+     * the host would otherwise add.
+     */
+    dispatch?: ExtensionDispatch
 }
 
 /**
@@ -403,14 +432,21 @@ function addInstallHint(program: Command, binName: string): void {
 export async function registerExtensionPassThrough(
     program: Command,
     manager: ExtensionManager,
+    options: PassThroughOptions = {},
 ): Promise<ExtensionCommands> {
+    const dispatch = options.dispatch ?? ((name, args) => manager.dispatch(name, args))
     const extensions = await manager.discover()
 
-    // Snapshotted before anything is added, so two extensions cannot be
-    // measured against each other.
-    const taken = new Set(
-        program.commands.flatMap((command) => [command.name(), ...command.aliases()]),
-    )
+    // What is on the program, plus what the host says is taken. The two are
+    // not the same: a command can be registered lazily, or never registered at
+    // all, and `list` reports an extension as shadowed from the host's answer,
+    // so registration has to use it too or the two would disagree.
+    const taken = new Set([
+        // Snapshotted before anything is added, so two extensions cannot be
+        // measured against each other.
+        ...program.commands.flatMap((command) => [command.name(), ...command.aliases()]),
+        ...manager.reservedNames(),
+    ])
     const names = new Set<string>()
 
     for (const extension of extensions) {
@@ -427,23 +463,22 @@ export async function registerExtensionPassThrough(
             .allowExcessArguments()
             .helpOption(false)
             .action(async () => {
-                process.exitCode = await manager.dispatch(extension.name, argsAfter(extension.name))
+                const { args, hostArgvLength } = passThrough(extension.name)
+                process.exitCode = await dispatch(extension.name, args, hostArgvLength)
             })
     }
 
     if (extensions.length === 0) addInstallHint(program, manager.binName)
 
-    return {
-        names,
-        dispatch: (name, args, options) => manager.dispatch(name, args, options),
-    }
+    return { names, dispatch }
 }
 
 /** The whole feature in one call, for a host that wants it that way. */
 export async function registerExtensionCommands(
     program: Command,
     manager: ExtensionManager,
+    options: PassThroughOptions = {},
 ): Promise<ExtensionCommands> {
-    registerExtensionGroup(program, manager)
-    return registerExtensionPassThrough(program, manager)
+    registerExtensionGroup(program, manager, options)
+    return registerExtensionPassThrough(program, manager, options)
 }

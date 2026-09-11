@@ -78,8 +78,22 @@ function parseTdLocalFlags(argv: string[]): LocalFlags {
  * `--progress-jsonl=<path>`, and `--progress-jsonl <path>` (space form),
  * mirroring commander's `[path]` declaration.
  */
+/**
+ * How many of `process.argv.slice(2)`'s entries belong to `td` itself.
+ * `undefined`, the usual case, means all of them.
+ *
+ * It is set only when an extension is being dispatched, where the arguments
+ * after the extension's name belong to the extension: `td goals --json --user
+ * alice` is three arguments for `goals`, not td's output mode and account.
+ * Setting it for a built-in would make `td task list --json` stop reporting
+ * JSON mode, so the entry point sets it for nothing else.
+ */
+let hostArgvLength: number | undefined
+
 export function parseGlobalArgs(argv?: string[]): TdGlobalArgs {
-    const args = argv ?? process.argv.slice(2)
+    // An explicit argv is a caller describing the whole world, so the boundary
+    // applies only to the implicit read.
+    const args = argv ?? process.argv.slice(2).slice(0, hostArgvLength)
     const base = parseCoreGlobalArgs(args)
     const { user, raw, progressJsonlPath } = parseTdLocalFlags(args)
     return {
@@ -92,8 +106,20 @@ export function parseGlobalArgs(argv?: string[]): TdGlobalArgs {
 
 const store = createGlobalArgsStore<TdGlobalArgs>(() => parseGlobalArgs())
 
-/** Clear the cached parse result. Call in test teardown. */
-export const resetGlobalArgs = store.reset
+/**
+ * Set the boundary described above. The cached parse is dropped with it, so
+ * the boundary applies however much of the CLI has already asked a question.
+ */
+export function setHostArgvLength(length: number | undefined): void {
+    hostArgvLength = length
+    store.reset()
+}
+
+/** Clear the cached parse result and the argv boundary. Call in test teardown. */
+export function resetGlobalArgs(): void {
+    hostArgvLength = undefined
+    store.reset()
+}
 
 export function isJsonMode(): boolean {
     return store.get().json

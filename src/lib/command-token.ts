@@ -68,3 +68,29 @@ export function findCommandToken(
 
     return { token: undefined, index: argv.length }
 }
+
+/**
+ * Whether this invocation needs to know which extensions are installed.
+ *
+ * Discovery is a directory read and a handful of small files, but it is not
+ * free, and most invocations cannot use the answer: a built-in command always
+ * wins over an extension of the same name, so nothing on disk changes what
+ * happens next. What is left is `--help`, which lists extensions, completion,
+ * which offers them, an extension being run, and a mistyped command, which
+ * could be either.
+ *
+ * It lives here, beside the token scan and away from anything that imports the
+ * extension system, so that asking the question costs nothing.
+ */
+export function needsExtensionLookup(
+    argv: string[],
+    builtIn: string | undefined,
+    tokenIndex: number = argv.length,
+): boolean {
+    if (builtIn) return false
+    // `--version` prints one line and lists nothing — but only when it is the
+    // CLI's own flag. After the command token it belongs to whatever the token
+    // names, and `td goals --version` has to reach `goals` like any other
+    // argument would.
+    return !argv.slice(0, tokenIndex).some((arg) => arg === '--version' || arg === '-V')
+}

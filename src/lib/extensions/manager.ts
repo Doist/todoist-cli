@@ -44,6 +44,8 @@ export type ExtensionManager = {
     readonly officialLabel: string
     readonly theme: ExtensionTheme
     readonly trustWarning: string
+    /** Command names an extension must not take, as the host reports them. */
+    reservedNames(): Iterable<string>
     isAccessible(): boolean
     /** Everything installed, cheaply: no subprocesses, no network. */
     discover(): Promise<Extension[]>
@@ -177,6 +179,7 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
         officialLabel,
         theme,
         trustWarning,
+        reservedNames,
         isAccessible,
         discover,
         find,
