@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft — for discussion.
+Accepted. Phase 1 is implemented; phases 2 and 3 are not started.
 
 ## Summary
 
@@ -92,7 +92,7 @@ Repository names must start with `td-`. The command name is the repository name 
 
 Install steps for a GitHub source:
 
-1. Validate the name: must match `^td-[a-z0-9][a-z0-9-]*$`, and the command name must not match a built-in command or alias. Refuse with `EXTENSION_NAME_RESERVED` and a hint pointing at `td extension exec` if the extension is already installed and a later `td` release added a core command with the same name.
+1. Validate the name: must match `^td-[a-z0-9][a-z0-9-]*$`, and the command name must not match a built-in command or alias. The reserved set also names `extension`, `ext` and the internal `completion-server` explicitly, because none of the three is reliably registered on the program at the moment the check runs, and the last is what the shell invokes on every tab press. Refuse with `EXTENSION_NAME_RESERVED` and a hint pointing at `td extension exec` if the extension is already installed and a later `td` release added a core command with the same name.
 2. If an extension with this command name is already installed from a different owner, refuse with `EXTENSION_ALREADY_INSTALLED` (`--force` replaces it). Same owner: report already installed, suggest `upgrade`.
 3. Print the trust warning (below). It goes out before any step that can run code from the repository, so a user sees it even if a later step fails or executes something.
 4. Query `GET /repos/{owner}/{repo}/releases/latest`, or `GET /repos/{owner}/{repo}/releases/tags/{ref}` when `--pin <ref>` is given. If the release has an asset whose name ends in `<platform>-<arch>[.exe]` for the current machine, treat it as a **binary extension**: download the asset to `<dir>/td-<name>[.exe]`, `chmod 0755`, verify the checksum when the release also carries `checksums.txt` or `<asset>.sha256`, fetch the repository's `td-extension.json` at the release tag (`GET /repos/{owner}/{repo}/contents/td-extension.json?ref={tag}`, optional, a 404 is not an error), and write `.td-manifest.json` including any `description` and `requires` found there. A pinned tag with no release falls through to the git path below. Platform names use Node's `process.platform` / `process.arch` values (`linux-x64`, `darwin-arm64`, `win32-x64`) rather than Go's, since extension authors building with Node will already have those in hand. A release workflow template (phase 2) produces both spellings so a single repo can serve both `gh` and `td` if the author wants.
@@ -148,6 +148,8 @@ No `--yes` prompt: with the rules above nothing the user authored is deleted wit
 
 `td extension exec <name> [args...]` dispatches directly, bypassing the built-in command table. It is the escape hatch for the shadowed case and for scripting where an explicit form is preferable.
 
+Everything after `<name>` is the extension's, `--help` included: `exec` disables Commander's own help option, since this is the only form that can reach the usage of an extension a built-in command is hiding. The pre-parse `--user` handling also skips the whole `extension` group, because `td extension exec goals --user alice` is passing that flag to `goals`. The consequence is that `--user` is not accepted by the group's other subcommands, where it would mean nothing anyway.
+
 ### Help and discovery
 
 - `td --help` gains an `Extensions:` section listing installed extensions with the description from their manifest, or `Extension <name>` when there is none. This is where `gh` is weakest, and a one-line description is cheap for authors to provide.
@@ -184,6 +186,7 @@ The config file is untouched. Nothing in this design needs a new config key, so 
 
 ```json
 {
+    "manifestVersion": 1,
     "owner": "Doist",
     "name": "td-goals",
     "host": "github.com",
@@ -201,11 +204,14 @@ The config file is untouched. Nothing in this design needs a new config key, so 
 
 ```json
 {
+    "manifestVersion": 1,
     "description": "Track quarterly goals against Todoist projects",
     "requires": { "td": ">=4.0.0" },
     "completion": false
 }
 ```
+
+- `manifestVersion` says which format the file is written in. It is optional and defaults to `1`, so an author who omits it is writing version 1. A file declaring a version newer than the running `td` understands is still read for the fields this version knows, and `list` and `doctor` say that some of its metadata is being ignored; the CLI's own `.td-manifest.json` is stricter and is refused outright, because a shape `td` does not recognise means a different version of `td` wrote it and reading it anyway would be guessing.
 
 - `description` is shown in `td --help` and `td extension list`. For binary installs it is copied into `.td-manifest.json` at install time, since the binary asset does not carry the file.
 - `requires.td` is a semver range. When the running `td` does not satisfy it, dispatch still happens, but a warning goes to stderr first. Refusing outright would make a `td` upgrade break a working extension for no good reason; the extension can enforce it itself using `TD_VERSION` if it must.
@@ -267,15 +273,22 @@ Because `td` already treats `--json` output and `CliError` JSON envelopes as a s
 
 ### Startup cost
 
-`td` starts by registering placeholders for its built-in commands without importing them. Extensions are discovered by a single `readdir` of the extensions directory, which costs well under a millisecond and returns nothing for the majority of users who have no extensions. Discovery runs on every invocation because it is needed for `--help`, for completion, and for the unknown-command path. Manifests are read lazily: for `list`, `--help`, the shadowing check, and at dispatch for the one extension being run (a single small file, needed for the `requires.td` warning).
+`td` starts by registering placeholders for its built-in commands without importing them. Extensions are discovered by a single `readdir` of the extensions directory, which costs well under a millisecond and returns nothing for the majority of users who have no extensions.
+
+Discovery is skipped entirely when the command token names a built-in. A built-in always wins over an extension of the same name, so for `td task list` there is nothing on disk that could change the outcome, and the extension system is not imported at all. What is left is exactly the set of cases that need the answer: `--help`, completion, an extension being run, and a mistyped command, which could be either. `--version` is excluded too, since it lists nothing.
+
+Manifests are read lazily: for `list`, `--help`, the shadowing check, and at dispatch for the one extension being run (a single small file, needed for the `requires.td` warning).
 
 ### Registration
 
 Each discovered extension whose name does not collide with a built-in command is registered as a Commander command with:
 
 - `.description()` from its manifest, or `Extension <name>`.
-- `.allowUnknownOption()`, `.passThroughOptions()`, and `.helpOption(false)`, so Commander touches nothing after the name.
+- `.allowUnknownOption()`, `.allowExcessArguments()`, and `.helpOption(false)`, so Commander touches nothing after the name.
+- `.helpGroup('Extensions:')`, which is what produces the `Extensions:` section in `td --help`.
 - An action that spawns the executable.
+
+Not `.passThroughOptions()`, which is the obvious choice and cannot be used: Commander refuses it unless `enablePositionalOptions()` is set on the parent program, and that makes ordinary commands reject the global flags they accept today (`td task list --accessible`, `td doctor --json -q`, `td task list -v` all become `unknown option`). Exact passthrough comes from dispatching before `parseAsync()` instead, so Commander never sees the arguments at all; the registered command is what makes `--help` and completion work, and reads its arguments back off `process.argv` when it is the one that runs.
 
 Registering real commands, rather than catching the unknown-command error, is what `gh` does and it is the right call here too: it makes `--help` and name completion work with no special cases. A colliding name is skipped and surfaces as `shadowed` in `list`.
 
@@ -327,8 +340,8 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ### Phase 1 — core (ships the feature)
 
-- `src/lib/extensions/`: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames, officialSource })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch, where `officialSource` is `{ host: 'github.com', owner: 'Doist' }`. Nothing in it may import from `src/commands/` or read `td`-specific config directly: every host-specific value comes in through that options object, and its only dependencies are Node built-ins and what `@doist/cli-core` already exports. That is what makes the later move to cli-core a file move rather than a rewrite.
-- `src/lib/extensions/commands.ts`: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands. It lives with the manager, under the same no-host-imports rule, so it is extracted with it and another CLI really does adopt the feature with one call. `src/commands/extension/index.ts` is the usual group-command entry point and does nothing but call it.
+- `src/lib/extensions/`: `createExtensionManager({ binName, dataDir, stateDir, envPrefix, reservedNames, officialSource })` returning discover, install (GitHub git/binary, local), list, upgrade, remove, dispatch, where `officialSource` is `{ host: 'github.com', owner: 'Doist' }`. Nothing in it may import from `src/commands/` or read `td`-specific config directly: every host-specific value comes in through that options object, and its only dependencies are Node built-ins, what `@doist/cli-core` already exports, `commander` as a type, and zod. That is what makes the later move to cli-core a file move rather than a rewrite. Zod validates the manifests and the state file — all three are hand-written, two of them by people the CLI does not control — and is behind a dynamic import so that importing a validation library is never on the way to `--version`.
+- `src/lib/extensions/commands.ts`: `registerExtensionCommands(program, manager)` adding `extension` / `ext` and the per-extension pass-through commands. It lives with the manager, under the same no-host-imports rule, so it is extracted with it and another CLI really does adopt the feature with one call. It also exports the two halves separately — `registerExtensionGroup` and `registerExtensionPassThrough` — because they sit on different startup paths: the group is loaded only for `td extension …`, while the pass-through commands are needed whenever the command token is not a built-in. `src/commands/extension/index.ts` is the usual group-command entry point and does nothing but decide the td-specific values and call it.
 - Wire it in `src/index.ts`; add `TD_USER` env support to the user resolver; adjust `--user` stripping; add the unknown-command hint; doctor checks; `SKILL_CONTENT` entries for `td extension …`; `CODEBASE.md` registration-pattern update.
 - Trust warning on install/upgrade. Checksum verification when a checksums asset exists. `✓ Todoist` marker in `list`.
 - Windows is best effort in this phase: the path-file local install, the Node-shebang shortcut, the `sh.exe` fallback, and `.exe` asset matching are all specified and implemented, but the release does not wait on a full Windows pass. `td doctor` reports extensions as experimental on Windows until that pass is done.
@@ -366,10 +379,7 @@ An unknown command that is not an extension keeps Commander's current message, w
 2. **First-party marker, yes.** Extensions whose install source is the `Doist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
 3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
 4. **The name is `extension`.** With `ext` as the alias, as the Terminology section says. `plugin` is not used anywhere in code, commands, or docs.
-
-## Open questions
-
-1. **Telemetry.** `setActiveCommandPath` records `td <command>` for usage tracking. Proposal: record `td extension` for third-party extensions without the name, and the full name for Todoist-owned ones, mirroring `gh`. Not decided yet; phase 1 can ship without recording extension runs at all.
+5. **Extension runs are not recorded.** `setActiveCommandPath` exists to populate the `cli-command` header on outbound Todoist API requests, and dispatching an extension makes no such request — `td` spawns a child and waits. There is nothing to tag, and recording a synthetic path would need a transport this CLI does not have. The data arrives anyway: an extension that wants Todoist data calls `td … --json`, and that nested process reports its own real command path. If attribution is wanted later, the nested process can add a header of its own when it sees `TD_EXTENSION` in its environment, which needs no decision from the parent. `td extension install|list|…` are ordinary commands and are recorded normally.
 
 ## References
 
