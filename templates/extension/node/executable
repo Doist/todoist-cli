@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+//
+// A td extension. Everything after `td {{NAME}}` arrives here untouched, this
+// script owns stdout and stderr, and td exits with whatever this script exits
+// with.
+
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const run = promisify(execFile)
+
+// How to call td back. TD_NODE and TD_PATH are set by td and work on every
+// platform, including Windows, where the `td` on PATH is a .cmd shim that
+// cannot be spawned directly.
+const { TD_NODE, TD_PATH, TD_EXTENSION_NAME, TD_EXTENSION_DIR } = process.env
+const [command, prefix] = TD_NODE && TD_PATH ? [TD_NODE, [TD_PATH]] : ['td', []]
+
+/**
+ * Ask td rather than the API: authentication, account selection and output
+ * shape stay td's job, and `--json` is a contract it keeps.
+ */
+async function td(...args) {
+    const { stdout } = await run(command, [...prefix, ...args])
+    return stdout.trim()
+}
+
+const args = process.argv.slice(2)
+
+if (args.includes('--help') || args.includes('-h')) {
+    process.stdout.write(`Usage: td {{NAME}} [options]
+
+{{DESCRIPTION}}
+
+Options:
+  --json      Output as JSON
+  --help      Show this message
+`)
+    process.exit(0)
+}
+
+try {
+    // Something that needs no account, to show the mechanism. For real data:
+    // JSON.parse(await td('task', 'list', '--filter', 'today', '--json'))
+    const hostVersion = await td('--version')
+
+    if (args.includes('--json')) {
+        console.log(
+            JSON.stringify({ extension: TD_EXTENSION_NAME ?? '{{NAME}}', hostVersion }, null, 2),
+        )
+    } else {
+        console.log(`Hello from td-{{NAME}}, running under td ${hostVersion}.`)
+        console.log(`Edit ${TD_EXTENSION_DIR ?? '.'}/td-{{NAME}} and run it again.`)
+    }
+} catch (error) {
+    // Diagnostics to stderr, non-zero exit: td passes both straight through.
+    process.stderr.write(`td-{{NAME}}: ${error.message}\n`)
+    process.exitCode = 1
+}

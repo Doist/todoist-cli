@@ -40,6 +40,8 @@ import { satisfiesRange } from './version-range.js'
 export type ExtensionManager = {
     readonly binName: string
     readonly envPrefix: string
+    /** Host version, as reported to extensions and used for `requires` checks. */
+    readonly version: string
     readonly extensionsDir: string
     readonly officialLabel: string
     readonly theme: ExtensionTheme
@@ -175,6 +177,7 @@ export function createExtensionManager(options: ExtensionManagerOptions): Extens
     return {
         binName,
         envPrefix,
+        version,
         extensionsDir,
         officialLabel,
         theme,

@@ -334,7 +334,7 @@ An unknown command that is not an extension keeps Commander's current message, w
 6. Compiled authors: publish release assets named `td-<name>_<tag>_<platform>-<arch>[.exe]` for at least `linux-x64`, `darwin-arm64`, `darwin-x64`, `win32-x64`, plus a `checksums.txt`.
 7. Test locally with `td extension install .` from a directory named `td-<name>` and iterate; the symlink means every edit is live.
 
-`td extension create <name> [--template node|bash|compiled]` (phase 2) scaffolds all of this, including the release workflow for compiled extensions.
+`td extension create <name> [--template bash|node]` scaffolds all of this. The templates are real files under `templates/extension/`, shipped with the package rather than compiled in, so they can be read, linted and run as what they are; a CLI adopting this directory brings its own. A `compiled` template carrying the release workflow is still to come.
 
 ## Phasing
 
@@ -350,7 +350,7 @@ An unknown command that is not an extension keeps Commander's current message, w
 
 ### Phase 2 — ergonomics
 
-- `td extension create` scaffolding with three templates and a release workflow for compiled extensions.
+- `td extension create` scaffolding. The `bash` and `node` templates are done; the `compiled` one, with the release workflow that names assets so `pickAsset` can find them, is not.
 - `td extension search` over the `td-extension` topic.
 - Non-blocking update notice after an extension runs, at most once per 24 hours, suppressed in CI and non-TTY. Same rules as `gh`.
 - `TD_EXTENSION` handling in `td` itself: skip the `td update` nag when running as a nested call.

@@ -104,6 +104,7 @@ export type ErrorCode =
     | 'PROJECT_FROZEN'
     | 'SHARE_FORBIDDEN'
     // Extensions
+    | 'EXTENSION_ALREADY_EXISTS'
     | 'EXTENSION_ALREADY_INSTALLED'
     | 'EXTENSION_CHECKSUM_MISMATCH'
     | 'EXTENSION_DIRTY'
@@ -116,6 +117,7 @@ export type ErrorCode =
     | 'EXTENSION_NOT_INSTALLABLE'
     | 'EXTENSION_NPM_MISSING'
     | 'EXTENSION_PINNED'
+    | 'EXTENSION_TEMPLATE_INVALID'
     // Escape hatch for dynamic codes
     | (string & {})
 

@@ -60,6 +60,11 @@ src/
                           #  from @doist/cli-core/testing)
 ```
 
+Scaffold templates for `td extension create` are real files under
+`templates/extension/<kind>/`, shipped via the `files` field rather than
+compiled in, and resolved relative to `import.meta.url` so the same path works
+from `src/` under vitest and from `dist/` in an install.
+
 ## Architecture flow
 
 1. `src/index.ts` sets `program.name('td')`, registers global flags
@@ -150,8 +155,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   (`createExtensionManager`, the only entry point a host needs), `commands.ts`
   (`registerExtensionGroup` for `td extension …`, `registerExtensionPassThrough`
   for the per-extension commands), plus `discover`, `install`, `upgrade`,
-  `remove`, `dispatch`, `github`, `git`, `npm`, `manifest`, `schemas`,
-  `state`, `source`, `version-range`, `run`, `fs-utils`.
+  `remove`, `dispatch`, `create`, `github`, `git`, `npm`, `manifest`,
+  `schemas`, `state`, `source`, `version-range`, `run`, `fs-utils`.
   Host-agnostic by design: the binary name, directories, version, reserved
   command names and first-party source all arrive through the manager's
   options, and nothing in the directory imports from the rest of the repo, so

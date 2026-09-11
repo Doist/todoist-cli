@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# A td extension. Everything after `td {{NAME}}` arrives here untouched, this
+# script owns stdout and stderr, and td exits with whatever this script exits
+# with.
+set -euo pipefail
+
+# How to call td back. TD_NODE and TD_PATH are set by td and work on every
+# platform, including Windows, where the `td` on PATH is a .cmd shim that
+# cannot be spawned directly. Falling back to `td` keeps this runnable when
+# the script is executed by hand.
+td=(td)
+if [[ -n "${TD_NODE:-}" && -n "${TD_PATH:-}" ]]; then
+    td=("$TD_NODE" "$TD_PATH")
+fi
+
+usage() {
+    cat <<'USAGE'
+Usage: td {{NAME}} [options]
+
+{{DESCRIPTION}}
+
+Options:
+  --json      Output as JSON
+  --help      Show this message
+USAGE
+}
+
+json=false
+for arg in "$@"; do
+    case "$arg" in
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        --json) json=true ;;
+    esac
+done
+
+# Calling td for something that needs no account, to show the mechanism.
+# For real data, ask td rather than the API — `"${td[@]}" task list --filter
+# today --json` — so authentication, account selection and output shape stay
+# td's job.
+host_version=$("${td[@]}" --version)
+
+if [[ "$json" == true ]]; then
+    printf '{"extension":"%s","hostVersion":"%s"}\n' "${TD_EXTENSION_NAME:-{{NAME}}}" "$host_version"
+else
+    printf 'Hello from td-{{NAME}}, running under td %s.\n' "$host_version"
+    printf 'Edit %s/td-{{NAME}} and run it again.\n' "${TD_EXTENSION_DIR:-.}"
+fi

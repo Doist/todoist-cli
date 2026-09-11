@@ -15,6 +15,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { CliError, formatJson, printEmpty } from '@doist/cli-core'
 import type { Command } from 'commander'
+import { createExtension } from './create.js'
 import type { ExtensionManager } from './manager.js'
 import type { ExtensionListing, RemoveResult, UpgradeResult } from './types.js'
 
@@ -164,6 +165,40 @@ function count(n: number, noun: string): string {
     return `${n} ${noun}${n === 1 ? '' : 's'}`
 }
 
+async function createScaffold(
+    manager: ExtensionManager,
+    templatesDir: string,
+    name: string,
+    options: { template?: string; description?: string; json?: boolean },
+): Promise<void> {
+    const result = await createExtension(
+        name,
+        { template: options.template, description: options.description },
+        {
+            binName: manager.binName,
+            version: manager.version,
+            templatesDir,
+            reservedNames: () => manager.reservedNames(),
+        },
+    )
+
+    if (options.json) {
+        console.log(formatJson(result))
+        return
+    }
+
+    const { binName } = manager
+    console.log(`Created ${result.dirName} from the ${result.template} template:`)
+    for (const file of result.files) console.log(manager.theme.dim(`  ${file}`))
+    console.log(`
+Next:
+  cd ${result.dirName}
+  ${binName} extension install .   ${manager.theme.dim('# links it here, so every edit is live')}
+  ${binName} ${result.name}
+
+Publish it as a repository named ${result.dirName} with the \`${binName}-extension\` topic.`)
+}
+
 async function installExtension(
     manager: ExtensionManager,
     source: string,
@@ -269,7 +304,7 @@ async function removeExtension(
 export function registerExtensionGroup(
     program: Command,
     manager: ExtensionManager,
-    options: PassThroughOptions = {},
+    options: ExtensionCommandOptions = {},
 ): Command {
     const { binName } = manager
     const dispatch = options.dispatch ?? ((name, args) => manager.dispatch(name, args))
@@ -300,6 +335,19 @@ Examples:
         .description('List installed extensions')
         .option('--json', 'Output as JSON')
         .action((options) => listExtensions(manager, options))
+
+    if (options.templatesDir) {
+        const templatesDir = options.templatesDir
+        extension
+            .command('create <name>')
+            .description('Scaffold a new extension in the current directory')
+            .option('--template <name>', 'Which template to start from')
+            .option('--description <text>', 'Description for the manifest and README')
+            .option('--json', 'Output as JSON')
+            .action((name, createOptions) =>
+                createScaffold(manager, templatesDir, name, createOptions),
+            )
+    }
 
     extension
         .command('install <source>')
@@ -369,7 +417,10 @@ export type ExtensionCommands = {
     dispatch: ExtensionDispatch
 }
 
-export type PassThroughOptions = {
+export type ExtensionCommandOptions = {
+    /** Where the scaffold templates live. `create` is not offered without it. */
+    templatesDir?: string
+
     /**
      * How to run an extension. Supplied by the host so that one definition
      * serves both the command registered here and a host that dispatches
@@ -432,7 +483,7 @@ function addInstallHint(program: Command, binName: string): void {
 export async function registerExtensionPassThrough(
     program: Command,
     manager: ExtensionManager,
-    options: PassThroughOptions = {},
+    options: ExtensionCommandOptions = {},
 ): Promise<ExtensionCommands> {
     const dispatch = options.dispatch ?? ((name, args) => manager.dispatch(name, args))
     const extensions = await manager.discover()
@@ -477,7 +528,7 @@ export async function registerExtensionPassThrough(
 export async function registerExtensionCommands(
     program: Command,
     manager: ExtensionManager,
-    options: PassThroughOptions = {},
+    options: ExtensionCommandOptions = {},
 ): Promise<ExtensionCommands> {
     registerExtensionGroup(program, manager, options)
     return registerExtensionPassThrough(program, manager, options)

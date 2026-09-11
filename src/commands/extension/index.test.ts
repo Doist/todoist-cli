@@ -77,6 +77,7 @@ describe('registerExtensionCommand', () => {
         expect(group).toBeDefined()
         expect(group?.aliases()).toContain('ext')
         expect(group?.commands.map((command) => command.name()).sort()).toEqual([
+            'create',
             'exec',
             'install',
             'list',
