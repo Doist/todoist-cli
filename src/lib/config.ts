@@ -1,3 +1,4 @@
+import { dirname } from 'node:path'
 import {
     getConfigPath as getConfigPathCore,
     readConfig as readConfigCore,
@@ -17,6 +18,15 @@ const APP_NAME = 'todoist-cli'
  */
 export function getConfigPath(): string {
     return getConfigPathCore(APP_NAME)
+}
+
+/**
+ * The directory holding the config file. Derived from the path rather than
+ * rebuilt from the same environment variables, so the two can never disagree
+ * about where the config lives.
+ */
+export function getConfigDir(): string {
+    return dirname(getConfigPath())
 }
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'
