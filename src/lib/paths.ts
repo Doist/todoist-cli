@@ -12,9 +12,8 @@
  */
 
 import { homedir } from 'node:os'
-import { join } from 'node:path'
-
-const APP_NAME = 'todoist-cli'
+import { isAbsolute, join } from 'node:path'
+import { APP_NAME } from './app-name.js'
 
 /**
  * Windows has no XDG equivalent. `LOCALAPPDATA` is set on every supported
@@ -26,6 +25,17 @@ function windowsBase(): string {
 }
 
 /**
+ * The XDG spec requires these variables to hold absolute paths and says a
+ * relative one must be ignored. Honouring a relative value would tie the
+ * extensions directory to whichever directory `td` happened to be started
+ * from, so an extension installed in one place would be invisible from
+ * another.
+ */
+function xdgBase(value: string | undefined): string | undefined {
+    return value && isAbsolute(value) ? value : undefined
+}
+
+/**
  * Where installed extensions live, under an `extensions` subdirectory.
  *
  * macOS gets the XDG layout rather than `~/Library/Application Support`,
@@ -33,7 +43,8 @@ function windowsBase(): string {
  * the two would leave a user's files in two unrelated places.
  */
 export function getDataDir(): string {
-    if (process.env.XDG_DATA_HOME) return join(process.env.XDG_DATA_HOME, APP_NAME)
+    const xdg = xdgBase(process.env.XDG_DATA_HOME)
+    if (xdg) return join(xdg, APP_NAME)
     if (process.platform === 'win32') return join(windowsBase(), APP_NAME)
     return join(homedir(), '.local', 'share', APP_NAME)
 }
@@ -46,7 +57,8 @@ export function getDataDir(): string {
  * cannot collide with the extensions directory, which is a sibling.
  */
 export function getStateDir(): string {
-    if (process.env.XDG_STATE_HOME) return join(process.env.XDG_STATE_HOME, APP_NAME)
+    const xdg = xdgBase(process.env.XDG_STATE_HOME)
+    if (xdg) return join(xdg, APP_NAME)
     if (process.platform === 'win32') return join(windowsBase(), APP_NAME, 'state')
     return join(homedir(), '.local', 'state', APP_NAME)
 }

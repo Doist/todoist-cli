@@ -5,10 +5,9 @@ import {
     readConfigStrict as readConfigStrictCore,
     writeConfig as writeConfigCore,
 } from '@doist/cli-core'
+import { APP_NAME } from './app-name.js'
 import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'
-
-const APP_NAME = 'todoist-cli'
 
 /**
  * Resolve the canonical config path lazily. Computing on each call (instead of
