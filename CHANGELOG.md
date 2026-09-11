@@ -1,3 +1,9 @@
+## [5.3.4](https://github.com/Doist/todoist-cli/compare/v5.3.3...v5.3.4) (2026-09-11)
+
+### Bug Fixes
+
+* omit status suffixes from abbreviated user names ([#543](https://github.com/Doist/todoist-cli/issues/543)) ([12a3bba](https://github.com/Doist/todoist-cli/commit/12a3bba78dcab3a6fabecc67e0e86f07782bc907))
+
 ## [5.3.3](https://github.com/Doist/todoist-cli/compare/v5.3.2...v5.3.3) (2026-09-11)
 
 ### Bug Fixes
