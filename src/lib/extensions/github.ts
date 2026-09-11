@@ -36,6 +36,16 @@ export type GitHubClient = {
 const API_ROOT = 'https://api.github.com'
 
 /**
+ * The REST API version to ask for.
+ *
+ * Pinned rather than left to default, so that GitHub moving its default can
+ * never change what an install sees. Raise it deliberately, after checking the
+ * endpoints used here still answer the same way: a release by tag and by
+ * latest, an asset download, and a file's contents.
+ */
+const API_VERSION = '2026-03-10'
+
+/**
  * Turn a repository-relative path into one URL path segment at a time.
  *
  * Encoding alone is not enough, because `..` is made of unreserved characters
@@ -79,7 +89,7 @@ export function createGitHubClient(fetchImpl: typeof fetch = fetch): GitHubClien
             headers: {
                 accept,
                 'user-agent': 'doist-cli-extensions',
-                'x-github-api-version': '2022-11-28',
+                'x-github-api-version': API_VERSION,
                 ...authHeaders(),
             },
         })
