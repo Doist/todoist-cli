@@ -41,6 +41,8 @@ export type Extension = {
     host?: string
     owner?: string
     pinned: boolean
+    /** The ref or tag it is pinned to, when it is pinned. */
+    pinnedRef?: string
     official: boolean
     description?: string
     requires?: Record<string, string>
