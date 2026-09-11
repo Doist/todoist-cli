@@ -25,6 +25,13 @@ vi.mock('node:fs/promises', () => ({
     readFile: vi.fn(),
 }))
 
+// The extension checks read the real extensions directory and have their own
+// tests. Left alone here, the counts these tests assert would depend on what
+// the person running the suite happens to have installed.
+vi.mock('./extension/doctor.js', () => ({
+    checkExtensions: vi.fn(async () => []),
+}))
+
 vi.mock('../lib/progress.js', () => ({
     getProgressTracker: vi.fn(() => mockProgressTracker),
 }))
