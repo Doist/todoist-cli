@@ -16,14 +16,7 @@
  */
 
 import { z } from 'zod'
-
-/**
- * The manifest format this CLI writes and knows how to read in full.
- *
- * A file without a version is this one: the field arrived with the format, so
- * its absence can only mean the first version.
- */
-export const MANIFEST_VERSION = 1
+import { MANIFEST_VERSION } from './manifest-format.js'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)

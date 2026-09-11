@@ -16,26 +16,6 @@ import { isRecord, readJsonFile, readJsonValue, writeJsonFile } from './json-fil
 import { authoredManifestFileName, manifestFileName } from './source.js'
 import type { AuthoredManifest, InstalledManifest } from './types.js'
 
-/** The manifest format this CLI writes and knows how to read in full. */
-export const MANIFEST_VERSION = 1
-
-/** The version a manifest declares, defaulting to the original format. */
-export function manifestVersionOf(manifest: AuthoredManifest | undefined): number {
-    return manifest?.manifestVersion ?? MANIFEST_VERSION
-}
-
-/**
- * True when a manifest was written to a format newer than this CLI knows.
- *
- * Such a manifest is still read for the fields this version understands. The
- * extension itself is an executable and runs regardless: refusing to run it
- * over the shape of a metadata file would break a working extension on a CLI
- * downgrade, which is the failure the `requires` warning already avoids.
- */
-export function isFromNewerFormat(manifest: AuthoredManifest | undefined): boolean {
-    return manifestVersionOf(manifest) > MANIFEST_VERSION
-}
-
 async function schemas() {
     return import('./schemas.js')
 }
