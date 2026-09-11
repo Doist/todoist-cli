@@ -14,7 +14,16 @@ import { CliError } from '@doist/cli-core'
 import { isExecutable } from './fs-utils.js'
 import type { DispatchOptions, Extension } from './types.js'
 
-export type SpawnPlan = { command: string; args: string[] }
+export type SpawnPlan = {
+    command: string
+    args: string[]
+    /**
+     * Hand `args` to the child exactly as written, without Node's own quoting.
+     * Only the Windows batch path sets it, where the quoting has to be done
+     * for `cmd.exe` rather than for a program's argv.
+     */
+    verbatim?: boolean
+}
 
 type ExecutableHead = {
     /** The shebang line, when there is one. */
@@ -76,6 +85,47 @@ function nodeShebangOptions(shebang: string): string[] | undefined {
  * the host already requires. Everything else runs directly on POSIX, and
  * through `sh` on Windows, where shebangs mean nothing.
  */
+/**
+ * Characters `cmd.exe` expands from inside a quoted string, so quoting is not
+ * enough to make them safe. `%` performs variable substitution, and `!` does
+ * too once delayed expansion is on, which a batch file can turn on for itself.
+ */
+const CMD_UNQUOTABLE = /[%!\r\n]/
+
+/**
+ * Build the single command line `cmd.exe` is given for a batch extension.
+ *
+ * This cannot go through Node's argument handling. Node quotes an argument
+ * only when it contains a space, so `&whoami` would arrive unquoted and
+ * `cmd.exe` would read the `&` as a command separator and run it. Quoting
+ * every argument here, and refusing the two characters quoting cannot contain,
+ * is what keeps an argument an argument.
+ *
+ * Following Rust's standard library, which refuses rather than pretends: there
+ * is no escape for `%` that holds in every context a batch file can create.
+ */
+function buildCmdLine(executablePath: string, args: string[]): string {
+    return [executablePath, ...args].map(quoteForCmd).join(' ')
+}
+
+function quoteForCmd(value: string): string {
+    if (CMD_UNQUOTABLE.test(value)) {
+        throw new CliError(
+            'EXTENSION_NOT_EXECUTABLE',
+            'An argument to a .cmd or .bat extension contains a character the Windows command interpreter would expand.',
+            {
+                hints: [
+                    'Remove any %, ! or newline from the argument.',
+                    'A .exe or a script with a node shebang takes its arguments unchanged.',
+                ],
+            },
+        )
+    }
+    // Backslashes are literal except when they precede the closing quote, where
+    // they would escape it, so those runs are doubled.
+    return `"${value.replace(/(\\*)$/, '$1$1').replace(/"/g, '""')}"`
+}
+
 export async function buildSpawnPlan(executablePath: string, args: string[]): Promise<SpawnPlan> {
     const onWindows = process.platform === 'win32'
     const head = await readExecutableHead(executablePath)
@@ -102,7 +152,8 @@ export async function buildSpawnPlan(executablePath: string, args: string[]): Pr
         // one, and spawning it directly fails on every supported Node version.
         return {
             command: process.env.ComSpec ?? 'cmd.exe',
-            args: ['/d', '/s', '/c', executablePath, ...args],
+            args: ['/d', '/s', '/c', buildCmdLine(executablePath, args)],
+            verbatim: true,
         }
     }
 
@@ -189,6 +240,7 @@ export async function dispatchExtension(
             cwd: process.cwd(),
             env,
             stdio: 'inherit',
+            windowsVerbatimArguments: plan.verbatim,
         })
 
         child.on('error', (error: NodeJS.ErrnoException) => {
