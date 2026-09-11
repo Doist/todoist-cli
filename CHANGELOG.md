@@ -1,3 +1,9 @@
+## [5.3.3](https://github.com/Doist/todoist-cli/compare/v5.3.2...v5.3.3) (2026-09-11)
+
+### Bug Fixes
+
+* **text:** slice and index name strings by code point, not code unit ([#507](https://github.com/Doist/todoist-cli/issues/507)) ([c9c91d8](https://github.com/Doist/todoist-cli/commit/c9c91d8d3e88b0493f4623e3ad09be85d13899d9))
+
 ## [5.3.2](https://github.com/Doist/todoist-cli/compare/v5.3.1...v5.3.2) (2026-09-10)
 
 ### Bug Fixes
