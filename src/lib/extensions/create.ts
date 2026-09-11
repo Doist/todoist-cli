@@ -7,10 +7,9 @@
  */
 
 import { chmod, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { CliError } from '@doist/cli-core'
-import { exists } from './fs-utils.js'
-import { toCommandName, toDirName, validateExtensionName } from './source.js'
+import { requireUsableName, toCommandName, toDirName } from './source.js'
 
 export type CreateOptions = {
     /** Template to scaffold from. Defaults to the first one available. */
@@ -52,28 +51,43 @@ function targetName(templateFile: string, dirName: string): string {
 }
 
 export async function listTemplates(templatesDir: string): Promise<string[]> {
-    const entries = await readdir(templatesDir, { withFileTypes: true }).catch(() => [])
+    // Errors are not swallowed: a host that points this somewhere unreadable
+    // should hear why, rather than being told there are no templates.
+    const entries = await readdir(templatesDir, { withFileTypes: true })
     return entries
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
         .sort()
 }
 
-function fill(content: string, values: Record<string, string>): string {
-    const filled = content.replace(/\{\{(\w+)\}\}/g, (whole, key: string) =>
-        key in values ? values[key] : whole,
-    )
+const PLACEHOLDER = /\{\{(\w+)\}\}/g
 
-    // A placeholder nothing replaced is a typo in the template, and shipping it
-    // verbatim into someone's new repository is worse than refusing.
-    const leftover = filled.match(/\{\{\w+\}\}/)
-    if (leftover) {
-        throw new CliError(
-            'EXTENSION_TEMPLATE_INVALID',
-            `The template refers to ${leftover[0]}, which is not a value this command supplies.`,
-        )
+/**
+ * Fill a template, checking it before substituting rather than after.
+ *
+ * The difference matters because one of the values is the description the user
+ * typed. Checking the result would let `--description 'uses {{NAME}}'` fail as
+ * though the template were broken, and the message would blame the wrong
+ * thing entirely.
+ */
+function fill(templateFile: string, content: string, values: Record<string, string>): string {
+    for (const [whole, key] of content.matchAll(PLACEHOLDER)) {
+        if (!(key in values)) {
+            throw new CliError(
+                'EXTENSION_TEMPLATE_INVALID',
+                `The template file ${templateFile} refers to ${whole}, which is not a value this command supplies.`,
+            )
+        }
     }
-    return filled
+
+    // Escaped for where it is going: a description holding a quote, a
+    // backslash or a newline would otherwise make the manifest invalid JSON,
+    // and an unreadable manifest is silently ignored rather than reported.
+    const escape = templateFile.endsWith('.json')
+        ? (value: string) => JSON.stringify(value).slice(1, -1)
+        : (value: string) => value
+
+    return content.replace(PLACEHOLDER, (_whole, key: string) => escape(values[key]))
 }
 
 export async function createExtension(
@@ -86,20 +100,12 @@ export async function createExtension(
     // Accept `goals` or `td-goals`, and hold both to the rules install uses, so
     // a name that could never be installed is never scaffolded either.
     const dirName = toDirName(binName, toCommandName(binName, rawName))
-    validateExtensionName(binName, dirName)
-
-    const name = toCommandName(binName, dirName)
-    if (new Set(context.reservedNames()).has(name)) {
-        throw new CliError(
-            'EXTENSION_NAME_RESERVED',
-            `"${name}" is the name of a built-in ${binName} command.`,
-            {
-                hints: [
-                    `An extension called ${name} could never be run as \`${binName} ${name}\`.`,
-                ],
-            },
-        )
-    }
+    const name = requireUsableName(
+        binName,
+        dirName,
+        context.reservedNames,
+        (taken) => `An extension called ${taken} could never be run as \`${binName} ${taken}\`.`,
+    )
 
     const available = await listTemplates(context.templatesDir)
     if (available.length === 0) {
@@ -116,13 +122,6 @@ export async function createExtension(
         })
     }
 
-    const dir = join(options.directory ?? process.cwd(), dirName)
-    if (await exists(dir)) {
-        throw new CliError('EXTENSION_ALREADY_EXISTS', `${dir} already exists.`, {
-            hints: ['Choose another name, or remove the directory first.'],
-        })
-    }
-
     const values = {
         NAME: name,
         DIRNAME: dirName,
@@ -135,30 +134,50 @@ export async function createExtension(
     const templateDir = join(context.templatesDir, template)
     const templateFiles = (await readdir(templateDir, { recursive: true, withFileTypes: true }))
         .filter((entry) => entry.isFile())
-        .map((entry) => join(entry.parentPath, entry.name).slice(templateDir.length + 1))
+        .map((entry) => relative(templateDir, join(entry.parentPath, entry.name)))
         .sort()
 
-    const written: string[] = []
-    for (const templateFile of templateFiles) {
-        // Only the last segment is renamed: a nested path such as
-        // `.github/workflows/release.yml` keeps its shape.
-        const segments = templateFile.split(/[\\/]/)
-        const relative = [
-            ...segments.slice(0, -1),
-            targetName(segments.at(-1) ?? '', dirName),
-        ].join('/')
-        const destination = join(dir, relative)
+    // Everything is read and filled before anything is written, so a template
+    // this command cannot render leaves no half-made directory behind for the
+    // user to clear up before trying again.
+    const rendered = await Promise.all(
+        templateFiles.map(async (templateFile) => {
+            // Only the last segment is renamed: a nested path such as
+            // `.github/workflows/release.yml` keeps its shape.
+            const segments = templateFile.split(/[\\/]/)
+            const path = [
+                ...segments.slice(0, -1),
+                targetName(segments.at(-1) ?? '', dirName),
+            ].join('/')
+            const content = await readFile(join(templateDir, templateFile), 'utf8')
+            return { path, content: fill(path, content, values) }
+        }),
+    )
 
-        await mkdir(dirname(destination), { recursive: true })
-        await writeFile(
-            destination,
-            fill(await readFile(join(templateDir, templateFile), 'utf8'), values),
-        )
-        // The one file that has to be runnable, since that is what td spawns.
-        if (relative === dirName) await chmod(destination, 0o755)
+    const dir = join(options.directory ?? process.cwd(), dirName)
 
-        written.push(relative)
+    // The directory is claimed by creating it, not by asking whether it is
+    // there and creating it afterwards. In a shared directory those are not
+    // the same: between the question and the answer, someone else can put a
+    // symlink where this is about to write.
+    try {
+        await mkdir(dir)
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+            throw new CliError('EXTENSION_ALREADY_EXISTS', `${dir} already exists.`, {
+                hints: ['Choose another name, or remove the directory first.'],
+            })
+        }
+        throw error
     }
 
-    return { name, dirName, dir, template, files: written }
+    for (const { path, content } of rendered) {
+        const destination = join(dir, path)
+        await mkdir(dirname(destination), { recursive: true })
+        await writeFile(destination, content)
+        // The one file that has to be runnable, since that is what td spawns.
+        if (path === dirName) await chmod(destination, 0o755)
+    }
+
+    return { name, dirName, dir, template, files: rendered.map(({ path }) => path) }
 }

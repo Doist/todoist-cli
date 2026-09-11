@@ -59,6 +59,33 @@ export function validateExtensionName(binName: string, dirName: string): void {
  * scp-like form. Both `parseSource` and extension discovery route through
  * this, so the two cannot drift apart.
  */
+/**
+ * The command name for a directory, once it is known to be a name this host
+ * can actually run: well formed, and not one a built-in command already
+ * answers to. `install` and `create` both ask, and must agree.
+ *
+ * The hint differs between them — one is about an extension that exists, the
+ * other about one that would be born unreachable — so the caller supplies it.
+ */
+export function requireUsableName(
+    binName: string,
+    dirName: string,
+    reservedNames: () => Iterable<string>,
+    hint: (name: string) => string,
+): string {
+    validateExtensionName(binName, dirName)
+    const name = toCommandName(binName, dirName)
+
+    if (new Set(reservedNames()).has(name)) {
+        throw new CliError(
+            'EXTENSION_NAME_RESERVED',
+            `"${name}" is the name of a built-in ${binName} command.`,
+            { hints: [hint(name)] },
+        )
+    }
+    return name
+}
+
 export function parseRepoRef(
     url: string,
 ): { host: string; owner: string; repo: string } | undefined {

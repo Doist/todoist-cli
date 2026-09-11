@@ -178,7 +178,7 @@ async function createScaffold(
             binName: manager.binName,
             version: manager.version,
             templatesDir,
-            reservedNames: () => manager.reservedNames(),
+            reservedNames: manager.reservedNames,
         },
     )
 

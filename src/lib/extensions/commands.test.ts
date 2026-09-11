@@ -306,6 +306,34 @@ describe('registerExtensionGroup', () => {
         })
     })
 
+    it('reports what it made as JSON', async () => {
+        const templatesDir = join(root, 'templates', 'plain')
+        await mkdir(templatesDir, { recursive: true })
+        await writeFile(join(templatesDir, 'executable'), '#!/bin/sh\necho {{NAME}}\n')
+
+        const manager = makeManager()
+        const program = createTestProgram((p) => {
+            registerExtensionGroup(p, manager, { templatesDir: join(root, 'templates') })
+        })
+        const argv = ['node', 'td', 'extension', 'create', 'goals', '--json']
+        vi.spyOn(process, 'argv', 'get').mockReturnValue(argv)
+        const cwd = process.cwd()
+        process.chdir(root)
+        try {
+            await program.parseAsync(argv)
+        } finally {
+            process.chdir(cwd)
+        }
+
+        expect(JSON.parse(lines().join(''))).toEqual({
+            name: 'goals',
+            dirName: 'td-goals',
+            dir: join(root, 'td-goals'),
+            template: 'plain',
+            files: ['td-goals'],
+        })
+    })
+
     describe('install', () => {
         /** A directory the user is developing in, outside the extensions dir. */
         async function localSource(name: string): Promise<string> {

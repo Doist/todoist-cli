@@ -29,8 +29,6 @@ const args = process.argv.slice(2)
 if (args.includes('--help') || args.includes('-h')) {
     process.stdout.write(`Usage: td {{NAME}} [options]
 
-{{DESCRIPTION}}
-
 Options:
   --json      Output as JSON
   --help      Show this message

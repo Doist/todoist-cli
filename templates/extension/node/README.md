@@ -29,5 +29,6 @@ topic, which is how `td extension search` finds it.
   failure. td exits with whatever this script exits with.
 - Do not prompt when stdin is not a TTY — td is non-interactive by design and
   agents call extensions.
-- Dependencies go in `package.json`; td runs `npm ci --omit=dev` when it
-  installs the extension, so they do not need vendoring.
+- Dependencies go in `package.json`; td installs them when it installs the
+  extension, so they do not need vendoring. It runs `npm ci --omit=dev` once
+  you commit a `package-lock.json`, and `npm install --omit=dev` until then.

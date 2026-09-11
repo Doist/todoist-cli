@@ -92,6 +92,74 @@ describe('createExtension', () => {
         ).resolves.toContain('A td extension')
     })
 
+    it('escapes a description for the JSON file it lands in', async () => {
+        // Unescaped, this is invalid JSON — and an unreadable manifest is
+        // silently ignored, so the starting `requires` range goes too.
+        await createExtension(
+            'goals',
+            { directory: root, description: 'He said "hi"\\ and left\nabruptly' },
+            context(),
+        )
+
+        const manifest = JSON.parse(
+            await readFile(join(root, 'td-goals', 'td-extension.json'), 'utf8'),
+        )
+        expect(manifest.description).toBe('He said "hi"\\ and left\nabruptly')
+    })
+
+    it('leaves a description alone in a file that is not JSON', async () => {
+        await writeTemplate('prose', { 'README.md': 'About: {{DESCRIPTION}}\n' })
+        await createExtension(
+            'goals',
+            { directory: root, template: 'prose', description: 'He said "hi"' },
+            context(),
+        )
+
+        await expect(readFile(join(root, 'td-goals', 'README.md'), 'utf8')).resolves.toBe(
+            'About: He said "hi"\n',
+        )
+    })
+
+    it('does not read a placeholder in the description as one of its own', async () => {
+        // The check runs on the template, not on the result, so a description
+        // that looks like a placeholder is just text.
+        await createExtension(
+            'goals',
+            { directory: root, description: 'uses {{NAME}} internally' },
+            context(),
+        )
+
+        const manifest = JSON.parse(
+            await readFile(join(root, 'td-goals', 'td-extension.json'), 'utf8'),
+        )
+        expect(manifest.description).toBe('uses {{NAME}} internally')
+    })
+
+    it('writes nothing at all when a template cannot be rendered', async () => {
+        await writeTemplate('broken', {
+            'fine.txt': 'ok\n',
+            executable: 'echo {{NOT_A_VALUE}}\n',
+        })
+
+        await expect(
+            createExtension('goals', { directory: root, template: 'broken' }, context()),
+        ).rejects.toMatchObject({ code: 'EXTENSION_TEMPLATE_INVALID' })
+
+        // Not even a half-made directory, so retrying does not hit
+        // "already exists" for a failure that was the template's.
+        expect(await readdir(root)).not.toContain('td-goals')
+    })
+
+    it('reports a templates directory it cannot read, rather than claiming it is empty', async () => {
+        await expect(
+            createExtension(
+                'goals',
+                { directory: root },
+                context({ templatesDir: join(root, 'nope') }),
+            ),
+        ).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
     it('accepts the command name or the directory name', async () => {
         const bare = await createExtension('goals', { directory: root }, context())
         const prefixed = await createExtension('td-other', { directory: root }, context())
@@ -172,9 +240,10 @@ describe('the templates td ships', () => {
 
         for (const file of result.files) {
             const contents = await readFile(join(result.dir, file), 'utf8')
-            // `fill` refuses a placeholder it cannot resolve, so anything left
-            // here would be a literal brace pair the template meant to keep.
-            expect(contents).not.toMatch(/\{\{\w+\}\}/)
+            // Broader than what `fill` enforces, which only knows `{{WORD}}`:
+            // this also catches a placeholder written with a space or a dash
+            // that would otherwise ship verbatim.
+            expect(contents).not.toContain('{{')
         }
 
         const manifest = JSON.parse(await readFile(join(result.dir, 'td-extension.json'), 'utf8'))
