@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
@@ -260,6 +260,176 @@ describe('registerExtensionGroup', () => {
             expect(entry).not.toHaveProperty('description')
             expect(entry).not.toHaveProperty('version')
             expect(entry).toMatchObject({ name: 'goals', executable: true, shadowed: false })
+        })
+    })
+
+    describe('install', () => {
+        /** A directory the user is developing in, outside the extensions dir. */
+        async function localSource(name: string): Promise<string> {
+            await mkdir(join(root, 'code'), { recursive: true })
+            return writeFixtureExtension(join(root, 'code'), name, {})
+        }
+
+        it('links a local directory and says where the link is', async () => {
+            const target = await localSource('scratch')
+            await run(makeManager(), ['extension', 'install', target])
+
+            const entry = join(extensionsDir, 'td-scratch')
+            expect((await lstat(entry)).isSymbolicLink()).toBe(true)
+            expect(lines().join('\n')).toContain(`Linked td-scratch from ${target} to ${entry}`)
+        })
+
+        it('does not print the trust warning for the user own directory', async () => {
+            await run(makeManager(), ['extension', 'install', await localSource('scratch')])
+            expect(warnings).toEqual([])
+        })
+
+        it('reports the install as JSON', async () => {
+            const target = await localSource('scratch')
+            await run(makeManager(), ['extension', 'install', target, '--json'])
+            expect(JSON.parse(lines().join(''))).toEqual({
+                name: 'scratch',
+                dirName: 'td-scratch',
+                kind: 'local',
+                source: target,
+                dir: target,
+            })
+        })
+
+        it('refuses a name that a built-in command already uses', async () => {
+            const target = await localSource('task')
+            await expect(
+                run(makeManager({ reserved: ['task'] }), ['extension', 'install', target]),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NAME_RESERVED' })
+            expect(await readdir(extensionsDir)).toEqual([])
+        })
+
+        it('links an extension that has not been built yet, with a warning', async () => {
+            await mkdir(join(root, 'code', 'td-compiled'), { recursive: true })
+            await run(makeManager(), ['extension', 'install', join(root, 'code', 'td-compiled')])
+
+            expect((await lstat(join(extensionsDir, 'td-compiled'))).isSymbolicLink()).toBe(true)
+            expect(warnings.join('\n')).toContain('has no executable named "td-compiled" yet')
+        })
+
+        it('refuses a directory that is not there', async () => {
+            await expect(
+                run(makeManager(), ['extension', 'install', join(root, 'code', 'td-missing')]),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NOT_INSTALLABLE' })
+        })
+    })
+
+    describe('upgrade', () => {
+        it('refuses names and --all together', async () => {
+            await expect(
+                run(makeManager(), ['extension', 'upgrade', 'goals', '--all']),
+            ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+        })
+
+        it('shows its usage when given neither a name nor --all', async () => {
+            // Nothing is upgraded on a bare invocation, so nothing reaches the
+            // network by accident.
+            await expect(run(makeManager(), ['extension', 'upgrade'])).rejects.toThrow()
+        })
+
+        it('says so when there is nothing installed', async () => {
+            await run(makeManager(), ['extension', 'upgrade', '--all'])
+            expect(lines().join('\n')).toContain('No extensions installed.')
+        })
+
+        it('leaves a local install alone and says why', async () => {
+            await mkdir(join(root, 'code'), { recursive: true })
+            const target = await writeFixtureExtension(join(root, 'code'), 'scratch', {})
+            await symlink(target, join(extensionsDir, 'td-scratch'))
+
+            await run(makeManager(), ['extension', 'upgrade', '--all'])
+            const row = lines().find((line) => line.startsWith('scratch'))
+            expect(row).toContain('skipped')
+        })
+
+        it('reports a dry run without changing anything', async () => {
+            await mkdir(join(root, 'code'), { recursive: true })
+            const target = await writeFixtureExtension(join(root, 'code'), 'scratch', {})
+            await symlink(target, join(extensionsDir, 'td-scratch'))
+            const before = await readdir(extensionsDir)
+
+            await run(makeManager(), ['extension', 'upgrade', '--all', '--dry-run'])
+            const rendered = lines().join('\n')
+            expect(rendered).toContain('[dry-run] Would upgrade 0 extensions:')
+            expect(rendered).toContain('Run without --dry-run to execute.')
+            expect(await readdir(extensionsDir)).toEqual(before)
+        })
+
+        it('names an extension that is not installed', async () => {
+            await expect(
+                run(makeManager(), ['extension', 'upgrade', 'ghost']),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NOT_FOUND' })
+        })
+
+        it('reports results as JSON', async () => {
+            await mkdir(join(root, 'code'), { recursive: true })
+            const target = await writeFixtureExtension(join(root, 'code'), 'scratch', {})
+            await symlink(target, join(extensionsDir, 'td-scratch'))
+
+            await run(makeManager(), ['extension', 'upgrade', '--all', '--json'])
+            expect(JSON.parse(lines().join(''))).toEqual([
+                { name: 'scratch', outcome: 'skipped', detail: expect.any(String) },
+            ])
+        })
+    })
+
+    describe('remove', () => {
+        it('takes the link and leaves the user directory alone', async () => {
+            await mkdir(join(root, 'code'), { recursive: true })
+            const target = await writeFixtureExtension(join(root, 'code'), 'scratch', {})
+            await symlink(target, join(extensionsDir, 'td-scratch'))
+
+            await run(makeManager(), ['extension', 'remove', 'scratch'])
+
+            expect(await readdir(extensionsDir)).toEqual([])
+            expect(await readdir(target)).toContain('td-scratch')
+            expect(lines().join('\n')).toContain('Its directory was left alone.')
+        })
+
+        it('removes a binary install outright', async () => {
+            await writeFixtureExtension(extensionsDir, 'goals', {})
+            await run(makeManager(), ['extension', 'remove', 'goals'])
+            expect(await readdir(extensionsDir)).toEqual([])
+            expect(lines().join('\n')).toContain('Removed goals from')
+        })
+
+        it('refuses a clone whose state it cannot read', async () => {
+            const dir = await writeFixtureExtension(extensionsDir, 'standup', {})
+            await writeFakeGitRepo(dir, 'https://github.com/example/td-standup.git')
+
+            await expect(
+                run(makeManager(), ['extension', 'remove', 'standup']),
+            ).rejects.toMatchObject({ code: 'EXTENSION_DIRTY' })
+            expect(await readdir(extensionsDir)).toEqual(['td-standup'])
+        })
+
+        it('removes it anyway with --force', async () => {
+            const dir = await writeFixtureExtension(extensionsDir, 'standup', {})
+            await writeFakeGitRepo(dir, 'https://github.com/example/td-standup.git')
+
+            await run(makeManager(), ['extension', 'remove', 'standup', '--force'])
+            expect(await readdir(extensionsDir)).toEqual([])
+        })
+
+        it('reports the removal as JSON', async () => {
+            await writeFixtureExtension(extensionsDir, 'goals', {})
+            await run(makeManager(), ['extension', 'remove', 'goals', '--json'])
+            expect(JSON.parse(lines().join(''))).toMatchObject({
+                name: 'goals',
+                kind: 'binary',
+                removed: 'directory',
+            })
+        })
+
+        it('names an extension that is not installed', async () => {
+            await expect(
+                run(makeManager(), ['extension', 'remove', 'ghost']),
+            ).rejects.toMatchObject({ code: 'EXTENSION_NOT_FOUND' })
         })
     })
 
