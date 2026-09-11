@@ -28,7 +28,7 @@ metadata:
 - Mutating commands support `--dry-run` to preview actions without executing them.
 - Destructive commands typically require `--yes`.
 - `--quiet` / `-q` suppresses success messages. Create commands still print the bare ID for scripting (e.g. `id=$(td task add "Buy milk" --quiet)`).
-- Global flags: `--no-spinner`, `--progress-jsonl`, `-v/--verbose`, `--accessible`, `--quiet`, `--user <id|email>`.
+- Global flags: `--no-spinner`, `--progress-jsonl`, `-v/--verbose`, `--accessible`, `--quiet`, `--user <id|email>`. `TD_USER` is read as the fallback for `--user`.
 
 ## Authentication
 
@@ -82,12 +82,13 @@ td accounts use <id|email>             # set the default account (alias: td acco
 td accounts current                    # show the active account (--json/--ndjson supported)
 td accounts remove <id|email>          # delete an account and its token (--json/--ndjson supported)
 td --user <id|email> task list         # one-off override for any command
+TD_USER=<id|email> td task list        # same, for every nested call in a script
 td auth logout --user <id|email>       # log out a specific account
 ```
 
 `td accounts` is also available as `td user` / `td users` (back-compat aliases).
 
-Resolution order: `--user <ref>` > `user.defaultUser` from config > the only stored account. With multiple accounts and no default, commands error and ask for `--user` (or `td accounts use`). `<ref>` matches an exact id or email (case-insensitive on email). `TODOIST_API_TOKEN` still bypasses the resolver entirely.
+Resolution order: `--user <ref>` > `TD_USER` > `user.defaultUser` from config > the only stored account. With multiple accounts and no default, commands error and ask for `--user` (or `td accounts use`). `<ref>` matches an exact id or email (case-insensitive on email). `TODOIST_API_TOKEN` still bypasses the resolver entirely.
 
 ## Quick Reference
 
@@ -100,6 +101,7 @@ Resolution order: `--user <ref>` > `user.defaultUser` from config > the only sto
 - Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Help Center: `td hc locales/search/view`
 - Account and tooling: `td stats`, `td settings ...`, `td config view`, `td accounts ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
+- Extensions: `td extension install/list/upgrade/remove/exec` (alias: `td ext`)
 - Developer apps: `td apps list/view` (requires `td auth login --additional-scopes=app-management`)
 - Backups: `td backup list/download` (requires `td auth login --additional-scopes=backups`)
 - Billing: `td billing subscription/plan/prices/pricing` (requires `td auth login --additional-scopes=billing`)
@@ -391,6 +393,27 @@ td billing pricing --formatted
 The `billing` command surface is **read-only** and requires the `billing` OAuth scope — re-run `td auth login --additional-scopes=billing` to grant it. A normal login grants `billing:read_write`; adding `--read-only` narrows it to `billing:read`. Either satisfies these read commands. Without the scope, calls fail with a `MISSING_SCOPE` error whose hint preserves any previously used flags. All subcommands accept `--json` / `--ndjson`, which dump the raw SDK payload verbatim.
 
 `td billing subscription` (the default subcommand) shows the current plan, status, activation method, expiration date, plan price, invoice credit balance, and billing-portal URLs when present. `td billing plan` shows Pro plan status, downgrade date, and the per-cycle price list. `td billing prices` lists available Pro and Teams prices by billing cycle. `td billing pricing` shows current and legacy pricing keyed by version; `--formatted` returns localized price strings instead of minor-unit numbers.
+
+### Extensions
+
+An extension is an executable named `td-<name>` that td runs as `td <name> ...`. It can be written in any language; the contract is the process boundary, not a JavaScript API.
+
+```bash
+td extension install owner/td-goals    # from a GitHub release or a clone
+td extension install --pin v0.3.0 owner/td-goals
+td extension install ./td-scratch      # a local directory, symlinked, for development
+td extension list                      # --json for the full record of each one
+td extension upgrade --all             # --dry-run to preview; --force to pass a pin
+td extension remove goals              # --force for a clone with uncommitted changes
+td extension exec goals list --json    # bypass the built-in commands entirely
+```
+
+Two rules matter when calling one:
+
+- Everything after the extension name is passed through untouched. `td goals --json` is `--json` for `goals`, not for td. Global flags only apply before the name: `td --user alice goals list`.
+- td exits with the extension's exit code.
+
+An extension is not reviewed or endorsed by Todoist, and runs with the user's own permissions.
 
 ### Settings, Stats, And Utilities
 ```bash

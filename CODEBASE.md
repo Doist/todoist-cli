@@ -46,7 +46,7 @@ src/
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
 │  │  backup/, apps/, billing/, stats/, completed/, auth/, settings/,
-│  │  config/, skill/, hc/, completion/, update/
+│  │  config/, skill/, hc/, completion/, update/, extension/
 │  └─ *.test.ts           # Co-located tests
 ├─ lib/                   # Shared utilities. See catalog — don't reimplement.
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
@@ -67,15 +67,24 @@ src/
    and builds a **lazy command registry** — a `Record<name, [description, loader]>`.
 2. Placeholder subcommands are registered so `--help` lists everything without
    importing anything.
-3. The invoked command name is extracted from `process.argv`; only its loader
-   runs (`./commands/<name>.js` for flat commands, `./commands/<name>/index.js`
-   for groups), then the real `registerXxxCommand(program)` replaces the
-   placeholder.
-4. If output will be human-readable, `preloadMarkdown()` runs in parallel with
+3. `findCommandToken()` (`lib/command-token.ts`) walks argv from the start,
+   stepping over global flags and the values of the two that take one, and
+   stops at the first remaining token. Nothing after it is inspected — that
+   belongs to whatever the token names.
+4. When the token does not name a built-in, the installed extensions are
+   discovered and registered as commands (`commands/extension/dispatch.ts`).
+   A built-in always wins, so `td task list` skips this and never loads the
+   extension system at all. If the token names an extension, it is spawned
+   here, before commander parses, and the process exits with its exit code —
+   which is what makes everything after the name reach it exactly as typed.
+5. Otherwise only the token's loader runs (`./commands/<name>.js` for flat
+   commands, `./commands/<name>/index.js` for groups), then the real
+   `registerXxxCommand(program)` replaces the placeholder.
+6. If output will be human-readable, `preloadMarkdown()` runs in parallel with
    the command import. `startEarlySpinner()` covers the import latency.
-5. `program.parseAsync()` runs the command's action handler. Uncaught
-   `CliError` is rendered via `formatError()` or `formatErrorJson()` depending
-   on `isJsonMode()`.
+7. `program.parseAsync()` runs the command's action handler. Uncaught
+   `CliError` is rendered by `reportFatal()` via `formatError()` or
+   `formatErrorJson()` depending on `isJsonMode()`.
 
 ## Command registration pattern
 
@@ -86,6 +95,13 @@ src/
   then calls `task.command('<sub>')` for each subcommand — each subcommand's
   logic lives in a sibling file (`task/add.ts`, `task/list.ts`, …) re-imported
   by `index.ts`. Shared helpers live in `task/helpers.ts`.
+- **Pass-through command** (extensions): registered from
+  `lib/extensions/commands.ts` with `.allowUnknownOption()`,
+  `.allowExcessArguments()`, `.helpOption(false)` and `.helpGroup('Extensions:')`,
+  so commander touches nothing after the name and `--help` lists them under
+  their own heading. Not `.passThroughOptions()`: commander requires
+  `enablePositionalOptions()` on the parent for that, which makes every
+  ordinary command reject the global flags it accepts today.
 - **Implicit `view` subcommand**: most group commands register
   `.command('view [ref]', { isDefault: true })` so `td project <ref>`
   dispatches to `td project view <ref>`. Same for task, workspace, comment,
@@ -131,16 +147,24 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   the `(default)` marker in `accounts list`/`current`, `auth status`,
   `config view`).
 - **`extensions/`** — the extension system: `manager.ts`
-  (`createExtensionManager`, the only entry point a host needs), plus
-  `discover`, `install`, `upgrade`, `remove`, `dispatch`, `github`, `git`,
-  `npm`, `manifest`, `state`, `source`, `version-range`, `run`, `fs-utils`.
+  (`createExtensionManager`, the only entry point a host needs), `commands.ts`
+  (`registerExtensionGroup` for `td extension …`, `registerExtensionPassThrough`
+  for the per-extension commands), plus `discover`, `install`, `upgrade`,
+  `remove`, `dispatch`, `github`, `git`, `npm`, `manifest`, `schemas`,
+  `state`, `source`, `version-range`, `run`, `fs-utils`.
   Host-agnostic by design: the binary name, directories, version, reserved
   command names and first-party source all arrive through the manager's
   options, and nothing in the directory imports from the rest of the repo, so
-  it can move to `@doist/cli-core` as a file move. See
-  `docs/specs/extensions.md`.
+  it can move to `@doist/cli-core` as a file move. Everything td-specific is
+  decided in `commands/extension/index.ts`. See `docs/specs/extensions.md`.
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
+- **`paths.ts`** — `getDataDir()` / `getStateDir()`: the XDG data and state
+  directories (`%LOCALAPPDATA%` on Windows). cli-core owns the config path
+  only. `getConfigDir()` lives in `config.ts`, derived from it.
+- **`command-token.ts`** — `findCommandToken()` (which argv entry names the
+  command) and `needsExtensionLookup()` (whether this invocation has any use
+  for the installed extensions).
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
   `stripLegacyAuthFields`, `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`.
 - **`auth-provider.ts`** — `createTodoistAuthProvider()`: cli-core PKCE
