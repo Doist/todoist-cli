@@ -13,6 +13,7 @@ import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
+import { truncateForDisplay } from '../../lib/text.js'
 
 interface AddOptions {
     content?: string
@@ -59,7 +60,7 @@ export async function addComment(ref: string, options: AddOptions): Promise<void
         printDryRun('add comment', {
             Target: ref,
             'Target type': options.project ? 'project' : 'task',
-            Content: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+            Content: truncateForDisplay(content, 80),
             File: options.file,
             // Printed unresolved: the dry-run deliberately runs before getApi(),
             // so no lookup has happened at this point.

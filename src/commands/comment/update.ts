@@ -2,6 +2,7 @@ import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
+import { truncateForDisplay } from '../../lib/text.js'
 
 export async function updateComment(
     commentId: string,
@@ -10,8 +11,7 @@ export async function updateComment(
     const id = lenientIdRef(commentId, 'comment')
 
     if (options.dryRun) {
-        const preview =
-            options.content.length > 80 ? `${options.content.slice(0, 80)}...` : options.content
+        const preview = truncateForDisplay(options.content, 80)
         printDryRun('update comment', { ID: id, Content: preview })
         return
     }
@@ -25,8 +25,7 @@ export async function updateComment(
     }
 
     const comment = await api.getComment(id)
-    const oldPreview =
-        comment.content.length > 50 ? `${comment.content.slice(0, 50)}...` : comment.content
+    const oldPreview = truncateForDisplay(comment.content, 50)
     await api.updateComment(id, { content: options.content })
     if (!isQuiet()) console.log(`Updated comment: ${oldPreview} (id:${id})`)
 }
