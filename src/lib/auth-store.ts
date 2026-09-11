@@ -18,6 +18,12 @@ import { getStoredUsers, matchUserRef } from './users.js'
 export const SERVICE_NAME = 'todoist-cli'
 export const LEGACY_ACCOUNT = 'api-token'
 export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
+/**
+ * Names the stored account to act as, as `--user` does. It exists so that a
+ * process the CLI starts can pass its account on to the nested `td` calls that
+ * process makes, without every one of them having to repeat the flag.
+ */
+export const USER_ENV_VAR = 'TD_USER'
 export type CredentialStore = 'system' | 'plaintext'
 
 export function parseCredentialStore(value: string): CredentialStore {
