@@ -338,7 +338,7 @@ async function checkStoredUsers(): Promise<DoctorCheck[]> {
         checks.push({
             name: 'users',
             status: 'warn',
-            message: `${reason}. Commands without --user will error`,
+            message: `${reason}. Commands without --user or TD_USER will error`,
             details: baseDetails,
         })
     }

@@ -13,7 +13,7 @@ export {
     type UpdateChannel,
 } from './config.js'
 
-import { accountForUser, SERVICE_NAME, TOKEN_ENV_VAR } from './auth-store.js'
+import { accountForUser, SERVICE_NAME, TOKEN_ENV_VAR, USER_ENV_VAR } from './auth-store.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
 import { CliError } from './errors.js'
 import { getRequestedUserRef } from './global-args.js'
@@ -25,7 +25,7 @@ import {
     UserNotFoundError,
 } from './users.js'
 
-export { TOKEN_ENV_VAR } from './auth-store.js'
+export { TOKEN_ENV_VAR, USER_ENV_VAR } from './auth-store.js'
 
 export interface AuthMetadata {
     authMode: AuthMode
@@ -60,10 +60,10 @@ export class NoTokenError extends CliError {
 
 /**
  * Resolve which stored user this invocation should act as, and load their
- * token. Honors `--user <ref>`, then `user.defaultUser`, then a single stored
- * user. Throws `NoUserSelectedError` when multiple users are stored without a
- * default and no `--user` was passed; `UserNotFoundError` when `--user` does
- * not match; `NoTokenError` when no users are stored.
+ * token. Honors `--user <ref>`, then `TD_USER`, then `user.defaultUser`, then
+ * a single stored user. Throws `NoUserSelectedError` when multiple users are
+ * stored without a default and none of the three named one; `UserNotFoundError`
+ * when the named one does not match; `NoTokenError` when no users are stored.
  *
  * `TODOIST_API_TOKEN` short-circuits the resolver entirely — env tokens act as
  * an anonymous identity for the duration of the command.
@@ -76,7 +76,12 @@ export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<Re
 
     const config = await readConfig()
     const users = getStoredUsers(config)
-    const ref = opts.ref ?? getRequestedUserRef()
+    // The flag before the environment: a flag is this invocation saying what
+    // it wants, while `TD_USER` is the surrounding context saying who it is,
+    // and the specific instruction should win. `||` for the variable, because
+    // `TD_USER=` is someone clearing it, not naming an account called the
+    // empty string.
+    const ref = opts.ref ?? getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined)
 
     if (users.length === 0) {
         throw ref ? new UserNotFoundError(ref) : new NoTokenError()
