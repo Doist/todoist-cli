@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { describe, expect, it } from 'vitest'
-import { findCommandToken } from './command-token.js'
+import { findCommandToken, needsExtensionLookup } from './command-token.js'
 
 describe('findCommandToken', () => {
     it('returns nothing when there are no arguments', () => {
@@ -174,5 +174,29 @@ describe('agreement with commander', () => {
         const argv = ['--progress-jsonl', 'task', 'today']
         expect(findCommandToken(argv).token).toBe('today')
         expect(commanderDispatch(argv)).toBe('today')
+    })
+})
+
+describe('needsExtensionLookup', () => {
+    it('skips the lookup for a built-in, which always wins anyway', () => {
+        expect(needsExtensionLookup(['task', 'list'], 'task')).toBe(false)
+    })
+
+    it('skips it for --version, which lists nothing', () => {
+        expect(needsExtensionLookup(['--version'], undefined)).toBe(false)
+        expect(needsExtensionLookup(['-V'], undefined)).toBe(false)
+    })
+
+    it('does the lookup for bare `td` and for --help, which list extensions', () => {
+        expect(needsExtensionLookup([], undefined)).toBe(true)
+        expect(needsExtensionLookup(['--help'], undefined)).toBe(true)
+    })
+
+    it('does the lookup for an unrecognised token, which may name one', () => {
+        expect(needsExtensionLookup(['goals', 'list'], undefined)).toBe(true)
+    })
+
+    it('does the lookup for completion, which offers extension names', () => {
+        expect(needsExtensionLookup(['completion-server'], undefined)).toBe(true)
     })
 })

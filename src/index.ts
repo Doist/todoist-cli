@@ -4,20 +4,40 @@ import { stripUserFlag } from '@doist/cli-core'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
-import { findCommandToken } from './lib/command-token.js'
+import { USER_ENV_VAR } from './lib/auth-store.js'
+import { findCommandToken, needsExtensionLookup } from './lib/command-token.js'
 import { BaseCliError, CliError } from './lib/errors.js'
+import type { ExtensionCommands } from './lib/extensions/commands.js'
 import {
     getRequestedUserRef,
+    getVerboseLevel,
     isIdsOnlyMode,
     isJsonMode,
     isNdjsonMode,
     isRawMode,
+    setHostArgvLength,
+    shouldDisableSpinner,
 } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 import { setActiveCommandPath } from './lib/usage-tracking.js'
+
+/**
+ * Report a failure the way every command reports one, and stop. Used by the
+ * paths that run before commander parses as well as by the parse itself, so
+ * that an error looks the same whichever of them raised it.
+ */
+function reportFatal(err: unknown): never {
+    if (err instanceof BaseCliError) {
+        console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
+    } else {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error(isJsonMode() ? formatErrorJson('INTERNAL_ERROR', message) : message)
+    }
+    process.exit(1)
+}
 
 function getActionCommandPath(command: Command): string {
     const segments: string[] = []
@@ -183,6 +203,11 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>, str
         'Manage CLI configuration',
         async () => (await import('./commands/config/index.js')).registerConfigCommand,
     ],
+    extension: [
+        'Manage td extensions',
+        async () => (await import('./commands/extension/index.js')).registerExtensionCommand,
+        ['ext'],
+    ],
     view: [
         'View a Todoist entity or page by URL',
         async () => (await import('./commands/view.js')).registerViewCommand,
@@ -220,6 +245,44 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
     setActiveCommandPath(getActionCommandPath(actionCommand))
 })
 
+const rawArgs = process.argv.slice(2)
+const { token: commandToken, index: commandTokenIndex } = findCommandToken(rawArgs)
+const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefined
+
+let extensions: ExtensionCommands | undefined
+if (needsExtensionLookup(rawArgs, builtInCommand)) {
+    const { setUpExtensionDispatch } = await import('./commands/extension/dispatch.js')
+    extensions = await setUpExtensionDispatch(program)
+}
+
+// Run the extension here rather than through commander, so that everything
+// after its name reaches it exactly as typed. Commander would consume any
+// global flag it recognises on the way past.
+if (commandToken && extensions?.names.has(commandToken)) {
+    // Only the arguments before the name are td's. `--json` or `--user` after
+    // it belong to the extension, and must not change how td behaves or what
+    // account it passes on.
+    setHostArgvLength(commandTokenIndex)
+
+    const verbose = getVerboseLevel()
+    try {
+        process.exit(
+            await extensions.dispatch(commandToken, rawArgs.slice(commandTokenIndex + 1), {
+                user: getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined),
+                // The manager sets TD_ACCESSIBLE itself; these two are the
+                // host's own flags, translated into the variables td reads
+                // when the extension calls back into it.
+                env: {
+                    TD_VERBOSE: verbose > 0 ? String(verbose) : undefined,
+                    TD_SPINNER: shouldDisableSpinner() ? 'false' : undefined,
+                },
+            }),
+        )
+    } catch (err) {
+        reportFatal(err)
+    }
+}
+
 // Validate `--user` and strip it from argv before commander parses.
 //
 // Commander has no global-option attachment, so leaving `--user` in argv
@@ -233,16 +296,13 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
     const sawUserFlag = originalArgs.some((a) => a === '--user' || a.startsWith('--user='))
     if (sawUserFlag) {
         const ref = getRequestedUserRef()
-        const reportUserFlagError = (message: string, hints: string[]): never => {
-            const err = new CliError('USER_FLAG_INVALID', message, hints)
-            console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
-            process.exit(1)
-        }
+        const reportUserFlagError = (message: string, hints: string[]): never =>
+            reportFatal(new CliError('USER_FLAG_INVALID', message, hints))
         if (!ref) {
             reportUserFlagError('--user requires a value: <id|email>.', [
                 'Example: td --user scott@doist.com task list',
             ])
-        } else if (Object.hasOwn(commandAliases, ref)) {
+        } else if (resolveCommandName(ref) || extensions?.names.has(ref)) {
             reportUserFlagError(
                 `--user requires a value: <id|email>. Got "${ref}", which looks like a subcommand — did you forget the value?`,
                 [`Example: td --user scott@doist.com ${ref}`],
@@ -273,12 +333,7 @@ if (process.argv[2] === 'completion-server') {
         }),
     )
 } else {
-    // Find which command (if any) is being invoked. Only the first argument
-    // that is neither a global flag nor a flag's value can name one, and
-    // nothing after it is inspected — `td --progress-jsonl out today` runs
-    // `today`, not the `task` that an all-of-argv scan would have found.
-    const commandToken = findCommandToken(process.argv.slice(2)).token
-    const commandName = commandToken ? resolveCommandName(commandToken) : undefined
+    const commandName = builtInCommand
 
     if (commandName && commands[commandName]) {
         // Remove placeholder, load real command module, register it
@@ -297,6 +352,7 @@ if (process.argv[2] === 'completion-server') {
                 'doctor',
                 'update',
                 'completion',
+                'extension',
             ])
             const needsMarkdown =
                 !noMarkdownCommands.has(commandName) &&
@@ -321,14 +377,5 @@ initializeLogger()
 
 program
     .parseAsync()
-    .catch((err: Error) => {
-        if (err instanceof BaseCliError) {
-            console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
-        } else {
-            console.error(
-                isJsonMode() ? formatErrorJson('INTERNAL_ERROR', err.message) : err.message,
-            )
-        }
-        process.exit(1)
-    })
+    .catch(reportFatal)
     .finally(() => stopEarlySpinner())
