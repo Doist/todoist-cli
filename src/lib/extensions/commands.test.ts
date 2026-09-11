@@ -5,7 +5,12 @@ import { captureConsole, captureStream, createTestProgram } from '@doist/cli-cor
 import type { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { writeFakeGitRepo, writeFixtureExtension } from '../../test-support/extension-fixture.js'
-import { registerExtensionGroup } from './commands.js'
+import {
+    type ExtensionCommands,
+    registerExtensionCommands,
+    registerExtensionGroup,
+    registerExtensionPassThrough,
+} from './commands.js'
 import { createExtensionManager, type ExtensionManager } from './manager.js'
 import { run as runProcess } from './run.js'
 
@@ -499,5 +504,158 @@ describe('registerExtensionGroup', () => {
                 hints: ['Run `td extension list` to see what is installed.'],
             })
         })
+    })
+})
+
+describe('registerExtensionPassThrough', () => {
+    let root: string
+    let extensionsDir: string
+    let manager: ExtensionManager
+
+    function makeManager(reserved: string[] = []): ExtensionManager {
+        return createExtensionManager({
+            binName: 'td',
+            envPrefix: 'TD',
+            version: '5.3.1',
+            dataDir: join(root, 'todoist-cli'),
+            stateDir: join(root, 'state'),
+            configDir: join(root, 'config'),
+            hostPath: '/host/dist/index.js',
+            reservedNames: () => reserved,
+            officialSource: { host: 'github.com', owner: 'Doist' },
+            officialLabel: 'Todoist',
+            warn: () => undefined,
+            log: () => undefined,
+        })
+    }
+
+    /** A program shaped like the host: built-ins registered, extensions after. */
+    async function hostProgram(): Promise<{ program: Command; extensions: ExtensionCommands }> {
+        const program = createTestProgram((p) => {
+            p.command('task').description('Manage tasks')
+            p.command('accounts').description('Manage stored accounts').alias('users')
+        })
+        const extensions = await registerExtensionPassThrough(program, manager)
+        return { program, extensions }
+    }
+
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), 'td-ext-passthrough-'))
+        extensionsDir = join(root, 'todoist-cli', 'extensions')
+        await mkdir(extensionsDir, { recursive: true })
+        manager = makeManager()
+        // The group is not registered here, but a stray log would still be noise.
+        captureConsole('log')
+    })
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    it('registers nothing when nothing is installed', async () => {
+        const { extensions } = await hostProgram()
+        expect(extensions.names.size).toBe(0)
+    })
+
+    it('lists extensions under their own help heading', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals', {
+            authoredManifest: { description: 'Track quarterly goals' },
+        })
+        await writeFixtureExtension(extensionsDir, 'standup', {})
+
+        const { program } = await hostProgram()
+        const help = program.helpInformation()
+
+        expect(help).toContain('Extensions:')
+        expect(help).toMatch(/goals\s+Track quarterly goals/)
+        // No manifest, so the name is all there is to say.
+        expect(help).toMatch(/standup\s+Extension standup/)
+    })
+
+    it('leaves a built-in command in place and does not register over it', async () => {
+        await writeFixtureExtension(extensionsDir, 'task', {})
+        const { program, extensions } = await hostProgram()
+
+        expect(extensions.names.has('task')).toBe(false)
+        expect(program.commands.filter((command) => command.name() === 'task')).toHaveLength(1)
+        expect(program.commands.find((command) => command.name() === 'task')?.description()).toBe(
+            'Manage tasks',
+        )
+    })
+
+    it('does not register over a built-in alias either', async () => {
+        await writeFixtureExtension(extensionsDir, 'users', {})
+        const { extensions } = await hostProgram()
+        expect(extensions.names.has('users')).toBe(false)
+    })
+
+    it('reports the names it registered', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals', {})
+        await writeFixtureExtension(extensionsDir, 'standup', {})
+        const { extensions } = await hostProgram()
+        expect([...extensions.names].sort()).toEqual(['goals', 'standup'])
+    })
+
+    it('runs an extension, passing everything after the name through', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals', {})
+        process.env.XX_REPORT = join(root, 'report.json')
+        const argv = ['node', 'td', 'goals', '--help', 'list', '--json']
+        vi.spyOn(process, 'argv', 'get').mockReturnValue(argv)
+
+        const { program } = await hostProgram()
+        const previous = process.exitCode
+        await program.parseAsync(argv)
+
+        const report = JSON.parse(await readFile(join(root, 'report.json'), 'utf8'))
+        expect(report.args).toEqual(['--help', 'list', '--json'])
+        expect(report.env.TD_EXTENSION_NAME).toBe('goals')
+        process.exitCode = previous
+        delete process.env.XX_REPORT
+    })
+
+    describe('the unknown-command hint', () => {
+        /** Commander writes this itself and exits, so read the stream. */
+        async function unknownCommandOutput(): Promise<string> {
+            const stderr = captureStream('stderr')
+            const { program } = await hostProgram()
+            await program.parseAsync(['node', 'td', 'nope']).catch(() => undefined)
+            return stderr.mock.calls.map((call) => String(call[0])).join('')
+        }
+
+        it('offers the feature when there are no extensions', async () => {
+            expect(await unknownCommandOutput()).toContain(
+                'Run `td extension install <owner/repo>` to add commands from extensions.',
+            )
+        })
+
+        it('keeps commander own message', async () => {
+            expect(await unknownCommandOutput()).toContain("error: unknown command 'nope'")
+        })
+
+        it('stays quiet for someone who already has an extension', async () => {
+            await writeFixtureExtension(extensionsDir, 'goals', {})
+            expect(await unknownCommandOutput()).not.toContain('extension install')
+        })
+
+        it('does not attach itself to other usage errors', async () => {
+            const stderr = captureStream('stderr')
+            const { program } = await hostProgram()
+            program.command('doctor').requiredOption('--out <path>')
+            await program.parseAsync(['node', 'td', 'doctor']).catch(() => undefined)
+            expect(stderr.mock.calls.map((call) => String(call[0])).join('')).not.toContain(
+                'extension install',
+            )
+        })
+    })
+
+    it('registers the group and the pass-through commands together', async () => {
+        await writeFixtureExtension(extensionsDir, 'goals', {})
+        const program = createTestProgram(() => undefined)
+        const extensions = await registerExtensionCommands(program, manager)
+
+        expect(program.commands.map((command) => command.name())).toEqual(
+            expect.arrayContaining(['extension', 'goals']),
+        )
+        expect(extensions.names.has('goals')).toBe(true)
     })
 })
