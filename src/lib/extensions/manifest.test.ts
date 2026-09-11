@@ -128,33 +128,58 @@ describe('manifests', () => {
         await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({ description: 'Wins' })
     })
 
-    it('falls back to package.json when the dedicated file says nothing this version can read', async () => {
-        // Everything in the dedicated file belongs to a later format, so
-        // it strips to nothing. The metadata the author also put in
-        // package.json is readable and should not be lost.
-        await writeFile(
-            join(dir, 'td-extension.json'),
-            JSON.stringify({ somethingFromTheFuture: true }),
-        )
+    // Both shapes reach the same branch: the dedicated file parses to
+    // something that says nothing this version can use.
+    it.each([
+        ['a file written for a later format', { somethingFromTheFuture: true }],
+        ['an empty object', {}],
+    ])('falls back to package.json for %s', async (_label, dedicated) => {
+        await writeFile(join(dir, 'td-extension.json'), JSON.stringify(dedicated))
         await writeFile(
             join(dir, 'package.json'),
             JSON.stringify({ td: { description: 'From package.json' } }),
         )
 
-        await expect(readAuthoredManifest(dir, 'td')).resolves.toMatchObject({
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
             description: 'From package.json',
         })
     })
 
-    it('falls back when the dedicated file is an empty object', async () => {
-        await writeFile(join(dir, 'td-extension.json'), '{}')
+    it('falls back even when the later-format file declares its version', async () => {
+        // The shape a later format actually takes: a version marker plus keys
+        // this version strips. The marker alone is not something to say.
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ manifestVersion: 2, somethingFromTheFuture: true }),
+        )
         await writeFile(
             join(dir, 'package.json'),
             JSON.stringify({ td: { description: 'From package.json' } }),
         )
 
-        await expect(readAuthoredManifest(dir, 'td')).resolves.toMatchObject({
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
             description: 'From package.json',
+            // Kept, so `list` and `doctor` still say some metadata was skipped.
+            manifestVersion: 2,
+        })
+    })
+
+    it('keeps the version marker when there is nothing to fall back to', async () => {
+        await writeFile(join(dir, 'td-extension.json'), JSON.stringify({ manifestVersion: 2 }))
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({ manifestVersion: 2 })
+    })
+
+    it('does not fall back when the dedicated file says something', async () => {
+        await writeFile(
+            join(dir, 'td-extension.json'),
+            JSON.stringify({ manifestVersion: 2, description: 'Wins' }),
+        )
+        await writeFile(join(dir, 'package.json'), JSON.stringify({ td: { description: 'Loses' } }))
+
+        await expect(readAuthoredManifest(dir, 'td')).resolves.toEqual({
+            manifestVersion: 2,
+            description: 'Wins',
         })
     })
 
