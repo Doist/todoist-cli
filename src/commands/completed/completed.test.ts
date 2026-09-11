@@ -297,34 +297,37 @@ describe('completed command', () => {
         )
     })
 
-    it('displays assignee for shared project tasks', async () => {
-        const program = createProgram()
+    it.each(['Alice Smith', 'Alice Smith (OOO until Friday)', 'Alice Smith | 🌴'])(
+        'displays assignee for shared project tasks with display name %j',
+        async (name) => {
+            const program = createProgram()
 
-        mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
-            items: [
-                {
-                    id: 'task-1',
-                    content: 'Assigned task',
-                    projectId: 'proj-shared',
-                    priority: 1,
-                    responsibleUid: 'user-123',
-                },
-            ],
-            nextCursor: null,
-        })
-        mockApi.getProjects.mockResolvedValue({
-            results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
-            nextCursor: null,
-        })
-        mockApi.getProjectCollaborators.mockResolvedValue({
-            results: [{ id: 'user-123', name: 'Alice Smith', email: 'alice@example.com' }],
-            nextCursor: null,
-        })
+            mockApi.getCompletedTasksByCompletionDate.mockResolvedValue({
+                items: [
+                    {
+                        id: 'task-1',
+                        content: 'Assigned task',
+                        projectId: 'proj-shared',
+                        priority: 1,
+                        responsibleUid: 'user-123',
+                    },
+                ],
+                nextCursor: null,
+            })
+            mockApi.getProjects.mockResolvedValue({
+                results: [{ id: 'proj-shared', name: 'Shared Project', isShared: true }],
+                nextCursor: null,
+            })
+            mockApi.getProjectCollaborators.mockResolvedValue({
+                results: [{ id: 'user-123', name, email: 'alice@example.com' }],
+                nextCursor: null,
+            })
 
-        await program.parseAsync(['node', 'td', 'completed'])
+            await program.parseAsync(['node', 'td', 'completed'])
 
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('+Alice S.'))
-    })
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('+Alice S.'))
+        },
+    )
 
     it('displays assignee for workspace project tasks', async () => {
         const program = createProgram()
