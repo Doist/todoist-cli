@@ -1,16 +1,16 @@
 import { parseDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
+import { stripLabelAtPrefix } from '../../lib/labels.js'
 
 export type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
 
-// Parses a comma-separated --labels value into label names. A leading `@` is
-// display-only syntax and never part of a stored label name, so it is stripped
-// (matching how quickadd and label remove-shared already normalise it). Empty
-// entries (e.g. a bare `@` or trailing comma) are dropped.
+// Parses a comma-separated --labels value into label names, stripping the
+// display-only leading `@` from each (see stripLabelAtPrefix). Empty entries
+// (e.g. a bare `@` or trailing comma) are dropped.
 export function parseLabels(value: string): string[] {
     return value
         .split(',')
-        .map((label) => label.trim().replace(/^@/, '').trim())
+        .map((label) => stripLabelAtPrefix(label.trim()).trim())
         .filter((label) => label.length > 0)
 }
 

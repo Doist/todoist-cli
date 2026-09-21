@@ -968,6 +968,28 @@ describe('task add', () => {
         )
     })
 
+    it('omits labels when --labels has no real values', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.addTask.mockResolvedValue({ id: 'task-new', content: 'Task', due: null })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--labels',
+            '@',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.not.objectContaining({ labels: expect.anything() }),
+        )
+    })
+
     it('creates task with --description', async () => {
         const program = createProgram()
         captureConsole()
@@ -1270,6 +1292,20 @@ describe('task update', () => {
         expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
             labels: ['work', 'urgent'],
         })
+    })
+
+    it('does not clear labels when --labels has no real values', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync(['node', 'td', 'task', 'update', 'id:task-1', '--labels', '@'])
+
+        // An all-empty value must be a no-op, not a silent "remove all labels"
+        // (that is what --no-labels is for).
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {})
     })
 
     it('resolves task by name', async () => {
@@ -1857,28 +1893,6 @@ describe('task update --no-labels', () => {
 
         expect(mockApi.updateTask).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(remove all)'))
-    })
-
-    it('previews --labels with the leading @ stripped', async () => {
-        const program = createProgram()
-        const consoleSpy = captureConsole()
-
-        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
-
-        await program.parseAsync([
-            'node',
-            'td',
-            'task',
-            'update',
-            'id:task-1',
-            '--labels',
-            '@work, urgent',
-            '--dry-run',
-        ])
-
-        expect(mockApi.updateTask).not.toHaveBeenCalled()
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('work, urgent'))
-        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@work'))
     })
 })
 
@@ -2733,6 +2747,48 @@ describe('task --dry-run', () => {
 
         expect(mockApi.addTask).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would add task'))
+    })
+
+    it('task add --dry-run previews --labels with the leading @ stripped', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            'Buy milk',
+            '--labels',
+            '@work, urgent',
+            '--dry-run',
+        ])
+
+        expect(mockApi.addTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('work, urgent'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@work'))
+    })
+
+    it('task update --dry-run previews --labels with the leading @ stripped', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--labels',
+            '@work, urgent',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('work, urgent'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@work'))
     })
 
     it('task update --dry-run previews without calling API', async () => {

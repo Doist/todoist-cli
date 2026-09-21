@@ -82,7 +82,8 @@ export async function addTask(options: AddOptions): Promise<void> {
     }
 
     if (options.labels) {
-        args.labels = parseLabels(options.labels)
+        const labels = parseLabels(options.labels)
+        if (labels.length > 0) args.labels = labels
     }
 
     if (options.parent) {

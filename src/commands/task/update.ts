@@ -47,7 +47,11 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
     if (options.labels === false) {
         args.labels = []
     } else if (options.labels) {
-        args.labels = parseLabels(options.labels)
+        // Only apply when at least one real label survives parsing. An
+        // all-empty value (e.g. "@" or ",") must not silently clear labels —
+        // that is what --no-labels is for.
+        const labels = parseLabels(options.labels)
+        if (labels.length > 0) args.labels = labels
     }
 
     if (options.stdin && options.description !== undefined) {
