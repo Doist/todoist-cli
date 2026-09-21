@@ -13,7 +13,7 @@ import {
 } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'
-import { applyDuration, type DurationArgs } from './helpers.js'
+import { applyDuration, type DurationArgs, parseLabels } from './helpers.js'
 
 export interface AddOptions {
     content: string
@@ -82,7 +82,7 @@ export async function addTask(options: AddOptions): Promise<void> {
     }
 
     if (options.labels) {
-        args.labels = options.labels.split(',').map((l) => l.trim())
+        args.labels = parseLabels(options.labels)
     }
 
     if (options.parent) {
@@ -145,7 +145,7 @@ export async function addTask(options: AddOptions): Promise<void> {
             Priority: options.priority,
             Project: options.project,
             Section: options.section,
-            Labels: options.labels,
+            Labels: args.labels?.join(', '),
             Parent: options.parent,
             Assignee: options.assignee,
             Duration: options.duration,

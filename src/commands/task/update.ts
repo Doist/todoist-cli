@@ -6,7 +6,7 @@ import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveTaskRef } from '../../lib/refs.js'
 import { readStdin } from '../../lib/stdin.js'
 import { parsePriority } from '../../lib/task-list.js'
-import { applyDuration, type DurationArgs } from './helpers.js'
+import { applyDuration, type DurationArgs, parseLabels } from './helpers.js'
 
 export interface UpdateOptions {
     content?: string
@@ -47,7 +47,7 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
     if (options.labels === false) {
         args.labels = []
     } else if (options.labels) {
-        args.labels = options.labels.split(',').map((l) => l.trim())
+        args.labels = parseLabels(options.labels)
     }
 
     if (options.stdin && options.description !== undefined) {
@@ -93,7 +93,7 @@ export async function updateTask(ref: string, options: UpdateOptions): Promise<v
             Due: args.dueString ?? undefined,
             Deadline: args.deadlineDate ?? undefined,
             Priority: options.priority,
-            Labels: options.labels === false ? '(remove all)' : options.labels,
+            Labels: options.labels === false ? '(remove all)' : args.labels?.join(', '),
             Assignee: options.assignee,
             Unassign: options.unassign ? 'yes' : undefined,
             Duration: options.duration,

@@ -916,6 +916,58 @@ describe('task add', () => {
         )
     })
 
+    it('strips a leading @ from --labels values', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--labels',
+            '@urgent, @home, plain',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ labels: ['urgent', 'home', 'plain'] }),
+        )
+    })
+
+    it('drops empty --labels entries and bare @', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.addTask.mockResolvedValue({
+            id: 'task-new',
+            content: 'Task',
+            due: null,
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'add',
+            '--content',
+            'Task',
+            '--labels',
+            'urgent,,@,home',
+        ])
+
+        expect(mockApi.addTask).toHaveBeenCalledWith(
+            expect.objectContaining({ labels: ['urgent', 'home'] }),
+        )
+    })
+
     it('creates task with --description', async () => {
         const program = createProgram()
         captureConsole()
@@ -1191,6 +1243,28 @@ describe('task update', () => {
             'id:task-1',
             '--labels',
             'work,urgent',
+        ])
+
+        expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
+            labels: ['work', 'urgent'],
+        })
+    })
+
+    it('strips a leading @ from --labels on update', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+        mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--labels',
+            '@work, urgent',
         ])
 
         expect(mockApi.updateTask).toHaveBeenCalledWith('task-1', {
@@ -1783,6 +1857,28 @@ describe('task update --no-labels', () => {
 
         expect(mockApi.updateTask).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('(remove all)'))
+    })
+
+    it('previews --labels with the leading @ stripped', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Task' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'task',
+            'update',
+            'id:task-1',
+            '--labels',
+            '@work, urgent',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateTask).not.toHaveBeenCalled()
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('work, urgent'))
+        expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('@work'))
     })
 })
 
