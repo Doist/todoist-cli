@@ -5,8 +5,7 @@ import { stripLabelAtPrefix } from '../../lib/labels.js'
 export type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
 
 // Parses a comma-separated --labels value into label names, stripping the
-// display-only leading `@` from each (see stripLabelAtPrefix). Empty entries
-// (e.g. a bare `@` or trailing comma) are dropped.
+// display-only leading `@` from each (see stripLabelAtPrefix).
 export function parseLabels(value: string): string[] {
     return value
         .split(',')
