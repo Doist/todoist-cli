@@ -52,7 +52,7 @@
     "CHANGELOG.md"
   ],
   "dependencies": {
-    "@doist/cli-core": "1.5.0",
+    "@doist/cli-core": "1.6.0",
     "@doist/todoist-sdk": "15.3.0",
     "@napi-rs/keyring": "2.1.0",
     "@pnpm/tabtab": "0.5.4",
