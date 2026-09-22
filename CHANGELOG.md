@@ -1,3 +1,9 @@
+## [5.3.12](https://github.com/Doist/todoist-cli/compare/v5.3.11...v5.3.12) (2026-09-22)
+
+### Bug Fixes
+
+* **task:** Strip leading `@` from `--labels` values ([#554](https://github.com/Doist/todoist-cli/issues/554)) ([ff58d9f](https://github.com/Doist/todoist-cli/commit/ff58d9f9d96dd471cc906b15c328a4ebf945c117)), closes [#550](https://github.com/Doist/todoist-cli/issues/550)
+
 ## [5.3.11](https://github.com/Doist/todoist-cli/compare/v5.3.10...v5.3.11) (2026-09-22)
 
 ### Bug Fixes
