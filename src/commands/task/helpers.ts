@@ -9,7 +9,7 @@ export type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' 
 export function parseLabels(value: string): string[] {
     return value
         .split(',')
-        .map((label) => stripLabelAtPrefix(label.trim()).trim())
+        .map((label) => stripLabelAtPrefix(label))
         .filter((label) => label.length > 0)
 }
 

@@ -18,4 +18,13 @@ describe('stripLabelAtPrefix', () => {
     it('returns an empty string for a bare @', () => {
         expect(stripLabelAtPrefix('@')).toBe('')
     })
+
+    it('trims surrounding whitespace', () => {
+        expect(stripLabelAtPrefix('  work  ')).toBe('work')
+        expect(stripLabelAtPrefix('  @work  ')).toBe('work')
+    })
+
+    it('trims whitespace between the @ and the name', () => {
+        expect(stripLabelAtPrefix('@ work')).toBe('work')
+    })
 })
