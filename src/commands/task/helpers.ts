@@ -1,7 +1,17 @@
 import { parseDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
+import { stripLabelAtPrefix } from '../../lib/labels.js'
 
 export type DurationArgs = { duration?: number; durationUnit?: 'minute' | 'day' }
+
+// Parses a comma-separated --labels value into label names, stripping the
+// display-only leading `@` from each (see stripLabelAtPrefix).
+export function parseLabels(value: string): string[] {
+    return value
+        .split(',')
+        .map((label) => stripLabelAtPrefix(label))
+        .filter((label) => label.length > 0)
+}
 
 export function applyDuration(args: DurationArgs, durationStr: string): void {
     const minutes = parseDuration(durationStr)
