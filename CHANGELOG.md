@@ -1,3 +1,64 @@
+## [5.3.12](https://github.com/Doist/todoist-cli/compare/v5.3.11...v5.3.12) (2026-09-22)
+
+### Bug Fixes
+
+* **task:** Strip leading `@` from `--labels` values ([#554](https://github.com/Doist/todoist-cli/issues/554)) ([ff58d9f](https://github.com/Doist/todoist-cli/commit/ff58d9f9d96dd471cc906b15c328a4ebf945c117)), closes [#550](https://github.com/Doist/todoist-cli/issues/550)
+
+## [5.3.11](https://github.com/Doist/todoist-cli/compare/v5.3.10...v5.3.11) (2026-09-22)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v1.6.0 ([#557](https://github.com/Doist/todoist-cli/issues/557)) ([19bbd3e](https://github.com/Doist/todoist-cli/commit/19bbd3e3404e4b2c812eb772c4a805af2cc9d509))
+* **deps:** update dependency open to v11.0.4 ([#558](https://github.com/Doist/todoist-cli/issues/558)) ([4ecfabf](https://github.com/Doist/todoist-cli/commit/4ecfabfca264ff1784a0d99d6b5a28f73784bea7))
+
+## [5.3.10](https://github.com/Doist/todoist-cli/compare/v5.3.9...v5.3.10) (2026-09-21)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-sdk to v15.3.0 ([#552](https://github.com/Doist/todoist-cli/issues/552)) ([91e5694](https://github.com/Doist/todoist-cli/commit/91e56944110e7395280f06aea022b645ec08a26b))
+
+## [5.3.9](https://github.com/Doist/todoist-cli/compare/v5.3.8...v5.3.9) (2026-09-19)
+
+### Bug Fixes
+
+* **deps:** update dependency @napi-rs/keyring to v2.1.0 ([#551](https://github.com/Doist/todoist-cli/issues/551)) ([9874592](https://github.com/Doist/todoist-cli/commit/9874592c6f5c620e4e634e4bbca21abb94a99dd4))
+
+## [5.3.8](https://github.com/Doist/todoist-cli/compare/v5.3.7...v5.3.8) (2026-09-18)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.13 ([#549](https://github.com/Doist/todoist-cli/issues/549)) ([14c1131](https://github.com/Doist/todoist-cli/commit/14c1131cc4367813958cfb1eec7d00531f1e1d5b))
+
+## [5.3.7](https://github.com/Doist/todoist-cli/compare/v5.3.6...v5.3.7) (2026-09-16)
+
+### Bug Fixes
+
+* **deps:** update dependency open to v11.0.3 ([#548](https://github.com/Doist/todoist-cli/issues/548)) ([4cd2a1b](https://github.com/Doist/todoist-cli/commit/4cd2a1b96282ccf2e15c264e19d1273265a78636))
+
+## [5.3.6](https://github.com/Doist/todoist-cli/compare/v5.3.5...v5.3.6) (2026-09-15)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v1.5.0 ([#546](https://github.com/Doist/todoist-cli/issues/546)) ([d87970c](https://github.com/Doist/todoist-cli/commit/d87970c7c553ca899dc0279709f5f8c9746eae26))
+
+## [5.3.5](https://github.com/Doist/todoist-cli/compare/v5.3.4...v5.3.5) (2026-09-14)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.0.12 ([#544](https://github.com/Doist/todoist-cli/issues/544)) ([f19a295](https://github.com/Doist/todoist-cli/commit/f19a29565f0d45d20025b6d7fd0c7c6e89e1fb10))
+
+## [5.3.4](https://github.com/Doist/todoist-cli/compare/v5.3.3...v5.3.4) (2026-09-11)
+
+### Bug Fixes
+
+* omit status suffixes from abbreviated user names ([#543](https://github.com/Doist/todoist-cli/issues/543)) ([12a3bba](https://github.com/Doist/todoist-cli/commit/12a3bba78dcab3a6fabecc67e0e86f07782bc907))
+
+## [5.3.3](https://github.com/Doist/todoist-cli/compare/v5.3.2...v5.3.3) (2026-09-11)
+
+### Bug Fixes
+
+* **text:** slice and index name strings by code point, not code unit ([#507](https://github.com/Doist/todoist-cli/issues/507)) ([c9c91d8](https://github.com/Doist/todoist-cli/commit/c9c91d8d3e88b0493f4623e3ad09be85d13899d9))
+
 ## [5.3.2](https://github.com/Doist/todoist-cli/compare/v5.3.1...v5.3.2) (2026-09-10)
 
 ### Bug Fixes

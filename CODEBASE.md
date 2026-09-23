@@ -218,6 +218,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)
+- **`text.ts`** — `truncateForDisplay`: code-point-safe truncation. Use it
+  instead of `text.slice(0, n)` on user-supplied text to avoid splitting a
+  surrogate pair. Name initials use grapheme segmentation in `collaborators.ts`.
 - **`spinner.ts`** — `startEarlySpinner`, `LoadingSpinner` class
   (yocto-spinner wrapper)
 - **`markdown.ts`** — `preloadMarkdown`, markdown → terminal renderer

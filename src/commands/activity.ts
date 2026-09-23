@@ -14,6 +14,7 @@ import type { Pagination } from '../lib/options.js'
 import { formatPaginatedJson, formatPaginatedNdjson } from '../lib/output.js'
 import { paginate } from '../lib/pagination.js'
 import { extractId, isIdRef, resolveProjectId } from '../lib/refs.js'
+import { truncateForDisplay } from '../lib/text.js'
 
 interface ActivityOptions extends Pagination {
     since?: string
@@ -93,10 +94,10 @@ function getEventContent(event: ActivityEvent): string {
 
 function truncateContent(content: string, maxLength = 100): string {
     const firstLine = content.split('\n')[0]
-    if (firstLine.length <= maxLength) {
-        return firstLine
-    }
-    return `${firstLine.slice(0, maxLength - 3)}...`
+    // Unlike the comment previews, the ellipsis counts toward `maxLength` here,
+    // so the helper's budget is three short of it. The outer check stays in code
+    // units: it only decides WHETHER to cut, never where, so it cannot split a pair.
+    return firstLine.length <= maxLength ? firstLine : truncateForDisplay(firstLine, maxLength - 3)
 }
 
 function formatActivityRow(

@@ -1,13 +1,14 @@
 import type { Label } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
+import { stripLabelAtPrefix } from '../../lib/labels.js'
 import { paginate } from '../../lib/pagination.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../../lib/refs.js'
 
 // Resolves a shared label name by checking it exists in the shared labels list.
 // Returns the canonical casing of the label name.
 export async function resolveSharedLabelName(nameArg: string): Promise<string> {
-    const name = nameArg.startsWith('@') ? nameArg.slice(1) : nameArg
+    const name = stripLabelAtPrefix(nameArg)
     const lower = name.toLowerCase()
 
     const api = await getApi()
@@ -35,7 +36,7 @@ export async function resolveLabelRef(nameOrId: string): Promise<Label> {
         return label
     }
 
-    const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
+    const name = stripLabelAtPrefix(nameOrId)
     const lower = name.toLowerCase()
     const exact = labels.find((l) => l.name.toLowerCase() === lower)
     if (exact) return exact
@@ -67,7 +68,7 @@ export async function resolveLabelNameForView(nameOrId: string): Promise<Resolve
         return { name: label.name, label }
     }
 
-    const name = nameOrId.startsWith('@') ? nameOrId.slice(1) : nameOrId
+    const name = stripLabelAtPrefix(nameOrId)
     const lower = name.toLowerCase()
 
     // Personal label by name (case-insensitive)
