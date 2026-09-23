@@ -11,6 +11,7 @@ import {
     isRawMode,
     parseGlobalArgs,
     resetGlobalArgs,
+    setHostArgvLength,
     shouldDisableSpinner,
 } from './global-args.js'
 
@@ -380,5 +381,64 @@ describe('caching', () => {
         process.argv = ['node', 'td']
         resetGlobalArgs()
         expect(isJsonMode()).toBe(false)
+    })
+})
+
+describe('the host argv boundary', () => {
+    const realArgv = process.argv
+
+    beforeEach(() => {
+        resetGlobalArgs()
+    })
+
+    afterEach(() => {
+        process.argv = realArgv
+        resetGlobalArgs()
+    })
+
+    function setArgv(...args: string[]) {
+        process.argv = ['node', 'td', ...args]
+    }
+
+    it('reads all of argv when no boundary is set, as it always has', () => {
+        setArgv('task', 'list', '--json', '--user', 'alice')
+        expect(isJsonMode()).toBe(true)
+        expect(getRequestedUserRef()).toBe('alice')
+    })
+
+    it('ignores everything past the boundary', () => {
+        // `td goals --json --user alice` — three arguments for the extension,
+        // not td's output mode and account.
+        setArgv('goals', '--json', '--user', 'alice')
+        setHostArgvLength(0)
+        expect(isJsonMode()).toBe(false)
+        expect(getRequestedUserRef()).toBeUndefined()
+    })
+
+    it('keeps what came before it', () => {
+        setArgv('--json', '--user', 'alice', 'goals', '--ndjson')
+        setHostArgvLength(3)
+        expect(isJsonMode()).toBe(true)
+        expect(getRequestedUserRef()).toBe('alice')
+        expect(isNdjsonMode()).toBe(false)
+    })
+
+    it('drops an answer that was cached before it was set', () => {
+        setArgv('goals', '--json')
+        expect(isJsonMode()).toBe(true)
+        setHostArgvLength(0)
+        expect(isJsonMode()).toBe(false)
+    })
+
+    it('is cleared by resetGlobalArgs', () => {
+        setArgv('goals', '--json')
+        setHostArgvLength(0)
+        resetGlobalArgs()
+        expect(isJsonMode()).toBe(true)
+    })
+
+    it('does not apply to an explicitly supplied argv', () => {
+        setHostArgvLength(0)
+        expect(parseGlobalArgs(['--json']).json).toBe(true)
     })
 })

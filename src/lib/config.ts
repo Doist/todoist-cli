@@ -1,13 +1,13 @@
+import { dirname } from 'node:path'
 import {
     getConfigPath as getConfigPathCore,
     readConfig as readConfigCore,
     readConfigStrict as readConfigStrictCore,
     writeConfig as writeConfigCore,
 } from '@doist/cli-core'
+import { APP_NAME } from './app-name.js'
 import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'
-
-const APP_NAME = 'todoist-cli'
 
 /**
  * Resolve the canonical config path lazily. Computing on each call (instead of
@@ -17,6 +17,15 @@ const APP_NAME = 'todoist-cli'
  */
 export function getConfigPath(): string {
     return getConfigPathCore(APP_NAME)
+}
+
+/**
+ * The directory holding the config file. Derived from the path rather than
+ * rebuilt from the same environment variables, so the two can never disagree
+ * about where the config lives.
+ */
+export function getConfigDir(): string {
+    return dirname(getConfigPath())
 }
 
 export type AuthMode = 'read-only' | 'read-write' | 'unknown'

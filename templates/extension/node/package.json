@@ -1,0 +1,8 @@
+{
+    "name": "td-{{NAME}}",
+    "version": "0.1.0",
+    "description": "{{DESCRIPTION}}",
+    "private": true,
+    "type": "module",
+    "license": "MIT"
+}

@@ -242,6 +242,105 @@ describe('lib/auth', () => {
         await expect(resolveActiveUser({ ref: '222' })).resolves.toMatchObject({ id: '222' })
     })
 
+    it('TD_USER names the account when no --user was given', async () => {
+        vi.stubEnv('TD_USER', 'd@e.f')
+        setConfig({
+            config_version: 2,
+            users: [
+                { id: '111', email: 'a@b.c' },
+                { id: '222', email: 'd@e.f' },
+            ],
+        })
+        entryFor(keyring, 'user-222').token = 'token-222'
+
+        const { resolveActiveUser } = await import('./auth.js')
+
+        await expect(resolveActiveUser()).resolves.toMatchObject({ id: '222' })
+    })
+
+    it('the --user flag beats TD_USER', async () => {
+        // Through argv rather than through `opts.ref`: production callers pass
+        // no ref, so the flag reaches the resolver via the global-args store,
+        // and that is the precedence worth pinning.
+        const realArgv = process.argv
+        process.argv = ['node', 'td', '--user', '111', 'task', 'list']
+        vi.stubEnv('TD_USER', '222')
+        setConfig({
+            config_version: 2,
+            users: [
+                { id: '111', email: 'a@b.c' },
+                { id: '222', email: 'd@e.f' },
+            ],
+        })
+        entryFor(keyring, 'user-111').token = 'token-111'
+
+        const { resetGlobalArgs } = await import('./global-args.js')
+        resetGlobalArgs()
+        const { resolveActiveUser } = await import('./auth.js')
+
+        try {
+            await expect(resolveActiveUser()).resolves.toMatchObject({ id: '111' })
+        } finally {
+            process.argv = realArgv
+            resetGlobalArgs()
+        }
+    })
+
+    it('an explicit ref beats TD_USER', async () => {
+        vi.stubEnv('TD_USER', '222')
+        setConfig({
+            config_version: 2,
+            users: [
+                { id: '111', email: 'a@b.c' },
+                { id: '222', email: 'd@e.f' },
+            ],
+        })
+        entryFor(keyring, 'user-111').token = 'token-111'
+
+        const { resolveActiveUser } = await import('./auth.js')
+
+        await expect(resolveActiveUser({ ref: '111' })).resolves.toMatchObject({ id: '111' })
+    })
+
+    it('TODOIST_API_TOKEN still short-circuits ahead of TD_USER', async () => {
+        vi.stubEnv('TODOIST_API_TOKEN', 'env-token-123456')
+        vi.stubEnv('TD_USER', '222')
+        setConfig({
+            config_version: 2,
+            users: [{ id: '222', email: 'd@e.f' }],
+        })
+
+        const { resolveActiveUser } = await import('./auth.js')
+
+        await expect(resolveActiveUser()).resolves.toMatchObject({ id: 'env', source: 'env' })
+    })
+
+    it('treats an empty TD_USER as unset rather than as an account name', async () => {
+        vi.stubEnv('TD_USER', '')
+        setConfig({
+            config_version: 2,
+            users: [{ id: '111', email: 'a@b.c' }],
+        })
+        entryFor(keyring, 'user-111').token = 'stored-token'
+
+        const { resolveActiveUser } = await import('./auth.js')
+
+        await expect(resolveActiveUser()).resolves.toMatchObject({ id: '111' })
+    })
+
+    it('reports an unresolvable TD_USER the same way an unresolvable --user is reported', async () => {
+        vi.stubEnv('TD_USER', 'nope')
+        setConfig({
+            config_version: 2,
+            users: [{ id: '111', email: 'a@b.c' }],
+        })
+
+        const { resolveActiveUser } = await import('./auth.js')
+        const { UserNotFoundError } = await import('./users.js')
+
+        await expect(resolveActiveUser()).rejects.toBeInstanceOf(UserNotFoundError)
+    })
+
     it('throws UserNotFoundError when ref does not match', async () => {
         setConfig({
             config_version: 2,

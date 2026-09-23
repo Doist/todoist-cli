@@ -10,7 +10,7 @@ vi.mock('@doist/cli-core', async () => {
 })
 
 import { readConfigStrict as readConfigStrictCore } from '@doist/cli-core'
-import { readConfigStrict } from './config.js'
+import { getConfigDir, getConfigPath, readConfigStrict } from './config.js'
 
 const mockReadConfigStrictCore = vi.mocked(readConfigStrictCore)
 
@@ -69,5 +69,15 @@ describe('readConfigStrict wrapper', () => {
                 'Fix the JSON by hand, or delete the file and re-authenticate with `td auth login`',
             ],
         })
+    })
+})
+
+describe('getConfigDir', () => {
+    it('is the directory holding the config file', () => {
+        expect(getConfigDir()).toBe('/tmp/cli-core-test')
+    })
+
+    it('never disagrees with getConfigPath about where the config lives', () => {
+        expect(getConfigPath().startsWith(`${getConfigDir()}/`)).toBe(true)
     })
 })
