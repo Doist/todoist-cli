@@ -60,10 +60,9 @@ src/
                           #  from @doist/cli-core/testing)
 ```
 
-Scaffold templates for `td extension create` are real files under
-`templates/extension/<kind>/`, shipped via the `files` field rather than
-compiled in, and resolved relative to `import.meta.url` so the same path works
-from `src/` under vitest and from `dist/` in an install.
+The extension system itself lives in `@doist/cli-core/extensions`, scaffold
+templates included; `commands/extension/` is only the td-specific glue (binary
+name, directories, first-party source, colours, doctor checks).
 
 ## Architecture flow
 
@@ -72,7 +71,7 @@ from `src/` under vitest and from `dist/` in an install.
    and builds a **lazy command registry** — a `Record<name, [description, loader]>`.
 2. Placeholder subcommands are registered so `--help` lists everything without
    importing anything.
-3. `findCommandToken()` (`lib/command-token.ts`) walks argv from the start,
+3. `findCommandToken()` (from `@doist/cli-core`) walks argv from the start,
    stepping over global flags and the values of the two that take one, and
    stops at the first remaining token. Nothing after it is inspected — that
    belongs to whatever the token names.
@@ -100,8 +99,8 @@ from `src/` under vitest and from `dist/` in an install.
   then calls `task.command('<sub>')` for each subcommand — each subcommand's
   logic lives in a sibling file (`task/add.ts`, `task/list.ts`, …) re-imported
   by `index.ts`. Shared helpers live in `task/helpers.ts`.
-- **Pass-through command** (extensions): registered from
-  `lib/extensions/commands.ts` with `.allowUnknownOption()`,
+- **Pass-through command** (extensions): registered by
+  `@doist/cli-core/extensions` with `.allowUnknownOption()`,
   `.allowExcessArguments()`, `.helpOption(false)` and `.helpGroup('Extensions:')`,
   so commander touches nothing after the name and `--help` lists them under
   their own heading. Not `.passThroughOptions()`: commander requires
@@ -151,25 +150,17 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   pointer) and `getEffectiveDefaultUserId` (pinned-else-sole-account, used for
   the `(default)` marker in `accounts list`/`current`, `auth status`,
   `config view`).
-- **`extensions/`** — the extension system: `manager.ts`
-  (`createExtensionManager`, the only entry point a host needs), `commands.ts`
-  (`registerExtensionGroup` for `td extension …`, `registerExtensionPassThrough`
-  for the per-extension commands), plus `discover`, `install`, `upgrade`,
-  `remove`, `dispatch`, `create`, `github`, `git`, `npm`, `manifest`,
-  `schemas`, `state`, `source`, `version-range`, `run`, `fs-utils`.
-  Host-agnostic by design: the binary name, directories, version, reserved
-  command names and first-party source all arrive through the manager's
-  options, and nothing in the directory imports from the rest of the repo, so
-  it can move to `@doist/cli-core` as a file move. Everything td-specific is
-  decided in `commands/extension/index.ts`. See `docs/specs/extensions.md`.
+- **Extensions** — the whole system (`createExtensionManager`, the
+  `registerExtension*` registrars, discovery, install, upgrade, remove,
+  dispatch, scaffolding) is `@doist/cli-core/extensions`. Everything
+  td-specific — binary name, `getDataDir(APP_NAME)` / `getStateDir(APP_NAME)`
+  from cli-core, first-party source, `secretEnvVars`, colours — is decided in
+  `commands/extension/index.ts`; `commands/extension/dispatch.ts` adds the
+  argv boundary and the `TD_*` flags to a dispatch. `findCommandToken()` and
+  `needsExtensionLookup()` also come from cli-core. See
+  `docs/specs/extensions.md`.
 - **`auth-flags.ts`** — `buildReloginCommand()` (rebuilds `td auth login`
   with `--read-only` / `--additional-scopes=...` preserved)
-- **`paths.ts`** — `getDataDir()` / `getStateDir()`: the XDG data and state
-  directories (`%LOCALAPPDATA%` on Windows). cli-core owns the config path
-  only. `getConfigDir()` lives in `config.ts`, derived from it.
-- **`command-token.ts`** — `findCommandToken()` (which argv entry names the
-  command) and `needsExtensionLookup()` (whether this invocation has any use
-  for the installed extensions).
 - **`config.ts`** — `~/.config/todoist-cli/config.json` read/write,
   `stripLegacyAuthFields`, `AuthMode`, `UpdateChannel`, `AUTH_FLAG_ORDER`.
 - **`auth-provider.ts`** — `createTodoistAuthProvider()`: cli-core PKCE

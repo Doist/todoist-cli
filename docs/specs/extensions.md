@@ -336,7 +336,7 @@ The full guide for extension authors is [`docs/extensions.md`](../extensions.md)
 6. Compiled authors: publish release assets named `td-<name>_<tag>_<platform>-<arch>[.exe]` for at least `linux-x64`, `darwin-arm64`, `darwin-x64`, `win32-x64`, plus a `checksums.txt`.
 7. Test locally with `td extension install .` from a directory named `td-<name>` and iterate; the symlink means every edit is live.
 
-`td extension create <name> [--template bash|node]` scaffolds all of this. The templates are real files under `templates/extension/`, shipped with the package rather than compiled in, so they can be read, linted and run as what they are; a CLI adopting this directory brings its own. A `compiled` template carrying the release workflow is still to come.
+`td extension create <name> [--template bash|node]` scaffolds all of this. The templates are real files shipped with `@doist/cli-core` under `templates/extension/`, rather than compiled in, so they can be read, linted and run as what they are; they are written against `{{BIN}}` and `{{ENV_PREFIX}}` placeholders so every host renders its own names, and a host with different needs points the group at its own directory. A `compiled` template carrying the release workflow is still to come.
 
 ## Phasing
 
@@ -356,7 +356,7 @@ The full guide for extension authors is [`docs/extensions.md`](../extensions.md)
 - `td extension search` over the `td-extension` topic.
 - Non-blocking update notice after an extension runs, at most once per 24 hours, suppressed in CI and non-TTY. Same rules as `gh`.
 - `TD_EXTENSION` handling in `td` itself: skip the `td update` nag when running as a nested call.
-- Extract `src/lib/extensions/` to `@doist/cli-core` once the API has stopped moving, then `tdc` and `tda` adopt it.
+- ~~Extract `src/lib/extensions/` to `@doist/cli-core` once the API has stopped moving~~ — done: it is `@doist/cli-core/extensions` from cli-core 1.7.0, and `td` consumes it. `tdc` and `tda` adopting it is still to come.
 - Full Windows verification of the fixture extension and the four Windows-specific paths; drop the experimental label in `doctor`.
 
 ### Phase 3 — optional integrations
@@ -377,7 +377,7 @@ The full guide for extension authors is [`docs/extensions.md`](../extensions.md)
 
 ## Decisions
 
-1. **Build here first, extract to cli-core later.** The manager and the command registration both live in `src/lib/extensions/` with host-specific values injected through the manager's options object and no imports from the rest of `td`, so moving them is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then.
+1. **Build here first, extract to cli-core later.** The manager and the command registration both live in `src/lib/extensions/` with host-specific values injected through the manager's options object and no imports from the rest of `td`, so moving them is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then. _Outcome:_ moved in cli-core 1.7.0 as `@doist/cli-core/extensions`, with the templates going along and two generalisations on the way (the npm secret denylist became the `secretEnvVars` option; zod became an optional peer of cli-core). `src/commands/extension/` is what stayed behind.
 2. **First-party marker, yes.** Extensions whose install source is the `Doist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
 3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
 4. **The name is `extension`.** With `ext` as the alias, as the Terminology section says. `plugin` is not used anywhere in code, commands, or docs.

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import { stripUserFlag } from '@doist/cli-core'
+import { findCommandToken, needsExtensionLookup, stripUserFlag } from '@doist/cli-core'
+import type { ExtensionCommands } from '@doist/cli-core/extensions'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
-import { findCommandToken, needsExtensionLookup } from './lib/command-token.js'
 import { BaseCliError, CliError } from './lib/errors.js'
-import type { ExtensionCommands } from './lib/extensions/commands.js'
 import {
     getRequestedUserRef,
     isIdsOnlyMode,

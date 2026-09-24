@@ -1,10 +1,9 @@
 import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { captureConsole } from '@doist/cli-core/testing'
+import { captureConsole, writeFixtureExtension } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { writeFixtureExtension } from '../../test-support/extension-fixture.js'
 import { checkExtensions } from './doctor.js'
 
 const REAL_PLATFORM = process.platform
