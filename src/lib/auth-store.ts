@@ -6,6 +6,7 @@ import {
 } from '@doist/cli-core/auth'
 import { type AuthFlag, type AuthMode, getConfigPath, readConfig } from './config.js'
 import { CliError } from './errors.js'
+import { getRequestedUserRef } from './global-args.js'
 import { createTodoistUserRecordStore } from './user-records.js'
 import { getStoredUsers, matchUserRef } from './users.js'
 
@@ -24,6 +25,18 @@ export const TOKEN_ENV_VAR = 'TODOIST_API_TOKEN'
  * process makes, without every one of them having to repeat the flag.
  */
 export const USER_ENV_VAR = 'TD_USER'
+
+/**
+ * The account this invocation names, if any: `--user` first, then `TD_USER`.
+ *
+ * The flag before the environment: a flag is this invocation saying what it
+ * wants, while `TD_USER` is the surrounding context saying who it is, and the
+ * specific instruction should win. `||` for the variable, because `TD_USER=`
+ * is someone clearing it, not naming an account called the empty string.
+ */
+export function getRequestedOrEnvUserRef(): string | undefined {
+    return getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined)
+}
 export type CredentialStore = 'system' | 'plaintext'
 
 export function parseCredentialStore(value: string): CredentialStore {

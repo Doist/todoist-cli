@@ -728,6 +728,29 @@ describe('auth command', () => {
             }
         })
 
+        it('treats an empty TD_USER as unset and falls back to the default account', async () => {
+            const { harness } = useStore({
+                entries: [
+                    {
+                        account: alanGrant as TodoistAccount,
+                        isDefault: true,
+                        token: 'stored-token-1234567',
+                    },
+                ],
+            })
+
+            const program = createProgram()
+            const stdoutWrite = captureStream()
+            vi.stubEnv('TD_USER', '')
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+                expect(harness.activeSpy).toHaveBeenCalledWith(undefined)
+                expect(stdoutWrite).toHaveBeenCalledWith('stored-token-1234567')
+            } finally {
+                vi.unstubAllEnvs()
+            }
+        })
+
         it('surfaces UserNotFoundError when TD_USER does not match', async () => {
             const { harness } = useStore()
 

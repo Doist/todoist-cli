@@ -13,10 +13,14 @@ export {
     type UpdateChannel,
 } from './config.js'
 
-import { accountForUser, SERVICE_NAME, TOKEN_ENV_VAR, USER_ENV_VAR } from './auth-store.js'
+import {
+    accountForUser,
+    getRequestedOrEnvUserRef,
+    SERVICE_NAME,
+    TOKEN_ENV_VAR,
+} from './auth-store.js'
 import { type AuthFlag, type AuthMode, readConfig, type StoredUser } from './config.js'
 import { CliError } from './errors.js'
-import { getRequestedUserRef } from './global-args.js'
 import {
     findUserByRef,
     getEffectiveDefaultUser,
@@ -76,12 +80,7 @@ export async function resolveActiveUser(opts: { ref?: string } = {}): Promise<Re
 
     const config = await readConfig()
     const users = getStoredUsers(config)
-    // The flag before the environment: a flag is this invocation saying what
-    // it wants, while `TD_USER` is the surrounding context saying who it is,
-    // and the specific instruction should win. `||` for the variable, because
-    // `TD_USER=` is someone clearing it, not naming an account called the
-    // empty string.
-    const ref = opts.ref ?? getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined)
+    const ref = opts.ref ?? getRequestedOrEnvUserRef()
 
     if (users.length === 0) {
         throw ref ? new UserNotFoundError(ref) : new NoTokenError()

@@ -1,4 +1,4 @@
-import { type TodoistTokenStore, USER_ENV_VAR } from '../../lib/auth-store.js'
+import { getRequestedOrEnvUserRef, type TodoistTokenStore } from '../../lib/auth-store.js'
 import { getRequestedUserRef } from '../../lib/global-args.js'
 import { matchUserRef, UserNotFoundError } from '../../lib/users.js'
 
@@ -39,10 +39,7 @@ export function withUserRefAware(store: TodoistTokenStore): TodoistTokenStore {
 
     return Object.assign(Object.create(store) as TodoistTokenStore, {
         active: async (ref?: string) => {
-            // `||` for the variable: `TD_USER=` clears it rather than naming
-            // an account called the empty string.
-            const targetRef =
-                ref ?? getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined)
+            const targetRef = ref ?? getRequestedOrEnvUserRef()
             if (targetRef !== undefined) await requireExists(targetRef)
             return store.active(targetRef)
         },
