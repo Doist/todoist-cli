@@ -1,10 +1,18 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createExtensionManager } from '@doist/cli-core/extensions'
 import { captureConsole, createTestProgram, writeFixtureExtension } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildExtensionManager, registerExtensionCommand } from './index.js'
+
+// Spied rather than mocked: the tests below need the real manager, and only
+// one of them wants to see the options it was built from.
+vi.mock('@doist/cli-core/extensions', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@doist/cli-core/extensions')>()
+    return { ...actual, createExtensionManager: vi.fn(actual.createExtensionManager) }
+})
 
 describe('buildExtensionManager', () => {
     let root: string
@@ -32,6 +40,16 @@ describe('buildExtensionManager', () => {
         expect(manager.envPrefix).toBe('TD')
         expect(manager.officialLabel).toBe('Todoist')
         expect(manager.trustWarning).toContain('endorsed by Todoist')
+    })
+
+    it('keeps the API token away from npm lifecycle scripts', () => {
+        // The manager does not expose the list, so look at what it was built
+        // from: this is what stops `td extension install` handing the token
+        // to third-party postinstall scripts.
+        buildExtensionManager(new Command())
+        expect(vi.mocked(createExtensionManager)).toHaveBeenLastCalledWith(
+            expect.objectContaining({ secretEnvVars: ['TODOIST_API_TOKEN'] }),
+        )
     })
 
     it('treats every registered command name and alias as taken', async () => {

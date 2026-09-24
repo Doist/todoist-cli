@@ -49,8 +49,7 @@
   "files": [
     "CHANGELOG.md",
     "dist",
-    "scripts",
-    "templates"
+    "scripts"
   ],
   "dependencies": {
     "@doist/cli-core": "1.7.0",

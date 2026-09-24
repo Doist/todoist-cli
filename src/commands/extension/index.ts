@@ -17,6 +17,7 @@ import chalk from 'chalk'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { APP_NAME } from '../../lib/app-name.js'
+import { TOKEN_ENV_VAR } from '../../lib/auth-store.js'
 import { getConfigDir } from '../../lib/config.js'
 import { isAccessible } from '../../lib/global-args.js'
 
@@ -70,7 +71,7 @@ export function buildExtensionManager(program: Command): ExtensionManager {
         // Kept away from the lifecycle scripts npm runs when an extension's
         // dependencies are installed: they are third-party code the user
         // never chose directly.
-        secretEnvVars: ['TODOIST_API_TOKEN'],
+        secretEnvVars: [TOKEN_ENV_VAR],
         isAccessible,
         theme: {
             dim: (text) => chalk.dim(text),
