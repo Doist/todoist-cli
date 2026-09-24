@@ -6,7 +6,7 @@ The contract between `td` and an extension is the process boundary: argv, enviro
 
 This guide covers everything needed to write, test, and publish one. The design rationale lives in [`specs/extensions.md`](specs/extensions.md).
 
-> Extensions are not reviewed, signed, or endorsed by Todoist. They run with the user's permissions and can act on their Todoist account. `td` prints a warning to that effect on every install and upgrade.
+> Extensions are not reviewed, signed, or endorsed by Todoist. They run with the user's permissions and can act on their Todoist account. `td` prints a warning to that effect whenever it installs or upgrades an extension from a remote source. Local installs (`td extension install .`) skip it, since the code is already on the machine.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ td standup --since yesterday --json
 td --user you@example.com standup   # global flags go before the name
 ```
 
-- **Arguments.** Everything after the name reaches you verbatim, including `--help`, `--json`, and `--user`. `td` does not parse, validate, or reorder any of it. Global `td` flags placed _before_ the name are consumed by `td` and turned into environment variables (see below).
+- **Arguments.** Everything after the name reaches you verbatim, including `--help`, `--json`, and `--user`. `td` does not parse, validate, or reorder any of it. Global `td` flags placed _before_ the name are consumed by `td`. Only `--user`, `--accessible`, `--verbose`, and `--no-spinner` reach you, as environment variables (see below). Output-mode flags such as `--json` or `--quiet` placed before the name are consumed and not passed on.
 - **Streams.** Your process inherits `td`'s stdin, stdout, and stderr. `td` writes nothing to either output stream on success, so `td standup --json | jq` works.
 - **Exit code.** `td` exits with your exit code. If your process is killed by a signal, `td` exits with `128 + signal`.
 - **No spinner.** `td` starts nothing on the terminal before handing over. The terminal is yours.
@@ -54,21 +54,31 @@ td --user you@example.com standup   # global flags go before the name
 
 Your process gets the user's environment plus:
 
-| Variable            | Example                          | Use                                                                                                                                                                         |
-| ------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TD_EXTENSION`      | `1`                              | You were launched by `td`. Use it to adjust usage strings, skip your own update checks, and so on                                                                           |
-| `TD_EXTENSION_NAME` | `standup`                        | The command name you were run as                                                                                                                                            |
-| `TD_EXTENSION_DIR`  | `/home/you/.local/share/…`       | Your extension's directory, for locating bundled assets                                                                                                                     |
-| `TD_NODE`           | `/usr/local/bin/node`            | The Node binary running `td`                                                                                                                                                |
-| `TD_PATH`           | `/usr/local/lib/…/dist/index.js` | `td`'s entry script. Use it with `TD_NODE` to call `td` back (see below)                                                                                                    |
-| `TD_VERSION`        | `5.4.1`                          | The running `td` version, for feature detection                                                                                                                             |
-| `TD_CONFIG_DIR`     | `/home/you/.config/todoist-cli`  | `td`'s config directory. Read only: never write here                                                                                                                        |
-| `TD_USER`           | `you@example.com`                | Set only when the user passed `--user` before your name, and cleared otherwise. Nested `td` calls read it automatically, so you act as the same account without plumbing it |
-| `TD_ACCESSIBLE`     | `1`                              | Set when `--accessible` was passed before your name (or already set by the user). Add text labels wherever you rely on color, and drop purely visual elements               |
+| Variable            | Example                          | Use                                                                                                                                                                                                                              |
+| ------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TD_EXTENSION`      | `1`                              | You were launched by `td`. Use it to adjust usage strings, skip your own update checks, and so on                                                                                                                                |
+| `TD_EXTENSION_NAME` | `standup`                        | The command name you were run as                                                                                                                                                                                                 |
+| `TD_EXTENSION_DIR`  | `/home/you/.local/share/…`       | Your extension's directory, for locating bundled assets                                                                                                                                                                          |
+| `TD_NODE`           | `/usr/local/bin/node`            | The Node binary running `td`                                                                                                                                                                                                     |
+| `TD_PATH`           | `/usr/local/lib/…/dist/index.js` | `td`'s entry script. Use it with `TD_NODE` to call `td` back (see below)                                                                                                                                                         |
+| `TD_VERSION`        | `5.4.1`                          | The running `td` version, for feature detection                                                                                                                                                                                  |
+| `TD_CONFIG_DIR`     | `/home/you/.config/todoist-cli`  | `td`'s config directory. Read only: never write here                                                                                                                                                                             |
+| `TD_USER`           | `you@example.com`                | The account to act as: `--user` before your name if given, otherwise a `TD_USER` the user already exported, otherwise unset. Nested `td` data commands read it automatically, so you act as the same account without plumbing it |
+| `TD_ACCESSIBLE`     | `1`                              | Set when `--accessible` was passed before your name, otherwise inherited from the user's environment. Add text labels wherever you rely on color, and drop purely visual elements                                                |
 
-`TD_SPINNER`, `TD_VERBOSE`, and anything else the user has exported are inherited as usual.
+Two variables are controlled by `td` rather than inherited, so an exported value can be removed:
 
-**The API token is never injected.** If you need the raw token, run `td auth token view`, which honors `--user`/`TD_USER` and `TODOIST_API_TOKEN`. Most extensions should not need it: `td … --json` covers most cases and keeps you insulated from API changes. (If the user has exported `TODOIST_API_TOKEN` themselves, you inherit it like any other variable.)
+| Variable     | Value                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `TD_VERBOSE` | `1`–`4` when `-v` was passed before your name (repeat for more). Removed otherwise, even if the user exported it           |
+| `TD_SPINNER` | `false` when spinners are disabled (`--no-spinner` before your name, or an exported `TD_SPINNER=false`). Removed otherwise |
+
+Everything else the user has exported is inherited as usual.
+
+**The API token is never injected.** Most extensions should not need it: `td … --json` covers most cases and keeps you insulated from API changes. If you do need the raw token:
+
+- If `TODOIST_API_TOKEN` is set, the user has exported it themselves and you inherit it like any other variable. Use it directly. `td auth token view` refuses to print it (`TOKEN_FROM_ENV`).
+- Otherwise run `td auth token view`. It honors `--user` but does not read `TD_USER`, so pass the account through explicitly: `td ${TD_USER:+--user "$TD_USER"} auth token view`.
 
 ## Calling td from an extension
 
@@ -85,7 +95,7 @@ if [[ -n "${TD_NODE:-}" && -n "${TD_PATH:-}" ]]; then
     td=("$TD_NODE" "$TD_PATH")
 fi
 
-"${td[@]}" task list --filter "today" --json --full | jq -r '.[] | .content'
+"${td[@]}" task list --filter "today" --json --full | jq -r '.results[] | .content'
 ```
 
 Node:
@@ -110,14 +120,17 @@ const projects = JSON.parse(await td('project', 'list', '--json'))
 Tips:
 
 - Always pass `--json` (or `--ndjson`) when you parse the output. Human-readable output can change between releases. The JSON output and error codes are a stable contract.
-- Leave `--user` alone. `TD_USER` already carries the account through to nested calls.
-- On failure, `td` writes a JSON error envelope when called with `--json`, and exits non-zero:
+- List commands return `{ "results": [...], "nextCursor": ... }` in `--json` mode, not a bare array.
+- Leave `--user` alone for data commands. `TD_USER` already carries the account through to nested calls. (`td auth token view` is the exception; see above.)
+- On failure, `td` always exits non-zero. Errors raised by a command (not found, auth, validation) are written as a JSON envelope when called with `--json`:
 
     ```json
     {
         "error": { "code": "TASK_NOT_FOUND", "message": "task \"abc\" not found." }
     }
     ```
+
+    Argument errors caught before the command runs, such as an unknown option (`td task list --bogus --json`), are plain text (`error: unknown option '--bogus'`). Check the exit code first, and do not assume stderr parses as JSON.
 
 ## Behaving like a td command
 
@@ -147,7 +160,7 @@ The file is optional. Put it at the root of your extension:
 | Field             | Meaning                                                                                                                                                                   |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `manifestVersion` | Format version. Defaults to `1`                                                                                                                                           |
-| `description`     | Shown in `td --help` (under `Extensions:`) and in `td extension list`. Without it, `td --help` shows `Extension <name>`                                                   |
+| `description`     | Shown in `td --help` (under `Extensions:`) and in `td extension list --json`. Without it, `td --help` shows `Extension <name>`                                            |
 | `requires.td`     | A semver range. If the running `td` does not satisfy it, `td` prints a warning to stderr and still runs your extension. To enforce the range, check `TD_VERSION` yourself |
 
 Unknown keys are ignored.
@@ -219,7 +232,7 @@ checksums.txt
 
 At minimum, publish `linux-x64`, `darwin-arm64`, `darwin-x64`, and `win32-x64`. Platform and arch values are Node's `process.platform` and `process.arch` (`darwin`, not Go's `macos`; `x64`, not `amd64`).
 
-Checksums are verified when the release publishes them, either as a shared `checksums.txt` (or `*_checksums.txt`) or as a per-asset `<asset>.sha256`. Both the coreutils format (`<hash>  <name>`, as `sha256sum` writes it) and the BSD format (`SHA256 (<name>) = <hash>`, as `shasum` on macOS writes it) are accepted. A mismatch fails the install with `EXTENSION_CHECKSUM_MISMATCH`. If you publish a checksums file, it must list every binary asset.
+Checksums are verified when the release publishes them, either as a shared `checksums.txt` (or `*_checksums.txt`) or as a per-asset `<asset>.sha256`. Hashes must be SHA-256. Both the coreutils format (`<hash>  <name>`, as written by `sha256sum` or `shasum -a 256`) and the BSD format (`SHA256 (<name>) = <hash>`, as written by `shasum -a 256 --tag` or `openssl dgst -sha256`) are accepted. Plain `shasum` without `-a 256` produces SHA-1, which fails verification. A mismatch fails the install with `EXTENSION_CHECKSUM_MISMATCH`. If you publish a checksums file, it must list every binary asset.
 
 Keep `td-extension.json` in the repository. `td` fetches it at the release tag to get your description and version range, because the binary cannot carry them. When no asset matches the user's platform, `td` falls back to cloning the repository, so a repository with both a script and binaries works everywhere.
 
