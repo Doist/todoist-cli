@@ -166,6 +166,18 @@ td today
 
 When active, due dates get a `due:` prefix, deadlines get a `deadline:` prefix, durations get a `~` prefix, and favorite items get a `★` suffix. Default output without the flag is unchanged.
 
+## Extensions
+
+Extensions add commands to `td`. An extension is an executable named `td-<name>` that runs as `td <name>`, and it can be written in any language:
+
+```bash
+td extension install owner/td-standup   # from GitHub
+td standup
+td extension list
+```
+
+To write your own, start with `td extension create <name>` and see [docs/extensions.md](docs/extensions.md).
+
 ## Shell Completions
 
 Tab completion is available for bash, zsh, fish, and PowerShell:

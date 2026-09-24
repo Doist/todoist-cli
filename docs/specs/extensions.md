@@ -324,7 +324,9 @@ An unknown command that is not an extension keeps Commander's current message, w
 - `td doctor` gains a check per installed extension: directory readable, executable present and executable, manifest parses, not shadowed, `requires.td` satisfied. Each maps to a fix hint.
 - Name completion works for free once extensions are Commander commands. The completion server's "load only the command being completed" optimisation treats extension names as needing no module load.
 
-## Authoring guide (summary; the full guide is a separate doc when the feature ships)
+## Authoring guide (summary)
+
+The full guide for extension authors is [`docs/extensions.md`](../extensions.md).
 
 1. Create a repository named `td-<name>` with an executable `td-<name>` at its root. Add the `td-extension` topic.
 2. Call `td` for data, using `TD_NODE` + `TD_PATH` as shown in the environment contract so it works on every platform. Prefer `--json`. Treat `--user` as `td`'s job.
