@@ -5,11 +5,13 @@
  * clone, a `git rev-parse`. Someone with no extensions sees nothing at all.
  */
 
+import {
+    findManifestProblems,
+    mapWithConcurrency,
+    satisfiesRange,
+} from '@doist/cli-core/extensions'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
-import { mapWithConcurrency } from '../../lib/extensions/concurrency.js'
-import { findManifestProblems } from '../../lib/extensions/manifest.js'
-import { satisfiesRange } from '../../lib/extensions/version-range.js'
 import type { DoctorCheck } from '../doctor.js'
 import { buildExtensionManager } from './index.js'
 

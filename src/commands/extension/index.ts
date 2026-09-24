@@ -1,22 +1,25 @@
 /**
- * Where the host-agnostic extension system meets this CLI.
+ * Where the extension system from `@doist/cli-core` meets this CLI.
  *
  * Everything td-specific is decided here — the binary name, the directories,
  * which organisation earns the first-party marker, which colours to use — and
- * handed to the manager. Nothing under `lib/extensions/` knows any of it,
- * which is what lets the whole directory move to `@doist/cli-core` later.
+ * handed to the manager. Nothing in cli-core knows any of it.
  */
 
 import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { getDataDir, getStateDir } from '@doist/cli-core'
+import {
+    createExtensionManager,
+    type ExtensionManager,
+    registerExtensionGroup,
+} from '@doist/cli-core/extensions'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
+import { APP_NAME } from '../../lib/app-name.js'
+import { TOKEN_ENV_VAR } from '../../lib/auth-store.js'
 import { getConfigDir } from '../../lib/config.js'
-import { registerExtensionGroup } from '../../lib/extensions/commands.js'
-import { createExtensionManager, type ExtensionManager } from '../../lib/extensions/manager.js'
 import { isAccessible } from '../../lib/global-args.js'
-import { getDataDir, getStateDir } from '../../lib/paths.js'
 
 /** The organisation whose extensions show the first-party marker. */
 const OFFICIAL_SOURCE = { host: 'github.com', owner: 'Doist' }
@@ -58,13 +61,17 @@ export function buildExtensionManager(program: Command): ExtensionManager {
         binName: 'td',
         envPrefix: 'TD',
         version: packageJson.version,
-        dataDir: getDataDir(),
-        stateDir: getStateDir(),
+        dataDir: getDataDir(APP_NAME),
+        stateDir: getStateDir(APP_NAME),
         configDir: getConfigDir(),
         hostPath: resolveHostPath(),
         reservedNames: () => reserved,
         officialSource: OFFICIAL_SOURCE,
         officialLabel: 'Todoist',
+        // Kept away from the lifecycle scripts npm runs when an extension's
+        // dependencies are installed: they are third-party code the user
+        // never chose directly.
+        secretEnvVars: [TOKEN_ENV_VAR],
         isAccessible,
         theme: {
             dim: (text) => chalk.dim(text),
@@ -78,21 +85,6 @@ export function buildExtensionManager(program: Command): ExtensionManager {
     })
 }
 
-/**
- * Where the scaffold templates live, resolved from this module rather than
- * from the working directory.
- *
- * Three levels up lands on the package root from `dist/commands/extension/`
- * and on the repository root from `src/commands/extension/`, so the same path
- * works whether td is running from a build or from source under vitest. The
- * directory ships because `templates` is listed in `files`.
- */
-export function templatesDir(): string {
-    return fileURLToPath(new URL('../../../templates/extension/', import.meta.url))
-}
-
 export function registerExtensionCommand(program: Command): void {
-    registerExtensionGroup(program, buildExtensionManager(program), {
-        templatesDir: templatesDir(),
-    })
+    registerExtensionGroup(program, buildExtensionManager(program))
 }

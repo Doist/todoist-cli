@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import { stripUserFlag } from '@doist/cli-core'
+import { findCommandToken, needsExtensionLookup, stripUserFlag } from '@doist/cli-core'
+import type { ExtensionCommands } from '@doist/cli-core/extensions'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
-import { findCommandToken, needsExtensionLookup } from './lib/command-token.js'
 import { BaseCliError, CliError } from './lib/errors.js'
-import type { ExtensionCommands } from './lib/extensions/commands.js'
 import {
     getRequestedUserRef,
     isIdsOnlyMode,
@@ -17,6 +16,7 @@ import {
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { formatError, formatErrorJson } from './lib/output.js'
+import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 import { setActiveCommandPath } from './lib/usage-tracking.js'
 
@@ -242,7 +242,10 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
 })
 
 const rawArgs = process.argv.slice(2)
-const { token: commandToken, index: commandTokenIndex } = findCommandToken(rawArgs)
+const { token: commandToken, index: commandTokenIndex } = findCommandToken(
+    rawArgs,
+    ROOT_VALUE_FLAGS,
+)
 const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefined
 
 let extensions: ExtensionCommands | undefined
@@ -313,7 +316,7 @@ if (builtInCommand !== 'extension') {
 if (process.argv[2] === 'completion-server') {
     const { parseCompLine } = await import('./lib/completion.js')
     const compWords = parseCompLine(process.env.COMP_LINE ?? '')
-    const compToken = findCommandToken(compWords).token
+    const compToken = findCommandToken(compWords, ROOT_VALUE_FLAGS).token
     const compCmd = compToken ? resolveCommandName(compToken) : undefined
 
     const toLoad = ['completion', ...(compCmd && compCmd !== 'completion' ? [compCmd] : [])]

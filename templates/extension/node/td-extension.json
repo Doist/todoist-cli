@@ -1,7 +1,0 @@
-{
-    "manifestVersion": 1,
-    "description": "{{DESCRIPTION}}",
-    "requires": {
-        "td": ">={{VERSION}}"
-    }
-}

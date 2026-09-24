@@ -7,11 +7,13 @@
  * completion and the unknown-command message all need.
  */
 
+import {
+    type DispatchOptions,
+    type ExtensionCommands,
+    registerExtensionPassThrough,
+} from '@doist/cli-core/extensions'
 import type { Command } from 'commander'
 import { getRequestedOrEnvUserRef } from '../../lib/auth-store.js'
-import type { ExtensionCommands } from '../../lib/extensions/commands.js'
-import { registerExtensionPassThrough } from '../../lib/extensions/commands.js'
-import type { DispatchOptions } from '../../lib/extensions/types.js'
 import { getVerboseLevel, setHostArgvLength, shouldDisableSpinner } from '../../lib/global-args.js'
 import { buildExtensionManager } from './index.js'
 
