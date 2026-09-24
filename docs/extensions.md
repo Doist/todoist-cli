@@ -78,7 +78,7 @@ Everything else the user has exported is inherited as usual.
 **The API token is never injected.** Most extensions should not need it: `td … --json` covers most cases and keeps you insulated from API changes. If you do need the raw token:
 
 - If `TODOIST_API_TOKEN` is set, the user has exported it themselves and you inherit it like any other variable. Use it directly. `td auth token view` refuses to print it (`TOKEN_FROM_ENV`).
-- Otherwise run `td auth token view`. It honors `--user` but does not read `TD_USER`, so pass the account through explicitly: `td ${TD_USER:+--user "$TD_USER"} auth token view`.
+- Otherwise run `td auth token view`. Like every other command, it acts as the account in `TD_USER`, so you get the token for the account the user chose.
 
 ## Calling td from an extension
 
@@ -121,7 +121,7 @@ Tips:
 
 - Always pass `--json` (or `--ndjson`) when you parse the output. Human-readable output can change between releases. The JSON output and error codes are a stable contract.
 - List commands return `{ "results": [...], "nextCursor": ... }` in `--json` mode, not a bare array.
-- Leave `--user` alone for data commands. `TD_USER` already carries the account through to nested calls. (`td auth token view` is the exception; see above.)
+- Leave `--user` alone. `TD_USER` already carries the account through to nested calls.
 - On failure, `td` always exits non-zero. Errors raised by a command (not found, auth, validation) are written as a JSON envelope when called with `--json`:
 
     ```json

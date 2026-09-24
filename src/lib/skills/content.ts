@@ -65,7 +65,7 @@ Combine freely with \`--read-only\` to keep data access read-only while still gr
 
 Tokens are stored in the OS credential manager by default. If it is unavailable, credential writes fail without a plaintext fallback. Pass \`--credential-store=plaintext\` to \`td auth login\` or \`td auth token\` only when you explicitly accept plaintext config-file storage; every such write emits a warning to stderr. \`TODOIST_API_TOKEN\` takes precedence over stored credentials.
 
-\`td auth token view\` writes the stored token to stdout for use in scripts. **Always capture it into a shell variable** (e.g. \`TOKEN=$(td auth token view)\`) — never invoke it bare in an agent transcript or piped to a shell that echoes its output, since that would leak the secret. Honors \`--user <id|email>\` for multi-account installs and refuses when \`TODOIST_API_TOKEN\` is set in the environment (the token is already available there).
+\`td auth token view\` writes the stored token to stdout for use in scripts. **Always capture it into a shell variable** (e.g. \`TOKEN=$(td auth token view)\`) — never invoke it bare in an agent transcript or piped to a shell that echoes its output, since that would leak the secret. Honors \`--user <id|email>\` (falling back to \`TD_USER\`) for multi-account installs and refuses when \`TODOIST_API_TOKEN\` is set in the environment (the token is already available there).
 
 ## Multi-user
 

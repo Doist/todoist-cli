@@ -618,6 +618,21 @@ describe('auth command', () => {
             }
         })
 
+        it('ignores TD_USER, so an inherited variable never picks the account to log out', async () => {
+            const { harness } = useStore({
+                entries: [{ account: alanGrant as TodoistAccount, isDefault: true }],
+            })
+
+            const program = createProgram()
+            vi.stubEnv('TD_USER', alanGrant.email)
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'logout'])
+                expect(harness.clearSpy).toHaveBeenCalledWith(undefined)
+            } finally {
+                vi.unstubAllEnvs()
+            }
+        })
+
         it('emits the JSON envelope on stdout and routes the keyring warning to stderr under --json', async () => {
             // `attachTodoistLogoutCommand`'s `onCleared` branches on
             // `view.json || view.ndjson` to suppress the human "Stored token
@@ -666,6 +681,88 @@ describe('auth command', () => {
             } finally {
                 process.argv = originalArgv
                 resetGlobalArgs()
+            }
+        })
+
+        it('falls back to TD_USER when --user is not given', async () => {
+            const { harness } = useStore({
+                entries: [
+                    {
+                        account: alanGrant as TodoistAccount,
+                        isDefault: false,
+                        token: 'stored-token-1234567',
+                    },
+                ],
+            })
+
+            const program = createProgram()
+            const stdoutWrite = captureStream()
+            vi.stubEnv('TD_USER', alanGrant.email)
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+                expect(harness.activeSpy).toHaveBeenCalledWith(alanGrant.email)
+                expect(stdoutWrite).toHaveBeenCalledWith('stored-token-1234567')
+            } finally {
+                vi.unstubAllEnvs()
+            }
+        })
+
+        it('prefers --user over TD_USER', async () => {
+            const { harness } = useStore({
+                entries: [{ account: alanGrant as TodoistAccount, isDefault: true }],
+            })
+
+            const program = createProgram()
+            captureStream()
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--user', alanGrant.email, 'auth', 'token', 'view']
+            resetGlobalArgs()
+            vi.stubEnv('TD_USER', 'someone-else@ingen.com')
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+                expect(harness.activeSpy).toHaveBeenCalledWith(alanGrant.email)
+            } finally {
+                vi.unstubAllEnvs()
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
+        })
+
+        it('treats an empty TD_USER as unset and falls back to the default account', async () => {
+            const { harness } = useStore({
+                entries: [
+                    {
+                        account: alanGrant as TodoistAccount,
+                        isDefault: true,
+                        token: 'stored-token-1234567',
+                    },
+                ],
+            })
+
+            const program = createProgram()
+            const stdoutWrite = captureStream()
+            vi.stubEnv('TD_USER', '')
+            try {
+                await program.parseAsync(['node', 'td', 'auth', 'token', 'view'])
+                expect(harness.activeSpy).toHaveBeenCalledWith(undefined)
+                expect(stdoutWrite).toHaveBeenCalledWith('stored-token-1234567')
+            } finally {
+                vi.unstubAllEnvs()
+            }
+        })
+
+        it('surfaces UserNotFoundError when TD_USER does not match', async () => {
+            const { harness } = useStore()
+
+            const program = createProgram()
+            vi.stubEnv('TD_USER', 'nobody@ingen.com')
+            try {
+                await expect(
+                    program.parseAsync(['node', 'td', 'auth', 'token', 'view']),
+                ).rejects.toHaveProperty('code', 'ACCOUNT_NOT_FOUND')
+                expect(harness.activeSpy).not.toHaveBeenCalled()
+            } finally {
+                vi.unstubAllEnvs()
             }
         })
 

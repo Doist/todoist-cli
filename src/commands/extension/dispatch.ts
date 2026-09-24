@@ -8,16 +8,11 @@
  */
 
 import type { Command } from 'commander'
-import { USER_ENV_VAR } from '../../lib/auth-store.js'
+import { getRequestedOrEnvUserRef } from '../../lib/auth-store.js'
 import type { ExtensionCommands } from '../../lib/extensions/commands.js'
 import { registerExtensionPassThrough } from '../../lib/extensions/commands.js'
 import type { DispatchOptions } from '../../lib/extensions/types.js'
-import {
-    getRequestedUserRef,
-    getVerboseLevel,
-    setHostArgvLength,
-    shouldDisableSpinner,
-} from '../../lib/global-args.js'
+import { getVerboseLevel, setHostArgvLength, shouldDisableSpinner } from '../../lib/global-args.js'
 import { buildExtensionManager } from './index.js'
 
 /**
@@ -34,7 +29,7 @@ export function hostDispatchOptions(hostArgvLength: number): DispatchOptions {
 
     const verbose = getVerboseLevel()
     return {
-        user: getRequestedUserRef() ?? (process.env[USER_ENV_VAR] || undefined),
+        user: getRequestedOrEnvUserRef(),
         // The manager sets TD_ACCESSIBLE itself; these two are td's own flags,
         // translated into the variables td reads when the extension calls back
         // into it.
