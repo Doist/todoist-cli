@@ -1,3 +1,9 @@
+## [5.4.2](https://github.com/Doist/todoist-cli/compare/v5.4.1...v5.4.2) (2026-09-24)
+
+### Bug Fixes
+
+* **auth:** honour TD_USER in auth token view ([#563](https://github.com/Doist/todoist-cli/issues/563)) ([5791a74](https://github.com/Doist/todoist-cli/commit/5791a743dffec62d2ba93407de26f7de1cdf139a))
+
 ## [5.4.1](https://github.com/Doist/todoist-cli/compare/v5.4.0...v5.4.1) (2026-09-23)
 
 ### Bug Fixes
