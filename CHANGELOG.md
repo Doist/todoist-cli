@@ -1,3 +1,9 @@
+## [5.4.5](https://github.com/Doist/todoist-cli/compare/v5.4.4...v5.4.5) (2026-10-02)
+
+### Bug Fixes
+
+* **deps:** update dependency chalk to v6.0.1 ([#571](https://github.com/Doist/todoist-cli/issues/571)) ([534e4a7](https://github.com/Doist/todoist-cli/commit/534e4a7c73641b330e7699316595107211f7d337))
+
 ## [5.4.4](https://github.com/Doist/todoist-cli/compare/v5.4.3...v5.4.4) (2026-10-01)
 
 ### Bug Fixes
