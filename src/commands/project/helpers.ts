@@ -7,7 +7,7 @@ import {
 import type { Project } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { paginate } from '../../lib/pagination.js'
-import { resolveProjectRef } from '../../lib/refs.js'
+import { extractId, isIdRef, resolveProjectRef } from '../../lib/refs.js'
 
 export const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board', 'calendar']
 
@@ -78,8 +78,8 @@ export function resolvePersonalFromList(projects: PersonalProject[], ref: string
     if (!ref.trim()) {
         throw new CliError('INVALID_PROJECT', 'project reference cannot be empty.')
     }
-    if (ref.startsWith('id:')) {
-        const id = ref.slice(3)
+    if (isIdRef(ref)) {
+        const id = extractId(ref)
         const match = projects.find((p) => p.id === id)
         if (!match) {
             throw new CliError('PROJECT_NOT_FOUND', `Personal project "${ref}" not found.`)

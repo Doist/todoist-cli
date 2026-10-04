@@ -2,7 +2,13 @@ import type { Folder } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'
-import { readDefaultWorkspaceRef, resolveFolderRef, resolveWorkspaceRef } from '../../lib/refs.js'
+import {
+    extractId,
+    isIdRef,
+    readDefaultWorkspaceRef,
+    resolveFolderRef,
+    resolveWorkspaceRef,
+} from '../../lib/refs.js'
 
 export async function resolveWorkspaceForFolder(options: {
     workspace?: string
@@ -35,8 +41,8 @@ export async function resolveFolderByRef(
     const api = await getApi()
 
     // id:xxx reference — fetch directly, no workspace needed
-    if (ref.startsWith('id:')) {
-        const id = ref.slice(3)
+    if (isIdRef(ref)) {
+        const id = extractId(ref)
         return api.getFolder(id)
     }
 

@@ -65,13 +65,39 @@ export function isIdRef(ref: string): boolean {
     return ref.startsWith('id:')
 }
 
+/**
+ * Characters a Todoist ID can contain. Refs end up as URL path segments in the
+ * SDK, so anything else (`/`, `.`, `?`, `#`, `%`) could address a different
+ * endpoint than the one the command meant to call.
+ */
+const SAFE_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+const ID_CHARSET_HINT = 'IDs contain only letters, digits, "-" and "_"'
+
 export function extractId(ref: string): string {
-    return ref.slice(3)
+    const id = ref.slice(3)
+    if (!SAFE_ID_PATTERN.test(id)) {
+        throw new CliError('INVALID_REF', `Invalid ID "${id}".`, [ID_CHARSET_HINT])
+    }
+    return id
 }
 
 export function looksLikeRawId(ref: string): boolean {
-    if (ref.includes(' ')) return false
+    if (!SAFE_ID_PATTERN.test(ref)) return false
     return /^\d+$/.test(ref) || (/[a-zA-Z]/.test(ref) && /\d/.test(ref))
+}
+
+/**
+ * Whether a by-ID fetch failed because no such entity exists (404), or because
+ * the API rejected the ID's shape (400). Either way the ref is not a usable ID.
+ * The API proxy in `api/core.ts` wraps some methods' 404s into a generic
+ * `NOT_FOUND` `CliError`, so both shapes are accepted.
+ */
+function isMissingIdError(error: unknown): boolean {
+    if (error instanceof CliError) return error.code === 'NOT_FOUND'
+    return (
+        error instanceof TodoistRequestError &&
+        (error.httpStatusCode === 404 || error.httpStatusCode === 400)
+    )
 }
 
 function isMatchingUrlType(
@@ -111,7 +137,7 @@ export function lenientIdRef(ref: string, entityName: string): string {
     const parsedUrl = parseTodoistUrl(ref)
     if (isMatchingUrlType(parsedUrl, entityName)) return parsedUrl.id
     if (looksLikeRawId(ref)) return ref
-    const hints = [`Use id:xxx format (e.g., id:${ref})`]
+    const hints = /[/?#%.]/.test(ref) ? [ID_CHARSET_HINT] : [`Use id:xxx format (e.g., id:${ref})`]
     if (URL_ENTITY_TYPES.includes(entityName as UrlEntityType)) {
         hints.push(`Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`)
     }
@@ -171,13 +197,13 @@ export function resolveFromList<T extends { id: string }>(
         )
     }
 
-    const match = fuzzyMatchInList(ref, items, getName, entityType, context)
-    if (match) return match
-
     if (looksLikeRawId(ref)) {
         const byId = items.find((item) => item.id === ref)
         if (byId) return byId
     }
+
+    const match = fuzzyMatchInList(ref, items, getName, entityType, context)
+    if (match) return match
 
     throw new CliError(
         `${entityType.toUpperCase()}_NOT_FOUND`,
@@ -201,12 +227,14 @@ export function resolveFromList<T extends { id: string }>(
  *  1. Empty/blank ref → throw `INVALID_{ENTITY}`
  *  2. Todoist URL → validate type matches, `fetchById` (throws `ENTITY_TYPE_MISMATCH` on mismatch)
  *  3. `id:` prefix → `extractId` → `fetchById`
- *  4. `fetchAll()` → case-insensitive exact match (`===` after `.toLowerCase()`)
- *  5. `fetchAll()` results → case-insensitive substring match (`.includes()`)
- *  6. `looksLikeRawId(ref)` → `fetchById` (swallows 404, re-throws other errors)
+ *  4. `looksLikeRawId(ref)` → `fetchById` (swallows 404/400, re-throws other errors).
+ *     The ID is tried before any name matching, so a bare ID can never resolve
+ *     to a different entity whose name happens to contain it.
+ *  5. `fetchAll()` → case-insensitive exact match (`===` after `.toLowerCase()`)
+ *  6. `fetchAll()` results → case-insensitive substring match (`.includes()`)
  *  7. Throw `{ENTITY}_NOT_FOUND`
  *
- * Ambiguity at step 4 or 5 throws `AMBIGUOUS_{ENTITY}` immediately (no
+ * Ambiguity at step 5 or 6 throws `AMBIGUOUS_{ENTITY}` immediately (no
  * fallthrough) and lists up to 5 candidates with their `id:` values.
  */
 async function resolveRef<T extends { id: string }>(
@@ -230,6 +258,15 @@ async function resolveRef<T extends { id: string }>(
         return fetchById(extractId(ref))
     }
 
+    if (looksLikeRawId(ref)) {
+        try {
+            return await fetchById(ref)
+        } catch (error) {
+            // Not an ID after all — fall through to name matching
+            if (!isMissingIdError(error)) throw error
+        }
+    }
+
     const { results } = await fetchAll()
     const lower = ref.toLowerCase()
 
@@ -251,18 +288,6 @@ async function resolveRef<T extends { id: string }>(
             `Multiple ${entityType}s match "${ref}":`,
             partial.slice(0, 5).map((item) => `"${getName(item)}" (id:${item.id})`),
         )
-    }
-
-    if (looksLikeRawId(ref)) {
-        try {
-            return await fetchById(ref)
-        } catch (error) {
-            if (error instanceof TodoistRequestError && error.httpStatusCode === 404) {
-                // Genuine not-found — fall through to generic error
-            } else {
-                throw error
-            }
-        }
     }
 
     throw new CliError(`${entityType.toUpperCase()}_NOT_FOUND`, `${entityType} "${ref}" not found.`)
@@ -376,17 +401,21 @@ export async function resolveParentTaskId(
         return extractId(ref)
     }
 
+    const isRawId = looksLikeRawId(ref)
+
     if (sectionId) {
         const { results: sectionTasks } = await api.getTasks({ sectionId })
+        if (isRawId && sectionTasks.some((t) => t.id === ref)) return ref
         const match = fuzzyMatchInList(ref, sectionTasks, (t) => t.content, 'task', 'in section')
         if (match) return match.id
     }
 
     const { results: projectTasks } = await api.getTasks({ projectId })
+    if (isRawId && projectTasks.some((t) => t.id === ref)) return ref
     const match = fuzzyMatchInList(ref, projectTasks, (t) => t.content, 'task', 'in project')
     if (match) return match.id
 
-    if (looksLikeRawId(ref)) return ref
+    if (isRawId) return ref
 
     throw new CliError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`)
 }

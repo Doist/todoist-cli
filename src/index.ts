@@ -373,7 +373,19 @@ if (process.argv[2] === 'completion-server') {
 // Initialize verbose logger before parsing so it captures all -v flags
 initializeLogger()
 
+/**
+ * SDK methods that bypass the API proxy in `lib/api/core.ts` (no spinner, not
+ * mutating) surface a raw `TodoistRequestError`. Map it the way the proxy
+ * would, so an API failure is never reported as `INTERNAL_ERROR`. The import
+ * is deferred to keep core.ts off the startup path.
+ */
+async function normalizeApiError(err: unknown): Promise<unknown> {
+    if (!(err instanceof Error) || err.name !== 'TodoistRequestError') return err
+    const { wrapApiError } = await import('./lib/api/core.js')
+    return wrapApiError(err)
+}
+
 program
     .parseAsync()
-    .catch(reportFatal)
+    .catch(async (err: unknown) => reportFatal(await normalizeApiError(err)))
     .finally(() => stopEarlySpinner())
