@@ -39,7 +39,7 @@ eslint/prettier) · semantic-release on merge to `main`.
 ```
 src/
 ├─ index.ts               # Entry: Commander setup, lazy command registry, early spinner
-├─ postinstall.ts         # Runs after npm install (welcome, update check)
+├─ postinstall.ts         # Runs after npm install (skill refresh, auth migration)
 ├─ commands/              # One file per flat command, one folder per group
 │  ├─ add.ts, today.ts, upcoming.ts, inbox.ts, view.ts,
 │  │  doctor.ts, changelog.ts, activity.ts, attachment.ts
@@ -236,6 +236,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   attribution, tracked fetch wrappers
 - **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
+- **`skills/refresh-on-upgrade.ts`** — refreshes installed skills once per
+  upgrade from the `preAction` hook (npm 11 can skip `postinstall`), keyed by
+  a `skills-version` stamp in the state dir
 
 ## Canonical examples
 

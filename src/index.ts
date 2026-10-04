@@ -18,6 +18,7 @@ import { preloadMarkdown } from './lib/markdown.js'
 import { getCommandPath } from './lib/missing-argument.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
+import { refreshSkillsAfterUpgrade } from './lib/skills/refresh-on-upgrade.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
 import { setActiveCommandPath } from './lib/usage-tracking.js'
 
@@ -227,8 +228,10 @@ for (const [name, [description, , aliases]] of Object.entries(commands)) {
     if (aliases) placeholder.aliases(aliases)
 }
 
-program.hook('preAction', (_thisCommand, actionCommand) => {
+program.hook('preAction', async (_thisCommand, actionCommand) => {
     setActiveCommandPath(getCommandPath(actionCommand))
+    // Never let skill bookkeeping fail the command the user ran.
+    await refreshSkillsAfterUpgrade().catch(() => {})
 })
 
 const rawArgs = process.argv.slice(2)
