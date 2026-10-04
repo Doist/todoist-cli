@@ -1,5 +1,6 @@
 import type { Command } from 'commander'
 import { CliError } from '../../../lib/errors.js'
+import { failWithUsage } from '../../../lib/missing-argument.js'
 import { addLocationReminderCmd } from './add.js'
 import { deleteLocationReminderCmd } from './delete.js'
 import { getLocationReminderCmd } from './get.js'
@@ -41,7 +42,7 @@ export function registerLocationReminderCommand(reminder: Command): void {
                 }
                 const task = taskArg || options.task
                 if (!task) {
-                    addCmd.help()
+                    failWithUsage(addCmd)
                     return
                 }
                 return addLocationReminderCmd(task, options)
@@ -60,7 +61,7 @@ export function registerLocationReminderCommand(reminder: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateLocationReminderCmd(id, options)
@@ -73,7 +74,7 @@ export function registerLocationReminderCommand(reminder: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteLocationReminderCmd(id, options)
@@ -86,7 +87,7 @@ export function registerLocationReminderCommand(reminder: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .action((id, options) => {
             if (!id) {
-                getCmd.help()
+                failWithUsage(getCmd)
                 return
             }
             return getLocationReminderCmd(id, options)

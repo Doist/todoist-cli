@@ -52,6 +52,7 @@ export type ErrorCode =
     | 'MISSING_CONTENT'
     | 'MISSING_DESTINATION'
     | 'MISSING_FILE'
+    | 'MISSING_ARGUMENT'
     | 'MISSING_ID'
     | 'MISSING_INVITATION_DATA'
     | 'MISSING_NAME'

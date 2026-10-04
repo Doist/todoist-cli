@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { TASK_SORT_DIRECTIONS, TASK_SORT_FIELDS } from '../../lib/task-sort.js'
 import { browseFilter } from './browse.js'
 import { createFilter } from './create.js'
@@ -36,7 +37,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name || !options.query) {
-                createCmd.help()
+                failWithUsage(createCmd)
                 return
             }
             return createFilter(options)
@@ -49,7 +50,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteFilterCmd(ref, options)
@@ -68,7 +69,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateFilterCmd(ref, options)
@@ -103,7 +104,7 @@ export function registerFilterCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                filter.help()
+                failWithUsage(filter)
                 return
             }
             return showFilter(ref, options)
@@ -114,7 +115,7 @@ export function registerFilterCommand(program: Command): void {
         .description('Open filter in browser')
         .action((ref) => {
             if (!ref) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseFilter(ref)

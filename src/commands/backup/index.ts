@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { downloadBackup } from './download.js'
 import { listBackups } from './list.js'
 
@@ -31,7 +32,7 @@ Requires authenticating with the backups:read scope:
         .requiredOption('--output-file <path>', 'Output file path')
         .action((version, options) => {
             if (!version) {
-                downloadCmd.help()
+                failWithUsage(downloadCmd)
                 return
             }
             return downloadBackup(version, options)

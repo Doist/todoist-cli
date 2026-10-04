@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../lib/missing-argument.js'
 import { quickaddTask, type QuickaddOptions } from './task/quickadd.js'
 
 export function registerAddCommand(program: Command): void {
@@ -12,7 +13,7 @@ export function registerAddCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((text: string | undefined, options: QuickaddOptions) => {
             if (!text && !options.stdin) {
-                addCmd.help()
+                failWithUsage(addCmd)
                 return
             }
             return quickaddTask({ ...options, text })

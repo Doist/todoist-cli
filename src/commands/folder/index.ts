@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { parseOrderArg } from '../../lib/order.js'
 import { createFolder } from './create.js'
@@ -56,7 +57,7 @@ Examples:
         .option('--full', 'Include all fields in JSON output')
         .action((ref, options) => {
             if (!ref) {
-                folder.help()
+                failWithUsage(folder)
                 return
             }
             return viewFolder(ref, options)
@@ -90,7 +91,7 @@ Examples:
                     )
                 }
                 if (!options.name) {
-                    createCmd.help()
+                    failWithUsage(createCmd)
                     return
                 }
                 return createFolder(
@@ -110,7 +111,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateFolder(ref, options)
@@ -124,7 +125,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteFolder(ref, options)

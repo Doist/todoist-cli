@@ -171,15 +171,16 @@ describe('stats goals', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = captureStream()
+        const stderrSpy = captureStream('stderr')
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'goals'])
         } catch (err: unknown) {
             if ((err as { code?: string }).code !== 'commander.help') throw err
+            expect((err as { exitCode?: number }).exitCode).toBe(1)
         }
 
-        expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })
 
     it('errors on invalid daily goal', async () => {
@@ -238,14 +239,15 @@ describe('stats vacation', () => {
 
     it('shows help when no options specified', async () => {
         const program = createProgram()
-        const stdoutSpy = captureStream()
+        const stderrSpy = captureStream('stderr')
 
         try {
             await program.parseAsync(['node', 'td', 'stats', 'vacation'])
         } catch (err: unknown) {
             if ((err as { code?: string }).code !== 'commander.help') throw err
+            expect((err as { exitCode?: number }).exitCode).toBe(1)
         }
 
-        expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })
 })

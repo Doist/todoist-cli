@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { deleteApp } from './delete.js'
 import { listApps } from './list.js'
 import { updateApp } from './update.js'
@@ -52,7 +53,7 @@ Requires authenticating with the dev:app_console scope:
         )
         .action((ref, options) => {
             if (!ref) {
-                apps.help()
+                failWithUsage(apps)
                 return
             }
             return viewApp(ref, options)
@@ -74,7 +75,7 @@ Requires authenticating with the dev:app_console scope:
         .option('--json', 'Output the updated app/webhook as JSON')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateApp(ref, options)
@@ -87,7 +88,7 @@ Requires authenticating with the dev:app_console scope:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteApp(ref, options)

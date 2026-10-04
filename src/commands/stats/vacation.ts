@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
 import { updateGoals } from '../../lib/api/stats.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 
 interface VacationOptions {
     on?: boolean
@@ -13,7 +14,7 @@ export async function vacationCommand(options: VacationOptions, command: Command
     }
 
     if (!options.on && !options.off) {
-        command.help()
+        failWithUsage(command)
         return
     }
 

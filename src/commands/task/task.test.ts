@@ -2917,15 +2917,16 @@ describe('task --dry-run', () => {
 describe('task (no args)', () => {
     it('shows parent help with examples', async () => {
         const program = createProgram()
-        const stdoutSpy = captureStream()
+        const stderrSpy = captureStream('stderr')
 
         try {
             await program.parseAsync(['node', 'td', 'task'])
         } catch (err: unknown) {
             if ((err as { code?: string }).code !== 'commander.help') throw err
+            expect((err as { exitCode?: number }).exitCode).toBe(1)
         }
 
-        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        const output = stderrSpy.mock.calls.map((c) => c[0]).join('')
         expect(output).toContain('Examples:')
         expect(output).toContain('td task add "Buy milk" --due tomorrow')
     })

@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { acceptNotification } from './accept.js'
 import { listNotifications } from './list.js'
 import { markRead } from './read.js'
@@ -29,7 +30,7 @@ export function registerNotificationCommand(program: Command): void {
         .option('--json', 'Output as JSON')
         .action((id, options) => {
             if (!id) {
-                notification.help()
+                failWithUsage(notification)
                 return
             }
             return viewNotification(id, options)
@@ -40,7 +41,7 @@ export function registerNotificationCommand(program: Command): void {
         .description('Accept a share invitation')
         .action((id) => {
             if (!id) {
-                acceptCmd.help()
+                failWithUsage(acceptCmd)
                 return
             }
             return acceptNotification(id)
@@ -51,7 +52,7 @@ export function registerNotificationCommand(program: Command): void {
         .description('Reject a share invitation')
         .action((id) => {
             if (!id) {
-                rejectCmd.help()
+                failWithUsage(rejectCmd)
                 return
             }
             return rejectNotification(id)
@@ -69,7 +70,7 @@ export function registerNotificationCommand(program: Command): void {
         .description('Mark notification as unread')
         .action((id) => {
             if (!id) {
-                unreadCmd.help()
+                failWithUsage(unreadCmd)
                 return
             }
             return markUnread(id)

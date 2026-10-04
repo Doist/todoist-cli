@@ -426,16 +426,17 @@ describe('settings update', () => {
 
     it('shows help when no settings specified', async () => {
         const program = createProgram()
-        const stdoutSpy = captureStream()
+        const stderrSpy = captureStream('stderr')
 
         try {
             await program.parseAsync(['node', 'td', 'settings', 'update'])
         } catch (err: unknown) {
             // Commander throws when help() is called with exitOverride
             if ((err as { code?: string }).code !== 'commander.help') throw err
+            expect((err as { exitCode?: number }).exitCode).toBe(1)
         }
 
-        expect(stdoutSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })
 
     it('errors on invalid time format', async () => {

@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { addReminder } from './add.js'
 import { deleteReminderCmd } from './delete.js'
@@ -82,7 +83,7 @@ export function registerReminderCommand(program: Command): void {
                 }
                 const task = taskArg || options.task
                 if (!task) {
-                    addCmd.help()
+                    failWithUsage(addCmd)
                     return
                 }
                 return addReminder(task, options)
@@ -100,7 +101,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateReminderCmd(id, options)
@@ -113,7 +114,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteReminderCmd(id, options)
@@ -126,7 +127,7 @@ export function registerReminderCommand(program: Command): void {
         .option('--full', 'Include all fields in JSON output')
         .action((id, options) => {
             if (!id) {
-                getCmd.help()
+                failWithUsage(getCmd)
                 return
             }
             return getReminderCmd(id, options)

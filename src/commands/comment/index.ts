@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { addComment } from './add.js'
 import { browseComment } from './browse.js'
 import { deleteComment } from './delete.js'
@@ -34,7 +35,7 @@ Examples:
         .option('--raw', 'Disable markdown rendering')
         .action((ref, options) => {
             if (!ref) {
-                listCmd.help()
+                failWithUsage(listCmd)
                 return
             }
             return listComments(ref, options)
@@ -57,7 +58,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref || (!options.content && !options.stdin)) {
-                addCmd.help()
+                failWithUsage(addCmd)
                 return
             }
             return addComment(ref, options)
@@ -70,7 +71,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteComment(id, options)
@@ -84,7 +85,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id || !options.content) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateComment(id, options)
@@ -98,7 +99,7 @@ Examples:
         .option('--raw', 'Disable markdown rendering')
         .action((id, options) => {
             if (!id) {
-                comment.help()
+                failWithUsage(comment)
                 return
             }
             return viewComment(id, options)
@@ -109,7 +110,7 @@ Examples:
         .description('Open comment in browser (requires id:xxx)')
         .action((id) => {
             if (!id) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseComment(id)

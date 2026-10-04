@@ -373,6 +373,10 @@ file, or a token stored in the OS credential manager via `td auth login`.
   renders it. The same handler also catches `BaseCliError` (re-exported
   from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers
   route through the same path
+- Missing positional/required input: call `failWithUsage(command)` from
+  `src/lib/missing-argument.ts`, never a bare `command.help()` (which prints
+  to stdout and exits 0). It exits 1 with help on stderr, or throws
+  `MISSING_ARGUMENT` under `--json` / `--ndjson`
 - Global flags handled in `src/lib/global-args.ts` — check `isJsonMode()` etc.
   before printing
 

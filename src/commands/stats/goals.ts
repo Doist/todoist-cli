@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
 import { updateGoals } from '../../lib/api/stats.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 
 interface GoalsOptions {
     daily?: string
@@ -10,7 +11,7 @@ interface GoalsOptions {
 export async function goalsCommand(options: GoalsOptions, command: Command): Promise<void> {
     const hasOptions = options.daily !== undefined || options.weekly !== undefined
     if (!hasOptions) {
-        command.help()
+        failWithUsage(command)
         return
     }
 
