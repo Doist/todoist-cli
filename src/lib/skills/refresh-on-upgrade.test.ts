@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,6 +74,20 @@ describe('refreshSkillsAfterUpgrade', () => {
 
         await refreshSkillsAfterUpgrade('5.5.0')
 
+        expect(mockUpdateAll).toHaveBeenCalledWith(false)
         await expect(readFile(stampPath, 'utf8')).rejects.toThrow()
+
+        await refreshSkillsAfterUpgrade('5.5.0')
+        expect(mockUpdateAll).toHaveBeenCalledTimes(2)
+    })
+
+    it('leaves skills alone when the stamp exists but cannot be read', async () => {
+        // A directory where the stamp file should be makes the read fail with EISDIR.
+        await mkdir(stampPath, { recursive: true })
+
+        await expect(refreshSkillsAfterUpgrade('5.5.0')).rejects.toMatchObject({
+            code: 'EISDIR',
+        })
+        expect(mockUpdateAll).not.toHaveBeenCalled()
     })
 })

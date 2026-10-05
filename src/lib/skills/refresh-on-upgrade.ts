@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { getStateDir } from '@doist/cli-core'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { APP_NAME } from '../app-name.js'
@@ -13,17 +13,22 @@ function getStampPath(): string {
     return join(getStateDir(APP_NAME), 'skills-version')
 }
 
+/**
+ * Only a missing stamp counts as "never refreshed". Any other read error is
+ * rethrown, so an unreadable stamp cannot bypass the version guard below.
+ */
 async function readStamp(): Promise<string | undefined> {
     try {
         return (await readFile(getStampPath(), 'utf8')).trim() || undefined
-    } catch {
-        return undefined
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+        throw error
     }
 }
 
-export async function writeSkillsVersionStamp(version = packageJson.version): Promise<void> {
+async function writeSkillsVersionStamp(version = packageJson.version): Promise<void> {
     const path = getStampPath()
-    await mkdir(join(path, '..'), { recursive: true })
+    await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `${version}\n`)
 }
 
@@ -49,10 +54,17 @@ export async function refreshSkillsAfterUpgrade(
         if (!isNewer(stamped, currentVersion)) return
     }
 
+    await refreshInstalledSkills(currentVersion)
+}
+
+/**
+ * Refresh every globally installed skill and stamp `version`. The stamp is only
+ * written when all of them updated, so a failure is retried on the next run.
+ */
+export async function refreshInstalledSkills(version = packageJson.version): Promise<void> {
     const { updateAllInstalledSkills } = await import('./update-installed.js')
     const { errors } = await updateAllInstalledSkills(false)
-    // Leave the stamp behind on failure so the next run retries.
     if (errors.length === 0) {
-        await writeSkillsVersionStamp(currentVersion)
+        await writeSkillsVersionStamp(version)
     }
 }
