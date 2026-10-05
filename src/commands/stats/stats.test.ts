@@ -173,12 +173,10 @@ describe('stats goals', () => {
         const program = createProgram()
         const stderrSpy = captureStream('stderr')
 
-        try {
-            await program.parseAsync(['node', 'td', 'stats', 'goals'])
-        } catch (err: unknown) {
-            if ((err as { code?: string }).code !== 'commander.help') throw err
-            expect((err as { exitCode?: number }).exitCode).toBe(1)
-        }
+        await expect(program.parseAsync(['node', 'td', 'stats', 'goals'])).rejects.toMatchObject({
+            code: 'commander.help',
+            exitCode: 1,
+        })
 
         expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })
@@ -241,12 +239,12 @@ describe('stats vacation', () => {
         const program = createProgram()
         const stderrSpy = captureStream('stderr')
 
-        try {
-            await program.parseAsync(['node', 'td', 'stats', 'vacation'])
-        } catch (err: unknown) {
-            if ((err as { code?: string }).code !== 'commander.help') throw err
-            expect((err as { exitCode?: number }).exitCode).toBe(1)
-        }
+        await expect(program.parseAsync(['node', 'td', 'stats', 'vacation'])).rejects.toMatchObject(
+            {
+                code: 'commander.help',
+                exitCode: 1,
+            },
+        )
 
         expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })

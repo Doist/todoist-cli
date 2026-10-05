@@ -2,7 +2,8 @@ import type { Command } from 'commander'
 import { CliError } from './errors.js'
 import { isJsonMode, isNdjsonMode } from './global-args.js'
 
-function commandPath(command: Command): string {
+/** The full invocation path of a command, e.g. `td task complete`. */
+export function getCommandPath(command: Command): string {
     const names: string[] = []
     for (let current: Command | null = command; current?.parent; current = current.parent) {
         names.unshift(current.name())
@@ -18,7 +19,7 @@ function commandPath(command: Command): string {
  * to stderr and exits 1.
  */
 export function failWithUsage(command: Command): never {
-    const path = commandPath(command)
+    const path = getCommandPath(command)
     if (isJsonMode() || isNdjsonMode()) {
         throw new CliError('MISSING_ARGUMENT', `Missing required argument for \`${path}\`.`, [
             `Run \`${path} --help\` for usage`,

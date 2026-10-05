@@ -428,13 +428,12 @@ describe('settings update', () => {
         const program = createProgram()
         const stderrSpy = captureStream('stderr')
 
-        try {
-            await program.parseAsync(['node', 'td', 'settings', 'update'])
-        } catch (err: unknown) {
-            // Commander throws when help() is called with exitOverride
-            if ((err as { code?: string }).code !== 'commander.help') throw err
-            expect((err as { exitCode?: number }).exitCode).toBe(1)
-        }
+        await expect(
+            program.parseAsync(['node', 'td', 'settings', 'update']),
+        ).rejects.toMatchObject({
+            code: 'commander.help',
+            exitCode: 1,
+        })
 
         expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'))
     })

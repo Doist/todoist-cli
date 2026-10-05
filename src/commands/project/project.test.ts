@@ -1694,12 +1694,10 @@ describe('project (no args)', () => {
         const program = createProgram()
         const stderrSpy = captureStream('stderr')
 
-        try {
-            await program.parseAsync(['node', 'td', 'project'])
-        } catch (err: unknown) {
-            if ((err as { code?: string }).code !== 'commander.help') throw err
-            expect((err as { exitCode?: number }).exitCode).toBe(1)
-        }
+        await expect(program.parseAsync(['node', 'td', 'project'])).rejects.toMatchObject({
+            code: 'commander.help',
+            exitCode: 1,
+        })
 
         const output = stderrSpy.mock.calls.map((c) => c[0]).join('')
         expect(output).toContain('list')
