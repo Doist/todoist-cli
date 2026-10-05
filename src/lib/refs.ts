@@ -137,7 +137,9 @@ export function lenientIdRef(ref: string, entityName: string): string {
     const parsedUrl = parseTodoistUrl(ref)
     if (isMatchingUrlType(parsedUrl, entityName)) return parsedUrl.id
     if (looksLikeRawId(ref)) return ref
-    const hints = /[/?#%.]/.test(ref) ? [ID_CHARSET_HINT] : [`Use id:xxx format (e.g., id:${ref})`]
+    const hints = !SAFE_ID_PATTERN.test(ref)
+        ? [ID_CHARSET_HINT]
+        : [`Use id:xxx format (e.g., id:${ref})`]
     if (URL_ENTITY_TYPES.includes(entityName as UrlEntityType)) {
         hints.push(`Or paste a Todoist URL (e.g., https://app.todoist.com/app/${entityName}/...)`)
     }
@@ -401,21 +403,25 @@ export async function resolveParentTaskId(
         return extractId(ref)
     }
 
-    const isRawId = looksLikeRawId(ref)
+    // Fetch an ID-shaped ref by ID before any name matching, as `resolveRef`
+    // does, so it can never resolve to a task whose title contains the ID.
+    if (looksLikeRawId(ref)) {
+        try {
+            return (await api.getTask(ref)).id
+        } catch (error) {
+            if (!isMissingIdError(error)) throw error
+        }
+    }
 
     if (sectionId) {
         const { results: sectionTasks } = await api.getTasks({ sectionId })
-        if (isRawId && sectionTasks.some((t) => t.id === ref)) return ref
         const match = fuzzyMatchInList(ref, sectionTasks, (t) => t.content, 'task', 'in section')
         if (match) return match.id
     }
 
     const { results: projectTasks } = await api.getTasks({ projectId })
-    if (isRawId && projectTasks.some((t) => t.id === ref)) return ref
     const match = fuzzyMatchInList(ref, projectTasks, (t) => t.content, 'task', 'in project')
     if (match) return match.id
-
-    if (isRawId) return ref
 
     throw new CliError('PARENT_NOT_FOUND', `Parent task "${ref}" not found in project.`)
 }

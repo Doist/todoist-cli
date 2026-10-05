@@ -403,6 +403,7 @@ describe('resolveTaskRef', () => {
 
             const result = await resolveTaskRef(api, 'Q4')
             expect(result.id).toBe('task-9')
+            expect(api.getTask).toHaveBeenCalledWith('Q4')
         },
     )
 
@@ -416,6 +417,7 @@ describe('resolveTaskRef', () => {
         await expect(resolveTaskRef(api, '999999999999')).rejects.toMatchObject({
             code: 'TASK_NOT_FOUND',
         })
+        expect(api.getTask).toHaveBeenCalledWith('999999999999')
     })
 
     it('never fetches a ref that would escape its URL path segment', async () => {
@@ -805,26 +807,57 @@ describe('resolveParentTaskId', () => {
 
     it('accepts raw ID-like string without id: prefix', async () => {
         const api = createMockApi({
+            getTask: vi.fn().mockResolvedValue({ id: '6fmg66Fr27R59RPg', content: 'Parent' }),
             getTasks: vi.fn().mockResolvedValue({ results: [] }),
         })
 
         const result = await resolveParentTaskId(api, '6fmg66Fr27R59RPg', 'proj-1')
         expect(result).toBe('6fmg66Fr27R59RPg')
+        expect(api.getTask).toHaveBeenCalledWith('6fmg66Fr27R59RPg')
+        expect(api.getTasks).not.toHaveBeenCalled()
     })
 
-    it('prefers the task with that ID over a task whose title contains it', async () => {
+    it('falls back to name matching when the raw-ID lookup 404s', async () => {
+        const { TodoistRequestError } = await import('@doist/todoist-sdk')
         const api = createMockApi({
+            getTask: vi.fn().mockRejectedValue(new TodoistRequestError('Not Found', 404)),
             getTasks: vi.fn().mockResolvedValue({
-                results: [
-                    { id: 'task-9', content: 'follow up on ABC123def' },
-                    { id: 'ABC123def', content: 'The real parent' },
-                ],
+                results: [{ id: 'task-9', content: 'Plan Q4' }],
             }),
         })
 
-        const result = await resolveParentTaskId(api, 'ABC123def', 'proj-1')
-        expect(result).toBe('ABC123def')
+        const result = await resolveParentTaskId(api, 'Q4', 'proj-1')
+        expect(result).toBe('task-9')
+        expect(api.getTask).toHaveBeenCalledWith('Q4')
     })
+
+    it('throws PARENT_NOT_FOUND for an ID-shaped ref that matches nothing', async () => {
+        const { TodoistRequestError } = await import('@doist/todoist-sdk')
+        const api = createMockApi({
+            getTask: vi.fn().mockRejectedValue(new TodoistRequestError('Not Found', 404)),
+            getTasks: vi.fn().mockResolvedValue({ results: [] }),
+        })
+
+        await expect(resolveParentTaskId(api, 'abc123', 'proj-1')).rejects.toMatchObject({
+            code: 'PARENT_NOT_FOUND',
+        })
+    })
+
+    it.each([undefined, 'sec-1'])(
+        'prefers the task with that ID over a task whose title contains it (section: %s)',
+        async (sectionId) => {
+            const api = createMockApi({
+                getTask: vi.fn().mockResolvedValue({ id: 'ABC123def', content: 'The real parent' }),
+                getTasks: vi.fn().mockResolvedValue({
+                    results: [{ id: 'task-9', content: 'follow up on ABC123def' }],
+                }),
+            })
+
+            const result = await resolveParentTaskId(api, 'ABC123def', 'proj-1', sectionId)
+            expect(result).toBe('ABC123def')
+            expect(api.getTasks).not.toHaveBeenCalled()
+        },
+    )
 
     it('throws on entity type mismatch (project URL for parent task)', async () => {
         const api = createMockApi()
