@@ -1,5 +1,5 @@
 import { migrateLegacyAuth } from './lib/migrate-auth.js'
-import { updateAllInstalledSkills } from './lib/skills/update-installed.js'
+import { refreshInstalledSkills } from './lib/skills/refresh-on-upgrade.js'
 
-updateAllInstalledSkills(false).catch(() => {})
+refreshInstalledSkills().catch(() => {})
 migrateLegacyAuth({ silent: true }).catch(() => {})
