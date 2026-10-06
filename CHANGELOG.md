@@ -1,3 +1,9 @@
+## [5.4.7](https://github.com/Doist/todoist-cli/compare/v5.4.6...v5.4.7) (2026-10-06)
+
+### Bug Fixes
+
+* exit 1 when a command is missing its required argument ([#580](https://github.com/Doist/todoist-cli/issues/580)) ([60b2f73](https://github.com/Doist/todoist-cli/commit/60b2f7319ff8b65076e42b699e06969a00d53a63)), closes [#574](https://github.com/Doist/todoist-cli/issues/574)
+
 ## [5.4.6](https://github.com/Doist/todoist-cli/compare/v5.4.5...v5.4.6) (2026-10-06)
 
 ### Bug Fixes
