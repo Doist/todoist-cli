@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { getApi } from '../lib/api/core.js'
 import { CliError } from '../lib/errors.js'
+import { failWithUsage } from '../lib/missing-argument.js'
 import { formatFileSize } from '../lib/output.js'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -183,7 +184,7 @@ export function registerAttachmentCommand(program: Command): void {
         .option('--json', 'Output as JSON with metadata and content')
         .action((url, options) => {
             if (!url) {
-                attachment.help()
+                failWithUsage(attachment)
                 return
             }
             return viewAttachment(url, options)

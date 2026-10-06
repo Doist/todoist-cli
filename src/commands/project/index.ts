@@ -2,6 +2,7 @@ import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { parseOrderArg } from '../../lib/order.js'
 import { showProjectActivityStats } from './activity-stats.js'
 import { analyzeHealth } from './analyze-health.js'
@@ -71,7 +72,7 @@ Examples:
         )
         .action((ref, options) => {
             if (!ref) {
-                project.help()
+                failWithUsage(project)
                 return
             }
             return viewProject(ref, options)
@@ -86,7 +87,7 @@ Examples:
         .option('--full', 'Include all fields in JSON output')
         .action((ref, options) => {
             if (!ref) {
-                collaboratorsCmd.help()
+                failWithUsage(collaboratorsCmd)
                 return
             }
             return listCollaborators(ref, options)
@@ -99,7 +100,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteProject(ref, options)
@@ -124,7 +125,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name) {
-                createCmd.help()
+                failWithUsage(createCmd)
                 return
             }
             return createProject(options)
@@ -156,7 +157,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateProject(ref, options)
@@ -168,7 +169,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                archiveCmd.help()
+                failWithUsage(archiveCmd)
                 return
             }
             return archiveProject(ref, options)
@@ -180,7 +181,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                unarchiveCmd.help()
+                failWithUsage(unarchiveCmd)
                 return
             }
             return unarchiveProject(ref, options)
@@ -191,7 +192,7 @@ Examples:
         .description('Open project in browser')
         .action((ref) => {
             if (!ref) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseProject(ref)
@@ -208,7 +209,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                moveCmd.help()
+                failWithUsage(moveCmd)
                 return
             }
             return moveProject(ref, options)
@@ -232,7 +233,7 @@ Examples:
         )
         .action((ref, options) => {
             if (!ref) {
-                reorderCmd.help()
+                failWithUsage(reorderCmd)
                 return
             }
             return reorderProject(ref, options)
@@ -322,7 +323,7 @@ Examples:
             }
 
             if (projectRef === undefined) {
-                shareCmd.help()
+                failWithUsage(shareCmd)
                 return
             }
             if (email === undefined) {
@@ -341,7 +342,7 @@ Examples:
         .option('--json', 'Output as JSON')
         .action((ref, options) => {
             if (!ref) {
-                progressCmd.help()
+                failWithUsage(progressCmd)
                 return
             }
             return showProjectProgress(ref, options)
@@ -353,7 +354,7 @@ Examples:
         .option('--json', 'Output as JSON')
         .action((ref, options) => {
             if (!ref) {
-                healthCmd.help()
+                failWithUsage(healthCmd)
                 return
             }
             return showProjectHealth(ref, options)
@@ -365,7 +366,7 @@ Examples:
         .option('--json', 'Output as JSON')
         .action((ref, options) => {
             if (!ref) {
-                healthContextCmd.help()
+                failWithUsage(healthContextCmd)
                 return
             }
             return showProjectHealthContext(ref, options)
@@ -379,7 +380,7 @@ Examples:
         .option('--include-weekly', 'Include weekly rollup counts')
         .action((ref, options) => {
             if (!ref) {
-                activityStatsCmd.help()
+                failWithUsage(activityStatsCmd)
                 return
             }
             return showProjectActivityStats(ref, options)
@@ -392,7 +393,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                analyzeHealthCmd.help()
+                failWithUsage(analyzeHealthCmd)
                 return
             }
             return analyzeHealth(ref, options)

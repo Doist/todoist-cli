@@ -2,6 +2,7 @@ import { Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { PRIORITY_CHOICES } from '../../lib/task-list.js'
 import type { AddOptions } from './add.js'
 import { addTask } from './add.js'
@@ -72,7 +73,7 @@ Examples:
         )
         .action((ref, options) => {
             if (!ref) {
-                task.help()
+                failWithUsage(task)
                 return
             }
             return viewTask(ref, options)
@@ -85,7 +86,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                completeCmd.help()
+                failWithUsage(completeCmd)
                 return
             }
             return completeTask(ref, options)
@@ -97,7 +98,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                uncompleteCmd.help()
+                failWithUsage(uncompleteCmd)
                 return
             }
             return uncompleteTask(ref, options)
@@ -110,7 +111,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteTask(ref, options)
@@ -157,7 +158,7 @@ Examples:
             }
             const content = contentArg || options.content
             if (!content) {
-                addCmd.help()
+                failWithUsage(addCmd)
                 return
             }
             return addTask({ ...options, content })
@@ -182,7 +183,7 @@ Notes:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((text: string | undefined, options: QuickaddOptions) => {
             if (!text && !options.stdin) {
-                quickaddCmd.help()
+                failWithUsage(quickaddCmd)
                 return
             }
             return quickaddTask({ ...options, text })
@@ -227,7 +228,7 @@ Notes:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateTask(ref, options)
@@ -252,7 +253,7 @@ Notes:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                moveCmd.help()
+                failWithUsage(moveCmd)
                 return
             }
             return moveTask(ref, options)
@@ -265,7 +266,7 @@ Notes:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, date, options) => {
             if (!ref || !date) {
-                rescheduleCmd.help()
+                failWithUsage(rescheduleCmd)
                 return
             }
             return rescheduleTask(ref, date, options)
@@ -276,7 +277,7 @@ Notes:
         .description('Open task in browser')
         .action((ref) => {
             if (!ref) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseTask(ref)

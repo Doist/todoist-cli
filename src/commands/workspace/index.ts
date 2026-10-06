@@ -2,6 +2,7 @@ import { Command, Option } from 'commander'
 import { withUnvalidatedChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { showWorkspaceActivity, type WorkspaceActivityOptions } from './activity.js'
 import { createWorkspace, type CreateWorkspaceOptions } from './create.js'
@@ -54,7 +55,7 @@ export function registerWorkspaceCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options: CreateWorkspaceOptions) => {
             if (!options.name) {
-                createCmd.help()
+                failWithUsage(createCmd)
                 return
             }
             return createWorkspace(options)

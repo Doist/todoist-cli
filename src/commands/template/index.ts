@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { createFromTemplate, type CreateFromTemplateOptions } from './create.js'
 import { exportTemplateFile, type ExportFileOptions } from './export-file.js'
 import { exportTemplateUrl, type ExportUrlOptions } from './export-url.js'
@@ -27,7 +28,7 @@ export function registerTemplateCommand(program: Command): void {
             }
             const ref = projectArg || options.project
             if (!ref) {
-                exportFileCmd.help()
+                failWithUsage(exportFileCmd)
                 return
             }
             return exportTemplateFile(ref, options)
@@ -48,7 +49,7 @@ export function registerTemplateCommand(program: Command): void {
             }
             const ref = projectArg || options.project
             if (!ref) {
-                exportUrlCmd.help()
+                failWithUsage(exportUrlCmd)
                 return
             }
             return exportTemplateUrl(ref, options)
@@ -84,7 +85,7 @@ export function registerTemplateCommand(program: Command): void {
             }
             const ref = projectArg || options.project
             if (!ref) {
-                importFileCmd.help()
+                failWithUsage(importFileCmd)
                 return
             }
             return importTemplateFile(ref, options)
@@ -107,7 +108,7 @@ export function registerTemplateCommand(program: Command): void {
             }
             const ref = projectArg || options.project
             if (!ref) {
-                importIdCmd.help()
+                failWithUsage(importIdCmd)
                 return
             }
             return importTemplateById(ref, options)

@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { installSkill } from './install.js'
 import { listSkills } from './list.js'
 import { uninstallSkill } from './uninstall.js'
@@ -14,7 +15,7 @@ export function registerSkillCommand(program: Command): void {
         .option('--force', 'Overwrite existing skill file')
         .action((agent, options) => {
             if (!agent) {
-                installCmd.help()
+                failWithUsage(installCmd)
                 return
             }
             return installSkill(agent, options)
@@ -26,7 +27,7 @@ export function registerSkillCommand(program: Command): void {
         .option('--local', 'Update in current project instead of global')
         .action((agent, options) => {
             if (!agent) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             if (agent === 'all') {
@@ -41,7 +42,7 @@ export function registerSkillCommand(program: Command): void {
         .option('--local', 'Remove from current project instead of global')
         .action((agent, options) => {
             if (!agent) {
-                uninstallCmd.help()
+                failWithUsage(uninstallCmd)
                 return
             }
             return uninstallSkill(agent, options)

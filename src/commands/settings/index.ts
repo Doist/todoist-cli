@@ -22,6 +22,7 @@ export {
     THEME_CHOICES,
     TIME_FORMAT_CHOICES,
 } from './helpers.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 
 export function registerSettingsCommand(program: Command): void {
     const settings = program.command('settings').description('Manage user settings')
@@ -78,7 +79,7 @@ export function registerSettingsCommand(program: Command): void {
         .action(async (options, command: Command) => {
             const hasOptions = Object.values(options).some((v: unknown) => v !== undefined)
             if (!hasOptions) {
-                command.help()
+                failWithUsage(command)
                 return
             }
             await updateSettings(options)

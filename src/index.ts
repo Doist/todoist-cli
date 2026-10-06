@@ -15,6 +15,7 @@ import {
 } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
+import { getCommandPath } from './lib/missing-argument.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
@@ -26,25 +27,14 @@ import { setActiveCommandPath } from './lib/usage-tracking.js'
  * that an error looks the same whichever of them raised it.
  */
 function reportFatal(err: unknown): never {
+    const machineReadable = isJsonMode() || isNdjsonMode()
     if (err instanceof BaseCliError) {
-        console.error(isJsonMode() ? formatErrorJson(err) : formatError(err))
+        console.error(machineReadable ? formatErrorJson(err) : formatError(err))
     } else {
         const message = err instanceof Error ? err.message : String(err)
-        console.error(isJsonMode() ? formatErrorJson('INTERNAL_ERROR', message) : message)
+        console.error(machineReadable ? formatErrorJson('INTERNAL_ERROR', message) : message)
     }
     process.exit(1)
-}
-
-function getActionCommandPath(command: Command): string {
-    const segments: string[] = []
-    let current: Command | null = command
-
-    while (current?.parent) {
-        segments.push(current.name())
-        current = current.parent
-    }
-
-    return `td ${segments.reverse().join(' ')}`
 }
 
 program
@@ -238,7 +228,7 @@ for (const [name, [description, , aliases]] of Object.entries(commands)) {
 }
 
 program.hook('preAction', (_thisCommand, actionCommand) => {
-    setActiveCommandPath(getActionCommandPath(actionCommand))
+    setActiveCommandPath(getCommandPath(actionCommand))
 })
 
 const rawArgs = process.argv.slice(2)

@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { CliError } from '../../lib/errors.js'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { parseOrderArg } from '../../lib/order.js'
 import { archiveSection } from './archive.js'
@@ -39,7 +40,7 @@ export function registerSectionCommand(program: Command): void {
                 }
                 const project = projectArg || options.project
                 if (!project && !options.search) {
-                    listCmd.help()
+                    failWithUsage(listCmd)
                     return
                 }
                 return listSections(project, options)
@@ -57,7 +58,7 @@ export function registerSectionCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name || !options.project) {
-                createCmd.help()
+                failWithUsage(createCmd)
                 return
             }
             return createSection(options)
@@ -70,7 +71,7 @@ export function registerSectionCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteSection(id, options)
@@ -89,7 +90,7 @@ export function registerSectionCommand(program: Command): void {
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateSection(id, options)
@@ -123,7 +124,7 @@ Examples:
             }
             const sectionRef = ref || options.section
             if (!sectionRef) {
-                reorderCmd.help()
+                failWithUsage(reorderCmd)
                 return
             }
             return reorderSection(sectionRef, options)
@@ -135,7 +136,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                archiveCmd.help()
+                failWithUsage(archiveCmd)
                 return
             }
             return archiveSection(id, options)
@@ -147,7 +148,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => {
             if (!id) {
-                unarchiveCmd.help()
+                failWithUsage(unarchiveCmd)
                 return
             }
             return unarchiveSection(id, options)
@@ -158,7 +159,7 @@ Examples:
         .description('Open section in browser (requires id:xxx)')
         .action((id) => {
             if (!id) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseSection(id)

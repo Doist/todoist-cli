@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { browseLabel } from './browse.js'
 import { createLabel } from './create.js'
 import { deleteLabel } from './delete.js'
@@ -38,7 +39,7 @@ Examples:
         .option('--show-urls', 'Show web app URLs for each task')
         .action((ref, options) => {
             if (!ref) {
-                label.help()
+                failWithUsage(label)
                 return
             }
             return viewLabel(ref, options)
@@ -66,7 +67,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
             if (!options.name) {
-                createCmd.help()
+                failWithUsage(createCmd)
                 return
             }
             return createLabel(options)
@@ -79,7 +80,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((name, options) => {
             if (!name) {
-                deleteCmd.help()
+                failWithUsage(deleteCmd)
                 return
             }
             return deleteLabel(name, options)
@@ -96,7 +97,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {
-                updateCmd.help()
+                failWithUsage(updateCmd)
                 return
             }
             return updateLabel(ref, options)
@@ -107,7 +108,7 @@ Examples:
         .description('Open label in browser')
         .action((ref) => {
             if (!ref) {
-                browseCmd.help()
+                failWithUsage(browseCmd)
                 return
             }
             return browseLabel(ref)
@@ -120,7 +121,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((name, options) => {
             if (!name || !options.name) {
-                renameSharedCmd.help()
+                failWithUsage(renameSharedCmd)
                 return
             }
             return renameSharedLabel(name, options)
@@ -133,7 +134,7 @@ Examples:
         .option('--dry-run', 'Preview what would happen without executing')
         .action((name, options) => {
             if (!name) {
-                removeSharedCmd.help()
+                failWithUsage(removeSharedCmd)
                 return
             }
             return removeSharedLabel(name, options)

@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { failWithUsage } from '../../lib/missing-argument.js'
 import { setDefaultHelpCenterLocale } from './locale.js'
 import { listHelpCenterLocales } from './locales.js'
 import { searchHelpCenterArticles } from './search.js'
@@ -40,7 +41,7 @@ Notes:
         .option('--set-default <locale>', 'Set the default Help Center locale')
         .action((options) => {
             if (!options.setDefault) {
-                localeCmd.help()
+                failWithUsage(localeCmd)
                 return
             }
             return setDefaultHelpCenterLocale(options.setDefault)
@@ -55,7 +56,7 @@ Notes:
         .option('--ndjson', 'Output as newline-delimited JSON')
         .action((query, options) => {
             if (!query) {
-                searchCmd.help()
+                failWithUsage(searchCmd)
                 return
             }
             return searchHelpCenterArticles(query, options)
@@ -70,7 +71,7 @@ Notes:
         .option('--html', 'Output the raw HTML article body')
         .action((ref, options) => {
             if (!ref) {
-                viewCmd.help()
+                failWithUsage(viewCmd)
                 return
             }
             return viewHelpCenterArticle(ref, options)

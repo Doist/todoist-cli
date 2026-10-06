@@ -1692,15 +1692,14 @@ describe('project move', () => {
 describe('project (no args)', () => {
     it('shows parent help listing all subcommands', async () => {
         const program = createProgram()
-        const stdoutSpy = captureStream()
+        const stderrSpy = captureStream('stderr')
 
-        try {
-            await program.parseAsync(['node', 'td', 'project'])
-        } catch (err: unknown) {
-            if ((err as { code?: string }).code !== 'commander.help') throw err
-        }
+        await expect(program.parseAsync(['node', 'td', 'project'])).rejects.toMatchObject({
+            code: 'commander.help',
+            exitCode: 1,
+        })
 
-        const output = stdoutSpy.mock.calls.map((c) => c[0]).join('')
+        const output = stderrSpy.mock.calls.map((c) => c[0]).join('')
         expect(output).toContain('list')
         expect(output).toContain('create')
         expect(output).toContain('delete')
