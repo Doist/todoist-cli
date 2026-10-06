@@ -4,11 +4,6 @@ import { getStateDir } from '@doist/cli-core'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { APP_NAME } from '../app-name.js'
 
-/**
- * Records the CLI version the installed agent skills were last refreshed for.
- * Lives in the state dir rather than the config file: it is bookkeeping, not
- * something a user sets.
- */
 function getStampPath(): string {
     return join(getStateDir(APP_NAME), 'skills-version')
 }
@@ -26,6 +21,11 @@ async function readStamp(): Promise<string | undefined> {
     }
 }
 
+/**
+ * Records the CLI version the installed agent skills were last refreshed for.
+ * Lives in the state dir rather than the config file: it is bookkeeping, not
+ * something a user sets.
+ */
 async function writeSkillsVersionStamp(version = packageJson.version): Promise<void> {
     const path = getStampPath()
     await mkdir(dirname(path), { recursive: true })
