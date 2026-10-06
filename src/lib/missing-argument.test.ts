@@ -1,6 +1,7 @@
 import { captureStream } from '@doist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, describe, expect, it } from 'vitest'
+import { CliError } from './errors.js'
 import { resetGlobalArgs } from './global-args.js'
 import { failWithUsage } from './missing-argument.js'
 
@@ -46,7 +47,11 @@ describe('failWithUsage', () => {
         resetGlobalArgs()
         const { program } = buildProgram()
 
-        await expect(program.parseAsync(process.argv)).rejects.toMatchObject({
+        const error = await program.parseAsync(process.argv).catch((e: unknown) => e)
+        // A CliError reaches `reportFatal` in src/index.ts, which prints it as
+        // JSON and exits 1, the same exit code as the human-readable path.
+        expect(error).toBeInstanceOf(CliError)
+        expect(error).toMatchObject({
             code: 'MISSING_ARGUMENT',
             message: 'Missing required argument for `td task complete`.',
         })
