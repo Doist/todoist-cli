@@ -1,3 +1,9 @@
+## [5.4.6](https://github.com/Doist/todoist-cli/compare/v5.4.5...v5.4.6) (2026-10-06)
+
+### Bug Fixes
+
+* **refs:** validate IDs and resolve bare IDs before name matching ([#579](https://github.com/Doist/todoist-cli/issues/579)) ([aea9b4d](https://github.com/Doist/todoist-cli/commit/aea9b4d2ea003f0155bb296eafcb9c58645063ef)), closes [#572](https://github.com/Doist/todoist-cli/issues/572) [#573](https://github.com/Doist/todoist-cli/issues/573) [#576](https://github.com/Doist/todoist-cli/issues/576)
+
 ## [5.4.5](https://github.com/Doist/todoist-cli/compare/v5.4.4...v5.4.5) (2026-10-02)
 
 ### Bug Fixes
