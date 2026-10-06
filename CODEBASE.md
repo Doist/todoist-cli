@@ -86,7 +86,11 @@ name, directories, first-party source, colours, doctor checks).
    `registerXxxCommand(program)` replaces the placeholder.
 6. If output will be human-readable, `preloadMarkdown()` runs in parallel with
    the command import. `startEarlySpinner()` covers the import latency.
-7. `program.parseAsync()` runs the command's action handler. Uncaught
+7. `td --help --json` loads the command tree and serializes it with
+   `lib/command-schema.ts`. After normal lazy registration,
+   `lib/mutation-json.ts` adds JSON success envelopes to mutations that do not
+   return an entity.
+8. `program.parseAsync()` runs the command's action handler. Uncaught
    `CliError` is rendered by `reportFatal()` via `formatError()` or
    `formatErrorJson()` depending on `isJsonMode()`.
 
@@ -209,6 +213,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)
+- **`command-schema.ts` / `mutation-json.ts`** — machine-readable help tree and
+  JSON success envelopes for mutations without an entity result
 - **`text.ts`** — `truncateForDisplay`: code-point-safe truncation. Use it
   instead of `text.slice(0, n)` on user-supplied text to avoid splitting a
   surrogate pair. Name initials use grapheme segmentation in `collaborators.ts`.
@@ -369,8 +375,9 @@ file, or a token stored in the OS credential manager via `td auth login`.
 - No barrel files except per-group `index.ts` wiring Commander
 - Priority: **`"p1"`–`"p4"` strings in CLI**; API uses 4=p1 (highest) → 1=p4
 - API responses: always destructure `{ results, nextCursor }` from the SDK
-- Mutating commands (`add`/`create`/`update`): always support `--json`
-  emitting `formatJson(result, entityType)` — see AGENTS.md
+- Mutating commands that return an entity (`add`/`create`/`update`) support
+  `--json` emitting `formatJson(result, entityType)`; no-entity writes use the
+  envelope from `mutation-json.ts` — see AGENTS.md
 - User-facing errors: throw `CliError(code, message, hints?)` from
   `src/lib/errors.ts`; the global `parseAsync().catch` in `src/index.ts`
   renders it. The same handler also catches `BaseCliError` (re-exported

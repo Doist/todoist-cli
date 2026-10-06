@@ -343,6 +343,25 @@ describe('notification accept', () => {
         vi.clearAllMocks()
     })
 
+    it('previews an invitation without accepting or marking it read', async () => {
+        const program = createProgram()
+        const output = captureConsole()
+        mockFetchNotifications.mockResolvedValue([createShareInvite()])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'notification',
+            'accept',
+            'id:notif-1',
+            '--dry-run',
+        ])
+
+        expect(mockAccept).not.toHaveBeenCalled()
+        expect(mockMarkRead).not.toHaveBeenCalled()
+        expect(output.mock.calls.flat().join('\n')).toContain('Project: Project X')
+    })
+
     it('accepts share invitation', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()

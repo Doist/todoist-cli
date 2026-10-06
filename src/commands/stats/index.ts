@@ -16,6 +16,7 @@ export function registerStatsCommand(program: Command): void {
         .description('Update daily/weekly goals')
         .option('--daily <n>', 'Set daily goal (tasks per day)')
         .option('--weekly <n>', 'Set weekly goal (tasks per week)')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action(goalsCommand)
 
     stats
@@ -23,5 +24,6 @@ export function registerStatsCommand(program: Command): void {
         .description('Toggle vacation mode')
         .option('--on', 'Enable vacation mode')
         .option('--off', 'Disable vacation mode')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action(vacationCommand)
 }

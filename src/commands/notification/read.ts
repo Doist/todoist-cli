@@ -5,15 +5,23 @@ import {
 } from '../../lib/api/notifications.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
+import { printDryRun } from '../../lib/output.js'
 import { resolveNotification } from './helpers.js'
 
 interface ReadOptions {
     all?: boolean
     yes?: boolean
+    dryRun?: boolean
 }
 
 export async function markRead(idRef: string | undefined, options: ReadOptions): Promise<void> {
     if (options.all) {
+        if (options.dryRun) {
+            const notifications = await fetchNotifications()
+            const unreadCount = notifications.filter((n) => n.isUnread).length
+            printDryRun('mark all notifications as read', { Unread: String(unreadCount) })
+            return
+        }
         if (!options.yes) {
             console.log('Use --all --yes to mark all notifications as read.')
             return
@@ -33,6 +41,10 @@ export async function markRead(idRef: string | undefined, options: ReadOptions):
     }
 
     const n = await resolveNotification(idRef)
+    if (options.dryRun) {
+        printDryRun('mark notification as read', { Notification: n.id })
+        return
+    }
     await markNotificationRead(n.id)
     if (!isQuiet()) console.log(`Marked as read. (id:${n.id})`)
 }

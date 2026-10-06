@@ -2,10 +2,12 @@ import type { Command } from 'commander'
 import { updateGoals } from '../../lib/api/stats.js'
 import { CliError } from '../../lib/errors.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
+import { printDryRun } from '../../lib/output.js'
 
 interface GoalsOptions {
     daily?: string
     weekly?: string
+    dryRun?: boolean
 }
 
 export async function goalsCommand(options: GoalsOptions, command: Command): Promise<void> {
@@ -31,6 +33,14 @@ export async function goalsCommand(options: GoalsOptions, command: Command): Pro
             throw new CliError('INVALID_GOAL', 'Weekly goal must be a non-negative number.')
         }
         args.weeklyGoal = weekly
+    }
+
+    if (options.dryRun) {
+        printDryRun('update goals', {
+            Daily: args.dailyGoal?.toString(),
+            Weekly: args.weeklyGoal?.toString(),
+        })
+        return
     }
 
     await updateGoals(args)

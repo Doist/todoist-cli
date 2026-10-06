@@ -65,7 +65,7 @@ A CI check (`npm run check:skill-sync`) runs on pull requests and will fail if `
 
 ## JSON Output for Mutating Commands
 
-All add/create/update commands support `--json` to output the created or updated entity as machine-readable JSON instead of the default human-readable confirmation message. This applies to:
+Entity add/create/update commands support `--json` to output the created or updated entity as machine-readable JSON instead of the default human-readable confirmation message. This applies to:
 
 - `task add`, `task update`
 - `project create`, `project update`
@@ -86,7 +86,10 @@ if (options.json) {
 // normal human-readable output
 ```
 
-Delete, complete, uncomplete, archive, and unarchive commands do not support `--json` as they return no meaningful entity data.
+Delete, complete, uncomplete, archive, and unarchive commands support `--json` through
+`src/lib/mutation-json.ts`. Since they return no entity, they emit a success
+envelope containing `ok`, `command`, and `messages`. Add new no-entity mutations
+to that registry. Errors are rendered by the global JSON error handler.
 
 ## Keeping CODEBASE.md accurate
 

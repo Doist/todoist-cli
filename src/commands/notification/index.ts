@@ -39,23 +39,25 @@ export function registerNotificationCommand(program: Command): void {
     const acceptCmd = notification
         .command('accept [id]')
         .description('Accept a share invitation')
-        .action((id) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((id, options) => {
             if (!id) {
                 failWithUsage(acceptCmd)
                 return
             }
-            return acceptNotification(id)
+            return acceptNotification(id, options)
         })
 
     const rejectCmd = notification
         .command('reject [id]')
         .description('Reject a share invitation')
-        .action((id) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((id, options) => {
             if (!id) {
                 failWithUsage(rejectCmd)
                 return
             }
-            return rejectNotification(id)
+            return rejectNotification(id, options)
         })
 
     notification
@@ -63,16 +65,18 @@ export function registerNotificationCommand(program: Command): void {
         .description('Mark notification(s) as read')
         .option('--all', 'Mark all notifications as read')
         .option('--yes', 'Confirm marking all as read')
+        .option('--dry-run', 'Preview what would happen without executing')
         .action((id, options) => markRead(id, options))
 
     const unreadCmd = notification
         .command('unread [id]')
         .description('Mark notification as unread')
-        .action((id) => {
+        .option('--dry-run', 'Preview what would happen without executing')
+        .action((id, options) => {
             if (!id) {
                 failWithUsage(unreadCmd)
                 return
             }
-            return markUnread(id)
+            return markUnread(id, options)
         })
 }

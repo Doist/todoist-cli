@@ -1,5 +1,6 @@
 import { updateUserSettings } from '../../lib/api/user-settings.js'
 import { CliError } from '../../lib/errors.js'
+import { printDryRun } from '../../lib/output.js'
 import { parseBoolean, parseDateFormat, parseDay, parseTheme, parseTimeFormat } from './helpers.js'
 
 interface UpdateOptions {
@@ -16,6 +17,7 @@ interface UpdateOptions {
     reminderEmail?: string
     completedSoundDesktop?: string
     completedSoundMobile?: string
+    dryRun?: boolean
 }
 
 export async function updateSettings(options: UpdateOptions): Promise<void> {
@@ -63,6 +65,14 @@ export async function updateSettings(options: UpdateOptions): Promise<void> {
     }
     if (options.completedSoundMobile !== undefined) {
         args.completedSoundMobile = parseBoolean(options.completedSoundMobile)
+    }
+
+    if (options.dryRun) {
+        printDryRun(
+            'update settings',
+            Object.fromEntries(Object.entries(args).map(([key, value]) => [key, String(value)])),
+        )
+        return
     }
 
     await updateUserSettings(args)

@@ -25,7 +25,9 @@ metadata:
 - Read and list commands commonly support `--json`, but other output and pagination flags vary by family. Many list commands support subsets of `--ndjson`, `--ids-only`, `--full`, `--raw`, `--limit <n>`, `--all`, `--cursor <cursor>`, or `--show-urls`; check `td <command> --help` for the exact surface.
 - When supported, `--ids-only` prints one stable result ID per line with no empty-state text. Any incomplete-page notice goes to stderr, so stdout remains pipeable. It is mutually exclusive with `--json` and `--ndjson`. Check `td <command> --help` for support and the type of ID returned.
 - Create and update commands commonly support `--json` to return the created or updated entity.
-- Mutating commands support `--dry-run` to preview actions without executing them.
+- Check `td <command> --help` for `--dry-run` before previewing a mutation. Unsupported commands reject the flag without sending a write.
+- Todoist data mutations without a returned entity support `--json` and emit a success envelope with `ok`, `command`, and `messages`; errors use the standard JSON error envelope. Check help for other command families.
+- `td --help --json` emits a machine-readable command tree. Use `td <command> --help --json` for one command family or subcommand.
 - Destructive commands typically require `--yes`.
 - `--quiet` / `-q` suppresses success messages. Create commands still print the bare ID for scripting (e.g. `id=$(td task add "Buy milk" --quiet)`).
 - Global flags: `--no-spinner`, `--progress-jsonl`, `-v/--verbose`, `--accessible`, `--quiet`, `--user <id|email>`. `TD_USER` is read as the fallback for `--user`.
@@ -290,8 +292,11 @@ td attachment view "https://files.todoist.com/..."
 td notification list --unread
 td notification view id:123
 td notification accept id:123
+td notification accept id:123 --dry-run
 td notification reject id:123
 td notification read --all --yes
+td notification read --all --dry-run
+td notification unread id:123 --json
 
 td reminder list "Plan sprint"
 td reminder list --type time
@@ -421,10 +426,13 @@ An extension is not reviewed or endorsed by Todoist, and runs with the user's ow
 ```bash
 td stats
 td stats goals --daily 10 --weekly 50
+td stats goals --daily 10 --dry-run
 td stats vacation --on
+td stats vacation --off --dry-run
 
 td settings view
 td settings update --timezone "America/New_York" --time-format 24 --date-format intl
+td settings update --timezone UTC --dry-run
 td settings themes
 
 td config view

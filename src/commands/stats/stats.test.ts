@@ -203,6 +203,16 @@ describe('stats vacation', () => {
         vi.clearAllMocks()
     })
 
+    it('previews vacation mode without writing', async () => {
+        const program = createProgram()
+        const output = captureConsole()
+
+        await program.parseAsync(['node', 'td', 'stats', 'vacation', '--on', '--dry-run'])
+
+        expect(mockUpdateGoals).not.toHaveBeenCalled()
+        expect(output.mock.calls.flat().join('\n')).toContain('Enabled: true')
+    })
+
     it('enables vacation mode with --on', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
