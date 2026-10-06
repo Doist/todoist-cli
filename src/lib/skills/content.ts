@@ -23,7 +23,7 @@ export const SKILL_CONTENT = `# Todoist CLI (td)
 - When supported, \`--ids-only\` prints one stable result ID per line with no empty-state text. Any incomplete-page notice goes to stderr, so stdout remains pipeable. It is mutually exclusive with \`--json\` and \`--ndjson\`. Check \`td <command> --help\` for support and the type of ID returned.
 - Create and update commands commonly support \`--json\` to return the created or updated entity.
 - Check \`td <command> --help\` for \`--dry-run\` before previewing a mutation. Unsupported commands reject the flag without sending a write.
-- Todoist data mutations without a returned entity support \`--json\` and emit a success envelope with \`ok\`, \`command\`, and \`messages\`; errors use the standard JSON error envelope. Check help for other command families.
+- Todoist data mutations without a returned entity support \`--json\`: successful writes emit \`ok\`, \`command\`, and \`messages\`; dry runs emit \`status: "preview"\`, \`command\`, and \`messages\`. Errors use the standard JSON error envelope. Check help for other command families.
 - \`td --help --json\` emits a machine-readable command tree. Use \`td <command> --help --json\` for one command family or subcommand.
 - Destructive commands typically require \`--yes\`.
 - \`--quiet\` / \`-q\` suppresses success messages. Create commands still print the bare ID for scripting (e.g. \`id=$(td task add "Buy milk" --quiet)\`).

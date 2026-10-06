@@ -1,4 +1,6 @@
+import { stripVTControlCharacters } from 'node:util'
 import type { Command } from 'commander'
+import { CliError } from './errors.js'
 
 // These commands return no entity (or currently only print a confirmation).
 // Give them a stable JSON success envelope while keeping their normal output.
@@ -17,7 +19,6 @@ const MUTATIONS_WITHOUT_JSON = new Set([
     'notification unread',
     'project archive',
     'project delete',
-    'project join',
     'project move',
     'project unarchive',
     'reminder delete',
@@ -26,7 +27,6 @@ const MUTATIONS_WITHOUT_JSON = new Set([
     'section delete',
     'section unarchive',
     'settings update',
-    'skill update',
     'stats goals',
     'stats vacation',
     'task complete',
@@ -50,10 +50,25 @@ export function enableMutationJson(program: Command): void {
                 action._actionHandler = async (args: unknown[]) => {
                     if (!command.optsWithGlobals().json) return original(args)
 
+                    const options = command.optsWithGlobals()
+                    const commandPath = ['td', ...path.slice(1)].join(' ')
+                    const needsYes = command.options.some((option) => option.long === '--yes')
+                    const needsConfirmation =
+                        needsYes &&
+                        !options.yes &&
+                        !options.dryRun &&
+                        (path.slice(1).join(' ') !== 'notification read' || options.all)
+                    if (needsConfirmation) {
+                        throw new CliError(
+                            'CONFIRMATION_REQUIRED',
+                            `Pass --yes to execute ${commandPath}, or --dry-run to preview it.`,
+                        )
+                    }
+
                     const originalLog = console.log
                     const messages: string[] = []
                     console.log = (...values: unknown[]) => {
-                        messages.push(values.map(String).join(' '))
+                        messages.push(stripVTControlCharacters(values.map(String).join(' ')))
                     }
                     try {
                         await original(args)
@@ -62,8 +77,8 @@ export function enableMutationJson(program: Command): void {
                     }
                     originalLog(
                         JSON.stringify({
-                            ok: true,
-                            command: ['td', ...path.slice(1)].join(' '),
+                            ...(options.dryRun ? { status: 'preview' } : { ok: true }),
+                            command: commandPath,
                             messages,
                         }),
                     )

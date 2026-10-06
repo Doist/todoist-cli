@@ -5,7 +5,7 @@ import type { ExtensionCommands } from '@doist/cli-core/extensions'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
-import { commandSchema } from './lib/command-schema.js'
+import { commandSchema, resolveJsonHelpTarget } from './lib/command-schema.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import {
     getRequestedUserRef,
@@ -251,7 +251,15 @@ const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefin
 
 // Help is handled before Commander consumes --help so agents can inspect the
 // actual registered flags and arguments without scraping formatted text.
-if (rawArgs.includes('--help') && rawArgs.includes('--json') && (!commandToken || builtInCommand)) {
+const extensionExec =
+    builtInCommand === 'extension' &&
+    findCommandToken(rawArgs.slice(commandTokenIndex + 1), ROOT_VALUE_FLAGS).token === 'exec'
+if (
+    rawArgs.includes('--help') &&
+    rawArgs.includes('--json') &&
+    (!commandToken || builtInCommand) &&
+    !extensionExec
+) {
     const names = builtInCommand ? [builtInCommand] : Object.keys(commands)
     for (const name of names) {
         const index = program.commands.findIndex((command) => command.name() === name)
@@ -261,19 +269,13 @@ if (rawArgs.includes('--help') && rawArgs.includes('--json') && (!commandToken |
     }
     enableMutationJson(program)
 
-    let target = program
-    if (builtInCommand) {
-        target = program.commands.find((command) => command.name() === builtInCommand) ?? program
-        for (const token of rawArgs.slice(commandTokenIndex + 1)) {
-            if (token.startsWith('-')) break
-            const child = target.commands.find(
-                (command) => command.name() === token || command.aliases().includes(token),
-            )
-            if (!child) break
-            target = child
-        }
-    }
-    console.log(JSON.stringify(commandSchema(target), null, 2))
+    const target = resolveJsonHelpTarget(program, rawArgs)
+    await new Promise<void>((resolve, reject) => {
+        process.stdout.write(`${JSON.stringify(commandSchema(target), null, 2)}\n`, (error) => {
+            if (error) reject(error)
+            else resolve()
+        })
+    })
     process.exit(0)
 }
 

@@ -87,9 +87,10 @@ if (options.json) {
 ```
 
 Delete, complete, uncomplete, archive, and unarchive commands support `--json` through
-`src/lib/mutation-json.ts`. Since they return no entity, they emit a success
-envelope containing `ok`, `command`, and `messages`. Add new no-entity mutations
-to that registry. Errors are rendered by the global JSON error handler.
+`src/lib/mutation-json.ts`. Since they return no entity, successful writes emit
+`ok`, `command`, and `messages`. Dry runs emit `status: "preview"`, `command`, and
+`messages`, without claiming success. Add new no-entity mutations to that registry.
+Errors are rendered by the global JSON error handler.
 
 ## Keeping CODEBASE.md accurate
 

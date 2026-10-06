@@ -24,3 +24,39 @@ export function commandSchema(command: Command): object {
         commands: command.commands.map(commandSchema),
     }
 }
+
+/** Resolve a help path while stepping over recognized options and their values. */
+export function resolveJsonHelpTarget(program: Command, argv: string[]): Command {
+    let current = program
+    for (let i = 0; i < argv.length; i++) {
+        const token = argv[i]
+        if (token === '--') break
+        if (token.startsWith('-')) {
+            const flag = token.split('=')[0]
+            let owner: Command | null = current
+            let option: Command['options'][number] | undefined
+            while (owner && !option) {
+                option = owner.options.find(
+                    (candidate) => candidate.long === flag || candidate.short === flag,
+                )
+                owner = owner.parent
+            }
+            if (
+                option &&
+                (option.required || option.optional) &&
+                !token.includes('=') &&
+                argv[i + 1] &&
+                !argv[i + 1].startsWith('-')
+            ) {
+                i++
+            }
+            continue
+        }
+        const child = current.commands.find(
+            (command) => command.name() === token || command.aliases().includes(token),
+        )
+        if (!child) break
+        current = child
+    }
+    return current
+}
