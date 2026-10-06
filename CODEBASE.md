@@ -255,8 +255,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 All live in `src/lib/refs.ts`:
 
 1. **Full name resolution** (`resolveProjectRef`, `resolveTaskRef`, …) —
-   async, returns the full entity. Tries URL → `id:` prefix → exact name →
-   partial substring → raw ID fallback. Use for entities with user-facing names.
+   async, returns the full entity. Tries URL → `id:` prefix → raw ID (if
+   `looksLikeRawId`; a 404/400 falls through) → exact name → partial
+   substring. The ID goes first so a bare ID never resolves to another entity
+   whose name contains it. Use for entities with user-facing names.
    Add new wrappers in `refs.ts`; the internal `resolveRef` is private.
 2. **ID-only validation** (`lenientIdRef`) — sync, no API call, returns an ID
    string. Tries `id:` prefix → URL → raw ID → error. Use for entities without
@@ -266,7 +268,9 @@ All live in `src/lib/refs.ts`:
 
 `looksLikeRawId()` decides when a ref should be tried as an ID: pure-alpha
 (`"Work"`) and spaced strings are names; mixed alphanumeric without spaces
-(`"abc123"`) are potential IDs.
+(`"abc123"`) are potential IDs. IDs (raw or `id:`) must match
+`[A-Za-z0-9_-]+`: they become URL path segments, so `extractId` rejects
+anything else with `INVALID_REF`.
 
 ## Auth & token storage
 
