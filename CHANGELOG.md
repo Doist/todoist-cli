@@ -1,3 +1,9 @@
+## [5.4.8](https://github.com/Doist/todoist-cli/compare/v5.4.7...v5.4.8) (2026-10-06)
+
+### Bug Fixes
+
+* **skills:** refresh installed skills on first run after an upgrade ([#581](https://github.com/Doist/todoist-cli/issues/581)) ([144bb39](https://github.com/Doist/todoist-cli/commit/144bb39ac08a0502a7632053339fba8b2d6bea41)), closes [#575](https://github.com/Doist/todoist-cli/issues/575)
+
 ## [5.4.7](https://github.com/Doist/todoist-cli/compare/v5.4.6...v5.4.7) (2026-10-06)
 
 ### Bug Fixes
