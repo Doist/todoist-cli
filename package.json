@@ -68,7 +68,7 @@
   "devDependencies": {
     "@semantic-release/changelog": "7.0.0",
     "@semantic-release/git": "11.0.1",
-    "@types/node": "25.9.8",
+    "@types/node": "25.9.9",
     "conventional-changelog-conventionalcommits": "9.3.1",
     "lefthook": "2.1.15",
     "oxfmt": "0.71.0",
