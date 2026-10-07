@@ -69,6 +69,7 @@ export function registerSettingsCommand(program: Command): void {
             ),
         )
         .option('--start-page <page>', 'Default view: inbox, today, or project URL')
+        .option('--dry-run', 'Preview what would happen without executing')
         .addOption(boolOption('--reminder-push <bool>', 'Push reminders: on/off'))
         .addOption(boolOption('--reminder-desktop <bool>', 'Desktop reminders: on/off'))
         .addOption(boolOption('--reminder-email <bool>', 'Email reminders: on/off'))
@@ -77,7 +78,9 @@ export function registerSettingsCommand(program: Command): void {
         )
         .addOption(boolOption('--completed-sound-mobile <bool>', 'Mobile completion sound: on/off'))
         .action(async (options, command: Command) => {
-            const hasOptions = Object.values(options).some((v: unknown) => v !== undefined)
+            const hasOptions = Object.entries(options).some(
+                ([key, value]) => key !== 'dryRun' && key !== 'json' && value !== undefined,
+            )
             if (!hasOptions) {
                 failWithUsage(command)
                 return

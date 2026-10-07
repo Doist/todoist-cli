@@ -15,6 +15,7 @@ vi.mock('../../lib/browser.js', () => ({
 
 import { completeTaskForever, rescheduleTask } from '../../lib/api/core.js'
 import { openInBrowser } from '../../lib/browser.js'
+import { enableMutationJson } from '../../lib/mutation-json.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
@@ -488,6 +489,24 @@ describe('task complete', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockApi = setupApiMock()
+    })
+
+    it('returns one JSON result when requested', async () => {
+        const program = createProgram()
+        enableMutationJson(program)
+        const output = captureConsole()
+        mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk', checked: false })
+        mockApi.closeTask.mockResolvedValue(undefined)
+
+        await program.parseAsync(['node', 'td', 'task', 'complete', 'id:task-1', '--json'])
+
+        expect(mockApi.closeTask).toHaveBeenCalledWith('task-1')
+        expect(output).toHaveBeenCalledOnce()
+        expect(JSON.parse(String(output.mock.calls[0][0]))).toEqual({
+            ok: true,
+            command: 'td task complete',
+            messages: ['Completed: Buy milk (id:task-1)'],
+        })
     })
 
     it('marks task as complete', async () => {

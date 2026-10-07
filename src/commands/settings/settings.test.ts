@@ -267,6 +267,24 @@ describe('settings update', () => {
         vi.clearAllMocks()
     })
 
+    it('previews parsed settings without writing', async () => {
+        const program = createProgram()
+        const output = captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'settings',
+            'update',
+            '--time-format',
+            '24',
+            '--dry-run',
+        ])
+
+        expect(mockUpdateUserSettings).not.toHaveBeenCalled()
+        expect(output.mock.calls.flat().join('\n')).toContain('timeFormat: 24h')
+    })
+
     it('updates timezone', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()

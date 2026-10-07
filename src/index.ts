@@ -5,6 +5,7 @@ import type { ExtensionCommands } from '@doist/cli-core/extensions'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'
+import { commandSchema, resolveJsonHelpTarget } from './lib/command-schema.js'
 import { BaseCliError, CliError } from './lib/errors.js'
 import {
     getRequestedUserRef,
@@ -16,6 +17,7 @@ import {
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { getCommandPath } from './lib/missing-argument.js'
+import { enableMutationJson } from './lib/mutation-json.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
 import { refreshSkillsAfterUpgrade } from './lib/skills/refresh-on-upgrade.js'
@@ -62,6 +64,12 @@ Note for AI/LLM agents:
   Use --quiet to suppress success messages (create commands still print the ID).
   Use --user <id|email> on any command to act as a specific stored account.`,
     )
+
+program.configureOutput({
+    outputError: (message, write) => {
+        write(isJsonMode() ? `${formatErrorJson('INVALID_OPTIONS', message.trim())}\n` : message)
+    },
+})
 
 // Lazy command registry: [description, loader, aliases?]
 const commands: Record<string, [string, () => Promise<(p: Command) => void>, string[]?]> = {
@@ -241,6 +249,36 @@ const { token: commandToken, index: commandTokenIndex } = findCommandToken(
 )
 const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefined
 
+// Help is handled before Commander consumes --help so agents can inspect the
+// actual registered flags and arguments without scraping formatted text.
+const extensionExec =
+    builtInCommand === 'extension' &&
+    findCommandToken(rawArgs.slice(commandTokenIndex + 1), ROOT_VALUE_FLAGS).token === 'exec'
+if (
+    rawArgs.includes('--help') &&
+    rawArgs.includes('--json') &&
+    (!commandToken || builtInCommand) &&
+    !extensionExec
+) {
+    const names = builtInCommand ? [builtInCommand] : Object.keys(commands)
+    for (const name of names) {
+        const index = program.commands.findIndex((command) => command.name() === name)
+        if (index !== -1) (program.commands as Command[]).splice(index, 1)
+        const register = await commands[name][1]()
+        register(program)
+    }
+    enableMutationJson(program)
+
+    const target = resolveJsonHelpTarget(program, rawArgs)
+    await new Promise<void>((resolve, reject) => {
+        process.stdout.write(`${JSON.stringify(commandSchema(target), null, 2)}\n`, (error) => {
+            if (error) reject(error)
+            else resolve()
+        })
+    })
+    process.exit(0)
+}
+
 let extensions: ExtensionCommands | undefined
 if (needsExtensionLookup(rawArgs, builtInCommand, commandTokenIndex)) {
     try {
@@ -321,6 +359,7 @@ if (process.argv[2] === 'completion-server') {
         toLoad.map(async (name) => {
             const register = await commands[name][1]()
             register(program)
+            enableMutationJson(program)
         }),
     )
 } else {
@@ -356,6 +395,7 @@ if (process.argv[2] === 'completion-server') {
             const register = await loader()
             await markdownReady
             register(program)
+            enableMutationJson(program)
         } catch (err) {
             stopEarlySpinner()
             throw err

@@ -343,6 +343,25 @@ describe('notification accept', () => {
         vi.clearAllMocks()
     })
 
+    it('previews an invitation without accepting or marking it read', async () => {
+        const program = createProgram()
+        const output = captureConsole()
+        mockFetchNotifications.mockResolvedValue([createShareInvite()])
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'notification',
+            'accept',
+            'id:notif-1',
+            '--dry-run',
+        ])
+
+        expect(mockAccept).not.toHaveBeenCalled()
+        expect(mockMarkRead).not.toHaveBeenCalled()
+        expect(output.mock.calls.flat().join('\n')).toContain('Project: Project X')
+    })
+
     it('accepts share invitation', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
@@ -413,6 +432,17 @@ describe('notification reject', () => {
 describe('notification read', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+    })
+
+    it('previews --all without --yes and leaves notifications unread', async () => {
+        const program = createProgram()
+        const output = captureConsole()
+        mockFetchNotifications.mockResolvedValue([createShareInvite()])
+
+        await program.parseAsync(['node', 'td', 'notification', 'read', '--all', '--dry-run'])
+
+        expect(mockMarkAllRead).not.toHaveBeenCalled()
+        expect(output.mock.calls.flat().join('\n')).toContain('Unread: 1')
     })
 
     it('marks single notification as read', async () => {

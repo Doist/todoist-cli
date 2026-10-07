@@ -2,10 +2,12 @@ import type { Command } from 'commander'
 import { updateGoals } from '../../lib/api/stats.js'
 import { CliError } from '../../lib/errors.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
+import { printDryRun } from '../../lib/output.js'
 
 interface VacationOptions {
     on?: boolean
     off?: boolean
+    dryRun?: boolean
 }
 
 export async function vacationCommand(options: VacationOptions, command: Command): Promise<void> {
@@ -15,6 +17,11 @@ export async function vacationCommand(options: VacationOptions, command: Command
 
     if (!options.on && !options.off) {
         failWithUsage(command)
+        return
+    }
+
+    if (options.dryRun) {
+        printDryRun('update vacation mode', { Enabled: String(options.on === true) })
         return
     }
 
