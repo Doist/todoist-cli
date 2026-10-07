@@ -1,3 +1,9 @@
+## [5.4.9](https://github.com/Doist/todoist-cli/compare/v5.4.8...v5.4.9) (2026-10-07)
+
+### Bug Fixes
+
+* align agent-facing mutation output and help ([#585](https://github.com/Doist/todoist-cli/issues/585)) ([ca26a45](https://github.com/Doist/todoist-cli/commit/ca26a45e2b1cabc1c95ec17a56aab094ec42558a))
+
 ## [5.4.8](https://github.com/Doist/todoist-cli/compare/v5.4.7...v5.4.8) (2026-10-06)
 
 ### Bug Fixes
