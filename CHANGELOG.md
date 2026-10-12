@@ -1,3 +1,9 @@
+## [5.4.10](https://github.com/Doist/todoist-cli/compare/v5.4.9...v5.4.10) (2026-10-12)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.1.0 ([#591](https://github.com/Doist/todoist-cli/issues/591)) ([480c0e2](https://github.com/Doist/todoist-cli/commit/480c0e2d0cefa79a33d61c13b96818f2a7aae3b3))
+
 ## [5.4.9](https://github.com/Doist/todoist-cli/compare/v5.4.8...v5.4.9) (2026-10-07)
 
 ### Bug Fixes
