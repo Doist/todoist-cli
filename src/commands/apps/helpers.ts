@@ -1,3 +1,5 @@
+import type { UploadAppIconArgs } from '@doist/todoist-sdk'
+
 // URL validation + serialization for app OAuth redirect URIs.
 // Mirrored from the todoist-web app editor so the CLI accepts the same set
 // of URIs the web UI does.
@@ -103,4 +105,28 @@ export function parseOAuthRedirectUris(uri: string | null): string[] {
 export function serializeOAuthRedirectUris(urls: string[]): string {
     if (urls.length <= 1) return urls[0] ?? ''
     return JSON.stringify(urls)
+}
+
+export type AppIconSize = NonNullable<UploadAppIconArgs['size']>
+
+export const APP_ICON_SIZES: readonly AppIconSize[] = ['small', 'medium', 'large']
+
+// Each icon slot is stored independently and has its own exact pixel
+// dimensions and byte limit. Mirrored from the backend's `IconSpec` so the CLI
+// can reject an oversized file before uploading it; pixel dimensions are left
+// to the server, which reports a precise error when they don't match.
+export const APP_ICON_SPECS: Record<
+    AppIconSize,
+    { maxBytes: number; width: number; height: number }
+> = {
+    small: { maxBytes: 8_000, width: 60, height: 60 },
+    medium: { maxBytes: 300_000, width: 300, height: 300 },
+    large: { maxBytes: 500_000, width: 600, height: 600 },
+}
+
+// The backend decides the image format from the uploaded file name's extension.
+export const APP_ICON_EXTENSIONS: ReadonlySet<string> = new Set(['.png', '.jpg', '.jpeg'])
+
+export function isAppIconSize(value: string): value is AppIconSize {
+    return (APP_ICON_SIZES as readonly string[]).includes(value)
 }

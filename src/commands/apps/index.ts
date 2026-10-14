@@ -26,6 +26,8 @@ Examples:
   td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
   td apps update id:9909 --set-webhook-url https://example.com/webhook
   td apps update id:9909 --name "My App" --description "New blurb" --set-webhook-url https://example.com/webhook
+  td apps update id:9909 --icon ./icon.png
+  td apps update id:9909 --icon ./icon-60.png --icon-size small
   td apps delete id:9909 --yes
 
 Sensitive values (client id, client secret, verification token, test token,
@@ -70,6 +72,11 @@ Requires authenticating with the dev:app_console scope:
             'Remove an OAuth redirect URI from the app (requires --yes)',
         )
         .option('--set-webhook-url <url>', "Set (swap) the app's webhook callback URL")
+        .option('--icon <path>', "Upload a PNG or JPEG file as the app's icon")
+        .option(
+            '--icon-size <size>',
+            'Icon slot to upload to: small (60×60), medium (300×300, default), or large (600×600)',
+        )
         .option('--yes', 'Confirm destructive changes (required for --remove-oauth-redirect)')
         .option('--dry-run', 'Preview what would happen without executing')
         .option('--json', 'Output the updated app/webhook as JSON')

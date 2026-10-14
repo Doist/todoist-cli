@@ -1,10 +1,13 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
     captureConsole,
     createTestProgram,
     describeEmptyMachineOutput,
 } from '@doist/cli-core/testing'
 import { TodoistRequestError } from '@doist/todoist-sdk'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../lib/api/core.js')>()
@@ -982,7 +985,7 @@ describe('apps update --add-oauth-redirect / --remove-oauth-redirect', () => {
         expect(parsed.oauthRedirectUri).toContain('https://example.com/cb')
         expect(parsed.userCount).toBe(42)
         // Essential-fields filter drops noisy/secondary keys.
-        expect(parsed).not.toHaveProperty('iconSm')
+        expect(parsed).not.toHaveProperty('createdAt')
         expect(parsed).not.toHaveProperty('userId')
     })
 
@@ -1420,7 +1423,7 @@ describe('apps update --name / --description (and combined)', () => {
         expect(parsed.webhook.callbackUrl).toBe('https://new.example.com/webhook')
         // The embedded app is projected to its essential fields, same as the
         // lone-record --json path.
-        expect(parsed.app).not.toHaveProperty('iconSm')
+        expect(parsed.app).not.toHaveProperty('createdAt')
         expect(parsed.app).not.toHaveProperty('userId')
     })
 
@@ -1531,6 +1534,320 @@ describe('apps update --name / --description (and combined)', () => {
         expect(output).toContain('Renamed App')
         expect(output).toContain('New blurb')
         expect(output).toContain('https://new.example.com/webhook')
+    })
+})
+
+describe('apps update --icon', () => {
+    let mockApi: MockApi
+    let dir: string
+    let png: string
+    let jpeg: string
+    let gif: string
+    let empty: string
+    let nineKb: string
+
+    const UPLOADED = { ...APP_A_DETAIL, iconMd: 'https://cdn.example.com/new-icon.png' }
+
+    beforeAll(async () => {
+        dir = await mkdtemp(join(tmpdir(), 'td-apps-icon-'))
+        png = join(dir, 'icon.png')
+        jpeg = join(dir, 'icon.JPEG')
+        gif = join(dir, 'icon.gif')
+        empty = join(dir, 'empty.png')
+        nineKb = join(dir, 'nine-kb.png')
+        await writeFile(png, Buffer.alloc(100, 1))
+        await writeFile(jpeg, Buffer.alloc(100, 1))
+        await writeFile(gif, Buffer.alloc(100, 1))
+        await writeFile(empty, Buffer.alloc(0))
+        await writeFile(nineKb, Buffer.alloc(9_000, 1))
+    })
+
+    afterAll(async () => {
+        await rm(dir, { recursive: true, force: true })
+    })
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.uploadAppIcon.mockResolvedValue(UPLOADED)
+    })
+
+    it('uploads to the medium slot by default', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--icon', png])
+
+        expect(mockApi.uploadAppIcon).toHaveBeenCalledWith({
+            appId: '9909',
+            file: expect.any(Blob),
+            fileName: 'icon.png',
+            size: 'medium',
+        })
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('Updated Todoist for VS Code (id:9909)')
+        expect(output).toContain('uploaded medium icon icon.png')
+    })
+
+    it.each(['small', 'large'] as const)(
+        'uploads to the %s slot with --icon-size',
+        async (size) => {
+            const program = createProgram()
+            captureConsole()
+
+            await program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--icon',
+                png,
+                '--icon-size',
+                size,
+            ])
+
+            expect(mockApi.uploadAppIcon).toHaveBeenCalledWith(expect.objectContaining({ size }))
+        },
+    )
+
+    it('accepts a JPEG regardless of extension case', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        await program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--icon', jpeg])
+
+        expect(mockApi.uploadAppIcon).toHaveBeenCalledWith(
+            expect.objectContaining({ fileName: 'icon.JPEG' }),
+        )
+    })
+
+    it('rejects an unknown --icon-size before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--icon',
+                png,
+                '--icon-size',
+                'huge',
+            ]),
+        ).rejects.toMatchObject({ code: 'INVALID_OPTIONS' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.uploadAppIcon).not.toHaveBeenCalled()
+    })
+
+    it('rejects --icon-size without --icon', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--name',
+                'Renamed App',
+                '--icon-size',
+                'small',
+            ]),
+        ).rejects.toMatchObject({ code: 'INVALID_OPTIONS' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('rejects a file that is not PNG or JPEG', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--icon', gif]),
+        ).rejects.toMatchObject({ code: 'INVALID_TYPE' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('rejects a missing file before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--icon',
+                join(dir, 'missing.png'),
+            ]),
+        ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('rejects an empty file', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--icon', empty]),
+        ).rejects.toMatchObject({ code: 'FILE_READ_ERROR' })
+        expect(mockApi.uploadAppIcon).not.toHaveBeenCalled()
+    })
+
+    it("rejects a file over the slot's byte limit", async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--icon',
+                nineKb,
+                '--icon-size',
+                'small',
+            ]),
+        ).rejects.toMatchObject({ code: 'FILE_TOO_LARGE' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
+    it('accepts the same file for a slot with a higher limit', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        await program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909', '--icon', nineKb])
+
+        expect(mockApi.uploadAppIcon).toHaveBeenCalledWith(
+            expect.objectContaining({ size: 'medium' }),
+        )
+    })
+
+    it('patches the record before uploading and prints the uploaded app as JSON', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+        mockApi.uploadAppIcon.mockResolvedValue({ ...UPLOADED, displayName: 'Renamed App' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--icon',
+            png,
+            '--json',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        expect(mockApi.updateApp.mock.invocationCallOrder[0]).toBeLessThan(
+            mockApi.uploadAppIcon.mock.invocationCallOrder[0],
+        )
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.displayName).toBe('Renamed App')
+        expect(parsed.iconMd).toBe('https://cdn.example.com/new-icon.png')
+    })
+
+    it('emits { app, webhook } when combined with --set-webhook-url', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        const webhook = {
+            status: 'active' as const,
+            callbackUrl: 'https://old.example.com/webhook',
+            version: '1' as const,
+            events: ['item:added'] as const,
+        }
+        mockApi.getAppWebhook.mockResolvedValue(webhook)
+        mockApi.updateAppWebhook.mockResolvedValue({
+            ...webhook,
+            callbackUrl: 'https://new.example.com/webhook',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--icon',
+            png,
+            '--set-webhook-url',
+            'https://new.example.com/webhook',
+            '--json',
+        ])
+
+        expect(mockApi.uploadAppIcon.mock.invocationCallOrder[0]).toBeLessThan(
+            mockApi.updateAppWebhook.mock.invocationCallOrder[0],
+        )
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.app.iconMd).toBe('https://cdn.example.com/new-icon.png')
+        expect(parsed.webhook.callbackUrl).toBe('https://new.example.com/webhook')
+    })
+
+    it('previews the upload with --dry-run without uploading', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--icon',
+            png,
+            '--icon-size',
+            'large',
+            '--dry-run',
+        ])
+
+        expect(mockApi.uploadAppIcon).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toContain(`Icon: ${png} (large)`)
+    })
+
+    it('withholds the upload when a real OAuth redirect removal lacks --yes', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--icon',
+            png,
+            '--remove-oauth-redirect',
+            'vscode://doist.todoist-vs-code/auth-complete',
+        ])
+
+        expect(mockApi.uploadAppIcon).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('uploaded medium icon icon.png')
+        expect(output).toContain('Use --yes to confirm.')
+    })
+
+    it('mentions --icon in the NO_CHANGES hint', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909']),
+        ).rejects.toMatchObject({
+            code: 'NO_CHANGES',
+            hints: [expect.stringContaining('--icon <path>')],
+        })
     })
 })
 
@@ -1645,7 +1962,7 @@ describe('wrapApiError → MISSING_SCOPE detection', () => {
     })
 
     it('emits the app-management hint for app-management methods (read and write)', async () => {
-        for (const method of ['getApps', 'getApp', 'updateApp', 'deleteApp']) {
+        for (const method of ['getApps', 'getApp', 'updateApp', 'uploadAppIcon', 'deleteApp']) {
             const wrapped = (await wrapApiError(scopeError(), method)) as CliError
             expect(wrapped.code).toBe('MISSING_SCOPE')
             expect(wrapped.hints?.[0]).toContain('--additional-scopes=app-management')

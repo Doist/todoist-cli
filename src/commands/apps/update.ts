@@ -1,9 +1,16 @@
+import { extname } from 'node:path'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
+import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { formatJson, printDryRun, processJsonItem } from '../../lib/output.js'
 import { resolveAppRef } from '../../lib/refs.js'
 import {
+    APP_ICON_EXTENSIONS,
+    APP_ICON_SIZES,
+    APP_ICON_SPECS,
+    type AppIconSize,
+    isAppIconSize,
     parseOAuthRedirectUris,
     serializeOAuthRedirectUris,
     validateRedirectUri,
@@ -16,6 +23,8 @@ export interface UpdateAppOptions {
     addOauthRedirect?: string
     removeOauthRedirect?: string
     setWebhookUrl?: string
+    icon?: string
+    iconSize?: string
     yes?: boolean
     dryRun?: boolean
     json?: boolean
@@ -35,14 +44,14 @@ function invalidWebhookUrl(url: string): CliError {
 }
 
 // Every update flag can be combined in a single invocation. The command
-// performs up to two API operations: an app-record patch (name, description
-// and/or OAuth redirect URIs via `updateApp`) and a webhook URL swap (a
-// separate endpoint via `updateAppWebhook`). The only mutually-exclusive pair
-// is --add-oauth-redirect / --remove-oauth-redirect, which read-modify-write
-// the same field with different confirmation semantics.
+// performs up to three API operations: an app-record patch (name, description
+// and/or OAuth redirect URIs via `updateApp`), an icon upload (`uploadAppIcon`)
+// and a webhook URL swap (a separate endpoint via `updateAppWebhook`). The only
+// mutually-exclusive pair is --add-oauth-redirect / --remove-oauth-redirect,
+// which read-modify-write the same field with different confirmation semantics.
 export async function updateApp(ref: string, options: UpdateAppOptions): Promise<void> {
     const { name, description, addOauthRedirect: add, removeOauthRedirect: remove } = options
-    const setWebhookUrl = options.setWebhookUrl
+    const { setWebhookUrl, icon } = options
 
     // Phase A — validate up front, before any network call.
     if (add !== undefined && remove !== undefined) {
@@ -67,17 +76,26 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         throw invalidWebhookUrl(setWebhookUrl)
     }
 
+    if (options.iconSize !== undefined && icon === undefined) {
+        throw new CliError('INVALID_OPTIONS', '--icon-size requires --icon <path>.')
+    }
+
     if (
         name === undefined &&
         description === undefined &&
         add === undefined &&
         remove === undefined &&
-        setWebhookUrl === undefined
+        setWebhookUrl === undefined &&
+        icon === undefined
     ) {
         throw new CliError('NO_CHANGES', 'No changes specified.', [
-            'Use --name, --description, --add-oauth-redirect <url>, --remove-oauth-redirect <url>, or --set-webhook-url <url>.',
+            'Use --name, --description, --add-oauth-redirect <url>, --remove-oauth-redirect <url>, --set-webhook-url <url>, or --icon <path>.',
         ])
     }
+
+    // The icon file is opened here, before any network call and before
+    // --dry-run, so a bad path or an oversized file fails fast.
+    const iconUpload = icon !== undefined ? await prepareIcon(icon, options.iconSize) : null
 
     // Phase B — reads. Both happen before any write so NO_WEBHOOK / ALREADY_EXISTS
     // can't leave a half-applied state.
@@ -157,21 +175,33 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         }
     }
 
+    // An upload always counts as a change: there's no way to tell whether the
+    // file matches the icon already stored.
+    if (iconUpload !== null) {
+        changes.push(`uploaded ${iconUpload.size} icon ${iconUpload.fileName}`)
+    }
+
     const hasRecordChange = Object.keys(patch).length > 0
     const hasWebhookChange = webhookWillChange
+    const hasIconChange = iconUpload !== null
     // The JSON output shape is keyed on which surfaces the flags addressed, not
-    // on which mutated, so it stays stable even when a sub-op is a no-op.
-    const recordTouched =
-        name !== undefined || description !== undefined || add !== undefined || remove !== undefined
+    // on which mutated, so it stays stable even when a sub-op is a no-op. An
+    // icon upload returns the app, so it counts as touching the app surface.
+    const appTouched =
+        name !== undefined ||
+        description !== undefined ||
+        add !== undefined ||
+        remove !== undefined ||
+        icon !== undefined
     const webhookTouched = setWebhookUrl !== undefined
 
     // Phase D — gating.
     // Every requested change was a no-op (remove-not-present and/or
     // webhook-already-set). Surface the unchanged object so scripts stay
     // parseable, and exit 0.
-    if (!hasRecordChange && !hasWebhookChange) {
+    if (!hasRecordChange && !hasWebhookChange && !hasIconChange) {
         if (options.json) {
-            printResultJson({ app, webhook, recordTouched, webhookTouched })
+            printResultJson({ app, webhook, appTouched, webhookTouched })
             return
         }
         for (const line of noops) console.log(line)
@@ -194,6 +224,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
                     : removeIsMutation
                       ? `remove ${remove}`
                       : undefined,
+            Icon: iconUpload ? `${iconUpload.filePath} (${iconUpload.size})` : undefined,
             'Webhook URL': hasWebhookChange ? setWebhookUrl : undefined,
         })
         return
@@ -215,11 +246,19 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         return
     }
 
-    // Phase E — execute. Record patch first, then the webhook swap. If the
-    // record patch succeeds and the webhook call throws, the record change is
-    // already persisted and the error propagates — there is no rollback.
+    // Phase E — execute. Record patch first, then the icon upload, then the
+    // webhook swap. If a later call throws, the earlier changes are already
+    // persisted and the error propagates — there is no rollback.
     let updatedApp = app
     if (hasRecordChange) updatedApp = await api.updateApp(app.id, patch)
+    if (iconUpload !== null) {
+        updatedApp = await api.uploadAppIcon({
+            appId: app.id,
+            file: iconUpload.blob,
+            fileName: iconUpload.fileName,
+            size: iconUpload.size,
+        })
+    }
 
     let updatedWebhook = webhook
     if (hasWebhookChange && webhook !== null) {
@@ -233,7 +272,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
 
     // Phase F — output.
     if (options.json) {
-        printResultJson({ app: updatedApp, webhook: updatedWebhook, recordTouched, webhookTouched })
+        printResultJson({ app: updatedApp, webhook: updatedWebhook, appTouched, webhookTouched })
         return
     }
     if (!isQuiet()) {
@@ -243,20 +282,20 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
 }
 
 // Single-surface invocations keep their historical bare-object shapes so
-// existing scripts don't break; only when both the app record and the webhook
-// are touched do we emit a combined, self-describing document.
+// existing scripts don't break; only when both the app and the webhook are
+// touched do we emit a combined, self-describing document.
 function printResultJson({
     app,
     webhook,
-    recordTouched,
+    appTouched,
     webhookTouched,
 }: {
     app: Awaited<ReturnType<Awaited<ReturnType<typeof getApi>>['getApp']>>
     webhook: Awaited<ReturnType<Awaited<ReturnType<typeof getApi>>['getAppWebhook']>>
-    recordTouched: boolean
+    appTouched: boolean
     webhookTouched: boolean
 }): void {
-    if (recordTouched && webhookTouched) {
+    if (appTouched && webhookTouched) {
         console.log(JSON.stringify({ app: processJsonItem(app, 'app'), webhook }, null, 2))
         return
     }
@@ -265,4 +304,48 @@ function printResultJson({
         return
     }
     console.log(formatJson(app, 'app'))
+}
+
+type IconUpload = {
+    blob: Blob
+    filePath: string
+    fileName: string
+    size: AppIconSize
+}
+
+// Validates everything about the icon that can be checked locally: the slot
+// name, the file's extension (the backend picks the image format from it) and
+// its byte size against that slot's limit. Pixel dimensions are checked by the
+// server.
+async function prepareIcon(path: string, rawSize: string | undefined): Promise<IconUpload> {
+    const size = rawSize ?? 'medium'
+    if (!isAppIconSize(size)) {
+        throw new CliError('INVALID_OPTIONS', `Invalid icon size: ${size}`, [
+            `Use one of: ${APP_ICON_SIZES.join(', ')}.`,
+        ])
+    }
+
+    const extension = extname(path).toLowerCase()
+    if (!APP_ICON_EXTENSIONS.has(extension)) {
+        throw new CliError('INVALID_TYPE', `Icon must be a PNG or JPEG file: ${path}`, [
+            'Use a file ending in .png, .jpg or .jpeg.',
+        ])
+    }
+
+    const { blob, filePath, fileName } = await openLocalFileAsBlob({ file: path })
+    const spec = APP_ICON_SPECS[size]
+    if (blob.size === 0) {
+        throw new CliError('FILE_READ_ERROR', `Icon file is empty: ${filePath}`)
+    }
+    if (blob.size > spec.maxBytes) {
+        throw new CliError(
+            'FILE_TOO_LARGE',
+            `Icon file is too large for the ${size} slot (${blob.size} bytes, limit ${spec.maxBytes} bytes).`,
+            [
+                `A ${size} icon must be ${spec.width}×${spec.height} pixels and at most ${spec.maxBytes / 1000}KB.`,
+            ],
+        )
+    }
+
+    return { blob, filePath, fileName, size }
 }
