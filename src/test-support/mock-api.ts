@@ -197,6 +197,7 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         updateAppWebhook: vi.fn(),
         getUiExtensionsForApp: vi.fn().mockResolvedValue([]),
         updateApp: vi.fn(),
+        uploadAppIcon: vi.fn(),
         deleteApp: vi.fn().mockResolvedValue(true),
         // Billing
         getSubscriptionInfo: vi.fn(),

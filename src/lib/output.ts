@@ -362,6 +362,9 @@ const APP_ESSENTIAL_FIELDS = [
     'serviceUrl',
     'oauthRedirectUri',
     'appTokenScopes',
+    'iconSm',
+    'iconMd',
+    'iconLg',
     'userCount',
 ] as const
 const NOTIFICATION_ESSENTIAL_FIELDS = [

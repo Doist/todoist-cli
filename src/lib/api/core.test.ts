@@ -152,4 +152,28 @@ describe('wrapApiError → API_ERROR', () => {
         expect(wrapped.code).toBe('API_ERROR')
         expect(wrapped.message).toBe('HTTP 500: Internal Server Error')
     })
+
+    it('appends per-field validation errors to the generic message', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError('HTTP 400: Bad Request', 400, {
+                error: 'Invalid argument value',
+                error_extra: {
+                    error_fields: [
+                        {
+                            field: 'icon_md',
+                            error: 'Invalid image dimension (accept only 300px * 300px)',
+                        },
+                        { field: 'name', error: 'Too long' },
+                        { error: 'No field name' },
+                        { field: 'ignored', error: { nested: true } },
+                    ],
+                },
+            }),
+        )) as CliError
+
+        expect(wrapped.code).toBe('API_ERROR')
+        expect(wrapped.message).toBe(
+            'Invalid argument value — icon_md: Invalid image dimension (accept only 300px * 300px); name: Too long; No field name',
+        )
+    })
 })

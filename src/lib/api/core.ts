@@ -110,6 +110,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         getAppWebhook: { text: 'Loading app...', color: 'blue' },
         getUiExtensionsForApp: { text: 'Loading app...', color: 'blue' },
         updateApp: { text: 'Updating app...', color: 'yellow' },
+        uploadAppIcon: { text: 'Uploading app icon...', color: 'yellow' },
         deleteApp: { text: 'Deleting app...', color: 'yellow' },
         // Billing — all billing reads share one label so a command that also
         // fetches the user (for locale) reads as a single spinner.
@@ -220,6 +221,7 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
     getAppWebhook: 'app-management',
     getUiExtensionsForApp: 'app-management',
     updateApp: 'app-management',
+    uploadAppIcon: 'app-management',
     deleteApp: 'app-management',
     getBackups: 'backups',
     downloadBackup: 'backups',
@@ -234,14 +236,26 @@ const STANDARD_REMEDIATION =
 
 function extractApiResponseMessage(data: unknown): string | undefined {
     if (typeof data === 'string') return data
-    if (
-        typeof data === 'object' &&
-        data !== null &&
-        typeof (data as { error?: unknown }).error === 'string'
-    ) {
-        return (data as { error: string }).error
-    }
-    return undefined
+    if (typeof data !== 'object' || data === null) return undefined
+    const { error, error_extra } = data as { error?: unknown; error_extra?: unknown }
+    if (typeof error !== 'string') return undefined
+    const fieldErrors = extractFieldErrors(error_extra)
+    return fieldErrors.length > 0 ? `${error} — ${fieldErrors.join('; ')}` : error
+}
+
+// Validation failures carry only a generic top-level `error` ("Invalid
+// argument value"); the actual reason for each rejected field lives under
+// `error_extra.error_fields`.
+function extractFieldErrors(extra: unknown): string[] {
+    if (typeof extra !== 'object' || extra === null) return []
+    const fields = (extra as { error_fields?: unknown }).error_fields
+    if (!Array.isArray(fields)) return []
+    return fields.flatMap((entry: unknown) => {
+        if (typeof entry !== 'object' || entry === null) return []
+        const { field, error } = entry as { field?: unknown; error?: unknown }
+        if (typeof error !== 'string') return []
+        return [typeof field === 'string' ? `${field}: ${error}` : error]
+    })
 }
 
 async function getScopeRemediation(methodName: string | undefined): Promise<string> {
