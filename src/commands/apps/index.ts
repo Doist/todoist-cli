@@ -1,6 +1,8 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
+import { withUnvalidatedChoices } from '../../lib/completion.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
 import { deleteApp } from './delete.js'
+import { APP_ICON_SIZES } from './helpers.js'
 import { listApps } from './list.js'
 import { updateApp } from './update.js'
 import { viewApp } from './view.js'
@@ -73,9 +75,14 @@ Requires authenticating with the dev:app_console scope:
         )
         .option('--set-webhook-url <url>', "Set (swap) the app's webhook callback URL")
         .option('--icon <path>', "Upload a PNG or JPEG file as the app's icon")
-        .option(
-            '--icon-size <size>',
-            'Icon slot to upload to: small (60×60), medium (300×300, default), or large (600×600)',
+        .addOption(
+            withUnvalidatedChoices(
+                new Option(
+                    '--icon-size <size>',
+                    'Icon slot to upload to: small (60×60), medium (300×300, default), or large (600×600)',
+                ),
+                [...APP_ICON_SIZES],
+            ),
         )
         .option('--yes', 'Confirm destructive changes (required for --remove-oauth-redirect)')
         .option('--dry-run', 'Preview what would happen without executing')

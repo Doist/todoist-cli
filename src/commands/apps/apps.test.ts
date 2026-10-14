@@ -1591,27 +1591,33 @@ describe('apps update --icon', () => {
         expect(output).toContain('uploaded medium icon icon.png')
     })
 
-    it.each(['small', 'large'] as const)(
-        'uploads to the %s slot with --icon-size',
-        async (size) => {
-            const program = createProgram()
-            captureConsole()
+    it.each([
+        ['small', 'iconSm'],
+        ['large', 'iconLg'],
+    ] as const)('uploads to the %s slot and returns %s in --json', async (size, field) => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
 
-            await program.parseAsync([
-                'node',
-                'td',
-                'apps',
-                'update',
-                'id:9909',
-                '--icon',
-                png,
-                '--icon-size',
-                size,
-            ])
+        const url = `https://cdn.example.com/new-icon-${size}.png`
+        mockApi.uploadAppIcon.mockResolvedValue({ ...APP_A_DETAIL, [field]: url })
 
-            expect(mockApi.uploadAppIcon).toHaveBeenCalledWith(expect.objectContaining({ size }))
-        },
-    )
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--icon',
+            png,
+            '--icon-size',
+            size,
+            '--json',
+        ])
+
+        expect(mockApi.uploadAppIcon).toHaveBeenCalledWith(expect.objectContaining({ size }))
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed[field]).toBe(url)
+    })
 
     it('accepts a JPEG regardless of extension case', async () => {
         const program = createProgram()
@@ -1672,6 +1678,23 @@ describe('apps update --icon', () => {
         expect(mockApi.getApp).not.toHaveBeenCalled()
     })
 
+    it('reports a missing file as FILE_NOT_FOUND even with an unsupported extension', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--icon',
+                join(dir, 'missing.gif'),
+            ]),
+        ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+    })
+
     it('rejects a missing file before any API call', async () => {
         const program = createProgram()
 
@@ -1728,7 +1751,7 @@ describe('apps update --icon', () => {
         )
     })
 
-    it('patches the record before uploading and prints the uploaded app as JSON', async () => {
+    it('prints the uploaded app as JSON when combined with --name', async () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
 
@@ -1749,9 +1772,6 @@ describe('apps update --icon', () => {
         ])
 
         expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
-        expect(mockApi.updateApp.mock.invocationCallOrder[0]).toBeLessThan(
-            mockApi.uploadAppIcon.mock.invocationCallOrder[0],
-        )
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.displayName).toBe('Renamed App')
         expect(parsed.iconMd).toBe('https://cdn.example.com/new-icon.png')
@@ -1786,12 +1806,42 @@ describe('apps update --icon', () => {
             '--json',
         ])
 
-        expect(mockApi.uploadAppIcon.mock.invocationCallOrder[0]).toBeLessThan(
-            mockApi.updateAppWebhook.mock.invocationCallOrder[0],
-        )
         const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
         expect(parsed.app.iconMd).toBe('https://cdn.example.com/new-icon.png')
         expect(parsed.webhook.callbackUrl).toBe('https://new.example.com/webhook')
+    })
+
+    it('keeps the record patch and skips the webhook swap when the upload fails', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getAppWebhook.mockResolvedValue({
+            status: 'active' as const,
+            callbackUrl: 'https://old.example.com/webhook',
+            version: '1' as const,
+            events: ['item:added'] as const,
+        })
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, displayName: 'Renamed App' })
+        mockApi.uploadAppIcon.mockRejectedValue(new Error('icon upload unavailable'))
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--name',
+                'Renamed App',
+                '--icon',
+                png,
+                '--set-webhook-url',
+                'https://new.example.com/webhook',
+            ]),
+        ).rejects.toThrow('icon upload unavailable')
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { displayName: 'Renamed App' })
+        expect(mockApi.uploadAppIcon).toHaveBeenCalled()
+        expect(mockApi.updateAppWebhook).not.toHaveBeenCalled()
     })
 
     it('previews the upload with --dry-run without uploading', async () => {

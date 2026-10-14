@@ -325,14 +325,15 @@ async function prepareIcon(path: string, rawSize: string | undefined): Promise<I
         ])
     }
 
-    const extension = extname(path).toLowerCase()
-    if (!APP_ICON_EXTENSIONS.has(extension)) {
-        throw new CliError('INVALID_TYPE', `Icon must be a PNG or JPEG file: ${path}`, [
+    // Open the file first so a missing or unreadable path reports
+    // FILE_NOT_FOUND / FILE_READ_ERROR whatever its extension.
+    const { blob, filePath, fileName } = await openLocalFileAsBlob({ file: path })
+    if (!APP_ICON_EXTENSIONS.has(extname(fileName).toLowerCase())) {
+        throw new CliError('INVALID_TYPE', `Icon must be a PNG or JPEG file: ${filePath}`, [
             'Use a file ending in .png, .jpg or .jpeg.',
         ])
     }
 
-    const { blob, filePath, fileName } = await openLocalFileAsBlob({ file: path })
     const spec = APP_ICON_SPECS[size]
     if (blob.size === 0) {
         throw new CliError('FILE_READ_ERROR', `Icon file is empty: ${filePath}`)
