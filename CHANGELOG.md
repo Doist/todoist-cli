@@ -1,3 +1,9 @@
+## [5.5.0](https://github.com/Doist/todoist-cli/compare/v5.4.10...v5.5.0) (2026-10-14)
+
+### Features
+
+* **apps:** upload app icons with `td apps update --icon` ([#596](https://github.com/Doist/todoist-cli/issues/596)) ([8df2973](https://github.com/Doist/todoist-cli/commit/8df2973ff2c300907c45daf9bc3b6e3cdfd41d40)), closes [Doist/todoist-sdk-typescript#704](https://github.com/Doist/todoist-sdk-typescript/issues/704)
+
 ## [5.4.10](https://github.com/Doist/todoist-cli/compare/v5.4.9...v5.4.10) (2026-10-12)
 
 ### Bug Fixes
