@@ -143,6 +143,7 @@ td task list                           # all tasks
 td task list --project "Work"          # tasks in project
 td task list --project "Work" --ids-only # one task ID per line
 td project list                        # all projects
+td status set "Deep work" --emoji 🎯 --for 2h   # shared status; td status clear to remove
 td task view https://app.todoist.com/app/task/buy-milk-8Jx4mVr72kPn3QwB  # paste a URL
 ```
 
