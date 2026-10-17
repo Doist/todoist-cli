@@ -102,7 +102,7 @@ Resolution order: `--user <ref>` > `TD_USER` > `user.defaultUser` from config > 
 - Collaboration: `td comment ...`, `td notification ...`, `td reminder ...`
 - Templates and files: `td template ...`, `td attachment view <file-url>`, `td backup ...`
 - Help Center: `td hc locales/search/view`
-- Account and tooling: `td stats`, `td settings ...`, `td config view`, `td accounts ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
+- Account and tooling: `td stats`, `td settings ...`, `td status ...`, `td config view`, `td accounts ...`, `td completion ...`, `td view <todoist-url>`, `td doctor`, `td update`, `td changelog`
 - Extensions: `td extension create/install/list/upgrade/remove/exec` (alias: `td ext`)
 - Developer apps: `td apps list/view` (requires `td auth login --additional-scopes=app-management`)
 - Backups: `td backup list/download` (requires `td auth login --additional-scopes=backups`)
@@ -427,6 +427,7 @@ Two rules matter when calling one:
 An extension is not reviewed or endorsed by Todoist, and runs with the user's own permissions.
 
 ### Settings, Stats, And Utilities
+`td status` shows your shared status (apps that read it, such as Comms, show it too); `td status clear` removes it.
 ```bash
 td stats
 td stats goals --daily 10 --weekly 50
@@ -438,6 +439,11 @@ td settings view
 td settings update --timezone "America/New_York" --time-format 24 --date-format intl
 td settings update --timezone UTC --dry-run
 td settings themes
+
+td status
+td status --json
+td status clear --dry-run
+td status clear
 
 td config view
 td config view --json

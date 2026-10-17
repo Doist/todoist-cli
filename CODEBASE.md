@@ -45,12 +45,12 @@ src/
 │  │  doctor.ts, changelog.ts, activity.ts, attachment.ts
 │  ├─ task/, project/, label/, comment/, section/, filter/,
 │  │  reminder/, workspace/, folder/, notification/, template/,
-│  │  backup/, apps/, billing/, stats/, completed/, auth/, settings/,
+│  │  backup/, apps/, billing/, stats/, completed/, auth/, settings/, status/,
 │  │  config/, skill/, hc/, completion/, update/, extension/
 │  └─ *.test.ts           # Co-located tests
 ├─ lib/                   # Shared utilities. See catalog — don't reimplement.
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
-│  │                      # notifications, reminders, stats, user-settings, uploads)
+│  │                      # notifications, reminders, stats, user-settings, user-status, uploads)
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
 └─ test-support/
    ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
@@ -131,7 +131,7 @@ lives in `src/lib/skills/content.ts` (SKILL_CONTENT) — don't duplicate here.
 - **Productivity & activity** — `activity`, `stats`, `completed`
 - **Top-level views** — `today`, `upcoming`, `inbox`, `view` (URL router)
 - **Infra** — `auth` (login/logout/token/status), `accounts`
-  (multi-user list/use/current/remove; aliases `user`/`users`), `settings`,
+  (multi-user list/use/current/remove; aliases `user`/`users`), `settings`, `status`,
   `apps`, `backup`, `attachment`, `hc` (Help Center), `skill`, `completion`,
   `update`, `doctor`, `changelog`
 
@@ -144,7 +144,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `Project`, `Section`, `User`. Paginated response shape
   `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
-  `reminders.ts`, `stats.ts`, `user-settings.ts`, `uploads.ts`
+  `reminders.ts`, `stats.ts`, `user-settings.ts`, `user-status.ts`, `uploads.ts`
 - **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
   `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
   write/clear paths go through `auth-store.ts`.
@@ -230,7 +230,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `isJsonMode`, `isNdjsonMode`, `isIdsOnlyMode`, `isRawMode`, `isQuiet`,
   `isAccessible`, and the Todoist progress-jsonl target
 - **`logger.ts`** — verbose levels 0–4, `initializeLogger`
-- **`dates.ts` / `duration.ts`** — date filters, `"2h30m"` parsing/formatting
+- **`dates.ts` / `duration.ts`** — date filters, `"2h30m"` parsing/formatting;
+  `parseLocalDate` (strict ISO, bare = local time) and `parseDurationMs` (`30m`/`2h`/`1d`)
+  for expiry flags
 - **`permissions.ts`** — collaborator permission parsing
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
