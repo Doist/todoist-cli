@@ -10,7 +10,7 @@
 import { CLI_ICON_URL } from './constants.js'
 
 // The README's PNG, so the icon lives in one file rather than an inline copy.
-const TODOIST_CLI_ICON = `<img src="${CLI_ICON_URL}" width="72" height="72" alt="">`
+const TODOIST_CLI_ICON = `<img src="${CLI_ICON_URL}" width="72" height="72" alt="" referrerpolicy="no-referrer">`
 
 const SUCCESS_HTML = `
 <!DOCTYPE html>
