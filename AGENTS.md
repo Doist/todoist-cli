@@ -101,3 +101,7 @@ Errors are rendered by the global JSON error handler.
 - changes to command registration, auth/token storage, or build/test/release tooling
 
 Adding a single subcommand to an existing group, or a narrowly-scoped helper used by one caller, does not require an update.
+
+## Changing the CLI icon
+
+Follow [docs/icon.md](docs/icon.md). The consent-screen icon is stored on the Todoist CLI app, not read from `icons/`, so replacing the repo files alone does not change it. Never rename or delete files in `icons/`.
