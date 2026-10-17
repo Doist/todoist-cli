@@ -1,3 +1,9 @@
+## [5.5.2](https://github.com/Doist/todoist-cli/compare/v5.5.1...v5.5.2) (2026-10-17)
+
+### Bug Fixes
+
+* **deps:** update dependency zod to v4.6.6 ([#599](https://github.com/Doist/todoist-cli/issues/599)) ([6dcde89](https://github.com/Doist/todoist-cli/commit/6dcde89ff4214b370fe62467a9f29d19d1bdbca6))
+
 ## [5.5.1](https://github.com/Doist/todoist-cli/compare/v5.5.0...v5.5.1) (2026-10-16)
 
 ### Bug Fixes
