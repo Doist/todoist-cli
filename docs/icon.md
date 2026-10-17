@@ -1,0 +1,45 @@
+# Changing the CLI icon
+
+The icon shows in two places, and they update separately.
+
+| Where                                  | What it shows                        | How to change it                |
+| -------------------------------------- | ------------------------------------ | ------------------------------- |
+| README (GitHub and npm)                | `icons/todoist-cli_512px.png`        | Replace the file in a PR        |
+| OAuth consent screen (`td auth login`) | A copy stored on the Todoist CLI app | Upload it with `td apps update` |
+
+## 1. Export the artwork
+
+The source is the `Size=72, Style=Color` variant of [Service / Todoist CLI](https://www.figma.com/design/xo9yAsH8PQUpi0eTJh9pmR/?node-id=12865-506) in Product Library – Global.
+
+- Export a **512×512 PNG** for the repo.
+- Export a **300×300 PNG** for the consent screen, under 300 KB. The upload rejects any other size and doesn't resize.
+- Don't export SVG. The artwork uses blend modes that SVG export drops, so the tile renders pale.
+
+## 2. Replace the repo files
+
+Overwrite both files with the same 512px PNG:
+
+- `icons/todoist-cli_512px.png`: the README header.
+- `icons/td-cli.png`: the previous name. The README published with 5.5.0 and earlier points at it.
+
+Never rename or delete either file. The READMEs in older npm releases still point at the old path.
+
+## 3. Update the consent screen
+
+The consent screen doesn't read the repo. `td` signs in with a registered `client_id`, so Todoist shows the icon stored on that app. Only the app's owner or a Doist admin can change it. `td apps list` only shows apps you own, so an admin who doesn't own it needs the app id (`id:<app id>`) instead of the name:
+
+```bash
+td auth login --additional-scopes=app-management
+```
+
+```bash
+td apps list
+```
+
+```bash
+td apps update "<app name from td apps list>" --icon ./todoist-cli-300.png
+```
+
+`--icon-size` defaults to `medium` (300×300), the slot the consent screen reads. App Management in Todoist's settings does the same thing.
+
+Check it by starting `td auth login` and looking at the consent screen before you approve.
