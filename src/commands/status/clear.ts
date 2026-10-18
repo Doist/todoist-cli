@@ -1,4 +1,4 @@
-import { writeUserStatus } from '../../lib/api/user-status.js'
+import { fetchUserStatus, writeUserStatus } from '../../lib/api/user-status.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import type { DryRunOption } from '../../lib/options.js'
@@ -7,7 +7,10 @@ import { formatStatus } from '../../lib/status.js'
 
 export async function clearStatus(options: DryRunOption): Promise<void> {
     if (options.dryRun) {
-        printDryRun('clear status', {})
+        const current = await fetchUserStatus()
+        printDryRun('clear status', {
+            Status: current ? formatStatus(current) : 'none (nothing to clear)',
+        })
         return
     }
 

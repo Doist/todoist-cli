@@ -82,11 +82,25 @@ describe('td status', () => {
             expect(logged(spy)).toBe('Status cleared.')
         })
 
-        it('does not call the API on --dry-run', async () => {
+        it('shows the status it would clear on --dry-run, without writing', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Focus',
+                emoji: '🎯',
+                effects: {},
+            })
             const spy = captureConsole('log')
             await run('clear', '--dry-run')
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
             expect(logged(spy)).toContain('Would clear status')
+            expect(logged(spy)).toContain('Status: 🎯 Focus')
+        })
+
+        it('says there is nothing to clear on --dry-run with no status', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue(null)
+            const spy = captureConsole('log')
+            await run('clear', '--dry-run')
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            expect(logged(spy)).toContain('Status: none (nothing to clear)')
         })
     })
 
