@@ -1,5 +1,6 @@
 import type { UserStatus, UserStatusArgs } from '@doist/todoist-sdk'
 import type { Command } from 'commander'
+import { pickDefined } from '../../lib/api/core.js'
 import { writeUserStatus } from '../../lib/api/user-status.js'
 import { formatDateTime, parseLocalDate } from '../../lib/dates.js'
 import { parseDurationMs } from '../../lib/duration.js'
@@ -7,9 +8,8 @@ import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
 import type { DryRunOption, ViewOptions } from '../../lib/options.js'
-import { printDryRun } from '../../lib/output.js'
+import { formatJson, printDryRun } from '../../lib/output.js'
 import { formatStatus } from '../../lib/status.js'
-import { formatStatusJson } from './helpers.js'
 
 const MAX_MESSAGE_LENGTH = 80
 
@@ -111,11 +111,13 @@ export async function setStatus(
 
     const args: UserStatusArgs = {
         message: text,
-        ...(emoji ? { emoji } : {}),
-        ...(activeUntil ? { activeUntil } : {}),
-        ...(options.pauseNotifications
-            ? { effects: { pauseNotifications: { scope: { mode: 'all' } } } }
-            : {}),
+        ...pickDefined({
+            emoji,
+            activeUntil,
+            effects: options.pauseNotifications
+                ? { pauseNotifications: { scope: { mode: 'all' } } }
+                : undefined,
+        }),
     }
 
     if (options.dryRun) {
@@ -150,7 +152,7 @@ export async function setStatus(
     }
 
     if (options.json) {
-        console.log(formatStatusJson(status))
+        console.log(formatJson({ status }))
     } else if (!isQuiet()) {
         console.log(`Status set: ${formatStatus(status)}`)
     }
