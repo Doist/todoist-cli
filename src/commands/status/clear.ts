@@ -9,7 +9,7 @@ export async function clearStatus(options: DryRunOption): Promise<void> {
     if (options.dryRun) {
         const current = await fetchUserStatus()
         printDryRun('clear status', {
-            Status: current ? formatStatus(current) : 'none (nothing to clear)',
+            Status: current ? formatStatus(current) : 'none set',
         })
         return
     }

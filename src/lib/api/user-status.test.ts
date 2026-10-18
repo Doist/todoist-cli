@@ -19,6 +19,11 @@ describe('user status API', () => {
         expect(sync).toHaveBeenCalledWith({ resourceTypes: ['user'], syncToken: '*' })
     })
 
+    it('reads null when the user has no status field at all', async () => {
+        sync.mockResolvedValue({ user: {} })
+        expect(await fetchUserStatus()).toBeNull()
+    })
+
     it('reads null when the user has no status', async () => {
         sync.mockResolvedValue({ user: { status: null } })
         expect(await fetchUserStatus()).toBeNull()

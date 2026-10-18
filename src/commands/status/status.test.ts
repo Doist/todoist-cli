@@ -14,10 +14,17 @@ vi.mock('../../lib/api/user-status.js', () => ({
 vi.mock('chalk')
 
 import { resetGlobalArgs } from '../../lib/global-args.js'
+import { enableMutationJson } from '../../lib/mutation-json.js'
 import { registerStatusCommand } from './index.js'
 
 async function run(...args: string[]): Promise<void> {
     const program = createTestProgram(registerStatusCommand)
+    await program.parseAsync(['node', 'td', 'status', ...args])
+}
+
+async function runWithMutationJson(...args: string[]): Promise<void> {
+    const program = createTestProgram(registerStatusCommand)
+    enableMutationJson(program)
     await program.parseAsync(['node', 'td', 'status', ...args])
 }
 
@@ -60,6 +67,18 @@ describe('td status', () => {
             const spy = captureConsole('log')
             await run('show')
             expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM)')
+        })
+
+        it('joins the expiry and the pause in one parenthesis', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Focus',
+                emoji: '🎯',
+                activeUntil: new Date('2026-10-14T13:30:00.000Z'),
+                effects: { pauseNotifications: { scope: { mode: 'all' } } },
+            })
+            const spy = captureConsole('log')
+            await run('show')
+            expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM, notifications paused)')
         })
 
         it('says so when there is no status', async () => {
@@ -107,12 +126,38 @@ describe('td status', () => {
             expect(logged(spy)).toContain('Status: 🎯 Focus')
         })
 
-        it('says there is nothing to clear on --dry-run with no status', async () => {
+        it('says no status is set on --dry-run with no status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue(null)
             const spy = captureConsole('log')
             await run('clear', '--dry-run')
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
-            expect(logged(spy)).toContain('Status: none (nothing to clear)')
+            expect(logged(spy)).toContain('Status: none set')
+        })
+    })
+
+    describe('clear --json', () => {
+        it('prints the mutation envelope after clearing', async () => {
+            const spy = captureConsole('log')
+            await runWithMutationJson('clear', '--json')
+            expect(JSON.parse(logged(spy))).toMatchObject({
+                ok: true,
+                command: 'td status clear',
+                messages: ['Status cleared.'],
+            })
+        })
+
+        it('prints a preview envelope on --dry-run and clears nothing', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Focus',
+                emoji: '🎯',
+                effects: {},
+            })
+            const spy = captureConsole('log')
+            await runWithMutationJson('clear', '--dry-run', '--json')
+            const envelope = JSON.parse(logged(spy))
+            expect(envelope).toMatchObject({ status: 'preview', command: 'td status clear' })
+            expect(envelope.messages.join('\n')).toContain('Status: 🎯 Focus')
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
         })
     })
 

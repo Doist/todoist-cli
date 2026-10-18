@@ -89,6 +89,7 @@ describe('parseDurationMs', () => {
         ['1h30m', 90 * 60_000],
         ['1d2h3m', 86_400_000 + 2 * 3_600_000 + 3 * 60_000],
         [' 2H ', 2 * 3_600_000],
+        ['1H30M', 90 * 60_000],
     ])('parses %s', (input, expected) => {
         expect(parseDurationMs(input)).toBe(expected)
     })
