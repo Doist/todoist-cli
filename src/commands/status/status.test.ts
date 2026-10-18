@@ -50,6 +50,18 @@ describe('td status', () => {
             expect(logged(spy)).toBe('🎯 Deep work (notifications paused)')
         })
 
+        it('prints the expiry when the status has one', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Focus',
+                emoji: '🎯',
+                activeUntil: new Date('2026-10-14T13:30:00.000Z'),
+                effects: {},
+            })
+            const spy = captureConsole('log')
+            await run('show')
+            expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM)')
+        })
+
         it('says so when there is no status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue(null)
             const spy = captureConsole('log')
