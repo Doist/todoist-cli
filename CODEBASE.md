@@ -232,6 +232,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`logger.ts`** — verbose levels 0–4, `initializeLogger`
 - **`dates.ts` / `duration.ts`** — date filters, `"2h30m"` parsing/formatting;
   `parseLocalDate` (strict ISO, bare = local time) and `parseDurationMs` (`30m`/`2h`/`1d`)
+  for the `status set` expiry flags
 - **`permissions.ts`** — collaborator permission parsing
 - **`help-center.ts`** — Help Center article search/fetch
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer

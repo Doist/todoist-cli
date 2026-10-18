@@ -171,20 +171,29 @@ describe('td status', () => {
         it('rejects --until together with --for before calling the API', async () => {
             await expect(
                 run('set', 'Focus', '--until', '2026-10-20T09:00:00Z', '--for', '2h'),
-            ).rejects.toThrow('Cannot use --until and --for together')
+            ).rejects.toMatchObject({
+                code: 'CONFLICTING_OPTIONS',
+                message: 'Cannot use --until and --for together',
+            })
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
         })
 
         it.each([
-            ['--until', 'next week'],
-            ['--for', 'soon'],
-            ['--for', '0m'],
-            ['--until', ''],
-            ['--for', ''],
-        ])('rejects an invalid %s %j instead of setting no expiry', async (flag, value) => {
-            await expect(run('set', 'Focus', flag, value)).rejects.toThrow(/Invalid --/)
-            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
-        })
+            ['--until', 'next week', 'INVALID_DATE'],
+            ['--for', 'soon', 'INVALID_DURATION'],
+            ['--for', '0m', 'INVALID_DURATION'],
+            ['--until', '', 'INVALID_DATE'],
+            ['--for', '', 'INVALID_DURATION'],
+        ])(
+            'rejects an invalid %s %j with %s instead of setting no expiry',
+            async (flag, value, code) => {
+                await expect(run('set', 'Focus', flag, value)).rejects.toMatchObject({
+                    code,
+                    message: expect.stringMatching(/Invalid --/),
+                })
+                expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            },
+        )
 
         it('reads a date-only --until as the start of that day', async () => {
             captureConsole('log')
@@ -306,10 +315,30 @@ describe('td status', () => {
     })
 
     describe('set without a message', () => {
+        afterEach(() => {
+            resetGlobalArgs()
+        })
+
         it('stops with usage instead of setting anything', async () => {
             captureConsole('log')
-            await expect(run('set')).rejects.toThrow()
+            captureConsole('error')
+            await expect(run('set')).rejects.toMatchObject({ code: 'commander.help' })
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+        })
+
+        it('reports MISSING_ARGUMENT under --json', async () => {
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', 'status', 'set', '--json']
+            resetGlobalArgs()
+            try {
+                captureConsole('log')
+                await expect(run('set', '--json')).rejects.toMatchObject({
+                    code: 'MISSING_ARGUMENT',
+                })
+                expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            } finally {
+                process.argv = originalArgv
+            }
         })
     })
 
@@ -365,7 +394,7 @@ describe('td status', () => {
             captureConsole('log')
             const error = await run('set', 'ok', '--emoji', '--pause-notifications').catch((e) => e)
             expect(error.code).toBe('INVALID_OPTIONS')
-            expect(error.message).toContain('--emoji needs an emoji')
+            expect(error.message).toContain('--emoji needs an emoji, got --pause-notifications')
             expect(error.hints.join(' ')).toContain('read as its value')
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
         })
@@ -448,6 +477,75 @@ describe('td status', () => {
                 message: expect.stringContaining('different status'),
             })
             expect(spy).not.toHaveBeenCalled()
+        })
+
+        it('names the status Todoist returned instead of the one sent', async () => {
+            apiMocks.writeUserStatus.mockResolvedValue({ message: 'Someone else', effects: {} })
+            captureConsole('log')
+            await expect(run('set', 'Away')).rejects.toMatchObject({
+                message: expect.stringContaining('Someone else'),
+            })
+        })
+
+        const FULL = {
+            message: 'Away',
+            emoji: '🎯',
+            activeUntil: new Date('2030-01-01T00:00:00Z'),
+            effects: { pauseNotifications: { scope: { mode: 'all' } } },
+        }
+
+        it.each(['emoji', 'activeUntil', 'effects'] as const)(
+            'set fails when the server drops the %s that was sent',
+            async (field) => {
+                const { [field]: _dropped, ...returned } = FULL
+                apiMocks.writeUserStatus.mockResolvedValue({ effects: {}, ...returned })
+                captureConsole('log')
+                await expect(
+                    run(
+                        'set',
+                        'Away',
+                        '--emoji',
+                        '🎯',
+                        '--until',
+                        '2030-01-01T00:00:00Z',
+                        '--pause-notifications',
+                    ),
+                ).rejects.toMatchObject({ code: 'INVALID_STATE' })
+            },
+        )
+
+        it.each([
+            ['floors', (ms: number) => Math.floor(ms / 1000) * 1000],
+            ['rounds', (ms: number) => Math.round(ms / 1000) * 1000],
+        ])('set accepts an expiry the server %s to whole seconds', async (_how, store) => {
+            vi.setSystemTime(new Date('2026-10-14T12:00:00.623Z'))
+            apiMocks.writeUserStatus.mockImplementation(async (sent) => ({
+                message: sent.message,
+                activeUntil: new Date(store(new Date(sent.activeUntil).getTime())),
+                effects: {},
+            }))
+            const spy = captureConsole('log')
+            await run('set', 'Away', '--for', '2h')
+            expect(logged(spy)).toContain('Status set: Away')
+        })
+
+        it('set fails when the returned expiry is an hour off, not just rounded', async () => {
+            apiMocks.writeUserStatus.mockImplementation(async (sent) => ({
+                message: sent.message,
+                activeUntil: new Date(new Date(sent.activeUntil).getTime() + 3_600_000),
+                effects: {},
+            }))
+            captureConsole('log')
+            await expect(run('set', 'Away', '--for', '2h')).rejects.toMatchObject({
+                code: 'INVALID_STATE',
+            })
+        })
+
+        it('treats an empty-string emoji from the server as no emoji', async () => {
+            apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', emoji: '', effects: {} })
+            const spy = captureConsole('log')
+            await run('set', 'Away')
+            expect(logged(spy)).toContain('Status set: Away')
         })
 
         it('succeeds, with one line each, when set and clear do what was asked', async () => {

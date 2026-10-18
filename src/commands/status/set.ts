@@ -41,7 +41,7 @@ function resolveEmoji(emoji: string | undefined): string | undefined {
     }
     if (trimmed.startsWith('-')) {
         throw new CliError('INVALID_OPTIONS', `--emoji needs an emoji, got ${trimmed}`, [
-            'A flag after --emoji was read as its value; put the emoji right after --emoji',
+            'Put the emoji right after --emoji; a flag there is read as its value',
         ])
     }
     return trimmed
@@ -86,14 +86,21 @@ function resolveExpiry(options: SetStatusOptions): Date | undefined {
     return expiry
 }
 
+// `--for` sends an expiry with milliseconds, and the server may store only whole seconds.
+const EXPIRY_TOLERANCE_MS = 1000
+
+function sameExpiry(returned: Date | null | undefined, sent: UserStatusArgs['activeUntil']) {
+    if (!returned || !sent) return !returned && !sent
+    return Math.abs(returned.getTime() - new Date(sent).getTime()) < EXPIRY_TOLERANCE_MS
+}
+
 function sameStatus(returned: UserStatus, sent: UserStatusArgs): boolean {
     return (
         returned.message === sent.message &&
-        (returned.emoji ?? undefined) === sent.emoji &&
+        (returned.emoji || undefined) === sent.emoji &&
         Boolean(returned.effects.pauseNotifications) ===
             Boolean(sent.effects?.pauseNotifications) &&
-        (returned.activeUntil?.getTime() ?? undefined) ===
-            (sent.activeUntil ? new Date(sent.activeUntil).getTime() : undefined)
+        sameExpiry(returned.activeUntil, sent.activeUntil)
     )
 }
 
