@@ -361,6 +361,15 @@ describe('td status', () => {
             expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
         })
 
+        it('names the flag that was read as the emoji', async () => {
+            captureConsole('log')
+            const error = await run('set', 'ok', '--emoji', '--pause-notifications').catch((e) => e)
+            expect(error.code).toBe('INVALID_OPTIONS')
+            expect(error.message).toContain('--emoji needs an emoji')
+            expect(error.hints.join(' ')).toContain('read as its value')
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+        })
+
         it('explains midnight only when the past expiry was a date with no time', async () => {
             captureConsole('log')
             const dateOnly = await run('set', 'ok', '--until', '2026-10-14').catch((e) => e)
