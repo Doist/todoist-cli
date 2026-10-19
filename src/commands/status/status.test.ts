@@ -31,18 +31,10 @@ async function runWithMutationJson(...args: string[]): Promise<void> {
 const logged = (spy: { mock: { calls: unknown[][] } }) =>
     spy.mock.calls.map((call) => call.join(' ')).join('\n')
 
-const NOW = new Date('2026-10-14T12:00:00.000Z')
-
 describe('td status', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.useFakeTimers()
-        vi.setSystemTime(NOW)
         apiMocks.writeUserStatus.mockResolvedValue(null)
-    })
-
-    afterEach(() => {
-        vi.useRealTimers()
     })
 
     describe('show', () => {
