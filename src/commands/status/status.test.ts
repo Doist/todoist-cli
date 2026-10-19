@@ -363,32 +363,51 @@ describe('td status', () => {
     })
 
     describe('set input guards', () => {
-        const badInputs: Array<[string, string[]]> = [
-            ['an empty message', ['']],
-            ['a blank message', ['   ']],
-            ['an 81 character message', ['x'.repeat(81)]],
-            ['81 emoji', ['🎯'.repeat(81)]],
-            ['an empty emoji', ['ok', '--emoji', '']],
-            ['a blank emoji', ['ok', '--emoji', '  ']],
-            ['an emoji that is really the next flag', ['ok', '--emoji', '--pause-notifications']],
-            ['an impossible date', ['ok', '--until', '2026-02-30']],
-            ['an impossible datetime', ['ok', '--until', '2026-02-31T10:00']],
-            ['a month 13', ['ok', '--until', '2026-13-45']],
-            ['a year only', ['ok', '--until', '2026']],
-            ['today, which is already midnight past', ['ok', '--until', '2026-10-14']],
-            ['a past datetime', ['ok', '--until', '2020-01-01T00:00:00Z']],
-            ['an expiry equal to now', ['ok', '--until', '2026-10-14T12:00:00Z']],
-            ['a duration that overflows to Infinity', ['ok', '--for', `${'9'.repeat(400)}m`]],
-            ['a duration beyond the Date range', ['ok', '--for', '99999999999999d']],
+        const badInputs: Array<[string, string[], string]> = [
+            ['an empty message', [''], 'INVALID_OPTIONS'],
+            ['a blank message', ['   '], 'INVALID_OPTIONS'],
+            ['an 81 character message', ['x'.repeat(81)], 'INVALID_OPTIONS'],
+            ['81 emoji', ['🎯'.repeat(81)], 'INVALID_OPTIONS'],
+            ['an empty emoji', ['ok', '--emoji', ''], 'INVALID_OPTIONS'],
+            ['a blank emoji', ['ok', '--emoji', '  '], 'INVALID_OPTIONS'],
+            [
+                'an emoji that is really the next flag',
+                ['ok', '--emoji', '--pause-notifications'],
+                'INVALID_OPTIONS',
+            ],
+            ['an impossible date', ['ok', '--until', '2026-02-30'], 'INVALID_DATE'],
+            ['an impossible datetime', ['ok', '--until', '2026-02-31T10:00'], 'INVALID_DATE'],
+            ['a month 13', ['ok', '--until', '2026-13-45'], 'INVALID_DATE'],
+            ['a year only', ['ok', '--until', '2026'], 'INVALID_DATE'],
+            [
+                'today, which is already midnight past',
+                ['ok', '--until', '2026-10-14'],
+                'INVALID_DATE',
+            ],
+            ['a past datetime', ['ok', '--until', '2020-01-01T00:00:00Z'], 'INVALID_DATE'],
+            ['an expiry equal to now', ['ok', '--until', '2026-10-14T12:00:00Z'], 'INVALID_DATE'],
+            [
+                'a duration that overflows to Infinity',
+                ['ok', '--for', `${'9'.repeat(400)}m`],
+                'INVALID_DURATION',
+            ],
+            [
+                'a duration beyond the Date range',
+                ['ok', '--for', '99999999999999d'],
+                'INVALID_DURATION',
+            ],
         ]
 
-        it.each(badInputs)('refuses %s, with and without --dry-run', async (_name, args) => {
-            for (const extra of [[], ['--dry-run']]) {
-                captureConsole('log')
-                await expect(run('set', ...args, ...extra)).rejects.toThrow()
-            }
-            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
-        })
+        it.each(badInputs)(
+            'refuses %s with %s, with and without --dry-run',
+            async (_name, args, code) => {
+                for (const extra of [[], ['--dry-run']]) {
+                    captureConsole('log')
+                    await expect(run('set', ...args, ...extra)).rejects.toMatchObject({ code })
+                }
+                expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            },
+        )
 
         it('names the flag that was read as the emoji', async () => {
             captureConsole('log')
