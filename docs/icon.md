@@ -2,11 +2,11 @@
 
 The icon shows in three places. The repo file and the consent screen update separately.
 
-| Where                                  | What it shows                                     | How to change it                |
-| -------------------------------------- | ------------------------------------------------- | ------------------------------- |
-| README (GitHub and npm)                | `icons/todoist-cli_512px.png`                     | Replace the file in a PR        |
-| OAuth consent screen (`td auth login`) | A copy stored on the Todoist CLI app              | Upload it with `td apps update` |
-| Sign-in result pages in the browser    | `icons/todoist-cli_512px.png`, via `CLI_ICON_URL` | Replace the file in a PR        |
+| Where                                  | What it shows                          | How to change it                |
+| -------------------------------------- | -------------------------------------- | ------------------------------- |
+| README (GitHub and npm)                | `icons/td-cli.png`                     | Replace the file in a PR        |
+| OAuth consent screen (`td auth login`) | A copy stored on the Todoist CLI app   | Upload it with `td apps update` |
+| Sign-in result pages in the browser    | `icons/td-cli.png`, via `CLI_ICON_URL` | Replace the file in a PR        |
 
 ## 1. Export the artwork
 
@@ -16,14 +16,11 @@ The source is the `Size=72, Style=Color` variant of [Service / Todoist CLI](http
 - Export a **300×300 PNG** for the consent screen, under 300 KB. The upload rejects any other size and doesn't resize.
 - Don't export SVG. The artwork uses blend modes that SVG export drops, so the tile renders pale.
 
-## 2. Replace the repo files
+## 2. Replace the repo file
 
-Overwrite both files with the same 512px PNG:
+Overwrite `icons/td-cli.png` with the 512px PNG, keeping the name. It's the README header and the sign-in result pages.
 
-- `icons/todoist-cli_512px.png`: the README header and the sign-in result pages.
-- `icons/td-cli.png`: the previous name. The README published with 5.5.0 and earlier points at it.
-
-Never rename or delete either file. The READMEs in older npm releases still point at the old path.
+Never rename or delete it. npm shows each release's README with images loaded from this repo, so a renamed file breaks the image on every older release page. (The READMEs of 5.5.1 to 5.5.3 used `icons/todoist-cli_512px.png`, since removed.)
 
 ## 3. Update the consent screen
 
