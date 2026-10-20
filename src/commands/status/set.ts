@@ -103,12 +103,12 @@ function sameEffect(returned: UserStatus['effects']['pauseNotifications'], sent:
     return returned.scope?.mode === sent.scope?.mode
 }
 
+const ALL_SCOPE = { scope: { mode: 'all' } } as const
+
 function buildEffects(options: SetStatusOptions): UserStatusArgs['effects'] {
     const effects = pickDefined({
-        pauseNotifications: options.pauseNotifications
-            ? ({ scope: { mode: 'all' } } as const)
-            : undefined,
-        pauseActivity: options.pauseActivity ? ({ scope: { mode: 'all' } } as const) : undefined,
+        pauseNotifications: options.pauseNotifications ? ALL_SCOPE : undefined,
+        pauseActivity: options.pauseActivity ? ALL_SCOPE : undefined,
     })
     return Object.keys(effects).length > 0 ? effects : undefined
 }

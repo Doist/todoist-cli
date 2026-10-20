@@ -59,16 +59,6 @@ describe('td status', () => {
             expect(logged(spy)).toBe('🎯 Deep work (notifications paused)')
         })
 
-        it('prints the activity pause', async () => {
-            apiMocks.fetchUserStatus.mockResolvedValue({
-                message: 'Away',
-                effects: { pauseActivity: { scope: { mode: 'all' } } },
-            })
-            const spy = captureConsole('log')
-            await run()
-            expect(logged(spy)).toBe('Away (activity paused)')
-        })
-
         it('prints both pauses when both are set', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({
                 message: 'Away',
@@ -613,14 +603,6 @@ describe('td status', () => {
             expect(spy).not.toHaveBeenCalled()
         })
 
-        it('set fails when the server drops the activity pause that was sent', async () => {
-            apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', effects: {} })
-            captureConsole('log')
-            await expect(run('set', 'Away', '--pause-activity')).rejects.toMatchObject({
-                code: 'INVALID_STATE',
-            })
-        })
-
         it('names the status Todoist returned instead of the one sent', async () => {
             apiMocks.writeUserStatus.mockResolvedValue({ message: 'Someone else', effects: {} })
             captureConsole('log')
@@ -661,14 +643,20 @@ describe('td status', () => {
             message: 'Away',
             emoji: '🎯',
             activeUntil: new Date('2030-01-01T00:00:00Z'),
-            effects: { pauseNotifications: { scope: { mode: 'all' } } },
+            effects: {
+                pauseNotifications: { scope: { mode: 'all' } },
+                pauseActivity: { scope: { mode: 'all' } },
+            },
         }
 
-        it.each(['emoji', 'activeUntil', 'effects'] as const)(
+        it.each(['emoji', 'activeUntil', 'pauseNotifications', 'pauseActivity'] as const)(
             'set fails when the server drops the %s that was sent',
             async (field) => {
-                const { [field]: _dropped, ...returned } = FULL
-                apiMocks.writeUserStatus.mockResolvedValue({ effects: {}, ...returned })
+                const { effects } = FULL
+                const kept = { ...FULL, effects: { ...effects } }
+                if (field === 'emoji' || field === 'activeUntil') delete kept[field]
+                else delete kept.effects[field]
+                apiMocks.writeUserStatus.mockResolvedValue(kept)
                 captureConsole('log')
                 await expect(
                     run(
@@ -679,6 +667,7 @@ describe('td status', () => {
                         '--until',
                         '2030-01-01T00:00:00Z',
                         '--pause-notifications',
+                        '--pause-activity',
                     ),
                 ).rejects.toMatchObject({ code: 'INVALID_STATE' })
             },
