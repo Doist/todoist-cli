@@ -1,3 +1,9 @@
+## [5.5.5](https://github.com/Doist/todoist-cli/compare/v5.5.4...v5.5.5) (2026-10-20)
+
+### Bug Fixes
+
+* show the current icon on the auth result pages ([#601](https://github.com/Doist/todoist-cli/issues/601)) ([f434fa8](https://github.com/Doist/todoist-cli/commit/f434fa8dde640d21c99bff865f0d11269c68863f)), closes [#600](https://github.com/Doist/todoist-cli/issues/600) [#595](https://github.com/Doist/todoist-cli/issues/595)
+
 ## [5.5.4](https://github.com/Doist/todoist-cli/compare/v5.5.3...v5.5.4) (2026-10-20)
 
 ### Bug Fixes
