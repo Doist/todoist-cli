@@ -19,6 +19,7 @@ type SetStatusOptions = ViewOptions &
         until?: string
         for?: string
         pauseNotifications?: boolean
+        pauseActivity?: boolean
     }
 
 function resolveMessage(message: string): string {
@@ -102,6 +103,16 @@ function sameEffect(returned: UserStatus['effects']['pauseNotifications'], sent:
     return returned.scope?.mode === sent.scope?.mode
 }
 
+function buildEffects(options: SetStatusOptions): UserStatusArgs['effects'] {
+    const effects = pickDefined({
+        pauseNotifications: options.pauseNotifications
+            ? ({ scope: { mode: 'all' } } as const)
+            : undefined,
+        pauseActivity: options.pauseActivity ? ({ scope: { mode: 'all' } } as const) : undefined,
+    })
+    return Object.keys(effects).length > 0 ? effects : undefined
+}
+
 function sameStatus(returned: UserStatus, sent: UserStatusArgs): boolean {
     return (
         returned.message === sent.message &&
@@ -129,9 +140,7 @@ export async function setStatus(
         ...pickDefined({
             emoji,
             activeUntil,
-            effects: options.pauseNotifications
-                ? { pauseNotifications: { scope: { mode: 'all' } } }
-                : undefined,
+            effects: buildEffects(options),
         }),
     }
 
@@ -145,6 +154,7 @@ export async function setStatus(
             Emoji: emoji,
             Until: activeUntil ? formatDateTime(activeUntil) : undefined,
             'Pause notifications': options.pauseNotifications ? 'yes' : undefined,
+            'Pause activity': options.pauseActivity ? 'yes' : undefined,
         })
         return
     }

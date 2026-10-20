@@ -59,6 +59,29 @@ describe('td status', () => {
             expect(logged(spy)).toBe('🎯 Deep work (notifications paused)')
         })
 
+        it('prints the activity pause', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Away',
+                effects: { pauseActivity: { scope: { mode: 'all' } } },
+            })
+            const spy = captureConsole('log')
+            await run()
+            expect(logged(spy)).toBe('Away (activity paused)')
+        })
+
+        it('prints both pauses when both are set', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Away',
+                effects: {
+                    pauseNotifications: { scope: { mode: 'all' } },
+                    pauseActivity: { scope: { mode: 'all' } },
+                },
+            })
+            const spy = captureConsole('log')
+            await run()
+            expect(logged(spy)).toBe('Away (notifications paused, activity paused)')
+        })
+
         it('prints the expiry when the status has one', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({
                 message: 'Focus',
@@ -166,6 +189,59 @@ describe('td status', () => {
                 activeUntil: new Date('2026-10-20T09:00:00Z'),
                 effects: { pauseNotifications: { scope: { mode: 'all' } } },
             })
+        })
+
+        it('sends only the activity pause for --pause-activity', async () => {
+            captureConsole('log')
+            await run('set', 'Away', '--pause-activity')
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                message: 'Away',
+                effects: { pauseActivity: { scope: { mode: 'all' } } },
+            })
+        })
+
+        it('sends both effects when both pauses are given', async () => {
+            captureConsole('log')
+            await run('set', 'Away', '--pause-notifications', '--pause-activity')
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                message: 'Away',
+                effects: {
+                    pauseNotifications: { scope: { mode: 'all' } },
+                    pauseActivity: { scope: { mode: 'all' } },
+                },
+            })
+        })
+
+        it('prints the activity pause in the text and JSON output', async () => {
+            const spy = captureConsole('log')
+            await run('set', 'Away', '--pause-activity')
+            expect(logged(spy)).toBe('Status set: Away (activity paused)')
+            spy.mockClear()
+            await run('set', 'Away', '--pause-activity', '--json')
+            expect(JSON.parse(logged(spy))).toEqual({
+                status: {
+                    message: 'Away',
+                    effects: { pauseActivity: { scope: { mode: 'all' } } },
+                },
+            })
+        })
+
+        it('shows the activity pause on --dry-run without calling the API', async () => {
+            const spy = captureConsole('log')
+            await run('set', 'Away', '--pause-activity', '--dry-run')
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            expect(logged(spy)).toContain('Pause activity: yes')
+        })
+
+        it('describes --pause-activity as protecting Karma and streaks, apart from notifications', () => {
+            const program = createTestProgram(registerStatusCommand)
+            const set = program.commands
+                .find((c) => c.name() === 'status')
+                ?.commands.find((c) => c.name() === 'set')
+            const help = set?.helpInformation() ?? ''
+            expect(help).toContain('--pause-activity')
+            expect(help).toContain('Karma')
+            expect(help).toContain('streaks')
         })
 
         it('turns --for into an expiry that long from now', async () => {
@@ -523,6 +599,10 @@ describe('td status', () => {
                 'pause',
                 { message: 'Away', effects: { pauseNotifications: { scope: { mode: 'all' } } } },
             ],
+            [
+                'activity pause',
+                { message: 'Away', effects: { pauseActivity: { scope: { mode: 'all' } } } },
+            ],
         ])('set fails when the returned %s is not the one sent', async (_field, returned) => {
             apiMocks.writeUserStatus.mockResolvedValue(returned)
             const spy = captureConsole('log')
@@ -531,6 +611,14 @@ describe('td status', () => {
                 message: expect.stringContaining('different status'),
             })
             expect(spy).not.toHaveBeenCalled()
+        })
+
+        it('set fails when the server drops the activity pause that was sent', async () => {
+            apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', effects: {} })
+            captureConsole('log')
+            await expect(run('set', 'Away', '--pause-activity')).rejects.toMatchObject({
+                code: 'INVALID_STATE',
+            })
         })
 
         it('names the status Todoist returned instead of the one sent', async () => {
