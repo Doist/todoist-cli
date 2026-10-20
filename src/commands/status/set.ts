@@ -94,12 +94,20 @@ function sameExpiry(returned: Date | null | undefined, sent: UserStatusArgs['act
     return Math.abs(returned.getTime() - new Date(sent).getTime()) < EXPIRY_TOLERANCE_MS
 }
 
+type EffectArgs = NonNullable<UserStatusArgs['effects']>['pauseNotifications']
+
+// A present effect is compared by its scope too, so a different scope reads as a change.
+function sameEffect(returned: UserStatus['effects']['pauseNotifications'], sent: EffectArgs) {
+    if (!returned || !sent) return !returned && !sent
+    return returned.scope?.mode === sent.scope?.mode
+}
+
 function sameStatus(returned: UserStatus, sent: UserStatusArgs): boolean {
     return (
         returned.message === sent.message &&
         (returned.emoji || undefined) === sent.emoji &&
-        Boolean(returned.effects.pauseNotifications) ===
-            Boolean(sent.effects?.pauseNotifications) &&
+        sameEffect(returned.effects.pauseNotifications, sent.effects?.pauseNotifications) &&
+        sameEffect(returned.effects.pauseActivity, sent.effects?.pauseActivity) &&
         sameExpiry(returned.activeUntil, sent.activeUntil)
     )
 }
@@ -128,6 +136,10 @@ export async function setStatus(
     }
 
     if (options.dryRun) {
+        if (options.json) {
+            console.log(formatJson({ status: 'preview', command: 'td status set', args }))
+            return
+        }
         printDryRun('set status', {
             Message: text,
             Emoji: emoji,

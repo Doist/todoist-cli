@@ -20,6 +20,7 @@ Examples:
         .command('view', { isDefault: true })
         .description('Show your current status')
         .option('--json', 'Output as JSON')
+        .option('--ndjson', 'Output as newline-delimited JSON')
         .addHelpText(
             'after',
             `

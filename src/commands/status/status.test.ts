@@ -123,6 +123,15 @@ describe('td status', () => {
             expect(JSON.parse(logged(spy))).toEqual({ status: null })
         })
 
+        it('prints one line of NDJSON with --ndjson', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({ message: 'Away', effects: {} })
+            const spy = captureConsole('log')
+            await run('view', '--ndjson')
+            const out = logged(spy)
+            expect(out.split('\n')).toHaveLength(1)
+            expect(JSON.parse(out)).toEqual({ status: { message: 'Away', effects: {} } })
+        })
+
         it('reaches view through the default subcommand with --json', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({ message: 'Away', effects: {} })
             const spy = captureConsole('log')
@@ -237,6 +246,32 @@ describe('td status', () => {
             expect(out).toContain('Emoji: 🎯')
             expect(out).toContain('Until: Oct 20, 2026, 9:00 AM')
             expect(out).toContain('Pause notifications: yes')
+        })
+
+        it('prints a preview envelope on --dry-run --json and sends nothing', async () => {
+            const spy = captureConsole('log')
+            await run(
+                'set',
+                'Focus',
+                '--emoji',
+                '🎯',
+                '--until',
+                '2026-10-20T09:00:00Z',
+                '--pause-notifications',
+                '--dry-run',
+                '--json',
+            )
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            expect(JSON.parse(logged(spy))).toEqual({
+                status: 'preview',
+                command: 'td status set',
+                args: {
+                    message: 'Focus',
+                    emoji: '🎯',
+                    activeUntil: '2026-10-20T09:00:00.000Z',
+                    effects: { pauseNotifications: { scope: { mode: 'all' } } },
+                },
+            })
         })
 
         it('prints the stored status in JSON', async () => {
@@ -503,6 +538,34 @@ describe('td status', () => {
             captureConsole('log')
             await expect(run('set', 'Away')).rejects.toMatchObject({
                 message: expect.stringContaining('Someone else'),
+            })
+        })
+
+        it.each([
+            ['an unrequested pauseActivity', { pauseActivity: { scope: { mode: 'all' } } }, []],
+            [
+                'pauseActivity added to the requested pause',
+                {
+                    pauseNotifications: { scope: { mode: 'all' } },
+                    pauseActivity: { scope: { mode: 'all' } },
+                },
+                ['--pause-notifications'],
+            ],
+            [
+                'a different notification scope',
+                { pauseNotifications: { scope: { mode: 'mentions' } } },
+                ['--pause-notifications'],
+            ],
+            [
+                'a notification pause with no scope',
+                { pauseNotifications: {} },
+                ['--pause-notifications'],
+            ],
+        ])('set fails when the server returns %s', async (_name, effects, flags) => {
+            apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', effects })
+            captureConsole('log')
+            await expect(run('set', 'Away', ...flags)).rejects.toMatchObject({
+                code: 'INVALID_STATE',
             })
         })
 
