@@ -3,7 +3,7 @@ import type { ViewOptions } from '../../lib/options.js'
 import { formatJson } from '../../lib/output.js'
 import { formatStatus } from '../../lib/status.js'
 
-export async function showStatus(options: ViewOptions): Promise<void> {
+export async function viewStatus(options: ViewOptions): Promise<void> {
     const status = await fetchUserStatus()
 
     if (options.json) {

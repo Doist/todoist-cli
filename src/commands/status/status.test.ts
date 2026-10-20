@@ -37,7 +37,7 @@ describe('td status', () => {
         apiMocks.writeUserStatus.mockResolvedValue(null)
     })
 
-    describe('show', () => {
+    describe('view', () => {
         it('is the default subcommand and prints the status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({
                 message: 'Deep work',
@@ -57,7 +57,7 @@ describe('td status', () => {
                 effects: {},
             })
             const spy = captureConsole('log')
-            await run('show')
+            await run('view')
             expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM)')
         })
 
@@ -69,25 +69,25 @@ describe('td status', () => {
                 effects: { pauseNotifications: { scope: { mode: 'all' } } },
             })
             const spy = captureConsole('log')
-            await run('show')
+            await run('view')
             expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM, notifications paused)')
         })
 
         it('says so when there is no status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue(null)
             const spy = captureConsole('log')
-            await run('show')
+            await run('view')
             expect(logged(spy)).toBe('No status set.')
         })
 
         it('prints null in JSON when there is no status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue(null)
             const spy = captureConsole('log')
-            await run('show', '--json')
+            await run('view', '--json')
             expect(JSON.parse(logged(spy))).toEqual({ status: null })
         })
 
-        it('reaches show through the default subcommand with --json', async () => {
+        it('reaches view through the default subcommand with --json', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({ message: 'Away', effects: {} })
             const spy = captureConsole('log')
             await run('--json')

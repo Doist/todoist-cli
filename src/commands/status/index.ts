@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { clearStatus } from './clear.js'
-import { showStatus } from './show.js'
+import { viewStatus } from './view.js'
 
 export function registerStatusCommand(program: Command): void {
     const status = program
@@ -15,7 +15,7 @@ Examples:
         )
 
     status
-        .command('show', { isDefault: true })
+        .command('view', { isDefault: true })
         .description('Show your current status')
         .option('--json', 'Output as JSON')
         .addHelpText(
@@ -25,7 +25,7 @@ Examples:
   td status
   td status --json`,
         )
-        .action(showStatus)
+        .action(viewStatus)
 
     status
         .command('clear')
