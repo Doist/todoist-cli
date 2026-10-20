@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icons/todoist-cli_512px.png" alt="Todoist CLI" width="150" height="150" />
+  <img src="icons/td-cli.png" alt="Todoist CLI" width="150" height="150" />
 </p>
 
 # Todoist CLI
