@@ -10,5 +10,8 @@ export function formatStatus(status: UserStatus): string {
     if (status.effects.pauseNotifications) {
         parts.push('notifications paused')
     }
+    if (status.effects.pauseActivity) {
+        parts.push('activity paused')
+    }
     return parts.length > 1 ? `${parts[0]} (${parts.slice(1).join(', ')})` : parts[0]
 }

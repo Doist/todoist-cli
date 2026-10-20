@@ -73,6 +73,32 @@ describe('td status', () => {
             expect(logged(spy)).toBe('🎯 Focus (until Oct 14, 2026, 1:30 PM, notifications paused)')
         })
 
+        it('shows a status whose only effect is pause activity', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Away',
+                effects: { pauseActivity: { scope: { mode: 'all' } } },
+            })
+            const spy = captureConsole('log')
+            await run('view')
+            expect(logged(spy)).toBe('Away (activity paused)')
+        })
+
+        it('lists both pauses after the expiry', async () => {
+            apiMocks.fetchUserStatus.mockResolvedValue({
+                message: 'Focus',
+                activeUntil: new Date('2026-10-14T13:30:00.000Z'),
+                effects: {
+                    pauseNotifications: { scope: { mode: 'all' } },
+                    pauseActivity: { scope: { mode: 'all' } },
+                },
+            })
+            const spy = captureConsole('log')
+            await run('view')
+            expect(logged(spy)).toBe(
+                'Focus (until Oct 14, 2026, 1:30 PM, notifications paused, activity paused)',
+            )
+        })
+
         it('says so when there is no status', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue(null)
             const spy = captureConsole('log')
