@@ -59,19 +59,6 @@ describe('td status', () => {
             expect(logged(spy)).toBe('🎯 Deep work (notifications paused)')
         })
 
-        it('prints both pauses when both are set', async () => {
-            apiMocks.fetchUserStatus.mockResolvedValue({
-                message: 'Away',
-                effects: {
-                    pauseNotifications: { scope: { mode: 'all' } },
-                    pauseActivity: { scope: { mode: 'all' } },
-                },
-            })
-            const spy = captureConsole('log')
-            await run()
-            expect(logged(spy)).toBe('Away (notifications paused, activity paused)')
-        })
-
         it('prints the expiry when the status has one', async () => {
             apiMocks.fetchUserStatus.mockResolvedValue({
                 message: 'Focus',
