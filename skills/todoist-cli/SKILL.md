@@ -427,7 +427,7 @@ Two rules matter when calling one:
 An extension is not reviewed or endorsed by Todoist, and runs with the user's own permissions.
 
 ### Settings, Stats, And Utilities
-`td status` shows, sets or clears your shared status (apps that read it, such as Comms, show it too). The message is 1 to 80 characters. `--until` takes YYYY-MM-DD, YYYY-MM-DDTHH:MM (local time) or a full ISO 8601 timestamp; `--for` takes 30m, 2h, 1d or 1h30m, and the two conflict. `--pause-notifications` is stored on the status but only takes effect in apps that read it (Comms today, not Todoist yet). `status set` replaces any existing status.
+`td status` shows, sets or clears your shared status (apps that read it, such as Comms, show it too). The message is 1 to 80 characters. `--until` takes YYYY-MM-DD, YYYY-MM-DDTHH:MM (local time) or a full ISO 8601 timestamp; `--for` takes 30m, 2h, 1d or 1h30m, and the two conflict. `--pause-notifications` is stored on the status but only takes effect in apps that read it (Comms today, not Todoist yet). `status set` replaces any existing status, and `status set --dry-run --json` prints a preview without setting anything.
 ```bash
 td stats
 td stats goals --daily 10 --weekly 50
@@ -442,6 +442,7 @@ td settings themes
 
 td status
 td status --json
+td status --ndjson
 td status set "Deep work" --emoji 🎯 --for 2h --pause-notifications
 td status set "On holiday" --emoji 🏝️ --until 2026-10-20T09:00
 td status set "Away" --for 1d --dry-run
