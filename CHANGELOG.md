@@ -1,3 +1,9 @@
+## [5.6.0](https://github.com/Doist/todoist-cli/compare/v5.5.6...v5.6.0) (2026-10-21)
+
+### Features
+
+* **status:** add td status to show and clear the shared user status ([#602](https://github.com/Doist/todoist-cli/issues/602)) ([c2ddd2a](https://github.com/Doist/todoist-cli/commit/c2ddd2aa2672eaf848dc9a64467e012e847dcaae)), closes [Doist/todoist-sdk-typescript#703](https://github.com/Doist/todoist-sdk-typescript/issues/703) [Doist/comms-cli#77](https://github.com/Doist/comms-cli/issues/77) [#603](https://github.com/Doist/todoist-cli/issues/603)
+
 ## [5.5.6](https://github.com/Doist/todoist-cli/compare/v5.5.5...v5.5.6) (2026-10-21)
 
 ### Bug Fixes
