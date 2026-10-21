@@ -1,6 +1,6 @@
 import { fetchUserStatus } from '../../lib/api/user-status.js'
 import type { ViewOptions } from '../../lib/options.js'
-import { formatJson } from '../../lib/output.js'
+import { formatJson, formatNdjson } from '../../lib/output.js'
 import { formatStatus } from '../../lib/status.js'
 
 export async function viewStatus(options: ViewOptions): Promise<void> {
@@ -8,6 +8,10 @@ export async function viewStatus(options: ViewOptions): Promise<void> {
 
     if (options.json) {
         console.log(formatJson({ status }))
+        return
+    }
+    if (options.ndjson) {
+        console.log(formatNdjson([{ status }]))
         return
     }
 

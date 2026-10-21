@@ -142,7 +142,7 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>, str
         async () => (await import('./commands/reminder/index.js')).registerReminderCommand,
     ],
     status: [
-        'Show or clear your status',
+        'Show, set or clear your status',
         async () => (await import('./commands/status/index.js')).registerStatusCommand,
     ],
     settings: [
