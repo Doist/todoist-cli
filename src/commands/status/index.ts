@@ -43,6 +43,10 @@ Examples:
             '--pause-notifications',
             'Hold back notifications while the status is active. Only apps that read the status honour it (Comms today, not Todoist yet)',
         )
+        .option(
+            '--pause-activity',
+            'Protect your Karma and streaks while the status is active, as Vacation Mode does. Independent of --pause-notifications',
+        )
         .option('--dry-run', 'Show what would be set without setting it')
         .option('--json', 'Output as JSON')
         .addHelpText(
@@ -50,7 +54,8 @@ Examples:
             `
 The message is 1 to 80 characters. The status is shared with your Todoist account, so other
 apps that read it show it too. --pause-notifications is stored on the status but only affects apps that read
-it; Todoist does not hold back its own notifications yet.
+it; Todoist does not hold back its own notifications yet. --pause-activity is separate: it stops
+your Karma changing and protects your streaks, and does not silence notifications.
 
 Examples:
   td status set "On holiday" --emoji 🏝️ --until 2026-10-20T09:00

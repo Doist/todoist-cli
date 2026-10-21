@@ -168,6 +168,59 @@ describe('td status', () => {
             })
         })
 
+        it('sends only the activity pause for --pause-activity', async () => {
+            captureConsole('log')
+            await run('set', 'Away', '--pause-activity')
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                message: 'Away',
+                effects: { pauseActivity: { scope: { mode: 'all' } } },
+            })
+        })
+
+        it('sends both effects when both pauses are given', async () => {
+            captureConsole('log')
+            await run('set', 'Away', '--pause-notifications', '--pause-activity')
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                message: 'Away',
+                effects: {
+                    pauseNotifications: { scope: { mode: 'all' } },
+                    pauseActivity: { scope: { mode: 'all' } },
+                },
+            })
+        })
+
+        it('prints the activity pause in the text and JSON output', async () => {
+            const spy = captureConsole('log')
+            await run('set', 'Away', '--pause-activity')
+            expect(logged(spy)).toBe('Status set: Away (activity paused)')
+            spy.mockClear()
+            await run('set', 'Away', '--pause-activity', '--json')
+            expect(JSON.parse(logged(spy))).toEqual({
+                status: {
+                    message: 'Away',
+                    effects: { pauseActivity: { scope: { mode: 'all' } } },
+                },
+            })
+        })
+
+        it('shows the activity pause on --dry-run without calling the API', async () => {
+            const spy = captureConsole('log')
+            await run('set', 'Away', '--pause-activity', '--dry-run')
+            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+            expect(logged(spy)).toContain('Pause activity: yes')
+        })
+
+        it('describes --pause-activity as protecting Karma and streaks, apart from notifications', () => {
+            const program = createTestProgram(registerStatusCommand)
+            const set = program.commands
+                .find((c) => c.name() === 'status')
+                ?.commands.find((c) => c.name() === 'set')
+            const help = set?.helpInformation() ?? ''
+            expect(help).toContain('--pause-activity')
+            expect(help).toContain('Karma')
+            expect(help).toContain('streaks')
+        })
+
         it('turns --for into an expiry that long from now', async () => {
             captureConsole('log')
             await run('set', 'Focus', '--for', '1h30m')
@@ -523,6 +576,10 @@ describe('td status', () => {
                 'pause',
                 { message: 'Away', effects: { pauseNotifications: { scope: { mode: 'all' } } } },
             ],
+            [
+                'activity pause',
+                { message: 'Away', effects: { pauseActivity: { scope: { mode: 'all' } } } },
+            ],
         ])('set fails when the returned %s is not the one sent', async (_field, returned) => {
             apiMocks.writeUserStatus.mockResolvedValue(returned)
             const spy = captureConsole('log')
@@ -573,14 +630,20 @@ describe('td status', () => {
             message: 'Away',
             emoji: '🎯',
             activeUntil: new Date('2030-01-01T00:00:00Z'),
-            effects: { pauseNotifications: { scope: { mode: 'all' } } },
+            effects: {
+                pauseNotifications: { scope: { mode: 'all' } },
+                pauseActivity: { scope: { mode: 'all' } },
+            },
         }
 
-        it.each(['emoji', 'activeUntil', 'effects'] as const)(
+        it.each(['emoji', 'activeUntil', 'pauseNotifications', 'pauseActivity'] as const)(
             'set fails when the server drops the %s that was sent',
             async (field) => {
-                const { [field]: _dropped, ...returned } = FULL
-                apiMocks.writeUserStatus.mockResolvedValue({ effects: {}, ...returned })
+                const { effects } = FULL
+                const kept = { ...FULL, effects: { ...effects } }
+                if (field === 'emoji' || field === 'activeUntil') delete kept[field]
+                else delete kept.effects[field]
+                apiMocks.writeUserStatus.mockResolvedValue(kept)
                 captureConsole('log')
                 await expect(
                     run(
@@ -591,6 +654,7 @@ describe('td status', () => {
                         '--until',
                         '2030-01-01T00:00:00Z',
                         '--pause-notifications',
+                        '--pause-activity',
                     ),
                 ).rejects.toMatchObject({ code: 'INVALID_STATE' })
             },
