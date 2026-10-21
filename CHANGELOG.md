@@ -1,3 +1,9 @@
+## [5.7.0](https://github.com/Doist/todoist-cli/compare/v5.6.0...v5.7.0) (2026-10-21)
+
+### Features
+
+* **status:** add td status set with emoji, expiry and pause-notifications ([#603](https://github.com/Doist/todoist-cli/issues/603)) ([e949b15](https://github.com/Doist/todoist-cli/commit/e949b1559e1d8d9d14e5479d098d85e239415b73)), closes [#602](https://github.com/Doist/todoist-cli/issues/602) [#602](https://github.com/Doist/todoist-cli/issues/602) [Doist/comms-cli#77](https://github.com/Doist/comms-cli/issues/77) [Doist/todoist-sdk-typescript#703](https://github.com/Doist/todoist-sdk-typescript/issues/703)
+
 ## [5.6.0](https://github.com/Doist/todoist-cli/compare/v5.5.6...v5.6.0) (2026-10-21)
 
 ### Features
