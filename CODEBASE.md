@@ -22,7 +22,7 @@ eslint/prettier) · semantic-release on merge to `main`.
 ├─ skills/todoist-cli/    # Generated SKILL.md (from src/lib/skills/content.ts)
 ├─ .github/workflows/     # test.yml, lint.yml, release.yml, check-skill-sync.yml,
 │                         # check-semantic-pull-request.yml, update-todoist-sdk.yml,
-│                         # issue-automation.yml, request-reviews.yml
+│                         # issue-automation.yml
 ├─ AGENTS.md              # Prescriptive rules (build cmds, skill-sync, JSON flag)
 ├─ CODEBASE.md            # This file — descriptive map
 ├─ CLAUDE.md              # One-liner forward to AGENTS.md

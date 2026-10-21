@@ -1,6 +1,6 @@
 {
   "name": "@doist/todoist-cli",
-  "version": "5.5.3",
+  "version": "5.5.6",
   "description": "TypeScript CLI for Todoist",
   "type": "module",
   "main": "dist/index.js",
@@ -53,17 +53,17 @@
   ],
   "dependencies": {
     "@doist/cli-core": "1.7.0",
-    "@doist/todoist-sdk": "15.5.0",
+    "@doist/todoist-sdk": "15.7.0",
     "@napi-rs/keyring": "2.1.1",
     "@pnpm/tabtab": "0.5.4",
     "chalk": "6.0.1",
     "commander": "15.0.0",
     "date-fns": "4.4.0",
-    "marked": "18.1.0",
+    "marked": "18.1.1",
     "marked-terminal-renderer": "2.2.0",
     "oauth4webapi": "3.8.8",
     "open": "11.0.4",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@semantic-release/changelog": "7.0.0",
@@ -75,6 +75,6 @@
     "oxlint": "1.86.0",
     "semantic-release": "25.0.9",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   }
 }

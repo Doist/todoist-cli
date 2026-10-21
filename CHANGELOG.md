@@ -1,3 +1,22 @@
+## [5.5.6](https://github.com/Doist/todoist-cli/compare/v5.5.5...v5.5.6) (2026-10-21)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-sdk to v15.7.0 ([#611](https://github.com/Doist/todoist-cli/issues/611)) ([70766ac](https://github.com/Doist/todoist-cli/commit/70766acb13a0f08df0889c5ee8db7fb73c0434ce))
+
+## [5.5.5](https://github.com/Doist/todoist-cli/compare/v5.5.4...v5.5.5) (2026-10-20)
+
+### Bug Fixes
+
+* show the current icon on the auth result pages ([#601](https://github.com/Doist/todoist-cli/issues/601)) ([f434fa8](https://github.com/Doist/todoist-cli/commit/f434fa8dde640d21c99bff865f0d11269c68863f)), closes [#600](https://github.com/Doist/todoist-cli/issues/600) [#595](https://github.com/Doist/todoist-cli/issues/595)
+
+## [5.5.4](https://github.com/Doist/todoist-cli/compare/v5.5.3...v5.5.4) (2026-10-20)
+
+### Bug Fixes
+
+* **deps:** update dependency marked to v18.1.1 ([#607](https://github.com/Doist/todoist-cli/issues/607)) ([fc938e5](https://github.com/Doist/todoist-cli/commit/fc938e59f397cf13b1f27d34edbf22b2cced6d00))
+* **deps:** update dependency zod to v4.6.7 ([#608](https://github.com/Doist/todoist-cli/issues/608)) ([cd859f6](https://github.com/Doist/todoist-cli/commit/cd859f6b7f95f3b60b05b36a5e6c0bf47092a3fb))
+
 ## [5.5.3](https://github.com/Doist/todoist-cli/compare/v5.5.2...v5.5.3) (2026-10-19)
 
 ### Bug Fixes
