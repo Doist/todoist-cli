@@ -29,6 +29,7 @@ const MUTATIONS_WITHOUT_JSON = new Set([
     'settings update',
     'stats goals',
     'stats vacation',
+    'status clear',
     'task complete',
     'task delete',
     'task move',

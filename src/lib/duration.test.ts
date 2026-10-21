@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, parseDuration } from './duration.js'
+import { formatDuration, parseDurationMs, parseDuration } from './duration.js'
 
 describe('parseDuration', () => {
     const validCases: [string, number][] = [
@@ -79,4 +79,25 @@ describe('formatDuration', () => {
         expect(parseDuration(formatDuration(60, 'minute'))).toBe(60)
         expect(parseDuration(formatDuration(105, 'minute'))).toBe(105)
     })
+})
+
+describe('parseDurationMs', () => {
+    it.each([
+        ['30m', 30 * 60_000],
+        ['2h', 2 * 3_600_000],
+        ['1d', 86_400_000],
+        ['1h30m', 90 * 60_000],
+        ['1d2h3m', 86_400_000 + 2 * 3_600_000 + 3 * 60_000],
+        [' 2H ', 2 * 3_600_000],
+        ['1H30M', 90 * 60_000],
+    ])('parses %s', (input, expected) => {
+        expect(parseDurationMs(input)).toBe(expected)
+    })
+
+    it.each(['', 'soon', '2', '2x', '-1h', '1.5h', '0m', '0h0m', '30m1h'])(
+        'rejects %j',
+        (input) => {
+            expect(parseDurationMs(input)).toBeNull()
+        },
+    )
 })
