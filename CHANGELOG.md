@@ -1,3 +1,9 @@
+## [5.8.0](https://github.com/Doist/todoist-cli/compare/v5.7.0...v5.8.0) (2026-10-21)
+
+### Features
+
+* **status:** add --pause-activity to status set ([#609](https://github.com/Doist/todoist-cli/issues/609)) ([96ff7c9](https://github.com/Doist/todoist-cli/commit/96ff7c920114ed89aea72932441d798ef969cb07)), closes [Doist/Todoist#30700](https://github.com/Doist/Todoist/issues/30700) [Doist/Todoist#30700](https://github.com/Doist/Todoist/issues/30700) [Doist/Todoist#30700](https://github.com/Doist/Todoist/issues/30700) [#603](https://github.com/Doist/todoist-cli/issues/603)
+
 ## [5.7.0](https://github.com/Doist/todoist-cli/compare/v5.6.0...v5.7.0) (2026-10-21)
 
 ### Features
