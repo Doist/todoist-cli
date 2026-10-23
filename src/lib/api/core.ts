@@ -124,6 +124,8 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         addFolder: { text: 'Creating folder...', color: 'green' },
         updateFolder: { text: 'Updating folder...', color: 'yellow' },
         deleteFolder: { text: 'Deleting folder...', color: 'yellow' },
+        // Filters
+        deleteFilter: { text: 'Deleting filter...', color: 'yellow' },
     }
 
 function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {

@@ -210,6 +210,8 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         addFolder: vi.fn(),
         updateFolder: vi.fn(),
         deleteFolder: vi.fn().mockResolvedValue(true),
+        // Filters
+        deleteFilter: vi.fn().mockResolvedValue(true),
         ...overrides,
     } as unknown as MockApi
 }

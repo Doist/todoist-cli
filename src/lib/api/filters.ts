@@ -84,7 +84,5 @@ export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<
 
 export async function deleteFilter(id: string): Promise<void> {
     const api = await getApi()
-    await api.sync({
-        commands: [createCommand('filter_delete', { id })],
-    })
+    await api.deleteFilter(id)
 }
