@@ -41,7 +41,7 @@ Examples:
         .option('--for <duration>', 'How long the status lasts, e.g. 30m, 2h, 1d, 1h30m')
         .option(
             '--pause-notifications',
-            'Hold back notifications while the status is active. Only apps that read the status honour it (Comms today, not Todoist yet)',
+            'Hold back notifications while the status is active. Only apps that read the status honour it (Comms, and Todoist push and email; in the Todoist Android app only the morning and evening pushes)',
         )
         .option(
             '--pause-activity',
@@ -54,7 +54,7 @@ Examples:
             `
 The message is 1 to 80 characters. The status is shared with your Todoist account, so other
 apps that read it show it too. --pause-notifications is stored on the status but only affects apps that read
-it; Todoist does not hold back its own notifications yet. --pause-activity is separate: it stops
+it: Comms, and Todoist for push and email (in the Todoist Android app, only the morning and evening pushes). --pause-activity is separate: it stops
 your Karma changing and protects your streaks, and does not silence notifications.
 
 Examples:
