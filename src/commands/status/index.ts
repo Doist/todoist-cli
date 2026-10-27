@@ -41,7 +41,7 @@ Examples:
         .option('--for <duration>', 'How long the status lasts, e.g. 30m, 2h, 1d, 1h30m')
         .option(
             '--pause-notifications',
-            'Hold back notifications while the status is active. Only apps that read the status honour it (Comms, and Todoist push and email; in the Todoist Android app only the morning and evening pushes)',
+            'Hold back notifications while the status is active. Only apps that read the status honour it (Comms, and Todoist for push and email; in the Todoist Android app only the morning and evening pushes)',
         )
         .option(
             '--pause-activity',
