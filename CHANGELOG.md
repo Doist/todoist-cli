@@ -1,3 +1,15 @@
+## [5.8.2](https://github.com/Doist/todoist-cli/compare/v5.8.1...v5.8.2) (2026-10-26)
+
+### Bug Fixes
+
+* **deps:** update dependency @napi-rs/keyring to v2.1.2 ([#619](https://github.com/Doist/todoist-cli/issues/619)) ([66bfceb](https://github.com/Doist/todoist-cli/commit/66bfceb80b664e18758bef73ef577aa968cd26f2))
+
+## [5.8.1](https://github.com/Doist/todoist-cli/compare/v5.8.0...v5.8.1) (2026-10-24)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v1.7.2 ([#618](https://github.com/Doist/todoist-cli/issues/618)) ([7511a92](https://github.com/Doist/todoist-cli/commit/7511a9270f35a764979150dcfff79da0daeddf40)), closes [#424](https://github.com/Doist/todoist-cli/issues/424) [Doist/cli-core#158](https://github.com/Doist/cli-core/issues/158) [Doist/cli-core#155](https://github.com/Doist/cli-core/issues/155)
+
 ## [5.8.0](https://github.com/Doist/todoist-cli/compare/v5.7.0...v5.8.0) (2026-10-21)
 
 ### Features
