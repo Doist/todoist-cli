@@ -25,7 +25,7 @@ export async function fetchUserStatus(): Promise<UserStatus | null> {
 }
 
 /**
- * Replaces the status (an object), or clears it (`null`). Returns the status the server holds
+ * Updates supplied status fields (an object), or clears everything (`null`). Returns the status the server holds
  * afterwards, read in the same request, so the caller can check that the write is what it sent.
  */
 export async function writeUserStatus(status: UserStatusArgs | null): Promise<UserStatus | null> {

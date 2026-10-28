@@ -103,35 +103,40 @@ describe('user status over the real SDK', () => {
         expect(commands[0].args).toStrictEqual({ status: null })
     })
 
-    it('sends the whole status, with the expiry as an ISO string and effects intact', async () => {
-        reply({
-            message: 'Deep work',
-            emoji: '🎯',
-            active_until: '2026-10-20T09:27:47.530Z',
-            effects: { pause_notifications: { scope: { mode: 'all' } } },
-        })
+    it.each([false, true])(
+        'serializes status values and removals (clearing: %s)',
+        async (clearing) => {
+            const emoji = clearing ? null : '🎯'
+            const expiry = clearing ? null : '2026-10-20T09:27:47.530Z'
+            reply({
+                message: 'Deep work',
+                emoji,
+                active_until: expiry,
+                effects: clearing ? {} : { pause_notifications: { scope: { mode: 'all' } } },
+            })
 
-        const status = await writeUserStatus({
-            message: 'Deep work',
-            emoji: '🎯',
-            activeUntil: new Date('2026-10-20T09:27:47.530Z'),
-            effects: { pauseNotifications: { scope: { mode: 'all' } } },
-        })
+            const status = await writeUserStatus({
+                message: 'Deep work',
+                emoji,
+                activeUntil: expiry ? new Date(expiry) : null,
+                effects: { pauseNotifications: clearing ? null : {}, pauseActivity: null },
+            })
 
-        const commands = sentBody().commands as { args: { status: unknown } }[]
-        expect(commands[0].args.status).toStrictEqual({
-            message: 'Deep work',
-            emoji: '🎯',
-            active_until: '2026-10-20T09:27:47.530Z',
-            effects: { pause_notifications: { scope: { mode: 'all' } } },
-        })
-        expect(status).toMatchObject({
-            message: 'Deep work',
-            emoji: '🎯',
-            activeUntil: new Date('2026-10-20T09:27:47.530Z'),
-            effects: { pauseNotifications: { scope: { mode: 'all' } } },
-        })
-    })
+            const commands = sentBody().commands as { args: { status: unknown } }[]
+            expect(commands[0].args.status).toStrictEqual({
+                message: 'Deep work',
+                emoji,
+                active_until: expiry,
+                effects: { pause_notifications: clearing ? null : {}, pause_activity: null },
+            })
+            expect(status).toMatchObject({
+                message: 'Deep work',
+                emoji,
+                activeUntil: expiry ? new Date(expiry) : null,
+                effects: clearing ? {} : { pauseNotifications: { scope: { mode: 'all' } } },
+            })
+        },
+    )
 
     it('reads the status from the user resource', async () => {
         reply({ message: 'Away', effects: {} })
