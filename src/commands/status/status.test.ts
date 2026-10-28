@@ -223,12 +223,23 @@ describe('td status', () => {
             })
         })
 
-        it('shows the activity pause on --dry-run without calling the API', async () => {
-            const spy = captureConsole('log')
-            await run('set', 'Away', '--pause-activity', '--dry-run')
-            expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
-            expect(logged(spy)).toContain('Pause activity: yes')
-        })
+        it.each([
+            { flags: [], pauseActivity: 'cleared' },
+            { flags: ['--pause-activity'], pauseActivity: 'yes' },
+        ])(
+            'previews cleared values and Pause activity: $pauseActivity on --dry-run',
+            async ({ flags, pauseActivity }) => {
+                const spy = captureConsole('log')
+                await run('set', 'Away', ...flags, '--dry-run')
+                expect(apiMocks.writeUserStatus).not.toHaveBeenCalled()
+                const out = logged(spy)
+                expect(out).toContain('Message: Away')
+                expect(out).toContain('Emoji: cleared')
+                expect(out).toContain('Until: cleared')
+                expect(out).toContain('Pause notifications: cleared')
+                expect(out).toContain(`Pause activity: ${pauseActivity}`)
+            },
+        )
 
         it('describes --pause-activity as protecting Karma and streaks, apart from notifications', () => {
             const program = createTestProgram(registerStatusCommand)
