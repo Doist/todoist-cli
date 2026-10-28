@@ -1,3 +1,9 @@
+## [5.8.3](https://github.com/Doist/todoist-cli/compare/v5.8.2...v5.8.3) (2026-10-28)
+
+### Bug Fixes
+
+* send explicit Status field and effect removals ([#621](https://github.com/Doist/todoist-cli/issues/621)) ([0c85c30](https://github.com/Doist/todoist-cli/commit/0c85c307f2a6150e3c37d6bc33bbab35a0da8db4))
+
 ## [5.8.2](https://github.com/Doist/todoist-cli/compare/v5.8.1...v5.8.2) (2026-10-26)
 
 ### Bug Fixes
