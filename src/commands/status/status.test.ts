@@ -39,7 +39,19 @@ describe('td status', () => {
         vi.useFakeTimers()
         vi.setSystemTime(NOW)
         apiMocks.writeUserStatus.mockImplementation(async (args) =>
-            args ? { effects: {}, ...args } : null,
+            args
+                ? {
+                      ...args,
+                      effects: {
+                          ...(args.effects?.pauseNotifications
+                              ? { pauseNotifications: { scope: { mode: 'all' } } }
+                              : {}),
+                          ...(args.effects?.pauseActivity
+                              ? { pauseActivity: { scope: { mode: 'all' } } }
+                              : {}),
+                      },
+                  }
+                : null,
         )
     })
 
@@ -143,10 +155,15 @@ describe('td status', () => {
     })
 
     describe('set', () => {
-        it('sends the message alone when nothing else is given', async () => {
+        it('explicitly removes omitted optional values and known effects', async () => {
             captureConsole('log')
             await run('set', 'Away')
-            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({ message: 'Away' })
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                message: 'Away',
+                emoji: null,
+                activeUntil: null,
+                effects: { pauseNotifications: null, pauseActivity: null },
+            })
         })
 
         it('sends emoji, an --until date and the pause effect', async () => {
@@ -164,7 +181,7 @@ describe('td status', () => {
                 message: 'Holiday',
                 emoji: '🏝️',
                 activeUntil: new Date('2026-10-20T09:00:00Z'),
-                effects: { pauseNotifications: { scope: { mode: 'all' } } },
+                effects: { pauseNotifications: {}, pauseActivity: null },
             })
         })
 
@@ -172,8 +189,10 @@ describe('td status', () => {
             captureConsole('log')
             await run('set', 'Away', '--pause-activity')
             expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                activeUntil: null,
                 message: 'Away',
-                effects: { pauseActivity: { scope: { mode: 'all' } } },
+                effects: { pauseNotifications: null, pauseActivity: {} },
             })
         })
 
@@ -181,11 +200,10 @@ describe('td status', () => {
             captureConsole('log')
             await run('set', 'Away', '--pause-notifications', '--pause-activity')
             expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                activeUntil: null,
                 message: 'Away',
-                effects: {
-                    pauseNotifications: { scope: { mode: 'all' } },
-                    pauseActivity: { scope: { mode: 'all' } },
-                },
+                effects: { pauseNotifications: {}, pauseActivity: {} },
             })
         })
 
@@ -198,6 +216,8 @@ describe('td status', () => {
             expect(JSON.parse(logged(spy))).toEqual({
                 status: {
                     message: 'Away',
+                    emoji: null,
+                    activeUntil: null,
                     effects: { pauseActivity: { scope: { mode: 'all' } } },
                 },
             })
@@ -225,6 +245,8 @@ describe('td status', () => {
             captureConsole('log')
             await run('set', 'Focus', '--for', '1h30m')
             expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                effects: { pauseNotifications: null, pauseActivity: null },
                 message: 'Focus',
                 activeUntil: new Date('2026-10-14T13:30:00.000Z'),
             })
@@ -261,6 +283,8 @@ describe('td status', () => {
             captureConsole('log')
             await run('set', 'Holiday', '--until', '2026-10-20')
             expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                effects: { pauseNotifications: null, pauseActivity: null },
                 message: 'Holiday',
                 activeUntil: new Date(2026, 9, 20),
             })
@@ -322,7 +346,7 @@ describe('td status', () => {
                     message: 'Focus',
                     emoji: '🎯',
                     activeUntil: '2026-10-20T09:00:00.000Z',
-                    effects: { pauseNotifications: { scope: { mode: 'all' } } },
+                    effects: { pauseNotifications: {}, pauseActivity: null },
                 },
             })
         })
@@ -331,7 +355,7 @@ describe('td status', () => {
             const spy = captureConsole('log')
             await run('set', 'Away', '--json')
             expect(JSON.parse(logged(spy))).toEqual({
-                status: { message: 'Away', effects: {} },
+                status: { message: 'Away', emoji: null, activeUntil: null, effects: {} },
             })
         })
 
@@ -522,7 +546,12 @@ describe('td status', () => {
         it('sends the trimmed message', async () => {
             captureConsole('log')
             await run('set', '  Away  ')
-            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({ message: 'Away' })
+            expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                activeUntil: null,
+                effects: { pauseNotifications: null, pauseActivity: null },
+                message: 'Away',
+            })
         })
 
         it.each([80, 41])('counts code points, not UTF-16 units: %i emoji', async (count) => {
@@ -535,6 +564,8 @@ describe('td status', () => {
             captureConsole('log')
             await run('set', 'ok', '--until', '2026-10-20T09:00+02:00')
             expect(apiMocks.writeUserStatus).toHaveBeenCalledWith({
+                emoji: null,
+                effects: { pauseNotifications: null, pauseActivity: null },
                 message: 'ok',
                 activeUntil: new Date('2026-10-20T07:00:00Z'),
             })
@@ -608,16 +639,6 @@ describe('td status', () => {
                 },
                 ['--pause-notifications'],
             ],
-            [
-                'a different notification scope',
-                { pauseNotifications: { scope: { mode: 'mentions' } } },
-                ['--pause-notifications'],
-            ],
-            [
-                'a notification pause with no scope',
-                { pauseNotifications: {} },
-                ['--pause-notifications'],
-            ],
         ])('set fails when the server returns %s', async (_name, effects, flags) => {
             apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', effects })
             captureConsole('log')
@@ -625,6 +646,22 @@ describe('td status', () => {
                 code: 'INVALID_STATE',
             })
         })
+
+        it.each([
+            { pauseNotifications: { scope: { mode: 'all' } } },
+            { pauseNotifications: { scope: { mode: 'mentions' } } },
+            { pauseNotifications: {} },
+        ])(
+            'accepts the enabled effect configuration returned by the server: %j',
+            async (effects) => {
+                apiMocks.writeUserStatus.mockResolvedValue({ message: 'Away', effects })
+                const spy = captureConsole('log')
+
+                await run('set', 'Away', '--pause-notifications')
+
+                expect(logged(spy)).toBe('Status set: Away (notifications paused)')
+            },
+        )
 
         const FULL = {
             message: 'Away',

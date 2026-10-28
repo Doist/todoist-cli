@@ -115,7 +115,7 @@ describe('user status over the real SDK', () => {
             message: 'Deep work',
             emoji: '🎯',
             activeUntil: new Date('2026-10-20T09:27:47.530Z'),
-            effects: { pauseNotifications: { scope: { mode: 'all' } } },
+            effects: { pauseNotifications: {}, pauseActivity: null },
         })
 
         const commands = sentBody().commands as { args: { status: unknown } }[]
@@ -123,7 +123,7 @@ describe('user status over the real SDK', () => {
             message: 'Deep work',
             emoji: '🎯',
             active_until: '2026-10-20T09:27:47.530Z',
-            effects: { pause_notifications: { scope: { mode: 'all' } } },
+            effects: { pause_notifications: {}, pause_activity: null },
         })
         expect(status).toMatchObject({
             message: 'Deep work',

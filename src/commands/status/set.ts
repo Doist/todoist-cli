@@ -1,6 +1,5 @@
 import type { UserStatus, UserStatusArgs } from '@doist/todoist-sdk'
 import type { Command } from 'commander'
-import { pickDefined } from '../../lib/api/core.js'
 import { writeUserStatus } from '../../lib/api/user-status.js'
 import { formatDateTime, parseLocalDate } from '../../lib/dates.js'
 import { parseDurationMs } from '../../lib/duration.js'
@@ -97,26 +96,15 @@ function sameExpiry(returned: Date | null | undefined, sent: UserStatusArgs['act
 
 type EffectArgs = NonNullable<UserStatusArgs['effects']>['pauseNotifications']
 
-// A present effect is compared by its scope too, so a different scope reads as a change.
+// An empty effect update preserves its existing configuration or enables it with defaults.
 function sameEffect(returned: UserStatus['effects']['pauseNotifications'], sent: EffectArgs) {
-    if (!returned || !sent) return !returned && !sent
-    return returned.scope?.mode === sent.scope?.mode
-}
-
-const ALL_SCOPE = { scope: { mode: 'all' } } as const
-
-function buildEffects(options: SetStatusOptions): UserStatusArgs['effects'] {
-    const effects = pickDefined({
-        pauseNotifications: options.pauseNotifications ? ALL_SCOPE : undefined,
-        pauseActivity: options.pauseActivity ? ALL_SCOPE : undefined,
-    })
-    return Object.keys(effects).length > 0 ? effects : undefined
+    return Boolean(returned) === Boolean(sent)
 }
 
 function sameStatus(returned: UserStatus, sent: UserStatusArgs): boolean {
     return (
         returned.message === sent.message &&
-        (returned.emoji || undefined) === sent.emoji &&
+        (returned.emoji || null) === sent.emoji &&
         sameEffect(returned.effects.pauseNotifications, sent.effects?.pauseNotifications) &&
         sameEffect(returned.effects.pauseActivity, sent.effects?.pauseActivity) &&
         sameExpiry(returned.activeUntil, sent.activeUntil)
@@ -137,11 +125,12 @@ export async function setStatus(
 
     const args: UserStatusArgs = {
         message: text,
-        ...pickDefined({
-            emoji,
-            activeUntil,
-            effects: buildEffects(options),
-        }),
+        emoji: emoji ?? null,
+        activeUntil: activeUntil ?? null,
+        effects: {
+            pauseNotifications: options.pauseNotifications ? {} : null,
+            pauseActivity: options.pauseActivity ? {} : null,
+        },
     }
 
     if (options.dryRun) {
