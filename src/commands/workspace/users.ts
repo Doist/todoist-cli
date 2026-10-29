@@ -1,7 +1,7 @@
 import { outputIds, resolveOutputMode } from '@doist/cli-core'
+import { formatUserShortName } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { formatUserShortName } from '../../lib/collaborators.js'
 import { CliError } from '../../lib/errors.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'
 import { formatNextCursorNotice } from '../../lib/output.js'

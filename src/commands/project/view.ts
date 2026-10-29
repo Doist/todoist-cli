@@ -1,4 +1,9 @@
-import { isWorkspaceProject, type PersonalProject, type TodoistApi } from '@doist/todoist-sdk'
+import {
+    formatUserShortName,
+    isWorkspaceProject,
+    type PersonalProject,
+    type TodoistApi,
+} from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'
@@ -8,7 +13,6 @@ import {
     type ProjectChild,
     resolveChildren,
 } from '../../lib/children.js'
-import { formatUserShortName } from '../../lib/collaborators.js'
 import { renderMarkdown } from '../../lib/markdown.js'
 import type { ViewOptions } from '../../lib/options.js'
 import {
