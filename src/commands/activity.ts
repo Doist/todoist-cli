@@ -1,5 +1,6 @@
 import { resolveOutputMode } from '@doist/cli-core'
 import {
+    formatUserShortName,
     isWorkspaceProject,
     type ActivityEvent,
     type ActivityObjectEventType,
@@ -7,7 +8,6 @@ import {
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, type Project } from '../lib/api/core.js'
-import { formatUserShortName } from '../lib/collaborators.js'
 import { withCaseInsensitiveChoices } from '../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../lib/constants.js'
 import type { Pagination } from '../lib/options.js'
