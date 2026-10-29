@@ -1,4 +1,4 @@
-import { isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
+import { formatUserShortName, isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
 import { getCurrentUserId, type Project, type Task } from './api/core.js'
 import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'
@@ -124,26 +124,6 @@ export class CollaboratorCache {
         const user = projectMap?.get(userId)
         return user?.name ?? null
     }
-}
-
-const nameSegmenter = new Intl.Segmenter('en', { granularity: 'grapheme' })
-
-/** Abbreviate a display name without treating common status suffixes as names. */
-export function formatUserShortName(fullName: string): string {
-    // Require spaces around separators so hyphenated names stay intact.
-    let name = fullName.trim().split(/\s+[|–—-]\s+/)[0]
-    // Remove mixed suffixes repeatedly, regardless of their order.
-    const statusSuffix = /\s+(?:\([^()]*\)|OOO)$/i
-    while (statusSuffix.test(name)) {
-        name = name.replace(statusSuffix, '').trimEnd()
-    }
-
-    // Match the web client's first/second-token rule after removing statuses.
-    const [firstName, secondName] = name.split(/\s+/)
-    if (!secondName) return firstName
-
-    const initial = nameSegmenter.segment(secondName)[Symbol.iterator]().next().value?.segment
-    return initial && /\p{L}/u.test(initial) ? `${firstName} ${initial}.` : firstName
 }
 
 export interface FormatAssigneeOptions {

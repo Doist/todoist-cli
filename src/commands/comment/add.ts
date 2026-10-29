@@ -1,9 +1,9 @@
+import { formatUserShortName } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, getCurrentUserId } from '../../lib/api/core.js'
 import {
     type CollaboratorInfo,
     fetchCollaboratorsForProject,
-    formatUserShortName,
     resolveNotifyIds,
 } from '../../lib/collaborators.js'
 import { getDefaultCommentRecipients } from '../../lib/comment-recipients.js'

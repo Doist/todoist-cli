@@ -217,7 +217,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   JSON success envelopes for mutations without an entity result
 - **`text.ts`** — `truncateForDisplay`: code-point-safe truncation. Use it
   instead of `text.slice(0, n)` on user-supplied text to avoid splitting a
-  surrogate pair. Name initials use grapheme segmentation in `collaborators.ts`.
+  surrogate pair. Name initials come from the SDK's `formatUserShortName`.
 - **`spinner.ts`** — `startEarlySpinner`, `LoadingSpinner` class
   (yocto-spinner wrapper)
 - **`markdown.ts`** — `preloadMarkdown`, markdown → terminal renderer
