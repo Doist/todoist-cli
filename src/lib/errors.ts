@@ -95,6 +95,7 @@ export type ErrorCode =
     | 'NOT_SHARED'
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
+    | 'PROJECT_LIMIT_REACHED'
     // Sharing limits & permissions
     | 'COLLABORATOR_LIMIT_REACHED'
     | 'ALREADY_COLLABORATOR'

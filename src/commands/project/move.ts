@@ -8,6 +8,7 @@ import {
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
+import { ensurePersonalProjectCapacity } from '../../lib/project-limit.js'
 import { resolveFolderRef, resolveProjectRef, resolveWorkspaceRef } from '../../lib/refs.js'
 
 const validVisibilities = ProjectVisibilitySchema.options
@@ -110,6 +111,10 @@ export async function moveProject(ref: string, options: MoveOptions): Promise<vo
             console.log(`Would move "${project.name}" to personal`)
             if (!options.dryRun) console.log('Use --yes to confirm.')
             return
+        }
+
+        if (!project.isArchived) {
+            await ensurePersonalProjectCapacity(api)
         }
 
         await api.moveProjectToPersonal({ projectId: project.id })

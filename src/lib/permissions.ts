@@ -22,6 +22,7 @@ const KNOWN_SAFE_API_METHODS = new Set([
     'searchProjects',
     'getArchivedProjects',
     'getArchivedProjectsCount',
+    'getPersonalProjectCapacity',
     'getProjectPermissions',
     'getProjectCollaborators',
     // Labels

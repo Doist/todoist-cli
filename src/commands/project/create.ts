@@ -4,6 +4,7 @@ import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
+import { ensurePersonalProjectCapacity } from '../../lib/project-limit.js'
 import { readStdin } from '../../lib/stdin.js'
 import { resolvePersonalParent } from './helpers.js'
 
@@ -49,6 +50,8 @@ export async function createProject(options: CreateOptions): Promise<void> {
         const parentProject = await resolvePersonalParent(api, options.parent)
         parentId = parentProject.id
     }
+
+    await ensurePersonalProjectCapacity(api)
 
     const project = await api.addProject({
         name: options.name,

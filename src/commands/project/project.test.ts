@@ -1175,6 +1175,49 @@ describe('project create', () => {
     })
 })
 
+describe('project create personal project limit', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        captureConsole()
+    })
+
+    it('refuses to create a project when the plan limit is reached', async () => {
+        const program = createProgram()
+        mockApi.getPersonalProjectCapacity.mockResolvedValue({
+            maxProjects: 5,
+            activeCount: 5,
+            remaining: 0,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'create', '--name', 'Over limit']),
+        ).rejects.toMatchObject({
+            code: 'PROJECT_LIMIT_REACHED',
+            message: 'You have reached the limit of 5 active personal projects on your plan.',
+        })
+        expect(mockApi.addProject).not.toHaveBeenCalled()
+    })
+
+    it('does not check the limit on a dry run', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'create',
+            '--name',
+            'Preview',
+            '--dry-run',
+        ])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+    })
+})
+
 describe('project create --json', () => {
     let mockApi: MockApi
     let consoleSpy: ReturnType<typeof vi.spyOn>
@@ -1364,6 +1407,67 @@ describe('project browse', () => {
         expect(mockOpenInBrowser).toHaveBeenCalledWith(
             'https://app.todoist.com/app/project/proj-123',
         )
+    })
+})
+
+describe('project unarchive personal project limit', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        captureConsole()
+    })
+
+    it('refuses to unarchive a personal project when the plan limit is reached', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project', isArchived: true })
+        mockApi.getPersonalProjectCapacity.mockResolvedValue({
+            maxProjects: 5,
+            activeCount: 5,
+            remaining: 0,
+        })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'project', 'unarchive', 'id:proj-1']),
+        ).rejects.toHaveProperty('code', 'PROJECT_LIMIT_REACHED')
+        expect(mockApi.unarchiveProject).not.toHaveBeenCalled()
+    })
+
+    it('does not check the personal limit when unarchiving a workspace project', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+            isArchived: true,
+        })
+        mockApi.unarchiveProject.mockResolvedValue({ id: 'proj-ws-1', name: 'Team Project' })
+        mockApi.getPersonalProjectCapacity.mockResolvedValue({
+            maxProjects: 5,
+            activeCount: 5,
+            remaining: 0,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'unarchive', 'id:proj-ws-1'])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+        expect(mockApi.unarchiveProject).toHaveBeenCalledWith('proj-ws-1')
+    })
+
+    it('does not check the limit on a dry run', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project', isArchived: true })
+        mockApi.getPersonalProjectCapacity.mockResolvedValue({
+            maxProjects: 5,
+            activeCount: 5,
+            remaining: 0,
+        })
+
+        await program.parseAsync(['node', 'td', 'project', 'unarchive', 'id:proj-1', '--dry-run'])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+        expect(mockApi.unarchiveProject).not.toHaveBeenCalled()
     })
 })
 
@@ -2647,5 +2751,91 @@ describe('project analyze-health', () => {
 
         const output = consoleSpy.mock.calls[0]?.[0] as string
         expect(JSON.parse(output)).toMatchObject({ status: 'AT_RISK' })
+    })
+})
+
+describe('project move --to-personal personal project limit', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+        captureConsole()
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+        })
+        mockApi.getPersonalProjectCapacity.mockResolvedValue({
+            maxProjects: 5,
+            activeCount: 5,
+            remaining: 0,
+        })
+    })
+
+    it('refuses to move a project to personal when the plan limit is reached', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'project',
+                'move',
+                'id:proj-ws-1',
+                '--to-personal',
+                '--yes',
+            ]),
+        ).rejects.toHaveProperty('code', 'PROJECT_LIMIT_REACHED')
+        expect(mockApi.moveProjectToPersonal).not.toHaveBeenCalled()
+    })
+
+    it('does not check the limit when only previewing the move', async () => {
+        const program = createProgram()
+
+        await program.parseAsync(['node', 'td', 'project', 'move', 'id:proj-ws-1', '--to-personal'])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+    })
+
+    it('does not check the limit on a dry run', async () => {
+        const program = createProgram()
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'id:proj-ws-1',
+            '--to-personal',
+            '--dry-run',
+        ])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+        expect(mockApi.moveProjectToPersonal).not.toHaveBeenCalled()
+    })
+
+    it('does not check the limit when moving an archived project to personal', async () => {
+        const program = createProgram()
+        mockApi.getProject.mockResolvedValue({
+            id: 'proj-ws-1',
+            name: 'Team Project',
+            workspaceId: 'ws-1',
+            isArchived: true,
+        })
+        mockApi.moveProjectToPersonal.mockResolvedValue({ id: 'proj-ws-1', name: 'Team Project' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'move',
+            'id:proj-ws-1',
+            '--to-personal',
+            '--yes',
+        ])
+
+        expect(mockApi.getPersonalProjectCapacity).not.toHaveBeenCalled()
+        expect(mockApi.moveProjectToPersonal).toHaveBeenCalledWith({ projectId: 'proj-ws-1' })
     })
 })
