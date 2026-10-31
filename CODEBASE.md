@@ -193,6 +193,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   (parentId query plus a nesting probe per child), `buildProjectChildren()`
   (pure; groups a pre-fetched personal-project list), `resolveChildren()`
   (never throws — reports via `childrenError`), `CHILDREN_MAX`
+- **`project-limit.ts`** — `ensurePersonalProjectCapacity()`: call before
+  any write that adds an active personal project (create, unarchive, move to
+  personal). The API accepts a couple of projects past the plan limit, so it
+  won't refuse these itself
 - **`refs.ts`** — `isIdRef`, `extractId`, `looksLikeRawId`, `lenientIdRef`,
   `resolveTaskRef`, `resolveProjectRef`, `resolveProjectId`,
   `resolveSectionId`, `resolveParentTaskId`, `resolveWorkspaceRef`,

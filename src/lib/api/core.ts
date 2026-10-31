@@ -15,6 +15,7 @@ import { CliError } from '../errors.js'
 import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
+import { PROJECT_LIMIT_HINT } from '../project-limit.js'
 import { withSpinner } from '../spinner.js'
 import { createTrackedFetch } from '../usage-tracking.js'
 
@@ -55,6 +56,7 @@ const API_SPINNER_MESSAGES: Record<string, { text: string; color?: 'blue' | 'gre
         moveProjectToWorkspace: { text: 'Moving project to workspace...', color: 'yellow' },
         moveProjectToPersonal: { text: 'Moving project to personal...', color: 'yellow' },
         getArchivedProjectsCount: { text: 'Counting archived projects...', color: 'blue' },
+        getPersonalProjectCapacity: { text: 'Checking project limit...', color: 'blue' },
         getProjectPermissions: { text: 'Loading permissions...', color: 'blue' },
         getFullProject: { text: 'Loading project...', color: 'blue' },
         joinProject: { text: 'Joining project...', color: 'green' },
@@ -194,11 +196,14 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
     })
 }
 
-function isInsufficientScopeError(error: TodoistRequestError): boolean {
-    if (error.httpStatusCode !== 403) return false
+function getErrorTag(error: TodoistRequestError): unknown {
     const data = error.responseData
-    if (typeof data !== 'object' || data === null) return false
-    return (data as { error_tag?: unknown }).error_tag === 'AUTH_INSUFFICIENT_TOKEN_SCOPE'
+    if (typeof data !== 'object' || data === null) return undefined
+    return (data as { error_tag?: unknown }).error_tag
+}
+
+function isInsufficientScopeError(error: TodoistRequestError): boolean {
+    return error.httpStatusCode === 403 && getErrorTag(error) === 'AUTH_INSUFFICIENT_TOKEN_SCOPE'
 }
 
 /**
@@ -280,6 +285,15 @@ export async function wrapApiError(error: unknown, methodName?: string): Promise
                 'MISSING_SCOPE',
                 'Your token is missing the OAuth scope required for this command.',
                 [await getScopeRemediation(methodName)],
+            )
+        }
+        // The API's own limit check sits a couple of projects above the plan limit, so
+        // this is only reached when a project was added between our check and the write.
+        if (status === 403 && getErrorTag(error) === 'MAX_PROJECTS_LIMIT_REACHED') {
+            return new CliError(
+                'PROJECT_LIMIT_REACHED',
+                'You have reached the limit of active personal projects on your plan.',
+                [PROJECT_LIMIT_HINT],
             )
         }
         if (status === 401 || status === 403) {

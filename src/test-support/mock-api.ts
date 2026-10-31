@@ -45,6 +45,9 @@ export function createMockApi(overrides: Partial<TodoistApi> = {}): MockApi {
         searchProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getArchivedProjects: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
         getArchivedProjectsCount: vi.fn().mockResolvedValue({ count: 0 }),
+        getPersonalProjectCapacity: vi
+            .fn()
+            .mockResolvedValue({ maxProjects: 300, activeCount: 0, remaining: 300 }),
         getProjectPermissions: vi.fn().mockResolvedValue({
             projectCollaboratorActions: [],
             workspaceCollaboratorActions: [],

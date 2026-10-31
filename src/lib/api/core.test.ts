@@ -177,3 +177,18 @@ describe('wrapApiError → API_ERROR', () => {
         )
     })
 })
+
+describe('wrapApiError → PROJECT_LIMIT_REACHED', () => {
+    it('maps the API project limit rejection to a limit error, not an auth error', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError('HTTP 403: Forbidden', 403, {
+                error: 'Maximum number of projects exceeded',
+                error_tag: 'MAX_PROJECTS_LIMIT_REACHED',
+            }),
+            'addProject',
+        )) as CliError
+
+        expect(wrapped.code).toBe('PROJECT_LIMIT_REACHED')
+        expect(wrapped.hints?.[0]).toContain('Archive or delete a personal project')
+    })
+})

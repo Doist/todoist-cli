@@ -1,6 +1,8 @@
+import { isPersonalProject } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
+import { ensurePersonalProjectCapacity } from '../../lib/project-limit.js'
 import { resolveProjectRef } from '../../lib/refs.js'
 
 export async function unarchiveProject(ref: string, options: { dryRun?: boolean }): Promise<void> {
@@ -15,6 +17,10 @@ export async function unarchiveProject(ref: string, options: { dryRun?: boolean 
     if (options.dryRun) {
         printDryRun('unarchive project', { Project: project.name })
         return
+    }
+
+    if (isPersonalProject(project)) {
+        await ensurePersonalProjectCapacity(api)
     }
 
     await api.unarchiveProject(project.id)
