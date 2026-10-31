@@ -1,3 +1,9 @@
+## [5.9.0](https://github.com/Doist/todoist-cli/compare/v5.8.5...v5.9.0) (2026-10-31)
+
+### Features
+
+* enforce the plan's personal project limit ([#624](https://github.com/Doist/todoist-cli/issues/624)) ([75dad5e](https://github.com/Doist/todoist-cli/commit/75dad5ee9571b460cc3a536904e2734199c73d94))
+
 ## [5.8.5](https://github.com/Doist/todoist-cli/compare/v5.8.4...v5.8.5) (2026-10-31)
 
 ### Bug Fixes
