@@ -15,7 +15,7 @@ export const PROJECT_LIMIT_HINT =
  */
 export async function ensurePersonalProjectCapacity(api: TodoistApi): Promise<void> {
     const { maxProjects, remaining } = await api.getPersonalProjectCapacity()
-    if (remaining === 0) {
+    if (remaining <= 0) {
         throw new CliError(
             'PROJECT_LIMIT_REACHED',
             `You have reached the limit of ${maxProjects} active personal projects on your plan.`,
