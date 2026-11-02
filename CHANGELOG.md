@@ -1,3 +1,9 @@
+## [5.9.2](https://github.com/Doist/todoist-cli/compare/v5.9.1...v5.9.2) (2026-11-02)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-sdk to v15.13.1 ([#628](https://github.com/Doist/todoist-cli/issues/628)) ([00b0da1](https://github.com/Doist/todoist-cli/commit/00b0da1b8780f4e93781e3d425ff31d4125d288e))
+
 ## [5.9.1](https://github.com/Doist/todoist-cli/compare/v5.9.0...v5.9.1) (2026-11-02)
 
 ### Bug Fixes
