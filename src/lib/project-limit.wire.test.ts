@@ -5,7 +5,7 @@ import { ensurePersonalProjectCapacity } from './project-limit.js'
 // The command suites mock `getPersonalProjectCapacity`, so they cannot see the SDK validate a
 // real plan-limits response. This one runs the real SDK and stubs only the transport.
 
-function personalProject(id: string, inboxProject = false) {
+function personalProject(id: string, inboxProject = false): Record<string, unknown> {
     return {
         id,
         name: inboxProject ? 'Inbox' : `Project ${id}`,
