@@ -92,6 +92,7 @@ Resolution order: `--user <ref>` > `user.defaultUser` from config > the only sto
 ## Quick Reference
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
+- Live changes: `td watch --resource task,comment [--project X] [--one-event] [--ndjson]` — stream events as they happen
 - Task lifecycle: `td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
 - Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/share/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
@@ -126,6 +127,16 @@ td completed list --since 2024-01-01 --until 2024-01-31
 td completed list --search "meeting notes"
 td activity --type task --event completed
 ```
+
+### Watch (Live Changes)
+```bash
+td watch --resource task,comment --project "Website"   # follow work in a project
+td watch --resource comment --one-event --ndjson       # block until the next event (agents)
+td watch --resource task,project,section --ndjson      # feed a dashboard/notifier/integration
+td watch --resource task,comment,notification          # observe activity while testing an integration
+```
+
+Streams changes that happen **after** it starts (never dumps current contents) and runs until Ctrl-C. Resources: task, project, section, comment, label, filter, reminder, notification, workspace, workspace-member, folder (`--resource` is repeatable/comma-separated). Filters: `--project`, `--workspace`, and `--label` (tasks only). `--ndjson` emits one JSON event per line (`eventType` is `<resource>.changed`, `<resource>.deleted`, or `stream.reset`); status goes to stderr. State is per-process: stopped-time changes are not replayed; `changed` covers both creation and modification; rapid edits may coalesce; on `stream.reset`, re-read current state. A filtered deletion can be missed if the resource predates startup and was never observed matching. Before acting on an event, re-read the resource (`td task view id:...`) for current state. See `td watch --help`.
 
 ### Tasks
 ```bash

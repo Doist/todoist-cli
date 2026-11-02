@@ -186,6 +186,10 @@ const commands: Record<string, [string, () => Promise<(p: Command) => void>, str
         'View a Todoist entity or page by URL',
         async () => (await import('./commands/view.js')).registerViewCommand,
     ],
+    watch: [
+        'Stream live changes from your Todoist account',
+        async () => (await import('./commands/watch.js')).registerWatchCommand,
+    ],
     update: [
         'Update the CLI to the latest version for the configured channel',
         async () => (await import('./commands/update/index.js')).registerUpdateCommand,
@@ -287,6 +291,7 @@ if (process.argv[2] === 'completion-server') {
                 'doctor',
                 'update',
                 'completion',
+                'watch',
             ])
             const needsMarkdown =
                 !noMarkdownCommands.has(commandName) &&
