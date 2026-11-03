@@ -115,7 +115,7 @@ Examples:
         .option('--parent <ref>', 'Parent project (name or id:xxx)')
         .addOption(
             withCaseInsensitiveChoices(
-                new Option('--view-style <style>', 'View style (list, board, or calendar)'),
+                new Option('--view-style <style>', 'View style (list, board, calendar, or table)'),
                 VIEW_STYLE_CHOICES,
             ),
         )
@@ -144,7 +144,7 @@ Examples:
         .option('--no-parent', 'Move to top level (no parent)')
         .addOption(
             withCaseInsensitiveChoices(
-                new Option('--view-style <style>', 'View style (list, board, or calendar)'),
+                new Option('--view-style <style>', 'View style (list, board, calendar, or table)'),
                 VIEW_STYLE_CHOICES,
             ),
         )

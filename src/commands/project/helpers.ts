@@ -1,5 +1,6 @@
 import {
     isWorkspaceProject,
+    PROJECT_VIEW_STYLES,
     type PersonalProject,
     type ProjectViewStyle,
     type TodoistApi,
@@ -9,7 +10,7 @@ import { CliError } from '../../lib/errors.js'
 import { paginate } from '../../lib/pagination.js'
 import { extractId, isIdRef, resolveProjectRef } from '../../lib/refs.js'
 
-export const VIEW_STYLE_CHOICES: ProjectViewStyle[] = ['list', 'board', 'calendar']
+export const VIEW_STYLE_CHOICES: ProjectViewStyle[] = [...PROJECT_VIEW_STYLES]
 
 /**
  * Resolve a project reference for use as a parent. Rejects workspace projects

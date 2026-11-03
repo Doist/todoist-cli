@@ -1,5 +1,9 @@
-import { isWorkspaceProject, sortTasks as sortTasksBySdk } from '@doist/todoist-sdk'
-import type { SortedBy, SortOrder, TaskSortContext, ViewOptions } from '@doist/todoist-sdk'
+import {
+    isWorkspaceProject,
+    SORTED_BY_OPTIONS,
+    sortTasks as sortTasksBySdk,
+} from '@doist/todoist-sdk'
+import type { SortedBy, TaskSortContext, ViewOptions } from '@doist/todoist-sdk'
 import type { Project, Task } from './api/core.js'
 import { CliError } from './errors.js'
 
@@ -41,7 +45,11 @@ export interface TaskSort {
 
 export const DEFAULT_TASK_SORT: TaskSort = { field: 'default', direction: 'asc' }
 
-/** Saved `sorted_by` values → the vocabulary `--sort` speaks. */
+/**
+ * Saved `sorted_by` values → the vocabulary `--sort` speaks. The SDK keeps the
+ * default order for a label sort, and `--sort` has no label field, so LABEL
+ * reads as `default`.
+ */
 const FIELD_BY_SORTED_BY: Record<SortedBy, TaskSortField> = {
     MANUAL: 'default',
     ALPHABETICALLY: 'name',
@@ -49,15 +57,23 @@ const FIELD_BY_SORTED_BY: Record<SortedBy, TaskSortField> = {
     DUE_DATE: 'date',
     DEADLINE: 'deadline',
     ADDED_DATE: 'date-added',
+    LABEL: 'default',
     PRIORITY: 'priority',
     PROJECT: 'project',
     WORKSPACE: 'workspace',
 }
 
 /** And back again for the SDK call. `default` maps to MANUAL; only `none` is absent. */
-const SORTED_BY_FIELD: Partial<Record<TaskSortField, SortedBy>> = Object.fromEntries(
-    Object.entries(FIELD_BY_SORTED_BY).map(([sortedBy, field]) => [field, sortedBy]),
-)
+const SORTED_BY_FIELD: Partial<Record<TaskSortField, SortedBy>> = {
+    ...Object.fromEntries(
+        Object.entries(FIELD_BY_SORTED_BY).map(([sortedBy, field]) => [field, sortedBy]),
+    ),
+    default: 'MANUAL',
+}
+
+function isKnownSortedBy(value: string): value is SortedBy {
+    return (SORTED_BY_OPTIONS as readonly string[]).includes(value)
+}
 
 const FIELD_LABELS: Record<TaskSortField, { asc: string; desc: string }> = {
     default: { asc: 'Todoist default', desc: 'Todoist default' },
@@ -106,14 +122,14 @@ export function parseTaskSortDirection(value: string): TaskSortDirection {
 /** The sorting a saved view applies, or the Todoist default when it has none. */
 export function taskSortFromViewOptions(viewOptions?: ViewOptions): TaskSort {
     const sortedBy = viewOptions?.sortedBy
-    const field = sortedBy ? (FIELD_BY_SORTED_BY[sortedBy] ?? 'default') : 'default'
+    const field = sortedBy && isKnownSortedBy(sortedBy) ? FIELD_BY_SORTED_BY[sortedBy] : 'default'
     if (field === 'default') return DEFAULT_TASK_SORT
 
     return { field, direction: directionFromSortOrder(viewOptions?.sortOrder, field) }
 }
 
 function directionFromSortOrder(
-    sortOrder: SortOrder | null | undefined,
+    sortOrder: ViewOptions['sortOrder'] | undefined,
     field: TaskSortField,
 ): TaskSortDirection {
     if (sortOrder === 'ASC') return 'asc'
