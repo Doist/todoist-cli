@@ -1,3 +1,9 @@
+## [5.10.0](https://github.com/Doist/todoist-cli/compare/v5.9.2...v5.10.0) (2026-11-03)
+
+### Features
+
+* **project:** accept the table view style ([#630](https://github.com/Doist/todoist-cli/issues/630)) ([0c72baf](https://github.com/Doist/todoist-cli/commit/0c72baf1c7cbe00271c64814b099e3c51117c2ba))
+
 ## [5.9.2](https://github.com/Doist/todoist-cli/compare/v5.9.1...v5.9.2) (2026-11-02)
 
 ### Bug Fixes
