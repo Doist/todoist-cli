@@ -253,6 +253,18 @@ describe('taskSortFromViewOptions', () => {
             'asc',
         )
     })
+
+    it('treats a label sort and sort values newer than the SDK as the Todoist default', () => {
+        expect(taskSortFromViewOptions(makeViewOptions({ sortedBy: 'LABEL' })).field).toBe(
+            'default',
+        )
+        expect(taskSortFromViewOptions(makeViewOptions({ sortedBy: 'COLOR' })).field).toBe(
+            'default',
+        )
+        expect(
+            taskSortFromViewOptions(makeViewOptions({ sortedBy: 'PRIORITY', sortOrder: 'RANDOM' })),
+        ).toEqual({ field: 'priority', direction: 'desc' })
+    })
 })
 
 describe('sort option parsing', () => {

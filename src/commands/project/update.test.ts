@@ -135,6 +135,31 @@ describe('project update', () => {
         })
     })
 
+    it('updates view-style to table', async () => {
+        const program = createProgram()
+
+        mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
+        mockApi.updateProject.mockResolvedValue({
+            id: 'proj-1',
+            name: 'My Project',
+            viewStyle: 'table',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'project',
+            'update',
+            'id:proj-1',
+            '--view-style',
+            'table',
+        ])
+
+        expect(mockApi.updateProject).toHaveBeenCalledWith('proj-1', {
+            viewStyle: 'table',
+        })
+    })
+
     it('throws when no changes specified', async () => {
         const program = createProgram()
 

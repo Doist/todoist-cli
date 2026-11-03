@@ -174,6 +174,7 @@ td project create --name "New Project" --description "Quarterly OKRs"
 td project create --name "Imported" --stdin              # read the description from stdin
 td project update "Roadmap" --description "Updated scope"
 td project update "Roadmap" --favorite
+td project update "Roadmap" --view-style table          # list, board, calendar, or table
 td project update "Roadmap" --folder "Engineering"
 td project update "Roadmap" --no-folder
 td project update "Roadmap" --parent "Engineering"
