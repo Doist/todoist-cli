@@ -162,6 +162,22 @@ it('names only test helpers that src/test-support/ or @doist/cli-core/testing ex
     expect(named.filter((name) => !local.includes(name) && !shared.includes(name))).toEqual([])
 })
 
+const checks = readdirSync(join(REPO_ROOT, '.agents/checks')).filter((name) => name.endsWith('.md'))
+
+describe.each(checks)('check %s', (check) => {
+    const text = readFileSync(join(REPO_ROOT, '.agents/checks', check), 'utf8')
+
+    it('says what to report and what is fine', () => {
+        expect(text).toMatch(/^## Report$/m)
+        expect(text).toMatch(/^## Fine$/m)
+    })
+
+    it('is linked from AGENTS.md, where Doistbot finds it', () => {
+        const agents = readFileSync(join(REPO_ROOT, 'AGENTS.md'), 'utf8')
+        expect(agents).toContain(`](.agents/checks/${check})`)
+    })
+})
+
 it('has no Claude Code skill link without a skill behind it', () => {
     const links = readdirSync(join(REPO_ROOT, '.claude/skills'))
     expect(links.toSorted()).toEqual(skills.toSorted())

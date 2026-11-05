@@ -25,9 +25,11 @@ eslint/prettier) · semantic-release on merge to `main`.
 │                         # issue-automation.yml
 ├─ .agents/
 │  ├─ skills/             # Skills for agents working on this repo (verify, fix-bug,
-│  │                      # build-feature, add-command, refactor, write-tests, learn)
-│  └─ scripts/            # Agent tooling (verify, git hook branch guard) and its
-│                         # tests. Not published, unlike scripts/
+│  │                      # build-feature, add-command, refactor, write-tests, learn,
+│  │                      # review-changes)
+│  ├─ checks/             # Review checks reviewers and Doistbot apply (AGENTS.md links them)
+│  └─ scripts/            # Agent tooling (verify, git hook branch guard, review
+│                         # worktree) and its tests. Not published, unlike scripts/
 ├─ .claude/skills/        # Links to .agents/skills/, where Claude Code finds them
 ├─ AGENTS.md              # Prescriptive rules: definition of done, skills, build
 │                         # cmds, skill-sync, JSON flag
