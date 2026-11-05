@@ -64,7 +64,8 @@ describe('codeFingerprint', () => {
         const before = codeFingerprint(snapshot(repo.dir))
         repo.write('README.md', 'changed\n')
         repo.write('docs/guide.md', 'new\n')
-        repo.write('.github/workflows/release.yml', 'on: push\n')
+        repo.write('renovate.json', '{}\n')
+        repo.write('.github/CODEOWNERS', '* @example\n')
         expect(codeFingerprint(snapshot(repo.dir))).toBe(before)
         repo.write('src/prompt.md', 'markdown the server could load\n')
         expect(codeFingerprint(snapshot(repo.dir))).not.toBe(before)
@@ -83,7 +84,8 @@ describe('classify', () => {
         ['.github/workflows/lint.yml', 'code'],
         ['.github/workflows/test.yml', 'code'],
         ['.github/workflows/check-skill-sync.yml', 'code'],
-        ['.github/workflows/release.yml', 'unchecked'],
+        ['.github/workflows/release.yml', 'code'],
+        ['.github/CODEOWNERS', 'unchecked'],
         ['renovate.json', 'unchecked'],
         ['skills/todoist-cli/SKILL.md', 'code'],
         ['src/index.ts', 'code'],

@@ -21,7 +21,7 @@ const pass = (name: string, extra: Partial<Step> = {}): Step => ({
 const fail = (name: string): Step => ({
     name,
     command: 'sh',
-    args: ['-c', 'for i in $(seq 1 40); do echo "line $i"; done; exit 3'],
+    args: ['-c', 'i=1; while [ $i -le 40 ]; do echo "line $i"; i=$((i + 1)); done; exit 3'],
 })
 
 const verify = (steps: Step[], options: { base?: string | null } = {}) =>
@@ -119,7 +119,7 @@ describe('a code change', () => {
         const earlier = readVerified(repo.dir)
         repo.git(['add', '.'])
         repo.git(['commit', '--quiet', '-m', 'code'])
-        repo.write('.github/workflows/release.yml', 'on: push\n')
+        repo.write('renovate.json', '{}\n')
         lines = []
         await runVerify({
             root: repo.dir,
@@ -133,7 +133,7 @@ describe('a code change', () => {
 
     it('keeps the pass when only a file CI alone reads changes during the run', async () => {
         const editor = pass('tests', {
-            args: ['-c', 'mkdir -p .github/workflows && echo x > .github/workflows/release.yml'],
+            args: ['-c', 'echo x > renovate.json'],
         })
         const result = await verify([pass('lint'), editor])
         expect(result).toEqual({ ok: true, recorded: true })
@@ -168,8 +168,8 @@ describe('what counts as a change', () => {
         expect(readVerified(repo.dir)?.fingerprint).toBe('earlier')
     })
 
-    it('runs the checks when a checked workflow changes, since a local test reads it', async () => {
-        repo.write('.github/workflows/lint.yml', 'on: push\n')
+    it('runs the checks when any workflow changes, since a local test reads them all', async () => {
+        repo.write('.github/workflows/release.yml', 'on: push\n')
         expect(await verify([pass('lint')])).toEqual({ ok: true, recorded: true })
     })
 
@@ -181,11 +181,11 @@ describe('what counts as a change', () => {
     })
 
     it('records nothing when only files CI alone reads changed', async () => {
-        repo.write('.github/workflows/release.yml', 'on: push\n')
+        repo.write('renovate.json', '{}\n')
         repo.write('README.md', 'changed\n')
         const result = await verify([pass('lint')])
         expect(result).toEqual({ ok: true, recorded: false })
-        expect(lines[0]).toContain('.github/workflows/release.yml')
+        expect(lines[0]).toContain('renovate.json')
         expect(readVerified(repo.dir)).toBeUndefined()
     })
 

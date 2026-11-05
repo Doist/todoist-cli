@@ -119,9 +119,15 @@ describe('preflight', () => {
                 'node_modules/vitest': { version: '2.0.0' },
             },
         })
-        writeJson(join(root, 'node_modules/zod/package.json'), { version: '1.0.0' })
-        writeJson(join(root, 'node_modules/vitest/package.json'), { version: '2.0.0' })
+        writeInstalled({
+            'node_modules/zod': { version: '1.0.0' },
+            'node_modules/vitest': { version: '2.0.0' },
+        })
     })
+
+    // What npm records about the tree it installed.
+    const writeInstalled = (packages: Record<string, { version: string }>) =>
+        writeJson(join(root, 'node_modules/.package-lock.json'), { packages })
 
     afterEach(() => rmSync(root, { recursive: true, force: true }))
 
@@ -135,15 +141,51 @@ describe('preflight', () => {
     })
 
     it('names a dependency whose installed version differs from the lockfile', () => {
-        writeJson(join(root, 'node_modules/zod/package.json'), { version: '0.9.0' })
+        writeInstalled({
+            'node_modules/zod': { version: '0.9.0' },
+            'node_modules/vitest': { version: '2.0.0' },
+        })
         expect(preflight(root, '24.0.0')).toEqual([
             'node_modules does not match package-lock.json: zod 0.9.0 (lockfile: 1.0.0). Run `npm ci`.',
         ])
     })
 
     it('names a dependency that is not installed', () => {
-        rmSync(join(root, 'node_modules/vitest'), { recursive: true })
+        writeInstalled({ 'node_modules/zod': { version: '1.0.0' } })
         expect(preflight(root, '24.0.0')[0]).toContain('vitest missing (lockfile: 2.0.0)')
+    })
+
+    it('names a transitive dependency that changed while every direct one kept its version', () => {
+        const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')) as {
+            packages: Record<string, unknown>
+        }
+        lock.packages['node_modules/undici'] = { version: '7.1.0' }
+        writeJson(join(root, 'package-lock.json'), lock)
+        writeInstalled({
+            'node_modules/zod': { version: '1.0.0' },
+            'node_modules/vitest': { version: '2.0.0' },
+            'node_modules/undici': { version: '7.0.0' },
+        })
+        expect(preflight(root, '24.0.0')).toEqual([
+            'node_modules does not match package-lock.json: undici 7.0.0 (lockfile: 7.1.0). Run `npm ci`.',
+        ])
+    })
+
+    it('accepts optional packages for other platforms that were never installed', () => {
+        const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')) as {
+            packages: Record<string, unknown>
+        }
+        lock.packages['node_modules/@oxlint/darwin-arm64'] = { version: '1.0.0', optional: true }
+        lock.packages['node_modules/@oxfmt/win32-x64'] = { version: '1.0.0', devOptional: true }
+        writeJson(join(root, 'package-lock.json'), lock)
+        expect(preflight(root, '24.0.0')).toEqual([])
+    })
+
+    it('says when node_modules has no record of what npm installed', () => {
+        rmSync(join(root, 'node_modules/.package-lock.json'))
+        expect(preflight(root, '24.0.0')).toEqual([
+            'node_modules has no record of what npm installed. Run `npm ci`.',
+        ])
     })
 
     it('names a dependency package.json and the lockfile disagree on', () => {

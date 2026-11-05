@@ -34,9 +34,9 @@ function hashPath(path: string): string {
 }
 
 /**
- * The pull-request workflows that run checks. .agents/scripts/lib/steps.test.ts reads them to keep
- * verify in step with CI, so they count as code. It reads the other workflows only to check that
- * none of them runs a command on pull requests.
+ * The pull-request workflows that run checks. .agents/scripts/lib/steps.test.ts compares verify
+ * with their commands, and reads every other workflow to check none of them runs a command on pull
+ * requests, so every workflow counts as code.
  */
 export const CHECKED_WORKFLOWS = [
     '.github/workflows/check-skill-sync.yml',
@@ -49,12 +49,12 @@ export type FileKind = 'docs' | 'unchecked' | 'code'
 
 /**
  * - docs: prose no check reads. Markdown under src/ is excluded, since it could be loaded at runtime.
- * - unchecked: files only CI reads (other workflows, Renovate). Local verification cannot vouch for
- *   them.
+ * - unchecked: files only CI or GitHub reads (Renovate, other .github/ config). Local verification
+ *   cannot vouch for them.
  * - code: everything else, including config, lockfiles, the generated skill and tests.
  */
 export function classify(path: string): FileKind {
-    if (CHECKED_WORKFLOWS.includes(path)) return 'code'
+    if (path.startsWith('.github/workflows/')) return 'code'
     // `npm run check:skill-sync` compares it with src/lib/skills/content.ts.
     if (path.startsWith('skills/')) return 'code'
     if (path.startsWith('.github/')) return path.endsWith('.md') ? 'docs' : 'unchecked'
