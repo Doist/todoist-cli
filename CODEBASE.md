@@ -24,11 +24,13 @@ eslint/prettier) · semantic-release on merge to `main`.
 │                         # check-semantic-pull-request.yml, update-todoist-sdk.yml,
 │                         # issue-automation.yml
 ├─ .agents/
-│  ├─ skills/             # Skills for agents working on this repo (add-command)
+│  ├─ skills/             # Skills for agents working on this repo (verify, fix-bug,
+│  │                      # build-feature, add-command, refactor, write-tests, learn)
 │  └─ scripts/            # Agent tooling (verify, git hook branch guard) and its
 │                         # tests. Not published, unlike scripts/
-├─ AGENTS.md              # Prescriptive rules: definition of done, build cmds,
-│                         # skill-sync, JSON flag
+├─ .claude/skills/        # Links to .agents/skills/, where Claude Code finds them
+├─ AGENTS.md              # Prescriptive rules: definition of done, skills, build
+│                         # cmds, skill-sync, JSON flag
 ├─ CODEBASE.md            # This file — descriptive map
 ├─ CLAUDE.md              # Imports AGENTS.md for Claude Code; nothing else
 ├─ tsconfig.json          # Includes src + tests (used by type-check, IDE)
@@ -56,7 +58,7 @@ src/
 │  └─ *.test.ts           # Co-located tests
 ├─ lib/                   # Shared utilities. See catalog — don't reimplement.
 │  ├─ api/                # SDK wrapper + typed helpers (core, filters, workspaces,
-│  │                      # notifications, reminders, stats, user-settings, user-status, uploads)
+│  │                      # notifications, reminders, stats, user-settings, user-status)
 │  └─ skills/             # content.ts (SKILL_CONTENT), create-installer.ts
 └─ test-support/
    ├─ mock-api.ts         # createMockApi() — vitest mocks of every SDK method
@@ -150,7 +152,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `Project`, `Section`, `User`. Paginated response shape
   `{ results, nextCursor }` lives in `pagination.ts`.
 - **`api/` siblings** — `filters.ts`, `workspaces.ts`, `notifications.ts`,
-  `reminders.ts`, `stats.ts`, `user-settings.ts`, `user-status.ts`, `uploads.ts`
+  `reminders.ts`, `stats.ts`, `user-settings.ts`, `user-status.ts`
 - **`auth.ts`** — read-side resolver: `resolveActiveUser`, `getApiToken`,
   `probeApiToken`, `getAuthMetadata`, `listStoredUsers`, `NoTokenError`. All
   write/clear paths go through `auth-store.ts`.
@@ -375,7 +377,7 @@ reference shown to AI agents. The build/sync chain:
 3. `td skill update claude-code` (and other installed agents) propagates
    the update to installed skill files.
 4. `.github/workflows/check-skill-sync.yml` runs `npm run check:skill-sync`
-   on PRs — fails if `SKILL.md` is out of sync with `content.ts`.
+   on PRs — fails if `skills/todoist-cli/SKILL.md` is out of sync with `content.ts`.
 
 See AGENTS.md for the exact update rule.
 
@@ -392,7 +394,7 @@ file, or a token stored in the OS credential manager via `td auth login`.
 
 ## Conventions (quick)
 
-- Filenames: **kebab-case** (`find-completed-tasks.ts`)
+- Filenames: **kebab-case** (`missing-argument.ts`)
 - No barrel files except per-group `index.ts` wiring Commander
 - Priority: **`"p1"`–`"p4"` strings in CLI**; API uses 4=p1 (highest) → 1=p4
 - API responses: always destructure `{ results, nextCursor }` from the SDK

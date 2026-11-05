@@ -7,20 +7,25 @@ This repository is set up so coding agents prove their work before they call it 
 1. **Git hooks** run for everyone, people and agents alike, on every commit and push.
 2. **`npm run verify`** runs every CI check locally and records a pass.
 3. **`AGENTS.md`** tells agents what done means. Claude Code reads it through `CLAUDE.md`; Codex and other agents read it directly.
+4. **Skills** in `.agents/skills/` give step-by-step procedures for recurring work. They load only when a task needs them.
 
 ## Rules and what holds them
 
-| Rule                                          | Held by                                                                         | Certainty                                |
-| --------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------- |
-| No commits on `main`                          | `pre-commit` and `commit-msg` → `.agents/scripts/branch-guard.sh`               | Enforced locally; `--no-verify` skips it |
-| No pushes to `main`                           | `pre-push` → `branch-guard.sh`; the "Protect default branch" ruleset            | Enforced on GitHub                       |
-| Committed files are linted and formatted      | `pre-commit` (lefthook, staged files only); CI                                  | Enforced in CI                           |
-| Type check passes before a commit             | `pre-commit`; CI                                                                | Enforced in CI                           |
-| Tests pass before a push                      | `pre-push`; CI                                                                  | Enforced in CI                           |
-| Agent tooling never ships in the npm package  | `.agents/scripts/package-contents.test.ts`                                      | Enforced in CI                           |
-| `npm run verify` runs what CI runs            | `.agents/scripts/lib/steps.test.ts` compares it with the pull-request workflows | Enforced in CI                           |
-| Run `npm run verify` before calling work done | `AGENTS.md`                                                                     | Asked                                    |
-| Never weaken a check to pass it               | `AGENTS.md`                                                                     | Asked                                    |
+| Rule                                                          | Held by                                                                         | Certainty                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------- |
+| No commits on `main`                                          | `pre-commit` and `commit-msg` → `.agents/scripts/branch-guard.sh`               | Enforced locally; `--no-verify` skips it |
+| No pushes to `main`                                           | `pre-push` → `branch-guard.sh`; the "Protect default branch" ruleset            | Enforced on GitHub                       |
+| Committed files are linted and formatted                      | `pre-commit` (lefthook, staged files only); CI                                  | Enforced in CI                           |
+| Type check passes before a commit                             | `pre-commit`; CI                                                                | Enforced in CI                           |
+| Tests pass before a push                                      | `pre-push`; CI                                                                  | Enforced in CI                           |
+| Agent tooling never ships in the npm package                  | `.agents/scripts/package-contents.test.ts`                                      | Enforced in CI                           |
+| `npm run verify` runs what CI runs                            | `.agents/scripts/lib/steps.test.ts` compares it with the pull-request workflows | Enforced in CI                           |
+| Run `npm run verify` before calling work done                 | `AGENTS.md`                                                                     | Asked                                    |
+| Never weaken a check to pass it                               | `AGENTS.md`                                                                     | Asked                                    |
+| Instructions name only files, links and scripts that exist    | `.agents/scripts/instructions.test.ts`                                          | Enforced in CI                           |
+| Every skill says when to use it and is linked for Claude Code | `.agents/scripts/instructions.test.ts`                                          | Enforced in CI                           |
+| Use the matching skill for each task                          | `AGENTS.md`                                                                     | Asked                                    |
+| Tests meet the quality bar                                    | `.agents/skills/write-tests/references/test-rules.md`                           | Asked                                    |
 
 "Enforced in CI" means a pull request cannot merge without it. A local hook alone is a speed bump: `git commit --no-verify` skips it.
 
@@ -41,7 +46,7 @@ The release workflow commits and pushes to `main` from GitHub Actions, and `npm 
 One command, every check the pull-request workflows run (`lint.yml`, `test.yml`, `check-skill-sync.yml`): lint, format, both type checks, all tests, the build and the skill sync check. It takes about fifteen seconds, so it always checks the whole tree. Picking only the affected tests would save a few seconds and add a way to miss something.
 
 - **Before the checks** it stops if Node is older than `package.json` requires, or if `node_modules` does not match the lockfile, transitive dependencies included (npm's own record of what it installed, `node_modules/.package-lock.json`, against `package-lock.json`). Both make checks fail, or pass, for reasons unrelated to your change.
-- **Only docs changed** since the branch left `main`: it says there is nothing to check. The generated `skills/todoist-cli/SKILL.md` counts as code, since `npm run check:skill-sync` reads it.
+- **Only docs changed** since the branch left `main`: it says there is nothing to check. The agent instructions (`AGENTS.md`, `CODEBASE.md`, `docs/agents.md`, `.agents/`) count as code, since a test checks every reference in them, and so does the generated `skills/todoist-cli/SKILL.md`, which `npm run check:skill-sync` reads. Deleting or renaming a doc counts as code too, since the agent docs may name it; adding one after a pass means running verify again.
 - **Only CI files changed** (Renovate, `.github/` config other than workflows): it says no local check reads them. Every workflow counts as code, since a local test compares verify with the three above and checks no other workflow runs commands on pull requests.
 - **Order:** lint, format and both type checks start together. The tests wait for the build, because `src/index.integration.test.ts` rebuilds `dist/` and runs it; the skill sync check imports from `dist/`, so it waits for the tests.
 - **`CI=true`** is set for the build, the tests and the skill sync check, as GitHub Actions sets it. Variables that change what the CLI does (`TD_ACCESSIBLE`, `TD_SPINNER`, `TD_USER`, `TD_VERBOSE`, `TODOIST_API_TOKEN`, `FORCE_COLOR`) are removed, with a note, since CI never sets them. A real token never reaches the tests.
@@ -52,9 +57,28 @@ One command, every check the pull-request workflows run (`lint.yml`, `test.yml`,
 
 If a pull-request workflow gains a step, `.agents/scripts/lib/steps.test.ts` fails until verify gains it too, or says why it can't.
 
+## Skills
+
+Each skill is a short procedure with a check at the end of every step. Agents load one when the task matches its description.
+
+| Skill           | For                                    | Ends with                                                                  |
+| --------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| `verify`        | Any change about to be called done     | `npm run verify`, proof matched to the change, an evidence report          |
+| `fix-bug`       | Something broken                       | A test that failed on the symptom, the root cause, undo/restore            |
+| `build-feature` | A new command, flag or behaviour       | Decisions settled up front, test-first slices, a "touches X" map           |
+| `add-command`   | A new command or subcommand            | Every file a command touches: mocks, spinner text, permissions, skill text |
+| `refactor`      | Structure changes, behaviour unchanged | Pinned tests, no changed test inputs or assertions                         |
+| `write-tests`   | Writing or changing tests              | Tests that failed once, meeting the test rules                             |
+| `learn`         | A correction from you                  | A type, lint rule, test or script check that catches the mistake           |
+
+The evidence report rates each claim: **said**, **cited** (a line), **traced** (followed the code), **ran** (a test or command executed it), **seen** (in the running CLI). "Fixed" or "safe" needs **ran**. Anything less is listed under "Not verified".
+
+The test rules were measured against this repository's tests first, so they accept the patterns that are fine here: `.not.toHaveBeenCalled()` for dry runs and confirmation gates, `toBeDefined()` as a guard, and the `vi.mock` of `src/lib/api/core.ts` every command test uses. There are no snapshot tests, and the rules keep it that way.
+
 ## Where the tooling lives
 
-- `.agents/scripts/` holds scripts and their tests. It is not under `scripts/` because `scripts/` ships in the npm package.
+- `.agents/scripts/` holds scripts and their tests, next to the skills. It is not under `scripts/` because `scripts/` ships in the npm package.
+- Skills live in `.agents/skills/`, where Codex reads them. Claude Code reads them through the symlinks in `.claude/skills/`; a test keeps the two in step.
 - The tooling runs straight from TypeScript with Node's type stripping, so it only uses erasable syntax (`.agents/scripts/tsconfig.json` enforces this). `npm run type-check` covers it, and `npm run check` lints it.
 - Tests run in `npm test` and CI. They copy the tools into throwaway git repositories and never touch your checkout. A test helper clears the variables git exports to hooks, since `npm test` itself runs inside `pre-push`.
 
