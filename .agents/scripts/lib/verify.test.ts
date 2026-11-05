@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readVerified, stateDir, writeVerified } from './state.ts'
@@ -170,6 +170,11 @@ describe('what counts as a change', () => {
 
     it('runs the checks when any workflow changes, since a local test reads them all', async () => {
         repo.write('.github/workflows/release.yml', 'on: push\n')
+        expect(await verify([pass('lint')])).toEqual({ ok: true, recorded: true })
+    })
+
+    it('runs the checks when a doc is deleted, since the agent docs may name it', async () => {
+        rmSync(join(repo.dir, 'README.md'))
         expect(await verify([pass('lint')])).toEqual({ ok: true, recorded: true })
     })
 

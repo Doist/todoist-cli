@@ -3,7 +3,14 @@ import { createWriteStream, mkdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { cleanGitEnv, git } from './git.ts'
 import { clearVerified, stateDir, writeVerified } from './state.ts'
-import { changedCodePaths, changedSince, classify, codeFingerprint, snapshot } from './tree.ts'
+import {
+    changedCodePaths,
+    changedSince,
+    classify,
+    codeFingerprint,
+    needsChecks,
+    snapshot,
+} from './tree.ts'
 
 export type Step = {
     name: string
@@ -36,7 +43,9 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyResult> {
         out(`No ${baseName} branch found, so checking the whole tree.`)
     } else {
         const changes = changedSince(root, base)
-        const kinds = new Set(changes.map(classify))
+        const kinds = new Set(
+            changes.map((path) => (needsChecks(root, path) ? 'code' : classify(path))),
+        )
         if (changes.length > 0 && !kinds.has('code')) {
             if (kinds.has('unchecked')) {
                 const unchecked = changes.filter((path) => classify(path) === 'unchecked')
