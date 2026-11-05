@@ -44,17 +44,22 @@ export const CHECKED_WORKFLOWS = [
     '.github/workflows/test.yml',
 ]
 
+const AGENT_DOCS = new Set(['AGENTS.md', 'CODEBASE.md', 'docs/agents.md'])
+
 /** The kind of file, as far as local checks are concerned. */
 export type FileKind = 'docs' | 'unchecked' | 'code'
 
 /**
- * - docs: prose no check reads. Markdown under src/ is excluded, since it could be loaded at runtime.
+ * - docs: prose no check reads. Markdown under src/ is excluded, since it could be loaded at runtime,
+ *   and so are the agent instructions, which a test reads.
  * - unchecked: files only CI or GitHub reads (Renovate, other .github/ config). Local verification
  *   cannot vouch for them.
  * - code: everything else, including config, lockfiles, the generated skill and tests.
  */
 export function classify(path: string): FileKind {
     if (path.startsWith('.github/workflows/')) return 'code'
+    // .agents/scripts/instructions.test.ts checks every reference in these.
+    if (AGENT_DOCS.has(path) || path.startsWith('.agents/')) return 'code'
     // `npm run check:skill-sync` compares it with src/lib/skills/content.ts.
     if (path.startsWith('skills/')) return 'code'
     if (path.startsWith('.github/')) return path.endsWith('.md') ? 'docs' : 'unchecked'
