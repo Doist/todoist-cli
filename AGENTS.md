@@ -11,7 +11,7 @@ TypeScript CLI for Todoist. Binary name: `td`.
 ```bash
 npm run build       # compile TypeScript (uses tsconfig.build.json, excludes tests)
 npm run dev         # watch mode (uses tsconfig.build.json)
-npm run type-check  # type check source + tests (uses tsconfig.json)
+npm run type-check  # type check source + tests (tsconfig.json) and the agent tooling (.agents/scripts)
 npm run check       # lint + format check
 npm run fix         # auto-fix lint + format
 npm test            # run tests
@@ -44,6 +44,12 @@ Tests use vitest with mocked API. Run `npm test` before committing.
 - Co-locate tests next to the command or lib module they cover.
 - When adding features, add corresponding tests.
 - See CODEBASE.md for the mock-api + fixtures setup.
+
+## Git hooks and agent tooling
+
+- Commits and pushes to `main` are refused by the git hooks. Work on a branch.
+- Agent tooling lives in `.agents/scripts/`, never in `scripts/` (which ships in the npm package).
+- How it all fits together: [`docs/agents.md`](docs/agents.md).
 
 ## Skill Content (Agent Command Reference)
 

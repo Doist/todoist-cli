@@ -23,6 +23,10 @@ eslint/prettier) · semantic-release on merge to `main`.
 ├─ .github/workflows/     # test.yml, lint.yml, release.yml, check-skill-sync.yml,
 │                         # check-semantic-pull-request.yml, update-todoist-sdk.yml,
 │                         # issue-automation.yml
+├─ .agents/
+│  ├─ skills/             # Skills for agents working on this repo (add-command)
+│  └─ scripts/            # Agent tooling (git hook branch guard) and its tests.
+│                         # Not published, unlike scripts/
 ├─ AGENTS.md              # Prescriptive rules (build cmds, skill-sync, JSON flag)
 ├─ CODEBASE.md            # This file — descriptive map
 ├─ CLAUDE.md              # One-liner forward to AGENTS.md
@@ -30,7 +34,8 @@ eslint/prettier) · semantic-release on merge to `main`.
 ├─ tsconfig.build.json    # Excludes *.test.ts + test-support/ (used by build/dev)
 ├─ vitest.config.ts       # Test runner config
 ├─ .oxlintrc.json / .oxfmtrc.json
-├─ lefthook.yml           # Pre-commit hooks
+├─ lefthook.yml           # Git hooks (pre-commit, commit-msg, pre-push)
+├─ docs/agents.md         # How the agent tooling fits together
 └─ release.config.js      # semantic-release config
 ```
 
@@ -313,7 +318,8 @@ re-migrate a stale legacy slot.
 
 ## Testing
 
-- **Runner:** vitest. `npm test` (one-shot), `npm run test:watch`.
+- **Runner:** vitest. `npm test` (one-shot), `npm run test:watch`. It also
+  runs the agent tooling's tests in `.agents/scripts/`.
 - **Location:** co-located `*.test.ts` next to the module under test.
 - **Mocks:** `src/test-support/mock-api.ts` — `createMockApi()` returns
   vitest-mocked versions of every SDK method. Use factories from
@@ -341,10 +347,15 @@ re-migrate a stale legacy slot.
   excludes `*.test.ts` + `src/test-support/` so test-only code stays out of
   `dist/`.
 - **Dev:** `npm run dev` (watch mode).
-- **Type-check:** `npm run type-check` (runs `tsc --noEmit`).
-- **Lint/format:** `npm run check` (`oxlint src && oxfmt --check`),
-  `npm run fix` (`oxlint src --fix && oxfmt`). **No ESLint, no Prettier.**
-- **Pre-commit:** lefthook (`lefthook.yml`).
+- **Type-check:** `npm run type-check` (`tsc --noEmit` for `src/`, then
+  `.agents/scripts/tsconfig.json` for the agent tooling).
+- **Lint/format:** `npm run check` (`oxlint src .agents/scripts && oxfmt --check`),
+  `npm run fix` (`oxlint src .agents/scripts --fix && oxfmt`). **No ESLint, no Prettier.**
+- **Git hooks:** lefthook, configured in `lefthook.yml` and installed by the
+  `prepare` script. `pre-commit` refuses commits on `main`, then lints and
+  formats staged files and runs the type check; `commit-msg` repeats the
+  branch rule for empty commits; `pre-push` refuses pushes to `main`, then
+  runs the tests. See `docs/agents.md`.
 - **Release:** semantic-release on merge to `main` (`.github/workflows/release.yml`).
   Commits must follow Conventional Commits — enforced by
   `check-semantic-pull-request.yml`.

@@ -81,6 +81,9 @@ jobs:
                   GIT_AUTHOR_EMAIL: ${{ steps.bot_user.outputs.id }}+${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com
                   GIT_COMMITTER_NAME: ${{ steps.generate_token.outputs.app-slug }}[bot]
                   GIT_COMMITTER_EMAIL: ${{ steps.bot_user.outputs.id }}+${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com
+                  # `npm ci` installs the git hooks (the `prepare` script). The pull request
+                  # already ran every check, so the release commit and push skip them.
+                  LEFTHOOK: '0'
 
             - name: Derive release announcement
               if: github.ref_name == 'main'
