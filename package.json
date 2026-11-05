@@ -74,8 +74,8 @@
     "@types/node": "26.6.6",
     "conventional-changelog-conventionalcommits": "9.3.1",
     "lefthook": "2.2.2",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
     "semantic-release": "25.0.9",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
