@@ -25,11 +25,12 @@ eslint/prettier) · semantic-release on merge to `main`.
 │                         # issue-automation.yml
 ├─ .agents/
 │  ├─ skills/             # Skills for agents working on this repo (add-command)
-│  └─ scripts/            # Agent tooling (git hook branch guard) and its tests.
-│                         # Not published, unlike scripts/
-├─ AGENTS.md              # Prescriptive rules (build cmds, skill-sync, JSON flag)
+│  └─ scripts/            # Agent tooling (verify, git hook branch guard) and its
+│                         # tests. Not published, unlike scripts/
+├─ AGENTS.md              # Prescriptive rules: definition of done, build cmds,
+│                         # skill-sync, JSON flag
 ├─ CODEBASE.md            # This file — descriptive map
-├─ CLAUDE.md              # One-liner forward to AGENTS.md
+├─ CLAUDE.md              # Imports AGENTS.md for Claude Code; nothing else
 ├─ tsconfig.json          # Includes src + tests (used by type-check, IDE)
 ├─ tsconfig.build.json    # Excludes *.test.ts + test-support/ (used by build/dev)
 ├─ vitest.config.ts       # Test runner config
@@ -347,6 +348,9 @@ re-migrate a stale legacy slot.
   excludes `*.test.ts` + `src/test-support/` so test-only code stays out of
   `dist/`.
 - **Dev:** `npm run dev` (watch mode).
+- **Verify:** `npm run verify` — every check the pull-request workflows run,
+  with one shared build, in about fifteen seconds (`.agents/scripts/verify.ts`).
+  Records a pass in `.tmp/agents/`.
 - **Type-check:** `npm run type-check` (`tsc --noEmit` for `src/`, then
   `.agents/scripts/tsconfig.json` for the agent tooling).
 - **Lint/format:** `npm run check` (`oxlint src .agents/scripts && oxfmt --check`),
