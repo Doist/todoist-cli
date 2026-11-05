@@ -88,7 +88,7 @@ export function codeFingerprint(files: Snapshot): string {
     return hash.digest('hex')
 }
 
-/** Changed files local checks read. */
+/** Changed files local checks read: what verify and the turn gate both act on. */
 export function changedCodePaths(before: Snapshot, after: Snapshot): string[] {
     return changedPaths(before, after).filter(
         (path) =>
