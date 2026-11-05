@@ -10,9 +10,13 @@ import { CHECKED_WORKFLOWS } from './tree.ts'
 const WORKFLOWS_DIR = join(REPO_ROOT, '.github/workflows')
 const readWorkflow = (name: string) => readFileSync(join(WORKFLOWS_DIR, name), 'utf8')
 
+// A line in a `run: |` script that runs a tool. The lines around them are shell guards (if, echo,
+// exit, fi).
+const TOOL_LINE = /^(npm|npx|node|gh|tsc|vitest|oxlint|oxfmt)\s/
+
 /**
- * The commands a workflow runs. A one-line `run:` is the command; a `run: |` script is named by
- * its last line, the command it exists to run (the lines above guard it).
+ * The commands a workflow runs: each one-line `run:`, and every tool line of a `run: |` script, so a
+ * check added to a script cannot hide behind the command that was already there.
  */
 function workflowCommands(text: string): string[] {
     const commands: string[] = []
@@ -25,17 +29,55 @@ function workflowCommands(text: string): string[] {
             commands.push(value.trim())
             return
         }
-        const body: string[] = []
         for (const next of lines.slice(index + 1)) {
             if (next.trim() && next.search(/\S/) <= indent.length) break
-            if (next.trim()) body.push(next.trim())
+            if (TOOL_LINE.test(next.trim())) commands.push(next.trim())
         }
-        commands.push(body.at(-1) ?? '')
     })
     return commands
 }
 
-const runsOnPullRequests = (text: string) => /^\s+pull_request:?\s*$/m.test(text)
+/** The `on:` trigger, inline (`on: [push, pull_request]`) or as an indented block. */
+function triggers(text: string): string {
+    const match = text.match(/^["']?on["']?:(.*)\n((?:(?:[ \t].*)?\n)*)/m)
+    return match ? `${match[1]}\n${match[2]}` : ''
+}
+
+const runsOnPullRequests = (text: string) => /\bpull_request(_target)?\b/.test(triggers(text))
+
+describe('reading workflows', () => {
+    it.each([
+        ['on:\n    pull_request:\n', true],
+        ['on:\n    pull_request_target:\n        types: [opened]\n', true],
+        ['on: [push, pull_request]\n', true],
+        ['on: { pull_request: {} }\n', true],
+        ['"on": pull_request\n', true],
+        ['on:\n    issues:\n        types: [opened]\n', false],
+        ["on:\n    push:\njobs:\n    a:\n        if: github.event_name == 'pull_request'\n", false],
+    ])('%j runs on pull requests: %s', (text, expected) => {
+        expect(runsOnPullRequests(text)).toBe(expected)
+    })
+
+    it('takes every tool line of a script, not only its last one', () => {
+        const text = [
+            'steps:',
+            '    - run: |',
+            '          if ! gh skill --help >/dev/null 2>&1; then',
+            '              echo "skipping"',
+            '              exit 0',
+            '          fi',
+            '          npm run new-check',
+            '          gh skill publish --dry-run',
+            '    - run: npm test',
+            '',
+        ].join('\n')
+        expect(workflowCommands(text)).toEqual([
+            'npm run new-check',
+            'gh skill publish --dry-run',
+            'npm test',
+        ])
+    })
+})
 
 describe('verify covers CI', () => {
     it('reads every pull-request workflow that runs a command', () => {
