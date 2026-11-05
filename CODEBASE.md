@@ -29,8 +29,10 @@ eslint/prettier) · semantic-release on merge to `main`.
 │  │                      # review-changes)
 │  ├─ checks/             # Review checks reviewers and Doistbot apply (AGENTS.md links them)
 │  └─ scripts/            # Agent tooling (verify, git hook branch guard, review
-│                         # worktree) and its tests. Not published, unlike scripts/
+│                         # worktree, end-of-turn gate) and its tests. Not
+│                         # published, unlike scripts/
 ├─ .claude/skills/        # Links to .agents/skills/, where Claude Code finds them
+├─ .claude/settings.json  # End-of-turn gate hooks (.codex/hooks.json for Codex)
 ├─ AGENTS.md              # Prescriptive rules: definition of done, skills, build
 │                         # cmds, skill-sync, JSON flag
 ├─ CODEBASE.md            # This file — descriptive map

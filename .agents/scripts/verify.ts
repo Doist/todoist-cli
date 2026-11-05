@@ -1,5 +1,5 @@
 // `npm run verify`: every check CI runs on a pull request, in about fifteen seconds.
-// Records a fingerprint of the tree only when everything passed.
+// Records a fingerprint of the tree only when everything passed; the end-of-turn gate reads it.
 
 import { CHECKOUT_ROOT, branchBase, defaultBranchRef } from './lib/git.ts'
 import { clearVerified } from './lib/state.ts'

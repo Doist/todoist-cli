@@ -9,6 +9,7 @@ This repository is set up so coding agents prove their work before they call it 
 3. **`AGENTS.md`** tells agents what done means. Claude Code reads it through `CLAUDE.md`; Codex and other agents read it directly.
 4. **Skills** in `.agents/skills/` give step-by-step procedures for recurring work. They load only when a task needs them.
 5. **Review**: fresh reviewers and Doistbot check a finished change against the checks in `.agents/checks/`.
+6. **The end-of-turn gate** sends an agent back once when its turn changed code that `npm run verify` has not passed.
 
 ## Rules and what holds them
 
@@ -21,7 +22,7 @@ This repository is set up so coding agents prove their work before they call it 
 | Tests pass before a push                                                                                | `pre-push`; CI                                                                  | Enforced in CI                           |
 | Agent tooling never ships in the npm package                                                            | `.agents/scripts/package-contents.test.ts`                                      | Enforced in CI                           |
 | `npm run verify` runs what CI runs                                                                      | `.agents/scripts/lib/steps.test.ts` compares it with the pull-request workflows | Enforced in CI                           |
-| Run `npm run verify` before calling work done                                                           | `AGENTS.md`                                                                     | Asked                                    |
+| Run `npm run verify` before calling work done                                                           | `AGENTS.md`                                                                     | Enforced at turn end (once); `AGENTS.md` |
 | Never weaken a check to pass it                                                                         | `AGENTS.md`                                                                     | Asked                                    |
 | Instructions name only files, links and scripts that exist                                              | `.agents/scripts/instructions.test.ts`                                          | Enforced in CI                           |
 | Every skill says when to use it and is linked for Claude Code                                           | `.agents/scripts/instructions.test.ts`                                          | Enforced in CI                           |
@@ -55,11 +56,33 @@ One command, every check the pull-request workflows run (`lint.yml`, `test.yml`,
 - **Order:** lint, format and both type checks start together. The tests wait for the build, because `src/index.integration.test.ts` rebuilds `dist/` and runs it; the skill sync check imports from `dist/`, so it waits for the tests.
 - **`CI=true`** is set for the build, the tests and the skill sync check, as GitHub Actions sets it. Variables that change what the CLI does (`TD_ACCESSIBLE`, `TD_SPINNER`, `TD_USER`, `TD_VERBOSE`, `TODOIST_API_TOKEN`, `FORCE_COLOR`) are removed, with a note, since CI never sets them. A real token never reaches the tests.
 - **Output:** one line per step. A failing step prints the last 30 lines of its log and the log's path under `.tmp/agents/logs/`.
-- **The record:** after a full pass it writes a content hash of every file local checks read (not docs, not CI-only files) to `.tmp/agents/verified.json`. A run that fails, or sees files change while it runs, deletes it.
+- **The record:** after a full pass it writes a content hash of every file local checks read (not docs, not CI-only files) to `.tmp/agents/verified.json`. A run that fails, or sees files change while it runs, deletes it. The end-of-turn gate reads it.
 - **Platforms:** macOS, Linux and WSL. Like the git hooks, it assumes a POSIX shell and runs npm's POSIX launchers in `node_modules/.bin`; on native Windows, run it in WSL.
 - **What it cannot see:** the real Todoist API, output in a real terminal, the other Node version CI tests on, and the `gh skill publish --dry-run` spec check. It prints these after every pass.
 
 If a pull-request workflow gains a step, `.agents/scripts/lib/steps.test.ts` fails until verify gains it too, or says why it can't.
+
+## The end-of-turn gate
+
+Every agent's hooks call one script, `.agents/scripts/guard.ts`, so the agents can't drift apart.
+
+- **Turn start** (you send a message): it hashes every file in the checkout, untracked ones included, into `.tmp/agents/turns/`.
+- **Turn end** (the agent stops): it compares the tree with the turn's start and with the last `npm run verify` pass. If the turn changed code and verify has not passed on exactly this tree, it sends the agent back once, naming the files. The second time, it lets the agent stop and shows you a note.
+- **Passes without a word:** turns that changed nothing, changed only docs, or undid their edits.
+- **"Once"** is deliberate: an agent can stop on purpose and say what is unfinished.
+
+| Agent       | Wiring                                                                                                                | Known limits                                                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | `.claude/settings.json`: `UserPromptSubmit` and `Stop`                                                                | `hook-wiring.test.ts` runs the exact commands. Not yet seen sending a real session back.                                                                      |
+| Codex       | `.codex/hooks.json`: `UserPromptSubmit` and `Stop`                                                                    | Runs only in a trusted project, after each person reviews the hooks in `/hooks`. Some versions run no project hooks in a linked worktree. Not yet tried here. |
+| Cursor      | Runs the Claude Code hooks itself; the command falls back to the git root if Cursor does not set `CLAUDE_PROJECT_DIR` | No Cursor hooks file: a second one would run every hook twice. A test keeps it out. Not yet tried here.                                                       |
+
+**Other limits:**
+
+- Two sessions in one checkout share its files, so each may be told about the other's edits. Use a worktree per session.
+- If the branch's code is back to what `main` has (an undo, a stash, a switch), the turn passes: CI already checked that code.
+
+**Fails open, visibly:** a broken guard, bad input or a checkout without the script lets the turn end and says why in a message. `DISABLE_AGENT_GUARD=1` in the agent's environment turns the gate off for you.
 
 ## Skills
 
@@ -130,4 +153,5 @@ semantic-release publishes from `main` on every merge, and a pre-release from `n
 
 - No node on `PATH` in a GUI client: the hooks skip lint, the type check and the tests, with a message. The branch rule still applies.
 - `git commit --no-verify`: every local hook is skipped. CI and branch protection still apply.
+- The end-of-turn gate: any error lets the turn end, with a message saying why. `DISABLE_AGENT_GUARD=1` turns it off.
 - Worktrees share the hooks in `.git/hooks`, so the branch rule works in a new worktree at once. Lint, format, types and tests need `npm ci` in that worktree first. Without the lefthook binary anywhere the hooks look, they print "Can't find lefthook in PATH" and let the commit through.

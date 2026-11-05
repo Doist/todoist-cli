@@ -52,6 +52,13 @@ describe('snapshot', () => {
         expect(changedPaths(before, snapshot(repo.dir))).toEqual(['src/a.ts'])
     })
 
+    it('is the same before and after a deletion is staged', () => {
+        rmSync(join(repo.dir, 'src/a.ts'))
+        const unstaged = snapshot(repo.dir)
+        repo.git(['add', '--all'])
+        expect(snapshot(repo.dir)).toEqual(unstaged)
+    })
+
     it('sees an executable bit change', () => {
         const before = codeFingerprint(snapshot(repo.dir))
         repo.run('chmod', ['+x', 'src/a.ts'])
