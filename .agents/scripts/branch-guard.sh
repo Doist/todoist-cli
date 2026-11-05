@@ -12,6 +12,15 @@ set -u
 
 mode="${1:-}"
 
+# Checked before the CI exemption, so a misconfigured hook fails loudly in CI too.
+case "$mode" in
+commit | push) ;;
+*)
+    echo "branch-guard: unknown mode '$mode' (expected 'commit' or 'push'); the hook calling it is misconfigured" >&2
+    exit 2
+    ;;
+esac
+
 if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     exit 0
 fi
@@ -41,10 +50,6 @@ push)
             refuse "pushes to '$default' are not allowed."
         fi
     done
-    ;;
-*)
-    echo "branch-guard: unknown mode '$mode' (expected 'commit' or 'push'); the hook calling it is misconfigured" >&2
-    exit 2
     ;;
 esac
 

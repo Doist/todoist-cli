@@ -213,6 +213,13 @@ describe('pre-commit', () => {
         expect(commitsOnHead()).toBe('1')
     })
 
+    it('falls back to main when origin/HEAD is not set', () => {
+        repo.git(['symbolic-ref', '--delete', 'refs/remotes/origin/HEAD'])
+        const result = commit()
+        expect(result.status).not.toBe(0)
+        expect(output(result)).toContain("commits on 'main' are not allowed")
+    })
+
     it('takes the default branch from origin/HEAD', () => {
         repo.git(['update-ref', 'refs/remotes/origin/trunk', 'HEAD'])
         repo.git(['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/trunk'])
@@ -292,9 +299,11 @@ describe('the test environment', () => {
 })
 
 describe('branch-guard.sh', () => {
-    it('fails loudly when a hook calls it with an unknown mode', () => {
-        const result = repo.run('sh', ['.agents/scripts/branch-guard.sh', 'comit'])
-        expect(result.status).toBe(2)
-        expect(result.stderr).toContain('misconfigured')
+    it('fails loudly when a hook calls it with an unknown mode, in CI too', () => {
+        for (const env of [{}, { GITHUB_ACTIONS: 'true' }]) {
+            const result = repo.run('sh', ['.agents/scripts/branch-guard.sh', 'comit'], { env })
+            expect(result.status).toBe(2)
+            expect(result.stderr).toContain('misconfigured')
+        }
     })
 })
