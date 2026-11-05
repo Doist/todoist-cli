@@ -262,7 +262,8 @@ describe('pre-push', () => {
         expect(push(['--dry-run', 'origin', 'feature']).status).toBe(0)
         const result = push(['--dry-run', 'origin', 'feature'], { STUB_FAIL: 'npm test' })
         expect(result.status).not.toBe(0)
-        expect(calls()).toContain('npm test\n')
+        // Once for the passing push, once for the failing one.
+        expect(calls()).toBe('npm test\nnpm test\n')
     })
 
     it('pushes without tests when npm is on PATH but node is not', () => {
