@@ -4,7 +4,8 @@ Fill in the brackets. Give every reviewer the same brief, plus its role. Leave o
 
 ```
 Repository: Doist/todoist-cli, the Todoist CLI `td` (TypeScript, Commander, Vitest).
-The change: `git diff <base>` in <checkout path>, including untracked files.
+The change: `git diff <base>` in <checkout path>, plus the untracked files
+`git ls-files --others --exclude-standard` lists there.
 
 The task, in the owner's words:
 <quote the request; add later clarifications verbatim>

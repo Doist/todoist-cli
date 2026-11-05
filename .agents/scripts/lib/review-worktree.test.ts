@@ -59,6 +59,25 @@ it('works when the user has diff.noprefix set', () => {
     expect(readFileSync(join(target, 'src/a.ts'), 'utf8')).toBe('unstaged edit\n')
 })
 
+it('works with a target inside the checkout, without copying it into itself', () => {
+    repo.write('src/new.ts', 'untracked\n')
+    const inside = join(repo.dir, 'review-copy')
+    createReviewWorktree(repo.dir, inside)
+    expect(readFileSync(join(inside, 'src/new.ts'), 'utf8')).toBe('untracked\n')
+    expect(existsSync(join(inside, 'review-copy'))).toBe(false)
+})
+
+it('applies the real change when a textconv driver is configured', () => {
+    repo.write('.gitattributes', '*.txt diff=upper\n')
+    repo.write('notes.txt', 'hello\n')
+    repo.git(['add', '.'])
+    repo.git(['commit', '--quiet', '-m', 'notes'])
+    repo.git(['config', 'diff.upper.textconv', 'tr a-z A-Z <'])
+    repo.write('notes.txt', 'hello world\n')
+    createReviewWorktree(repo.dir, target)
+    expect(readFileSync(join(target, 'notes.txt'), 'utf8')).toBe('hello world\n')
+})
+
 it('copies an untracked relative symlink as a relative symlink', () => {
     symlinkSync('../src/a.ts', join(repo.dir, 'src/link.ts'))
     createReviewWorktree(repo.dir, target)
@@ -82,8 +101,9 @@ it('refuses a target that already exists', () => {
     expect(() => createReviewWorktree(repo.dir, repo.dir)).toThrow('already exists')
 })
 
-// An unreadable file makes the copy fail, after the worktree exists. Root can read it anyway.
-it.skipIf(process.getuid?.() === 0)(
+// An unreadable file makes the copy fail, after the worktree exists. Root can read it anyway, and
+// chmod cannot make a file unreadable on Windows.
+it.skipIf(process.getuid?.() === 0 || process.platform === 'win32')(
     'cleans up when a step after creating the worktree fails',
     () => {
         repo.write('src/a.ts', 'unstaged edit\n')
