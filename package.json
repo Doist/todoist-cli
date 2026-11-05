@@ -11,15 +11,16 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json --watch",
     "start": "node dist/index.js",
-    "type-check": "tsc --noEmit",
-    "check": "oxlint src && oxfmt --check",
-    "fix": "oxlint src --fix && oxfmt",
+    "type-check": "tsc --noEmit && tsc --noEmit -p .agents/scripts",
+    "check": "oxlint src .agents/scripts && oxfmt --check",
+    "fix": "oxlint src .agents/scripts --fix && oxfmt",
     "postinstall": "node scripts/postinstall.js",
     "check:skill-sync": "node scripts/check-skill-sync.js",
     "sync:skill": "npm run build && node scripts/sync-skill.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "prepare": "lefthook install --reset-hooks-path"
   },
   "keywords": [
     "todoist",

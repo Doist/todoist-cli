@@ -55,7 +55,7 @@ Each commit message consists of a **header**, an **optional body**, and an **opt
 [optional footer(s)]
 ```
 
-Commit types such as `feat:` and `fix:` affect versioning and changelog generation. Other types like `build:`, `chore:`, `ci:`, `docs:`, `perf:`, `refactor:`, `style:` and `test:` are valid but will not trigger a release.
+Commit types such as `feat:`, `fix:` and `perf:` affect versioning and changelog generation. Other types like `build:`, `chore:`, `ci:`, `docs:`, `refactor:`, `style:` and `test:` are valid but will not trigger a release.
 
 A commit that has the text `BREAKING CHANGE:` at the beginning of its optional body or footer, or appends a `!` after the type/scope, introduces a breaking API change (correlating with `MAJOR` in semantic versioning).
 
