@@ -19,6 +19,7 @@
     "sync:skill": "npm run build && node scripts/sync-skill.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify": "node .agents/scripts/verify.ts",
     "prepublishOnly": "npm run build && npm test",
     "prepare": "lefthook install --reset-hooks-path"
   },

@@ -8,7 +8,8 @@ import { isolatedEnv, REPO_ROOT } from './lib/test-repo.ts'
 // lives in `.agents/`, and must never be published.
 const DEV_ONLY = ['.agents/', '.claude/', '.codex/', '.cursor/', '.tmp/']
 
-it('keeps agent tooling out of the published package', () => {
+// npm pack takes several seconds, more when `npm run verify` runs other checks alongside.
+it('keeps agent tooling out of the published package', { timeout: 30_000 }, () => {
     expect(existsSync(join(REPO_ROOT, '.agents/scripts'))).toBe(true)
 
     const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {

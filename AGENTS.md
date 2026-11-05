@@ -6,6 +6,13 @@
 
 TypeScript CLI for Todoist. Binary name: `td`.
 
+## Definition of done
+
+- **Done means proven:** a test that failed before the change and passes after, or the command's real output (`node dist/index.js <command>`, on a test account). For a refactor: tests that pin the behaviour, passing before and after. Reading code or a passing compile is not proof.
+- **Run `npm run verify` before calling a change done.** It runs every check CI runs, in about fifteen seconds, and records the pass. It prints what it cannot see, and says when only docs changed and there is nothing to check.
+- **Never weaken a check to pass it.** Don't skip, delete or loosen tests, edit lint, type or test config to get green, or use `--no-verify`. If a check looks wrong, say so and stop.
+- **Report honestly:** what ran, what it showed, and what you did not verify.
+
 ## Build & Run
 
 ```bash
@@ -15,6 +22,7 @@ npm run type-check  # type check source + tests (tsconfig.json) and the agent to
 npm run check       # lint + format check
 npm run fix         # auto-fix lint + format
 npm test            # run tests
+npm run verify      # every check CI runs (lint, format, types, tests, build, skill sync)
 ```
 
 **Two-tsconfig setup:** `tsconfig.json` includes both source and test files — used by `type-check` and IDEs. `tsconfig.build.json` extends it but excludes colocated `*.test.ts` files plus `src/test-support/` — used by `build` and `dev` to keep test-only code out of `dist/`.
@@ -27,7 +35,7 @@ node dist/index.js today           # run 'today' command
 node dist/index.js <command> ...   # run any command
 ```
 
-Use this to verify changes work before committing.
+Use this to see a change working, on top of `npm run verify`.
 
 ## Rules when changing code
 
@@ -39,7 +47,7 @@ Use this to verify changes work before committing.
 
 ## Testing
 
-Tests use vitest with mocked API. Run `npm test` before committing.
+Tests use vitest with mocked API. `npm run verify` runs them with every other CI check.
 
 - Co-locate tests next to the command or lib module they cover.
 - When adding features, add corresponding tests.

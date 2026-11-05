@@ -20,3 +20,36 @@ export function cleanGitEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.Proces
     for (const name of localGitVars()) delete clean[name]
     return clean
 }
+
+export type GitResult = { ok: boolean; stdout: string; stderr: string }
+
+export function git(root: string, args: string[], options: { input?: string } = {}): GitResult {
+    const result = spawnSync('git', args, {
+        cwd: root,
+        env: cleanGitEnv(),
+        input: options.input,
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+    })
+    return { ok: result.status === 0, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
+}
+
+/** The ref the current branch is measured against: origin's default branch, else a local one. */
+export function defaultBranchRef(root: string): string | undefined {
+    const originHead = git(root, ['symbolic-ref', '-q', 'refs/remotes/origin/HEAD'])
+    const candidates = [
+        originHead.ok ? originHead.stdout.trim() : undefined,
+        'refs/remotes/origin/main',
+        'refs/heads/main',
+    ]
+    return candidates.find(
+        (ref) => ref && git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).ok,
+    )
+}
+
+/** Where the current branch left the default branch, or undefined if there is no default branch. */
+export function branchBase(root: string, ref = defaultBranchRef(root)): string | undefined {
+    if (!ref) return undefined
+    const base = git(root, ['merge-base', 'HEAD', ref])
+    return base.ok ? base.stdout.trim() : undefined
+}

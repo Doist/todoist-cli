@@ -28,6 +28,7 @@ After cloning the repository and installing dependencies with `npm install`, sev
 - `npm run fix`: Auto-fixes lint and formatting issues
 - `npm test`: Runs all tests
 - `npm run test:watch`: Runs tests in watch mode
+- `npm run verify`: Runs every check CI runs (lint, format, types, tests, build, skill sync) in about fifteen seconds
 
 ## Sending a Pull Request
 
@@ -36,7 +37,7 @@ Before submitting a pull request, please take the following into consideration:
 - Create your branch from `main` (or from `next` if working on a pre-release feature)
 - Follow the [Commit Message Guidelines](#commit-message-guidelines) below
 - Add tests for code that should be tested
-- Ensure the test suite passes
+- Run `npm run verify` and make sure it passes
 - Do not override built-in validation and formatting checks
 
 ## Commit Message Guidelines
