@@ -44,7 +44,8 @@ export const CHECKED_WORKFLOWS = [
     '.github/workflows/test.yml',
 ]
 
-const AGENT_DOCS = new Set(['AGENTS.md', 'CODEBASE.md', 'docs/agents.md'])
+/** Agent instructions outside .agents/. instructions.test.ts checks every reference in them. */
+export const AGENT_DOCS = new Set(['AGENTS.md', 'CODEBASE.md', 'docs/agents.md'])
 
 /** The kind of file, as far as local checks are concerned. */
 export type FileKind = 'docs' | 'unchecked' | 'code'

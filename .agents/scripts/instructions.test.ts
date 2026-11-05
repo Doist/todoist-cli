@@ -6,6 +6,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { git } from './lib/git.ts'
 import { REPO_ROOT } from './lib/test-repo.ts'
+import { AGENT_DOCS } from './lib/tree.ts'
 
 const SKILLS_DIR = join(REPO_ROOT, '.agents/skills')
 const skills = readdirSync(SKILLS_DIR).filter((name) => !name.startsWith('.'))
@@ -18,10 +19,10 @@ function markdownFiles(dir: string): string[] {
     })
 }
 
+// The same list that makes verify treat these docs as code, so a doc checked here can't be
+// skipped there as docs-only.
 const DOCS = [
-    join(REPO_ROOT, 'AGENTS.md'),
-    join(REPO_ROOT, 'CODEBASE.md'),
-    join(REPO_ROOT, 'docs/agents.md'),
+    ...[...AGENT_DOCS].map((path) => join(REPO_ROOT, path)),
     ...markdownFiles(join(REPO_ROOT, '.agents')),
 ]
 
