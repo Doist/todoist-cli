@@ -1,3 +1,9 @@
+## [5.10.1](https://github.com/Doist/todoist-cli/compare/v5.10.0...v5.10.1) (2026-11-05)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/todoist-sdk to v17.0.0 ([#639](https://github.com/Doist/todoist-cli/issues/639)) ([183a07c](https://github.com/Doist/todoist-cli/commit/183a07c4166065453b187e88ba87da716bad01dc)), closes [Doist/todoist-sdk-typescript#762](https://github.com/Doist/todoist-sdk-typescript/issues/762)
+
 ## [5.10.0](https://github.com/Doist/todoist-cli/compare/v5.9.2...v5.10.0) (2026-11-03)
 
 ### Features
