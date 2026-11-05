@@ -58,6 +58,15 @@ describe('turns that pass', () => {
         expect(end()).toEqual({ decision: 'allow' })
     })
 
+    it('keeps the pass when a deletion verify saw is then staged', () => {
+        repo.git(['switch', '--quiet', '-c', 'feature'])
+        start()
+        rmSync(join(repo.dir, 'src/a.ts'))
+        markVerified()
+        repo.git(['add', '--all'])
+        expect(end()).toEqual({ decision: 'allow' })
+    })
+
     it('keeps the pass when only docs changed after verify', () => {
         start()
         repo.write('src/a.ts', 'export const a = 2\n')
@@ -68,7 +77,7 @@ describe('turns that pass', () => {
 
     it('notes a change only CI checks, without sending the agent back', () => {
         start()
-        repo.write('.github/workflows/release.yml', 'on: push\n')
+        repo.write('renovate.json', '{}\n')
         const verdict = end()
         expect(verdict.decision).toBe('allow')
         expect(verdict).toHaveProperty('note', expect.stringContaining('only CI checks'))
@@ -110,6 +119,12 @@ describe('turns that changed code without verifying', () => {
         expect(end().decision).toBe('block')
     })
 
+    it('catches a deleted doc, which the agent docs may name', () => {
+        start()
+        rmSync(join(repo.dir, 'README.md'))
+        expect(end().decision).toBe('block')
+    })
+
     it('catches a new untracked file', () => {
         start()
         repo.write('src/new.ts', 'new\n')
@@ -125,10 +140,13 @@ describe('turns that changed code without verifying', () => {
     })
 
     it('checks each session against the tree it saw at its own turn start', () => {
+        repo.write('src/a.ts', 'export const a = 2\n')
         start()
+        repo.write('src/a.ts', 'export const a = 3\n')
         startTurn({ root: repo.dir, sessionId: 'other' })
         repo.write('src/a.ts', 'export const a = 2\n')
-        expect(end().decision).toBe('block')
+        // Back at the tree this session started from; the other session started from a = 3.
+        expect(end()).toEqual({ decision: 'allow' })
         expect(endTurn({ root: repo.dir, sessionId: 'other' }).decision).toBe('block')
     })
 })

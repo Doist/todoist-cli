@@ -14,17 +14,20 @@ export function snapshot(root: string): Snapshot {
     if (!listed.ok) throw new Error(`git ls-files failed: ${listed.stderr.trim()}`)
     const files: Snapshot = {}
     for (const path of new Set(listed.stdout.split('\0').filter(Boolean))) {
-        files[path] = hashPath(join(root, path))
+        const hash = hashPath(join(root, path))
+        // A tracked file deleted from disk is left out, exactly as it is once the deletion is
+        // staged, so staging a deletion doesn't change the snapshot.
+        if (hash !== undefined) files[path] = hash
     }
     return files
 }
 
-function hashPath(path: string): string {
+function hashPath(path: string): string | undefined {
     let stat
     try {
         stat = lstatSync(path)
     } catch {
-        return 'missing'
+        return undefined
     }
     const hash = createHash('sha256')
     if (stat.isSymbolicLink()) hash.update(`link:${readlinkSync(path)}`)
@@ -70,8 +73,7 @@ export function classify(path: string): FileKind {
     return 'code'
 }
 
-const present = (files: Snapshot, path: string) =>
-    files[path] !== undefined && files[path] !== 'missing'
+const present = (files: Snapshot, path: string) => files[path] !== undefined
 
 /**
  * Hash of every file local checks read, so editing docs, or files only CI reads, after a pass

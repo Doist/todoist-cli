@@ -12,6 +12,7 @@ import {
     changedSince,
     classify,
     codeFingerprint,
+    needsChecks,
     type Snapshot,
     snapshot,
 } from './tree.ts'
@@ -87,7 +88,7 @@ export function endTurn({
     // The code is back to what the default branch has (an undo, a stash, a branch switch), which
     // CI already checked. verify says "only docs changed" here and records nothing, so asking for
     // it would send the agent back for nothing.
-    if (base && !changedSince(root, base).some((file) => classify(file) === 'code')) {
+    if (base && !changedSince(root, base).some((file) => needsChecks(root, file))) {
         return { decision: 'allow', note: ciNote }
     }
 
