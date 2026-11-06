@@ -1,3 +1,9 @@
+## [5.11.0](https://github.com/Doist/todoist-cli/compare/v5.10.1...v5.11.0) (2026-11-06)
+
+### Features
+
+* **filter:** save view style, grouping and sort on create and update ([#640](https://github.com/Doist/todoist-cli/issues/640)) ([f79c538](https://github.com/Doist/todoist-cli/commit/f79c538168bf1b4d79916631ad31421d79ae3873))
+
 ## [5.10.1](https://github.com/Doist/todoist-cli/compare/v5.10.0...v5.10.1) (2026-11-05)
 
 ### Bug Fixes
