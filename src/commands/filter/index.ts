@@ -3,6 +3,7 @@ import { withCaseInsensitiveChoices } from '../../lib/completion.js'
 import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
 import { TASK_SORT_DIRECTIONS, TASK_SORT_FIELDS } from '../../lib/task-sort.js'
+import { addViewOptionFlags } from '../../lib/view-options.js'
 import { browseFilter } from './browse.js'
 import { createFilter } from './create.js'
 import { deleteFilterCmd } from './delete.js'
@@ -25,24 +26,16 @@ export function registerFilterCommand(program: Command): void {
         .option('--show-urls', 'Show web app URLs for each filter')
         .action(listFilters)
 
-    const createCmd = filter
-        .command('create')
-        .description('Create a filter')
-        .option('--name <name>', 'Filter name (required)')
-        .option('--query <query>', 'Filter query (required, e.g., "today | overdue")')
-        .option('--description <text>', 'Filter description')
-        .option('--color <color>', 'Filter color')
-        .option('--favorite', 'Mark as favorite')
-        .option('--view-mode <mode>', 'Layout: list, board or calendar')
-        .option(
-            '--group-by <field>',
-            'Group tasks by: assignee, added-date, due-date, deadline, label, priority, project, workspace',
-        )
-        .option(
-            '--sort-by <field>',
-            'Sort tasks by: manual, alphabetically, assignee, due-date, deadline, added-date, priority, project, workspace',
-        )
-        .option('--sort-order <order>', 'Sort direction: asc or desc')
+    const createCmd = addViewOptionFlags(
+        filter
+            .command('create')
+            .description('Create a filter')
+            .option('--name <name>', 'Filter name (required)')
+            .option('--query <query>', 'Filter query (required, e.g., "today | overdue")')
+            .option('--description <text>', 'Filter description')
+            .option('--color <color>', 'Filter color')
+            .option('--favorite', 'Mark as favorite'),
+    )
         .option('--json', 'Output the created filter as JSON')
         .option('--dry-run', 'Preview what would happen without executing')
         .action((options) => {
@@ -66,26 +59,18 @@ export function registerFilterCommand(program: Command): void {
             return deleteFilterCmd(ref, options)
         })
 
-    const updateCmd = filter
-        .command('update [ref]')
-        .description('Update a filter')
-        .option('--name <name>', 'New name')
-        .option('--query <query>', 'New query')
-        .option('--description <text>', 'New description')
-        .option('--no-description', 'Clear the description')
-        .option('--color <color>', 'New color')
-        .option('--favorite', 'Mark as favorite')
-        .option('--no-favorite', 'Remove from favorites')
-        .option('--view-mode <mode>', 'Layout: list, board or calendar')
-        .option(
-            '--group-by <field>',
-            'Group tasks by: assignee, added-date, due-date, deadline, label, priority, project, workspace',
-        )
-        .option(
-            '--sort-by <field>',
-            'Sort tasks by: manual, alphabetically, assignee, due-date, deadline, added-date, priority, project, workspace',
-        )
-        .option('--sort-order <order>', 'Sort direction: asc or desc')
+    const updateCmd = addViewOptionFlags(
+        filter
+            .command('update [ref]')
+            .description('Update a filter')
+            .option('--name <name>', 'New name')
+            .option('--query <query>', 'New query')
+            .option('--description <text>', 'New description')
+            .option('--no-description', 'Clear the description')
+            .option('--color <color>', 'New color')
+            .option('--favorite', 'Mark as favorite')
+            .option('--no-favorite', 'Remove from favorites'),
+    )
         .option('--dry-run', 'Preview what would happen without executing')
         .action((ref, options) => {
             if (!ref) {

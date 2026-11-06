@@ -1,7 +1,23 @@
-import { createCommand, type ColorKey, type Filter as SdkFilter } from '@doist/todoist-sdk'
+import {
+    createCommand,
+    type ColorKey,
+    type Filter as SdkFilter,
+    type SyncCommand,
+    type ViewOptionsSetArgs,
+} from '@doist/todoist-sdk'
 import { getApi, pickDefined } from './core.js'
 
 export type Filter = SdkFilter
+
+/**
+ * How the filter's tasks are laid out, grouped and sorted. View options are
+ * saved per user, so this only changes the authenticated account's view.
+ */
+export type FilterViewSettings = Omit<ViewOptionsSetArgs, 'viewType' | 'objectId'>
+
+function viewOptionsCommand(filterId: string, view: FilterViewSettings): SyncCommand {
+    return createCommand('view_options_set', { viewType: 'FILTER', objectId: filterId, ...view })
+}
 
 export interface AddFilterArgs {
     name: string
@@ -64,22 +80,27 @@ export interface UpdateFilterArgs {
     isFavorite?: boolean
 }
 
-export async function updateFilter(id: string, args: UpdateFilterArgs): Promise<void> {
-    const api = await getApi()
-    await api.sync({
-        commands: [
-            createCommand('filter_update', {
-                id,
-                ...pickDefined({
-                    name: args.name,
-                    query: args.query,
-                    description: args.description,
-                    color: args.color,
-                    isFavorite: args.isFavorite,
-                }),
-            }),
-        ],
+/** Changes to the filter and to its view go out in one request. */
+export async function updateFilter(
+    id: string,
+    args: UpdateFilterArgs,
+    view?: FilterViewSettings,
+): Promise<void> {
+    const changes = pickDefined({
+        name: args.name,
+        query: args.query,
+        description: args.description,
+        color: args.color,
+        isFavorite: args.isFavorite,
     })
+    const commands: SyncCommand[] = []
+    if (Object.keys(changes).length > 0) {
+        commands.push(createCommand('filter_update', { id, ...changes }))
+    }
+    if (view) commands.push(viewOptionsCommand(id, view))
+
+    const api = await getApi()
+    await api.sync({ commands })
 }
 
 export async function deleteFilter(id: string): Promise<void> {

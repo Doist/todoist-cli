@@ -1,78 +1,194 @@
 import {
     GROUPED_BY_OPTIONS,
-    SORT_ORDERS,
-    SORTED_BY_OPTIONS,
     VIEW_MODES,
     type GroupedBy,
-    type SortOrder,
-    type SortedBy,
-    type ViewMode,
+    type ViewOptionsSetArgs,
 } from '@doist/todoist-sdk'
+import { type Command, Option } from 'commander'
+import { withCaseInsensitiveChoices } from './completion.js'
 import { CliError } from './errors.js'
+import {
+    defaultDirectionFor,
+    parseTaskSortDirection,
+    parseTaskSortField,
+    sortedByForField,
+    TASK_SORT_DIRECTIONS,
+    TASK_SORT_FIELDS,
+} from './task-sort.js'
 
 /**
- * The Sync API expects these enums in UPPERCASE (`BOARD`, `ASSIGNEE`, ...), and
- * rejects anything else with `error_code: 20`. Users type lowercase and kebab-case
- * on the command line, so normalize before sending: `due-date` -> `DUE_DATE`.
+ * Flags that save how a view looks in the Todoist apps: its layout, grouping
+ * and sorting. They use the same words as `project --view-style` and
+ * `filter view --sort`, so a sort saved here is the sort `td filter view`
+ * then applies.
+ *
+ * The Sync API takes these values in uppercase (`BOARD`, `DUE_DATE`) and
+ * rejects anything else, so the flags translate before anything is sent.
  */
-function normalize(value: string): string {
-    return value.trim().toUpperCase().replaceAll('-', '_')
+
+const VIEW_STYLES = VIEW_MODES.map((mode) => mode.toLowerCase())
+
+/**
+ * Grouping, in the words `--sort` uses for the same fields. Keyed by the SDK's
+ * own list, so a grouping the SDK adds fails the type check until it has a word.
+ */
+const GROUP_BY_WORDS: Record<GroupedBy, string> = {
+    ASSIGNEE: 'assignee',
+    ADDED_DATE: 'date-added',
+    DUE_DATE: 'date',
+    DEADLINE: 'deadline',
+    LABEL: 'label',
+    PRIORITY: 'priority',
+    PROJECT: 'project',
+    WORKSPACE: 'workspace',
 }
 
-function parseEnum<T extends string>(value: string, allowed: readonly T[], option: string): T {
-    const normalized = normalize(value)
-    const match = allowed.find((a) => a === normalized)
-    if (!match) {
-        throw new CliError('INVALID_OPTIONS', `Invalid value "${value}" for ${option}.`, [
-            `Allowed: ${allowed.map((a) => a.toLowerCase().replaceAll('_', '-')).join(', ')}`,
-        ])
-    }
-    return match
-}
+/** `none` removes the grouping. */
+const GROUP_BY_CHOICES = [...GROUPED_BY_OPTIONS.map((option) => GROUP_BY_WORDS[option]), 'none']
 
-export function parseViewMode(value: string): ViewMode {
-    return parseEnum(value, VIEW_MODES, '--view-mode')
-}
+/** `none` means "no sorting at all", which a saved view can't hold. */
+const SAVED_SORT_FIELDS = TASK_SORT_FIELDS.filter((field) => field !== 'none')
 
-export function parseGroupedBy(value: string): GroupedBy {
-    return parseEnum(value, GROUPED_BY_OPTIONS, '--group-by')
-}
-
-export function parseSortedBy(value: string): SortedBy {
-    return parseEnum(value, SORTED_BY_OPTIONS, '--sort-by')
-}
-
-export function parseSortOrder(value: string): SortOrder {
-    return parseEnum(value, SORT_ORDERS, '--sort-order')
-}
-
-export interface ViewOptionFlags {
-    viewMode?: string
+export type ViewOptionFlags = {
+    viewStyle?: string
     groupBy?: string
-    sortBy?: string
+    sort?: string
     sortOrder?: string
 }
 
-export interface ParsedViewOptions {
-    viewMode?: ViewMode
-    groupedBy?: GroupedBy
-    sortedBy?: SortedBy
-    sortOrder?: SortOrder
+export type ViewSettings = Pick<
+    ViewOptionsSetArgs,
+    'viewMode' | 'groupedBy' | 'sortedBy' | 'sortOrder'
+>
+
+export type ParsedViewFlags = {
+    settings: ViewSettings
+    /** The same changes in the flags' own words, for previews and confirmations. */
+    summary: Record<string, string>
+    /** The same changes as command-line flags, for a retry hint. */
+    flags: string[]
 }
 
-/** Returns `undefined` when no view-option flag was supplied. */
-export function parseViewOptionFlags(flags: ViewOptionFlags): ParsedViewOptions | undefined {
-    const parsed: ParsedViewOptions = {}
-    if (flags.viewMode) parsed.viewMode = parseViewMode(flags.viewMode)
-    if (flags.groupBy) parsed.groupedBy = parseGroupedBy(flags.groupBy)
-    if (flags.sortBy) parsed.sortedBy = parseSortedBy(flags.sortBy)
-    if (flags.sortOrder) parsed.sortOrder = parseSortOrder(flags.sortOrder)
-    return Object.keys(parsed).length > 0 ? parsed : undefined
+/** Registers `--view-style`, `--group-by`, `--sort` and `--sort-order`. */
+export function addViewOptionFlags(command: Command): Command {
+    return command
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--view-style <style>', 'Layout in the Todoist apps'),
+                VIEW_STYLES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--group-by <field>',
+                    'Group tasks in the Todoist apps (none removes it)',
+                ),
+                GROUP_BY_CHOICES,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option('--sort <field>', 'Sort tasks in the Todoist apps'),
+                SAVED_SORT_FIELDS,
+            ),
+        )
+        .addOption(
+            withCaseInsensitiveChoices(
+                new Option(
+                    '--sort-order <direction>',
+                    'Sort direction (default: desc for priority, asc otherwise; not with --sort default)',
+                ),
+                [...TASK_SORT_DIRECTIONS],
+            ),
+        )
 }
 
-/** Human-readable summary for `--dry-run` output. */
-export function describeViewOptions(options: ParsedViewOptions): string {
-    return Object.entries(options)
-        .map(([key, value]) => `${key}=${String(value).toLowerCase()}`)
-        .join(', ')
+/**
+ * Turns the view flags into `view_options_set` arguments, or `undefined` when
+ * none was given. The API merges what it receives into the saved view, so a
+ * flag that is left out keeps its current value.
+ *
+ * `--sort` on its own also saves that field's usual direction, the one
+ * `filter view --sort` would use, rather than keeping a direction picked for
+ * some other field. `--sort-order` on its own sets the direction of whatever
+ * field is saved. `--sort default` has no direction, so it takes none.
+ */
+export function parseViewOptionFlags(flags: ViewOptionFlags): ParsedViewFlags | undefined {
+    const settings: ViewSettings = {}
+    const summary: Record<string, string> = {}
+    const asFlags: string[] = []
+
+    if (flags.viewStyle) {
+        const style = flags.viewStyle.toLowerCase()
+        settings.viewMode = parseChoice(
+            style,
+            VIEW_MODES,
+            (mode) => mode.toLowerCase(),
+            '--view-style',
+        )
+        summary['View style'] = style
+        asFlags.push('--view-style', style)
+    }
+
+    if (flags.groupBy) {
+        const grouping = flags.groupBy.toLowerCase()
+        settings.groupedBy =
+            grouping === 'none'
+                ? null
+                : parseChoice(
+                      grouping,
+                      GROUPED_BY_OPTIONS,
+                      (option) => GROUP_BY_WORDS[option],
+                      '--group-by',
+                  )
+        summary['Group by'] = grouping
+        asFlags.push('--group-by', grouping)
+    }
+
+    let direction = flags.sortOrder ? parseTaskSortDirection(flags.sortOrder) : undefined
+    if (flags.sort) {
+        const field = parseTaskSortField(flags.sort)
+        const sortedBy = sortedByForField(field)
+        if (!sortedBy) {
+            throw new CliError('INVALID_OPTIONS', `A view can't be saved with --sort ${field}.`, [
+                `Use one of: ${SAVED_SORT_FIELDS.join(', ')}`,
+            ])
+        }
+        if (field === 'default' && direction) {
+            throw new CliError(
+                'CONFLICTING_OPTIONS',
+                '--sort default has no direction, so it cannot take --sort-order.',
+                ['Drop --sort-order, or pick a field to sort by'],
+            )
+        }
+        settings.sortedBy = sortedBy
+        summary.Sort = field
+        asFlags.push('--sort', field)
+        if (!direction && field !== 'default') direction = defaultDirectionFor(field)
+    }
+    if (direction) {
+        settings.sortOrder = direction === 'desc' ? 'DESC' : 'ASC'
+        summary['Sort order'] = direction
+        asFlags.push('--sort-order', direction)
+    }
+
+    return Object.keys(settings).length > 0 ? { settings, summary, flags: asFlags } : undefined
+}
+
+/**
+ * Commander's choices already reject unknown values on the command line; this
+ * keeps the helper honest for any other caller.
+ */
+function parseChoice<T extends string>(
+    value: string,
+    options: readonly T[],
+    word: (option: T) => string,
+    flag: string,
+): T {
+    const match = options.find((option) => word(option) === value)
+    if (match) return match
+    throw new CliError('INVALID_OPTIONS', `Invalid value "${value}" for ${flag}.`, [
+        `Allowed: ${options.map(word).join(', ')}`,
+    ])
 }
