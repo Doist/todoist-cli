@@ -22,6 +22,7 @@ import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
 import { getAccountLanguage, getAccountTimezone } from '../../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
+import { resetGlobalArgs } from '../../lib/global-args.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures, makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
@@ -1683,6 +1684,40 @@ describe('filter view options', () => {
         expect(output).toContain('View style: board')
         expect(output).toContain('Sort: priority')
         expect(output).toContain('Sort order: desc')
+    })
+
+    it('keeps --user in the retry hint, so the retry reaches the same account', async () => {
+        captureConsole()
+        const originalArgv = process.argv
+        process.argv = ['node', 'td', '--user', 'alice@example.com', 'filter', 'create']
+        resetGlobalArgs()
+        try {
+            mockUpdateFilter.mockRejectedValueOnce(
+                new CliError('API_ERROR', 'Invalid argument value'),
+            )
+
+            const error = await createWith('--view-style', 'board').catch(
+                (caught: unknown) => caught,
+            )
+
+            expect(error).toHaveProperty('hints', [
+                expect.stringContaining(
+                    'td --user alice@example.com filter update id:filter-new --view-style board',
+                ),
+            ])
+        } finally {
+            process.argv = originalArgv
+            resetGlobalArgs()
+        }
+    })
+
+    it('saves the view before printing the created filter as JSON', async () => {
+        const consoleSpy = captureConsole()
+
+        await createWith('--view-style', 'board', '--json')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-new', {}, { viewMode: 'BOARD' })
+        expect(JSON.parse(consoleSpy.mock.calls[0][0])).toMatchObject({ id: 'filter-new' })
     })
 
     it('accepts values in any case', async () => {

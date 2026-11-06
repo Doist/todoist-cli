@@ -6,7 +6,7 @@ import {
     updateFilter,
 } from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
-import { isQuiet } from '../../lib/global-args.js'
+import { getRequestedUserRef, isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import {
     type ParsedViewFlags,
@@ -77,11 +77,15 @@ async function saveView(filter: Filter, view: ParsedViewFlags): Promise<void> {
         await updateFilter(filter.id, {}, view.settings)
     } catch (error) {
         const reason = error instanceof Error ? error.message : String(error)
+        // Without the account the filter went to, the retry would look for it
+        // in the default account.
+        const user = getRequestedUserRef()
+        const td = user ? `td --user ${user}` : 'td'
         throw new CliError(
             error instanceof CliError ? error.code : 'API_ERROR',
             `Created filter "${filter.name}" (id:${filter.id}), but its view could not be saved: ${reason}`,
             [
-                `Save the view without creating the filter again: td filter update id:${filter.id} ${view.flags.join(' ')}`,
+                `Save the view without creating the filter again: ${td} filter update id:${filter.id} ${view.flags.join(' ')}`,
             ],
         )
     }
