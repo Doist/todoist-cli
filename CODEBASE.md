@@ -226,6 +226,10 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   storage order, so every list view sorts locally. Whether a filter query is
   date-driven is the SDK's `isDateDrivenQuery`, which needs the account
   language from `getAccountLanguage` (`lib/api/core.ts`).
+- **`view-options.ts`** — `addViewOptionFlags()` registers `--view-style`,
+  `--group-by`, `--sort` and `--sort-order` for saving how a view looks in the
+  apps; `parseViewOptionFlags()` turns them into `view_options_set` arguments
+  in the same vocabulary as `filter view --sort`.
 - **`pagination.ts`** — `paginate()`, `LIMITS` (tasks: 300, projects: 50, …)
 - **`completion.ts`** — `parseCompLine`, `getCompletions`,
   `withCaseInsensitiveChoices`, `withUnvalidatedChoices` (Commander tree-walker)

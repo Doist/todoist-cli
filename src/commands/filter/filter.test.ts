@@ -21,6 +21,8 @@ vi.mock('../../lib/api/filters.js', () => ({
 import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
 import { getAccountLanguage, getAccountTimezone } from '../../lib/api/core.js'
 import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
+import { CliError } from '../../lib/errors.js'
+import { resetGlobalArgs } from '../../lib/global-args.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures, makeFilter } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
@@ -409,9 +411,13 @@ describe('filter update', () => {
             'New Name',
         ])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            name: 'New Name',
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                name: 'New Name',
+            },
+            undefined,
+        )
         expect(consoleSpy).toHaveBeenCalledWith('Updated: Old Name -> New Name (id:filter-1)')
     })
 
@@ -434,9 +440,13 @@ describe('filter update', () => {
             'Everything for the day job',
         ])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            description: 'Everything for the day job',
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                description: 'Everything for the day job',
+            },
+            undefined,
+        )
     })
 
     it('clears the description with --no-description', async () => {
@@ -451,9 +461,13 @@ describe('filter update', () => {
         await program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--no-description'])
 
         // null is the API's "clear it"; an absent key would leave the description alone.
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            description: null,
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                description: null,
+            },
+            undefined,
+        )
     })
 
     it('updates filter query', async () => {
@@ -475,9 +489,13 @@ describe('filter update', () => {
             '@work & p1',
         ])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            query: '@work & p1',
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                query: '@work & p1',
+            },
+            undefined,
+        )
     })
 
     it('updates filter color and favorite', async () => {
@@ -500,10 +518,14 @@ describe('filter update', () => {
             '--favorite',
         ])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            color: 'red',
-            isFavorite: true,
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                color: 'red',
+                isFavorite: true,
+            },
+            undefined,
+        )
     })
 
     it('removes favorite with --no-favorite', async () => {
@@ -517,9 +539,13 @@ describe('filter update', () => {
 
         await program.parseAsync(['node', 'td', 'filter', 'update', 'Work', '--no-favorite'])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {
-            isFavorite: false,
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {
+                isFavorite: false,
+            },
+            undefined,
+        )
     })
 
     it('updates by id: prefix', async () => {
@@ -541,9 +567,13 @@ describe('filter update', () => {
             'blue',
         ])
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-123', {
-            color: 'blue',
-        })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-123',
+            {
+                color: 'blue',
+            },
+            undefined,
+        )
     })
 
     it('throws when no changes specified', async () => {
@@ -1579,5 +1609,284 @@ describe('filter --dry-run', () => {
 
         expect(mockUpdateFilter).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Would update filter'))
+    })
+})
+
+describe('filter view options', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockUpdateFilter.mockReset()
+        mockAddFilter.mockResolvedValue(makeFilter({ id: 'filter-new', name: 'Team', query: 'p1' }))
+        mockFetchFilters.mockResolvedValue([
+            makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
+        ])
+    })
+
+    function createWith(...flags: string[]) {
+        return createProgram().parseAsync([
+            'node',
+            'td',
+            'filter',
+            'create',
+            '--name',
+            'Team',
+            '--query',
+            'p1',
+            ...flags,
+        ])
+    }
+
+    function updateWith(...flags: string[]) {
+        return createProgram().parseAsync(['node', 'td', 'filter', 'update', 'Work', ...flags])
+    }
+
+    it('saves the layout and grouping on the new filter', async () => {
+        captureConsole()
+
+        await createWith('--view-style', 'board', '--group-by', 'assignee')
+
+        expect(mockAddFilter).toHaveBeenCalledWith({ name: 'Team', query: 'p1' })
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-new',
+            {},
+            { viewMode: 'BOARD', groupedBy: 'ASSIGNEE' },
+        )
+    })
+
+    it('names the created filter when its view fails to save', async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(new CliError('API_ERROR', 'Invalid argument value'))
+
+        const error = await createWith('--view-style', 'board', '--sort', 'priority').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({
+            code: 'API_ERROR',
+            message: expect.stringContaining('id:filter-new'),
+        })
+        expect(error).toHaveProperty(
+            'hints',
+            expect.arrayContaining([
+                expect.stringContaining(
+                    'td filter update id:filter-new --view-style board --sort priority --sort-order desc',
+                ),
+            ]),
+        )
+    })
+
+    it('shows the saved view under the created filter', async () => {
+        const consoleSpy = captureConsole()
+
+        await createWith('--view-style', 'board', '--sort', 'priority')
+
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).toContain('View style: board')
+        expect(output).toContain('Sort: priority')
+        expect(output).toContain('Sort order: desc')
+    })
+
+    it('keeps --user in the retry hint, so the retry reaches the same account', async () => {
+        captureConsole()
+        const originalArgv = process.argv
+        process.argv = ['node', 'td', '--user', 'alice@example.com', 'filter', 'create']
+        resetGlobalArgs()
+        try {
+            mockUpdateFilter.mockRejectedValueOnce(
+                new CliError('API_ERROR', 'Invalid argument value'),
+            )
+
+            const error = await createWith('--view-style', 'board').catch(
+                (caught: unknown) => caught,
+            )
+
+            expect(error).toHaveProperty('hints', [
+                expect.stringContaining(
+                    'td --user alice@example.com filter update id:filter-new --view-style board',
+                ),
+            ])
+        } finally {
+            process.argv = originalArgv
+            resetGlobalArgs()
+        }
+    })
+
+    it('saves the view before printing the created filter as JSON', async () => {
+        const consoleSpy = captureConsole()
+
+        await createWith('--view-style', 'board', '--json')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-new', {}, { viewMode: 'BOARD' })
+        expect(JSON.parse(consoleSpy.mock.calls[0][0])).toMatchObject({ id: 'filter-new' })
+    })
+
+    it('accepts values in any case', async () => {
+        captureConsole()
+
+        await createWith(
+            '--view-style',
+            'BOARD',
+            '--group-by',
+            'Date-Added',
+            '--sort',
+            'Priority',
+            '--sort-order',
+            'ASC',
+        )
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-new',
+            {},
+            { viewMode: 'BOARD', groupedBy: 'ADDED_DATE', sortedBy: 'PRIORITY', sortOrder: 'ASC' },
+        )
+    })
+
+    it('groups with the same words as --sort', async () => {
+        captureConsole()
+
+        await updateWith('--group-by', 'date')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {}, { groupedBy: 'DUE_DATE' })
+    })
+
+    it('removes the grouping with --group-by none', async () => {
+        captureConsole()
+
+        await updateWith('--group-by', 'none')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {}, { groupedBy: null })
+    })
+
+    it("saves a sort in --sort's words with that field's usual direction", async () => {
+        captureConsole()
+
+        await updateWith('--sort', 'date-added')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {},
+            { sortedBy: 'ADDED_DATE', sortOrder: 'ASC' },
+        )
+    })
+
+    it('saves priority sorting p1 first unless told otherwise', async () => {
+        captureConsole()
+
+        await updateWith('--sort', 'priority')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {},
+            { sortedBy: 'PRIORITY', sortOrder: 'DESC' },
+        )
+    })
+
+    it('honours an explicit --sort-order', async () => {
+        captureConsole()
+
+        await updateWith('--sort', 'name', '--sort-order', 'desc')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            {},
+            { sortedBy: 'ALPHABETICALLY', sortOrder: 'DESC' },
+        )
+    })
+
+    it('saves --sort default as manual, with no direction', async () => {
+        captureConsole()
+
+        await updateWith('--sort', 'default')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {}, { sortedBy: 'MANUAL' })
+    })
+
+    it('rejects a direction for --sort default before looking the filter up', async () => {
+        await expect(
+            updateWith('--sort', 'default', '--sort-order', 'desc'),
+        ).rejects.toHaveProperty('code', 'CONFLICTING_OPTIONS')
+
+        expect(mockFetchFilters).not.toHaveBeenCalled()
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+    })
+
+    it('changes only the direction when --sort-order comes alone', async () => {
+        captureConsole()
+
+        await updateWith('--sort-order', 'desc')
+
+        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-1', {}, { sortOrder: 'DESC' })
+    })
+
+    it('sends filter and view changes together', async () => {
+        captureConsole()
+
+        await updateWith('--name', 'Team', '--view-style', 'list')
+
+        expect(mockUpdateFilter).toHaveBeenCalledTimes(1)
+        expect(mockUpdateFilter).toHaveBeenCalledWith(
+            'filter-1',
+            { name: 'Team' },
+            { viewMode: 'LIST' },
+        )
+    })
+
+    it('rejects --sort none, which no saved view can hold', async () => {
+        captureConsole()
+        captureStream('stderr')
+
+        await expect(updateWith('--sort', 'none')).rejects.toThrow(/none/)
+
+        expect(mockFetchFilters).not.toHaveBeenCalled()
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+    })
+
+    it('rejects an unknown value before looking the filter up', async () => {
+        captureConsole()
+        captureStream('stderr')
+
+        await expect(updateWith('--group-by', 'colour')).rejects.toThrow(/colour/)
+
+        expect(mockFetchFilters).not.toHaveBeenCalled()
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+    })
+
+    it('reports no changes before looking the filter up', async () => {
+        await expect(updateWith()).rejects.toHaveProperty('code', 'NO_CHANGES')
+
+        expect(mockFetchFilters).not.toHaveBeenCalled()
+    })
+
+    it('previews view flags on create without saving anything', async () => {
+        const consoleSpy = captureConsole()
+
+        await createWith('--view-style', 'board', '--group-by', 'none', '--dry-run')
+
+        expect(mockAddFilter).not.toHaveBeenCalled()
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).toContain('View style: board')
+        expect(output).toContain('Group by: none')
+    })
+
+    it('previews view flags on update without saving anything', async () => {
+        const consoleSpy = captureConsole()
+
+        await updateWith('--sort', 'deadline', '--dry-run')
+
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n')
+        expect(output).toContain('Would update filter')
+        expect(output).toContain('Sort: deadline')
+        expect(output).toContain('Sort order: asc')
+    })
+
+    it('leaves the view alone when no view flag is given', async () => {
+        captureConsole()
+
+        await createWith()
+
+        expect(mockAddFilter).toHaveBeenCalledWith({ name: 'Team', query: 'p1' })
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
     })
 })

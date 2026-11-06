@@ -248,6 +248,8 @@ td filter create --name "Urgent work" --query "p1 & #Work" --description "Everyt
 td filter update "Urgent work" --query "p1 & #Work & today"
 td filter update "Urgent work" --description "Updated scope"     # description-only update
 td filter update "Urgent work" --no-description                  # clear the description
+td filter create --name "Team" --query "p1 | p2" --view-style board --group-by assignee --sort priority
+td filter update "Team" --view-style list --group-by none         # change only how the filter is shown
 td filter delete "Urgent work" --yes
 td filter browse "Urgent work"
 
@@ -273,6 +275,8 @@ td section browse id:123
 Saved filters can contain multiple comma-separated queries, each displayed as a separate filter section. `td filter view` preserves those sections and applies `--limit` to each one. Under `--json`, multi-section filters return `{ sections: [{ query, results, nextCursor }] }`; under `--ndjson`, each line is one section with the same fields. Because each section has its own pagination cursor, use `--all` instead of `--cursor` for multi-section filters.
 
 `td filter view` orders tasks the way the Todoist apps do: it applies the sorting saved on that filter's view, and falls back to Todoist's default hierarchy (priority, then date, then deadline, then project and task order; date first for filters that query dates). `--sort` overrides it with `default`, `priority`, `date`, `deadline`, `date-added`, `name`, `project`, `assignee`, `workspace`, or `none` for the raw API order, and `--sort-order asc|desc` sets the direction of whichever field is in play (`default` and `none` have no direction). Sorting is applied to the tasks that were fetched, so pair it with `--all` when a filter has more results than the limit.
+
+`td filter create` and `td filter update` save how the filter looks in the Todoist apps: `--view-style list|board|calendar|table`, `--group-by` (`date`, `date-added`, `deadline`, `priority`, `label`, `project`, `assignee`, `workspace`, or `none` to remove grouping), `--sort` (the same fields as `filter view --sort` except `none`) and `--sort-order asc|desc`. A saved sort is what `td filter view` then applies. `--sort` alone also saves that field's usual direction (desc for priority, asc otherwise); `--sort-order` alone sets the direction of the saved sort and keeps its field; `--sort default` has no direction and rejects `--sort-order`. Flags left out keep their saved value, and `filter update` accepts view flags with no other change. If `filter create` reports that the filter was created but its view could not be saved, don't run it again: use the `td filter update id:...` command from its hint. View settings are per user: they change only your own view, even for filters over shared projects.
 
 Shared labels can appear in `td label list` and `td label view`, but standard update and delete actions only work for labels with IDs. Use `td label rename-shared` and `td label remove-shared` for shared labels.
 

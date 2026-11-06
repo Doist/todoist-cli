@@ -71,6 +71,11 @@ const SORTED_BY_FIELD: Partial<Record<TaskSortField, SortedBy>> = {
     default: 'MANUAL',
 }
 
+/** The saved `sorted_by` for a `--sort` field, or `undefined` for `none`, which no view can hold. */
+export function sortedByForField(field: TaskSortField): SortedBy | undefined {
+    return SORTED_BY_FIELD[field]
+}
+
 function isKnownSortedBy(value: string): value is SortedBy {
     return (SORTED_BY_OPTIONS as readonly string[]).includes(value)
 }
