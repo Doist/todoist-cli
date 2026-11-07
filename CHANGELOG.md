@@ -1,3 +1,9 @@
+## [5.11.1](https://github.com/Doist/todoist-cli/compare/v5.11.0...v5.11.1) (2026-11-07)
+
+### Bug Fixes
+
+* fail fast when --stdin has nothing piped in ([#641](https://github.com/Doist/todoist-cli/issues/641)) ([ce2abe6](https://github.com/Doist/todoist-cli/commit/ce2abe6ff49e2ca3a24bf74686c33ed5643c6f27))
+
 ## [5.11.0](https://github.com/Doist/todoist-cli/compare/v5.10.1...v5.11.0) (2026-11-06)
 
 ### Features
