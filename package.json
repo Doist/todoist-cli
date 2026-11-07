@@ -55,7 +55,7 @@
     "scripts"
   ],
   "dependencies": {
-    "@doist/cli-core": "1.7.2",
+    "@doist/cli-core": "1.8.0",
     "@doist/todoist-sdk": "17.0.0",
     "@napi-rs/keyring": "2.1.2",
     "@pnpm/tabtab": "0.5.4",

@@ -1,3 +1,4 @@
+import { readStdin } from '@doist/cli-core'
 import { formatUserShortName } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi, getCurrentUserId } from '../../lib/api/core.js'
@@ -12,7 +13,6 @@ import { isQuiet } from '../../lib/global-args.js'
 import { openLocalFileAsBlob } from '../../lib/local-file.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef, resolveTaskRef } from '../../lib/refs.js'
-import { readStdin } from '../../lib/stdin.js'
 import { truncateForDisplay } from '../../lib/text.js'
 
 interface AddOptions {

@@ -1,10 +1,10 @@
+import { readStdin } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectId } from '../../lib/refs.js'
-import { readStdin } from '../../lib/stdin.js'
 
 interface CreateOptions {
     name: string

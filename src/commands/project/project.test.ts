@@ -1,4 +1,4 @@
-import { captureConsole, captureStream } from '@doist/cli-core/testing'
+import { captureConsole, captureStream, mockStdin } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -14,10 +14,6 @@ vi.mock('../../lib/browser.js', () => ({
     openInBrowser: vi.fn(),
 }))
 
-vi.mock('../../lib/stdin.js', () => ({
-    readStdin: vi.fn(),
-}))
-
 // Identity render so existing task-row assertions are unaffected; the
 // description tests assert whether the renderer is invoked (rendered vs --raw).
 vi.mock('../../lib/markdown.js', () => ({
@@ -28,14 +24,12 @@ import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { openInBrowser } from '../../lib/browser.js'
 import { renderMarkdown } from '../../lib/markdown.js'
-import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../../test-support/mock-api.js'
 import { createProjectProgram as createProgram } from '../../test-support/project-program.js'
 
 const mockOpenInBrowser = vi.mocked(openInBrowser)
-const mockReadStdin = vi.mocked(readStdin)
 const mockRenderMarkdown = vi.mocked(renderMarkdown)
 
 const mockFetchWorkspaces = vi.mocked(fetchWorkspaces)
@@ -1146,7 +1140,7 @@ describe('project create', () => {
     it('reads description from stdin with --stdin', async () => {
         const program = createProgram()
 
-        mockReadStdin.mockResolvedValue('Piped description')
+        mockStdin('Piped description')
         mockApi.addProject.mockResolvedValue({ id: 'proj-new', name: 'Docs' })
 
         await program.parseAsync(['node', 'td', 'project', 'create', '--name', 'Docs', '--stdin'])

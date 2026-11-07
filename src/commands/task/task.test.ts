@@ -1,5 +1,9 @@
-import { PassThrough } from 'node:stream'
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import {
+    captureConsole,
+    captureStream,
+    createTestProgram,
+    mockStdin,
+} from '@doist/cli-core/testing'
 import type { Task } from '@doist/todoist-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -2349,8 +2353,7 @@ describe('task add with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin('Description from stdin')
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2359,10 +2362,7 @@ describe('task add with --stdin', () => {
             deadline: null,
         })
 
-        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
-        mockStdin.write('Description from stdin')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
 
         expect(mockApi.addTask).toHaveBeenCalledWith(
             expect.objectContaining({ description: 'Description from stdin' }),
@@ -2390,8 +2390,7 @@ describe('task add with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin(['line1\n', 'line2\n', 'line3'])
 
         mockApi.addTask.mockResolvedValue({
             id: 'task-new',
@@ -2400,16 +2399,21 @@ describe('task add with --stdin', () => {
             deadline: null,
         })
 
-        const parsePromise = program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
-        mockStdin.write('line1\n')
-        mockStdin.write('line2\n')
-        mockStdin.write('line3')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin'])
 
         expect(mockApi.addTask).toHaveBeenCalledWith(
             expect.objectContaining({ description: 'line1\nline2\nline3' }),
         )
+    })
+
+    it('fails with STDIN_IS_TTY on a terminal without calling the API', async () => {
+        const program = createProgram()
+        mockStdin('', { isTTY: true })
+
+        await expect(
+            program.parseAsync(['node', 'td', 'task', 'add', 'My task', '--stdin']),
+        ).rejects.toMatchObject({ code: 'STDIN_IS_TTY' })
+        expect(mockApi.addTask).not.toHaveBeenCalled()
     })
 })
 
@@ -2425,8 +2429,7 @@ describe('task update with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin('Updated description')
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
@@ -2434,17 +2437,7 @@ describe('task update with --stdin', () => {
         })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
 
-        const parsePromise = program.parseAsync([
-            'node',
-            'td',
-            'task',
-            'update',
-            'My task',
-            '--stdin',
-        ])
-        mockStdin.write('Updated description')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'task', 'update', 'My task', '--stdin'])
 
         expect(mockApi.updateTask).toHaveBeenCalledWith(
             'task-1',
@@ -2478,8 +2471,7 @@ describe('task update with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin(['line1\n', 'line2\n', 'line3'])
 
         mockApi.getTasksByFilter.mockResolvedValue({
             results: [{ id: 'task-1', content: 'My task', projectId: 'proj-1' }],
@@ -2487,19 +2479,7 @@ describe('task update with --stdin', () => {
         })
         mockApi.updateTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
 
-        const parsePromise = program.parseAsync([
-            'node',
-            'td',
-            'task',
-            'update',
-            'My task',
-            '--stdin',
-        ])
-        mockStdin.write('line1\n')
-        mockStdin.write('line2\n')
-        mockStdin.write('line3')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'task', 'update', 'My task', '--stdin'])
 
         expect(mockApi.updateTask).toHaveBeenCalledWith(
             'task-1',

@@ -1,4 +1,4 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram, mockStdin } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -7,17 +7,10 @@ vi.mock('../../lib/api/core.js', () => ({
     rescheduleTask: vi.fn(),
 }))
 
-vi.mock('../../lib/stdin.js', () => ({
-    readStdin: vi.fn(),
-}))
-
 import { resetGlobalArgs } from '../../lib/global-args.js'
-import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerTaskCommand } from './index.js'
-
-const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     return createTestProgram(registerTaskCommand)
@@ -66,7 +59,7 @@ describe('task quickadd command', () => {
         const program = createProgram()
         captureConsole()
 
-        mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
+        const stdin = mockStdin('Buy milk tomorrow\n')
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
             content: 'Buy milk',
@@ -75,7 +68,7 @@ describe('task quickadd command', () => {
 
         await program.parseAsync(['node', 'td', 'task', 'qa', '--stdin'])
 
-        expect(mockReadStdin).toHaveBeenCalled()
+        expect(stdin).toHaveBeenCalled()
         expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk tomorrow' })
     })
 
@@ -89,11 +82,12 @@ describe('task quickadd command', () => {
 
     it('errors when empty-string text and --stdin are both provided', async () => {
         const program = createProgram()
+        const stdin = mockStdin('Buy milk tomorrow\n')
 
         await expect(
             program.parseAsync(['node', 'td', 'task', 'qa', '', '--stdin']),
         ).rejects.toThrow(/Cannot specify text both as argument and --stdin/)
-        expect(mockReadStdin).not.toHaveBeenCalled()
+        expect(stdin).not.toHaveBeenCalled()
     })
 
     it('errors on whitespace-only text without hitting the API', async () => {
@@ -107,7 +101,7 @@ describe('task quickadd command', () => {
 
     it('errors on whitespace-only stdin without hitting the API', async () => {
         const program = createProgram()
-        mockReadStdin.mockResolvedValue('   \n')
+        mockStdin('   \n')
 
         await expect(program.parseAsync(['node', 'td', 'task', 'qa', '--stdin'])).rejects.toThrow(
             /No text provided for quick add/,

@@ -1,9 +1,9 @@
+import { readStdin } from '@doist/cli-core'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { lenientIdRef } from '../../lib/refs.js'
-import { readStdin } from '../../lib/stdin.js'
 
 interface UpdateOptions {
     name?: string
