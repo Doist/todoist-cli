@@ -1,8 +1,12 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { PassThrough } from 'node:stream'
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import {
+    captureConsole,
+    captureStream,
+    createTestProgram,
+    mockStdin,
+} from '@doist/cli-core/testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -1225,8 +1229,7 @@ describe('comment add with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin('Multiline\ncontent here')
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'Buy milk' })
         mockApi.addComment.mockResolvedValue({
@@ -1234,17 +1237,7 @@ describe('comment add with --stdin', () => {
             content: 'Multiline\ncontent here',
         })
 
-        const parsePromise = program.parseAsync([
-            'node',
-            'td',
-            'comment',
-            'add',
-            'id:task-1',
-            '--stdin',
-        ])
-        mockStdin.write('Multiline\ncontent here')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'comment', 'add', 'id:task-1', '--stdin'])
 
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',
@@ -1275,25 +1268,12 @@ describe('comment add with --stdin', () => {
         const program = createProgram()
         captureConsole()
 
-        const mockStdin = new PassThrough()
-        vi.spyOn(process, 'stdin', 'get').mockReturnValue(mockStdin as any)
+        mockStdin(['line1\n', 'line2\n', 'line3'])
 
         mockApi.getTask.mockResolvedValue({ id: 'task-1', content: 'My task' })
         mockApi.addComment.mockResolvedValue({ id: 'comment-new', content: 'line1\nline2\nline3' })
 
-        const parsePromise = program.parseAsync([
-            'node',
-            'td',
-            'comment',
-            'add',
-            'id:task-1',
-            '--stdin',
-        ])
-        mockStdin.write('line1\n')
-        mockStdin.write('line2\n')
-        mockStdin.write('line3')
-        mockStdin.end()
-        await parsePromise
+        await program.parseAsync(['node', 'td', 'comment', 'add', 'id:task-1', '--stdin'])
 
         expect(mockApi.addComment).toHaveBeenCalledWith({
             taskId: 'task-1',

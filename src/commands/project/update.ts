@@ -1,3 +1,4 @@
+import { readStdin } from '@doist/cli-core'
 import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@doist/todoist-sdk'
 import { getApi } from '../../lib/api/core.js'
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
@@ -5,7 +6,6 @@ import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { resolveProjectRef } from '../../lib/refs.js'
-import { readStdin } from '../../lib/stdin.js'
 import { resolveFolderByRef } from '../folder/helpers.js'
 import { isDescendantOf, loadPersonalProjects, resolvePersonalParent } from './helpers.js'
 

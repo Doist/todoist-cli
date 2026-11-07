@@ -262,7 +262,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `FILE_NOT_FOUND` / `FILE_READ_ERROR` CliErrors.
 - **`usage-tracking.ts`** — request/session metadata headers, CLI command
   attribution, tracked fetch wrappers
-- **`browser.ts` / `stdin.ts` / `update.ts`** — small single-purpose helpers
+- **`browser.ts` / `update.ts`** — small single-purpose helpers
+- **Piped `--stdin` input** comes from `readStdin()` in `@doist/cli-core`
+  (fails with `STDIN_IS_TTY` when nothing is piped in); don't add a local reader.
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
 - **`skills/refresh-on-upgrade.ts`** — refreshes installed skills once per
   upgrade from the `preAction` hook (npm 11 can skip `postinstall`), keyed by
@@ -337,8 +339,9 @@ re-migrate a stale legacy slot.
   `src/test-support/fixtures.ts` — do NOT hand-build mock entities.
 - **Helpers:** `setupApiMock()` (`api-mock.ts`) creates a mock API and wires
   `getApi()` to it. The Commander harness `createTestProgram(register)` and the
-  output spies `captureConsole(method?)` / `captureStream(stream?)` come from
-  the shared `@doist/cli-core/testing` subpath (not local files).
+  output spies `captureConsole(method?)` / `captureStream(stream?)` and the
+  `process.stdin` stand-in `mockStdin(input, { isTTY? })` come from the shared
+  `@doist/cli-core/testing` subpath (not local files).
 - **Pattern:** still `vi.mock('…/api/core.js')` (hoisted) per file, then in
   `beforeEach` `mockApi = setupApiMock()`; build with
   `createTestProgram(registerXCommand)` and run

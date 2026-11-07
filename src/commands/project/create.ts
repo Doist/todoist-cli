@@ -1,3 +1,4 @@
+import { readStdin } from '@doist/cli-core'
 import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
@@ -5,7 +6,6 @@ import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import { ensurePersonalProjectCapacity } from '../../lib/project-limit.js'
-import { readStdin } from '../../lib/stdin.js'
 import { resolvePersonalParent } from './helpers.js'
 
 export interface CreateOptions {

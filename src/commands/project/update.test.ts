@@ -1,4 +1,4 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram, mockStdin } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
@@ -9,19 +9,12 @@ vi.mock('../../lib/api/projects-sync.js', () => ({
     moveProjectParent: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('../../lib/stdin.js', () => ({
-    readStdin: vi.fn(),
-}))
-
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
-import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerProjectCommand } from './index.js'
 
 const mockMoveProjectParent = vi.mocked(moveProjectParent)
-const mockReadStdin = vi.mocked(readStdin)
-
 function createProgram() {
     return createTestProgram(registerProjectCommand)
 }
@@ -259,7 +252,7 @@ describe('project update', () => {
     it('clears description with empty stdin', async () => {
         const program = createProgram()
 
-        mockReadStdin.mockResolvedValue('')
+        mockStdin('')
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
         mockApi.updateProject.mockResolvedValue({ id: 'proj-1', name: 'My Project' })
 

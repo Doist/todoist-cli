@@ -1,9 +1,9 @@
+import { readStdin } from '@doist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { formatDue, formatJson, printDryRun } from '../../lib/output.js'
-import { readStdin } from '../../lib/stdin.js'
 
 export interface QuickaddOptions {
     text?: string

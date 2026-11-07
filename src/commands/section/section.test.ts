@@ -1,21 +1,14 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram, mockStdin } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-vi.mock('../../lib/stdin.js', () => ({
-    readStdin: vi.fn(),
-}))
-
-import { readStdin } from '../../lib/stdin.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import { fixtures } from '../../test-support/fixtures.js'
 import { type MockApi } from '../../test-support/mock-api.js'
 import { registerSectionCommand } from './index.js'
-
-const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     return createTestProgram(registerSectionCommand)
@@ -693,7 +686,7 @@ describe('section create', () => {
     it('reads description from stdin with --stdin', async () => {
         const program = createProgram()
 
-        mockReadStdin.mockResolvedValue('Piped description')
+        mockStdin('Piped description')
         mockApi.getProject.mockResolvedValue({ id: 'proj-1', name: 'Work' })
         mockApi.addSection.mockResolvedValue({ id: 'sec-new', name: 'Review' })
 
@@ -738,7 +731,7 @@ describe('section create', () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
 
-        mockReadStdin.mockResolvedValue('Piped preview')
+        const stdin = mockStdin('Piped preview')
 
         await program.parseAsync([
             'node',
@@ -753,7 +746,7 @@ describe('section create', () => {
             '--dry-run',
         ])
 
-        expect(mockReadStdin).toHaveBeenCalled()
+        expect(stdin).toHaveBeenCalled()
         expect(mockApi.addSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Piped preview'))
     })
@@ -891,7 +884,7 @@ describe('section update', () => {
     it('clears description with empty stdin (sends null per backend NULL_CLEARS)', async () => {
         const program = createProgram()
 
-        mockReadStdin.mockResolvedValue('')
+        mockStdin('')
         mockApi.getSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
         mockApi.updateSection.mockResolvedValue({ id: 'sec-1', name: 'Planning' })
 
@@ -929,7 +922,7 @@ describe('section update', () => {
         const program = createProgram()
         const consoleSpy = captureConsole()
 
-        mockReadStdin.mockResolvedValue('Piped preview')
+        const stdin = mockStdin('Piped preview')
 
         await program.parseAsync([
             'node',
@@ -941,7 +934,7 @@ describe('section update', () => {
             '--dry-run',
         ])
 
-        expect(mockReadStdin).toHaveBeenCalled()
+        expect(stdin).toHaveBeenCalled()
         expect(mockApi.updateSection).not.toHaveBeenCalled()
         expect(mockApi.getSection).not.toHaveBeenCalled()
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Piped preview'))

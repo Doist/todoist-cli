@@ -1,20 +1,13 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram, mockStdin } from '@doist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', () => ({
     getApi: vi.fn(),
 }))
 
-vi.mock('../lib/stdin.js', () => ({
-    readStdin: vi.fn(),
-}))
-
-import { readStdin } from '../lib/stdin.js'
 import { setupApiMock } from '../test-support/api-mock.js'
 import { type MockApi } from '../test-support/mock-api.js'
 import { registerAddCommand } from './add.js'
-
-const mockReadStdin = vi.mocked(readStdin)
 
 function createProgram() {
     return createTestProgram(registerAddCommand)
@@ -119,7 +112,7 @@ describe('add command', () => {
         const program = createProgram()
         captureConsole()
 
-        mockReadStdin.mockResolvedValue('Buy milk tomorrow\n')
+        const stdin = mockStdin('Buy milk tomorrow\n')
         mockApi.quickAddTask.mockResolvedValue({
             id: 'task-1',
             content: 'Buy milk',
@@ -128,7 +121,7 @@ describe('add command', () => {
 
         await program.parseAsync(['node', 'td', 'add', '--stdin'])
 
-        expect(mockReadStdin).toHaveBeenCalled()
+        expect(stdin).toHaveBeenCalled()
         expect(mockApi.quickAddTask).toHaveBeenCalledWith({ text: 'Buy milk tomorrow' })
     })
 
