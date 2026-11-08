@@ -95,7 +95,7 @@ Resolution order: `--user <ref>` > `TD_USER` > `user.defaultUser` from config > 
 ## Quick Reference
 
 - Daily views: `td today`, `td inbox`, `td upcoming`, `td completed`, `td activity`
-- Task lifecycle: `td task list/view/add/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
+- Task lifecycle: `td task list/view/add/add-many/quickadd/update/reschedule/move/complete/uncomplete/delete/browse` (alias: `td task qa` for `quickadd`)
 - Projects: `td project list/view/create/update/archive/unarchive/archived/delete/move/reorder/join/share/browse/collaborators/permissions`
 - Project analytics: `td project progress/health/health-context/activity-stats/analyze-health`
 - Organization: `td label ...`, `td filter ...`, `td section ...`, `td folder ...`, `td workspace ...`
@@ -155,6 +155,22 @@ Choosing between `task add` and `task quickadd`:
 - `td task quickadd` supports `--stdin`, `--json`, and `--dry-run` only; everything else is embedded in the text.
 - The top-level `td add <text>` is a human shorthand for `td task quickadd` — same parser, same flag surface (`--stdin`, `--json`, `--dry-run`). Agents should prefer `td task quickadd` / `qa` for discoverability alongside the other task subcommands.
 - `--due` on `task add` / `task update` is **sent verbatim** to the API as `due_string` — the CLI does not parse or rewrite it. The server's `due_string` parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but does **not** unpack some more complex clauses (i.e. `starting <date>`).
+
+Creating many tasks at once (`td task add-many`):
+- Use it instead of repeated `td task add` calls when turning a document, meeting notes or a plan into tasks: one command creates the tasks, their sections and subtasks, in a single Sync request (split into requests of 100 commands for longer lists).
+- Input is a JSON array of tasks from `--stdin` or `--file <path>`. Each task takes `content` (required), `description`, `due`, `deadline` (YYYY-MM-DD), `priority` (p1–p4), `labels` (array), `duration`, `assignee`, `section`, `parent` (an existing task: `id:xxx`, a task ID or a task URL; top-level tasks only) and `subtasks` (an array of tasks). The keys mean the same as the `td task add` flags. Unknown keys are rejected, so check the spelling against `td task add-many --schema`, which prints the full JSON Schema.
+- `--project` sets the project for every task (default: Inbox); `section` and `assignee` need it. A `section` name reuses the project's section with that name (ignoring case) and creates it otherwise; subtasks always go in their parent's section.
+- The whole list is validated before anything is sent, and errors name the location (`[0].subtasks[1].priority: expected p1, p2, p3 or p4`). Preview with `--dry-run`.
+- If some items fail, the rest are still created. The command lists what failed or was skipped on stderr (subtasks of a failed parent, tasks in a section that was not created), even with `--quiet`, and exits with `PARTIAL_FAILURE`. To retry, re-run only the failed and skipped items, keeping skipped subtasks nested under their failed parent, so nothing is created twice. A failed subtask whose parent was created goes back in with `"parent": "id:<parent ID>"` (the ID is shown with the failure, and as `parentId` in `--json`), so it is not added at the top level. `--json` returns `{ projectId, sections, tasks, failures }`; each failure has its input `path` and a `status`: `failed`, `skipped`, or `unknown` when the request holding it failed after it was sent, so the item may already exist (check the project before re-running it). `--quiet` prints the created task IDs.
+
+```bash
+td task add-many --project "Launch" --stdin <<'EOF'
+[{"content": "Book venue", "section": "Planning", "due": "friday", "subtasks": [{"content": "Get quotes"}]},
+ {"content": "Draft brief", "priority": "p2", "labels": ["writing"]}]
+EOF
+td task add-many --project "Launch" --file tasks.json --dry-run
+td task add-many --schema
+```
 
 Useful task flags:
 - `--stdin` on `task add` reads the task description from stdin; on `task quickadd` (and the top-level `td add`) it reads the full natural-language text from stdin.

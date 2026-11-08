@@ -8,9 +8,9 @@ vi.mock('../auth.js', async (importOriginal) => {
     }
 })
 
-import { TodoistRequestError } from '@doist/todoist-sdk'
+import { TodoistRequestError, TodoistSyncError } from '@doist/todoist-sdk'
 import { getAuthMetadata } from '../auth.js'
-import { CliError } from '../errors.js'
+import { CliError, SyncCommandError } from '../errors.js'
 import { buildRescheduleDate, wrapApiError } from './core.js'
 
 const mockGetAuthMetadata = vi.mocked(getAuthMetadata)
@@ -190,5 +190,39 @@ describe('wrapApiError → PROJECT_LIMIT_REACHED', () => {
 
         expect(wrapped.code).toBe('PROJECT_LIMIT_REACHED')
         expect(wrapped.hints?.[0]).toContain('Archive or delete a personal project')
+    })
+})
+
+describe('wrapApiError → Sync API failures', () => {
+    it('keeps each command outcome and the created IDs alongside the usual error', async () => {
+        const failure = {
+            error: 'Invalid argument value',
+            errorCode: 20,
+            errorExtra: {},
+            errorTag: 'INVALID_ARGUMENT_VALUE',
+            httpCode: 400,
+        }
+        const syncError = new TodoistSyncError(failure, {
+            syncStatus: { 'uuid-1': 'ok', 'uuid-2': failure },
+            tempIdMapping: { 'temp-1': 'task-1' },
+        })
+
+        const wrapped = await wrapApiError(syncError, 'sync')
+
+        expect(wrapped).toBeInstanceOf(SyncCommandError)
+        const commandError = wrapped as SyncCommandError
+        expect(commandError.code).toBe('API_ERROR')
+        expect(commandError.message).toBe('Invalid argument value')
+        expect(commandError.syncStatus).toEqual({ 'uuid-1': 'ok', 'uuid-2': failure })
+        expect(commandError.tempIdMapping).toEqual({ 'temp-1': 'task-1' })
+    })
+
+    it('leaves other request errors as a plain CliError', async () => {
+        const wrapped = await wrapApiError(
+            new TodoistRequestError('HTTP 400: Bad Request', 400, { error: 'Bad input' }),
+        )
+
+        expect(wrapped).toBeInstanceOf(CliError)
+        expect(wrapped).not.toBeInstanceOf(SyncCommandError)
     })
 })

@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, relative } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { openLocalFileAsBlob } from './local-file.js'
+import { openLocalFileAsBlob, readLocalTextFile } from './local-file.js'
 
 // Partial mock of `node:fs` so the `openAsBlob`-rejects branch can be
 // exercised. Default implementation delegates to the real module so
@@ -147,5 +147,43 @@ describe('openLocalFileAsBlob', () => {
         const messy = `./${basename(tmpDir)}/./sample.bin`
         const result = await openLocalFileAsBlob({ file: join(tmpDir, '..', messy) })
         expect(result.fileName).toBe('sample.bin')
+    })
+})
+
+describe('readLocalTextFile', () => {
+    let tmpDir: string
+    let filePath: string
+
+    beforeAll(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'td-local-text-test-'))
+        filePath = join(tmpDir, 'tasks.json')
+        await writeFile(filePath, '[{"content": "Café"}]')
+    })
+
+    afterAll(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    it('reads the file as UTF-8, resolving relative paths against the working directory', async () => {
+        expect(await readLocalTextFile(filePath)).toBe('[{"content": "Café"}]')
+        expect(await readLocalTextFile(relative(process.cwd(), filePath))).toBe(
+            '[{"content": "Café"}]',
+        )
+    })
+
+    it('reports a missing file as FILE_NOT_FOUND with its absolute path', async () => {
+        const missing = join(tmpDir, 'missing.json')
+
+        await expect(readLocalTextFile(missing)).rejects.toMatchObject({
+            code: 'FILE_NOT_FOUND',
+            message: `File not found: ${missing}`,
+        })
+    })
+
+    it('reports any other read failure as FILE_READ_ERROR', async () => {
+        await expect(readLocalTextFile(tmpDir)).rejects.toMatchObject({
+            code: 'FILE_READ_ERROR',
+            message: `Cannot read file: ${tmpDir}`,
+        })
     })
 })
