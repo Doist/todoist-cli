@@ -1,5 +1,5 @@
 import { openAsBlob } from 'node:fs'
-import { open } from 'node:fs/promises'
+import { open, readFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { CliError } from './errors.js'
 
@@ -40,12 +40,29 @@ export async function openLocalFileAsBlob(
         const blob = await openAsBlob(filePath)
         return { blob, filePath, fileName: options.fileName || basename(filePath) }
     } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw new CliError('FILE_NOT_FOUND', `File not found: ${filePath}`, [
-                'Check the file path and try again.',
-            ])
-        }
-        const message = err instanceof Error ? err.message : String(err)
-        throw new CliError('FILE_READ_ERROR', `Cannot read file: ${filePath}`, [message])
+        throw toLocalFileError(err, filePath)
     }
+}
+
+/**
+ * Read a local text file as UTF-8 (relative paths resolve against cwd), with
+ * the same CLI-grade errors as {@link openLocalFileAsBlob}.
+ */
+export async function readLocalTextFile(file: string): Promise<string> {
+    const filePath = resolve(file)
+    try {
+        return await readFile(filePath, 'utf8')
+    } catch (err) {
+        throw toLocalFileError(err, filePath)
+    }
+}
+
+function toLocalFileError(err: unknown, filePath: string): CliError {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        return new CliError('FILE_NOT_FOUND', `File not found: ${filePath}`, [
+            'Check the file path and try again.',
+        ])
+    }
+    const message = err instanceof Error ? err.message : String(err)
+    return new CliError('FILE_READ_ERROR', `Cannot read file: ${filePath}`, [message])
 }

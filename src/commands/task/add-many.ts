@@ -1,6 +1,4 @@
-import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
-import { readStdin } from '@doist/cli-core'
+import { outputIds, readStdin } from '@doist/cli-core'
 import {
     createCommand,
     type Project,
@@ -14,12 +12,13 @@ import { resolveAssigneeId } from '../../lib/collaborators.js'
 import { parseDuration } from '../../lib/duration.js'
 import { CliError, SyncCommandError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
-import { stripLabelAtPrefix } from '../../lib/labels.js'
+import { readLocalTextFile } from '../../lib/local-file.js'
 import { formatJson } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { extractId, isIdRef, lenientIdRef, resolveProjectRef } from '../../lib/refs.js'
 import { parsePriority } from '../../lib/task-list.js'
 import { parseTaskList, type TaskInput } from './add-many-input.js'
+import { normalizeLabels } from './helpers.js'
 
 export interface AddManyOptions {
     project?: string
@@ -332,7 +331,7 @@ function printReport(
         )
     } else {
         if (isQuiet()) {
-            console.log(tasks.map(({ id }) => id).join('\n'))
+            outputIds(tasks, ({ id }) => id)
         } else {
             printCreated(resolved, sections, tasks)
         }
@@ -425,7 +424,7 @@ function describeFields(task: TaskInput, resolved: Resolved): string[] {
     if (task.due) details.push(`due: ${task.due}`)
     if (task.deadline) details.push(`deadline: ${task.deadline}`)
     if (task.priority) details.push(`priority: ${task.priority.toLowerCase()}`)
-    const labels = cleanLabels(task.labels)
+    const labels = normalizeLabels(task.labels ?? [])
     if (labels.length > 0) details.push(`labels: ${labels.join(', ')}`)
     if (task.duration) details.push(`duration: ${task.duration}`)
     if (task.assignee) details.push(`assignee: ${task.assignee}`)
@@ -540,7 +539,7 @@ function applyFields(args: TaskAddArgs, task: TaskInput, resolved: Resolved): vo
     if (task.due) args.due = { string: task.due }
     if (task.deadline) args.deadline = { date: task.deadline }
     if (task.priority) args.priority = parsePriority(task.priority) as TaskAddArgs['priority']
-    const labels = cleanLabels(task.labels)
+    const labels = normalizeLabels(task.labels ?? [])
     if (labels.length > 0) args.labels = labels
     if (task.duration) {
         // The input schema has already rejected durations parseDuration can't read.
@@ -548,11 +547,6 @@ function applyFields(args: TaskAddArgs, task: TaskInput, resolved: Resolved): vo
         if (minutes !== null) args.duration = { amount: minutes, unit: 'minute' }
     }
     if (task.assignee) args.responsibleUid = resolved.assigneeIds.get(task.assignee.toLowerCase())
-}
-
-/** Label names without the display-only leading `@`, as `td task add --labels` takes them. */
-function cleanLabels(labels: string[] | undefined): string[] {
-    return (labels ?? []).map(stripLabelAtPrefix).filter((label) => label.length > 0)
 }
 
 function flatten(tasks: TaskInput[]): TaskInput[] {
@@ -564,19 +558,7 @@ function unique(values: string[]): string[] {
 }
 
 async function readInput(options: AddManyOptions): Promise<string> {
-    if (options.stdin) return readStdin()
-    const filePath = resolve(options.file ?? '')
-    try {
-        return await readFile(filePath, 'utf8')
-    } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw new CliError('FILE_NOT_FOUND', `File not found: ${filePath}`, [
-                'Check the file path and try again.',
-            ])
-        }
-        const message = err instanceof Error ? err.message : String(err)
-        throw new CliError('FILE_READ_ERROR', `Cannot read file: ${filePath}`, [message])
-    }
+    return options.stdin ? readStdin() : readLocalTextFile(options.file ?? '')
 }
 
 function plural(count: number, noun: string): string {
