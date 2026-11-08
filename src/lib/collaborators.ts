@@ -245,24 +245,45 @@ export async function resolveAssigneeId(
     ref: string,
     project: Project,
 ): Promise<string> {
-    if (ref.toLowerCase() === 'me') {
-        return getCurrentUserId()
-    }
+    const ids = await resolveAssigneeIds(api, [ref], project)
+    return ids.get(ref.toLowerCase()) as string
+}
 
-    if (isIdRef(ref)) {
-        return extractId(ref)
-    }
+/**
+ * Resolve several assignee references for one project, fetching its
+ * collaborator list at most once (and not at all when every reference is
+ * `me` or `id:xxx`). The map is keyed by each reference in lower case.
+ */
+export async function resolveAssigneeIds(
+    api: TodoistApi,
+    refs: readonly string[],
+    project: Project,
+): Promise<Map<string, string>> {
+    const ids = new Map<string, string>()
+    let collaborators: CollaboratorInfo[] | undefined
+    for (const ref of refs) {
+        const key = ref.toLowerCase()
+        if (ids.has(key)) continue
+        if (key === 'me') {
+            ids.set(key, await getCurrentUserId())
+            continue
+        }
+        if (isIdRef(ref)) {
+            ids.set(key, extractId(ref))
+            continue
+        }
 
-    const collaborators = await fetchCollaboratorsForProject(api, project)
-    if (collaborators.length === 0) {
-        throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
+        collaborators ??= await fetchCollaboratorsForProject(api, project)
+        if (collaborators.length === 0) {
+            throw new CliError('NOT_SHARED', 'Cannot assign tasks in non-shared projects.')
+        }
+        const match = matchCollaboratorRef(ref, collaborators)
+        if (!match) {
+            throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
+        }
+        ids.set(key, match.id)
     }
-
-    const match = matchCollaboratorRef(ref, collaborators)
-    if (!match) {
-        throw new CliError('ASSIGNEE_NOT_FOUND', `User "${ref}" not found.`)
-    }
-    return match.id
+    return ids
 }
 
 /**

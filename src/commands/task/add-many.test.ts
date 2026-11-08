@@ -353,6 +353,15 @@ describe('task add-many', () => {
             expect(mockApi.getSections).not.toHaveBeenCalled()
         })
 
+        it('does not look up sections when every reference is an id:', async () => {
+            captureConsole()
+            fakeSync(mockApi)
+
+            await addMany([{ content: 'Draft brief', section: 'id:sec-9' }])
+
+            expect(mockApi.getSections).not.toHaveBeenCalled()
+        })
+
         it('requires --project when a task names a section', async () => {
             mockStdin(JSON.stringify([{ content: 'Draft brief', section: 'Planning' }]))
 
@@ -458,6 +467,51 @@ describe('task add-many', () => {
             await addMany([{ content: 'Draft brief', labels: ['@'] }])
 
             expect(requests[0][0].args).toEqual({ content: 'Draft brief', projectId: 'proj-work' })
+        })
+
+        it('fetches the collaborator list once, however many different assignees', async () => {
+            captureConsole()
+            const requests = fakeSync(mockApi)
+            mockApi.getProjects.mockResolvedValue({
+                results: [{ ...fixtures.projects.work, isShared: true }],
+                nextCursor: null,
+            })
+            mockApi.getProjectCollaborators.mockResolvedValue({
+                results: [
+                    { id: 'user-2', name: 'Alice Example', email: 'alice@example.com' },
+                    { id: 'user-3', name: 'Bob Example', email: 'bob@example.com' },
+                ],
+                nextCursor: null,
+            })
+
+            await addMany([
+                { content: 'Draft brief', assignee: 'Alice Example' },
+                { content: 'Book venue', assignee: 'bob@example.com' },
+                { content: 'Send invites', assignee: 'id:user-4' },
+            ])
+
+            expect(requests[0].map((command) => command.args.responsibleUid)).toEqual([
+                'user-2',
+                'user-3',
+                'user-4',
+            ])
+            expect(mockApi.getProjectCollaborators).toHaveBeenCalledTimes(1)
+        })
+
+        it('reports an assignee who is not a collaborator before sending anything', async () => {
+            mockApi.getProjects.mockResolvedValue({
+                results: [{ ...fixtures.projects.work, isShared: true }],
+                nextCursor: null,
+            })
+            mockApi.getProjectCollaborators.mockResolvedValue({
+                results: [{ id: 'user-2', name: 'Alice Example', email: 'alice@example.com' }],
+                nextCursor: null,
+            })
+
+            await expect(
+                addMany([{ content: 'Draft brief', assignee: 'Carol' }]),
+            ).rejects.toMatchObject({ code: 'ASSIGNEE_NOT_FOUND' })
+            expect(mockApi.sync).not.toHaveBeenCalled()
         })
 
         it('requires --project when a task names an assignee', async () => {

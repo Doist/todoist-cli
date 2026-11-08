@@ -245,7 +245,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `SyncCommandError`, which `getApi()` throws when some commands in a Sync
   request fail, carrying each command's outcome and the created IDs
 - **`collaborators.ts`** — `CollaboratorCache`, `formatAssignee`,
-  `resolveAssigneeId`, `fetchCollaboratorsForProject`, `resolveNotifyIds`
+  `resolveAssigneeId`, `resolveAssigneeIds` (several refs, one collaborator
+  fetch), `fetchCollaboratorsForProject`, `resolveNotifyIds`
 - **`comment-recipients.ts`** — `getDefaultCommentRecipients`: who a new
   comment notifies when the caller does not say
 - **`global-args.ts`** — extends cli-core's canonical machine-output parsing with
@@ -260,7 +261,8 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`progress.ts`** — `--progress-jsonl` JSONL event writer
 - **`local-file.ts`** — `openLocalFileAsBlob()`: file-backed `Blob` for
   multipart uploads (used by `comment add --file`,
-  `template create --file`, `template import-file`). Maps fs errors to
+  `template create --file`, `template import-file`); `readLocalTextFile()`
+  for text input such as `task add-many --file`. Both map fs errors to
   `FILE_NOT_FOUND` / `FILE_READ_ERROR` CliErrors.
 - **`usage-tracking.ts`** — request/session metadata headers, CLI command
   attribution, tracked fetch wrappers

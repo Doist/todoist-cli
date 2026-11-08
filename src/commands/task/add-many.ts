@@ -8,7 +8,7 @@ import {
 } from '@doist/todoist-sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
-import { resolveAssigneeId } from '../../lib/collaborators.js'
+import { resolveAssigneeIds } from '../../lib/collaborators.js'
 import { parseDuration } from '../../lib/duration.js'
 import { CliError, SyncCommandError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -106,12 +106,7 @@ export async function addManyTasks(options: AddManyOptions): Promise<void> {
         }
         resolved.project = project
         await planSections(api, sectionRefs, project, resolved)
-        for (const ref of assigneeRefs) {
-            const key = ref.toLowerCase()
-            if (!resolved.assigneeIds.has(key)) {
-                resolved.assigneeIds.set(key, await resolveAssigneeId(api, ref, project))
-            }
-        }
+        resolved.assigneeIds = await resolveAssigneeIds(api, assigneeRefs, project)
     }
 
     const plannedTasks = planTasks(tasks, resolved)
@@ -449,12 +444,15 @@ async function planSections(
     project: Project,
     resolved: Resolved,
 ): Promise<void> {
-    if (refs.length === 0) return
-
-    const { results: existing } = await paginate(
-        (cursor, limit) => api.getSections({ projectId: project.id, cursor, limit }),
-        { limit: Number.MAX_SAFE_INTEGER },
-    )
+    // id: references are used as given, so the section list is only needed for names.
+    const existing = refs.some((ref) => !isIdRef(ref))
+        ? (
+              await paginate(
+                  (cursor, limit) => api.getSections({ projectId: project.id, cursor, limit }),
+                  { limit: Number.MAX_SAFE_INTEGER },
+              )
+          ).results
+        : []
     const existingByName = new Map(existing.map((section) => [section.name.toLowerCase(), section]))
     for (const ref of refs) {
         const key = sectionKey(ref)
