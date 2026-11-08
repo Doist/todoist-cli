@@ -1,4 +1,5 @@
 import { CliError as BaseCliError, type CliErrorCode, type ErrorType } from '@doist/cli-core'
+import type { SyncResponse } from '@doist/todoist-sdk'
 
 export { BaseCliError }
 export type { ErrorType } from '@doist/cli-core'
@@ -34,6 +35,8 @@ export type ErrorCode =
     | 'INVALID_DAY'
     | 'INVALID_DURATION'
     | 'INVALID_GOAL'
+    | 'INVALID_INPUT'
+    | 'INVALID_JSON'
     | 'INVALID_OPTIONS'
     | 'INVALID_ORDER'
     | 'INVALID_PRIORITY'
@@ -93,6 +96,7 @@ export type ErrorCode =
     | 'NO_URL'
     | 'NOT_INSTALLED'
     | 'NOT_SHARED'
+    | 'PARTIAL_FAILURE'
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
     | 'PROJECT_LIMIT_REACHED'
@@ -128,5 +132,23 @@ export class CliError extends BaseCliError<ErrorCode> {
         type: ErrorType = 'error',
     ) {
         super(code, message, { hints, type })
+    }
+}
+
+/**
+ * A Sync API request in which at least one command failed. It carries the
+ * same code, message and hints as the plain `CliError` for that failure, plus
+ * each command's outcome and the IDs of whatever the request did create, so a
+ * caller that sends several commands at once can report which ones failed.
+ */
+export class SyncCommandError extends CliError {
+    constructor(
+        wrapped: CliError,
+        /** Each command's outcome, keyed by the command's `uuid`. */
+        readonly syncStatus: NonNullable<SyncResponse['syncStatus']>,
+        /** Server IDs of the created resources, keyed by the command's `tempId`. */
+        readonly tempIdMapping: NonNullable<SyncResponse['tempIdMapping']>,
+    ) {
+        super(wrapped.code, wrapped.message, wrapped.hints, wrapped.type)
     }
 }

@@ -4,6 +4,8 @@ import { CURSOR_DESCRIPTION } from '../../lib/constants.js'
 import { CliError } from '../../lib/errors.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
 import { PRIORITY_CHOICES } from '../../lib/task-list.js'
+import { taskListJsonSchema } from './add-many-input.js'
+import { type AddManyOptions, addManyTasks } from './add-many.js'
 import type { AddOptions } from './add.js'
 import { addTask } from './add.js'
 import { browseTask } from './browse.js'
@@ -170,6 +172,55 @@ Notes:
   --due is sent verbatim as the task's due_string. The server's due_string
   parser handles simple inputs ("2026-06-01", "tomorrow", "every Monday") but
   does not unpack some more complex clauses (i.e. "starting <date>").`,
+        )
+
+    const addManyCmd = task
+        .command('add-many')
+        .description('Add many tasks at once from a JSON list, with sections and subtasks')
+        .option('--project <name>', 'Project name or id:xxx (default: Inbox)')
+        .option('--stdin', 'Read the JSON task list from stdin')
+        .option('--file <path>', 'Read the JSON task list from a file')
+        .option('--json', 'Output the created sections and tasks as JSON')
+        .option('--dry-run', 'Preview what would happen without executing')
+        .option('--schema', 'Print the JSON Schema of the task list and exit')
+        .action((options: AddManyOptions & { schema?: boolean }) => {
+            if (options.schema) {
+                console.log(JSON.stringify(taskListJsonSchema(), null, 2))
+                return
+            }
+            if (!options.stdin && !options.file) {
+                failWithUsage(addManyCmd)
+                return
+            }
+            return addManyTasks(options)
+        })
+        .addHelpText(
+            'after',
+            `
+Input:
+  A JSON array of tasks, created in one go. Each task takes:
+    content       Task name (required)
+    description   Task description (Markdown)
+    due           YYYY-MM-DD or simple natural language ("every friday")
+    deadline      YYYY-MM-DD
+    priority      p1 (highest) to p4 (lowest)
+    labels        Array of label names
+    duration      30m, 1h, 2h15m
+    assignee      "me", a collaborator name or email, or id:xxx (needs --project)
+    section       Section name, reused if it exists, created if not; or id:xxx
+                  (top-level tasks only; needs --project)
+    subtasks      Array of tasks to create under this one
+  Run with --schema for the full JSON Schema.
+
+  If some items fail, the rest are still created: the command lists what
+  failed or was skipped and exits with PARTIAL_FAILURE.
+
+Example:
+  td task add-many --project "Launch" --stdin <<'EOF'
+  [{"content": "Book venue", "section": "Planning", "due": "friday",
+    "subtasks": [{"content": "Get quotes"}]},
+   {"content": "Draft brief", "priority": "p2"}]
+  EOF`,
         )
 
     const quickaddCmd = task

@@ -106,7 +106,7 @@ A CI check (`npm run check:skill-sync`) runs on pull requests and will fail if `
 
 Entity add/create/update commands support `--json` to output the created or updated entity as machine-readable JSON instead of the default human-readable confirmation message. This applies to:
 
-- `task add`, `task update`
+- `task add`, `task update`, `task add-many` (a report of the created sections and tasks plus any failures, rather than one entity)
 - `project create`, `project update`
 - `comment add`, `comment update`
 - `label create`, `label update`

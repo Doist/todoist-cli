@@ -5,13 +5,14 @@ import {
     Task,
     TodoistApi,
     TodoistRequestError,
+    TodoistSyncError,
     User,
     WorkspaceProject,
     type DueDate,
 } from '@doist/todoist-sdk'
 import { buildReloginCommand } from '../auth-flags.js'
 import { getAuthMetadata, resolveActiveUser } from '../auth.js'
-import { CliError } from '../errors.js'
+import { CliError, SyncCommandError } from '../errors.js'
 import { type AdditionalScopeFlag, oauthScopeFor } from '../oauth-scopes.js'
 import { ensureWriteAllowed, isMutatingApiMethod, isMutatingSyncPayload } from '../permissions.js'
 import { getProgressTracker } from '../progress.js'
@@ -277,6 +278,14 @@ async function getScopeRemediation(methodName: string | undefined): Promise<stri
 }
 
 export async function wrapApiError(error: unknown, methodName?: string): Promise<Error> {
+    const wrapped = await toCliError(error, methodName)
+    if (error instanceof TodoistSyncError && wrapped instanceof CliError) {
+        return new SyncCommandError(wrapped, error.syncStatus, error.tempIdMapping)
+    }
+    return wrapped
+}
+
+async function toCliError(error: unknown, methodName?: string): Promise<Error> {
     if (error instanceof CliError) return error
     if (error instanceof TodoistRequestError) {
         const status = error.httpStatusCode

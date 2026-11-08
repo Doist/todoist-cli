@@ -241,7 +241,9 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
 - **`spinner.ts`** — `startEarlySpinner`, `LoadingSpinner` class
   (yocto-spinner wrapper)
 - **`markdown.ts`** — `preloadMarkdown`, markdown → terminal renderer
-- **`errors.ts`** — `CliError(code, message, hints?)`, `ErrorType` union
+- **`errors.ts`** — `CliError(code, message, hints?)`, `ErrorType` union;
+  `SyncCommandError`, which `getApi()` throws when some commands in a Sync
+  request fail, carrying each command's outcome and the created IDs
 - **`collaborators.ts`** — `CollaboratorCache`, `formatAssignee`,
   `resolveAssigneeId`, `fetchCollaboratorsForProject`, `resolveNotifyIds`
 - **`comment-recipients.ts`** — `getDefaultCommentRecipients`: who a new
