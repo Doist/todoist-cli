@@ -944,6 +944,52 @@ describe('task add-many', () => {
             expect(consoleSpy).toHaveBeenCalledWith('Created 100 tasks in Work')
             expect(consoleSpy).toHaveBeenCalledWith('Failed: Task 101: not sent: Too many requests')
         })
+
+        it('uses the real ID of a section created in an earlier request', async () => {
+            captureConsole()
+            const requests = fakeSync(mockApi)
+            const tasks = Array.from({ length: 120 }, (_, index) => ({
+                content: `Task ${index + 1}`,
+                section: 'Launch',
+            }))
+
+            await run(tasks)
+
+            expect(requests.map((commands) => commands.length)).toEqual([100, 21])
+            expect(requests[0][0]).toMatchObject({
+                type: 'section_add',
+                args: { projectId: 'proj-work', name: 'Launch' },
+            })
+            expect(requests[0][1].args.sectionId).toBe(requests[0][0].tempId)
+            expect(requests[1][0].args).toEqual({
+                content: 'Task 100',
+                projectId: 'proj-work',
+                sectionId: 'sec-new-1',
+            })
+            expect(requests[1].every((command) => command.args.sectionId === 'sec-new-1')).toBe(
+                true,
+            )
+        })
+
+        it('reports a later request that partly fails after earlier requests created items', async () => {
+            const consoleSpy = captureConsole()
+            fakeSync(mockApi, {
+                fail: (command) =>
+                    command.args.content === 'Task 101' ? 'Invalid argument value' : undefined,
+            })
+            const tasks = Array.from({ length: 102 }, (_, index) => ({
+                content: `Task ${index + 1}`,
+            }))
+
+            await expect(run(tasks)).rejects.toMatchObject({
+                code: 'PARTIAL_FAILURE',
+                message: '1 of 102 tasks was not created.',
+            })
+
+            expect(consoleSpy).toHaveBeenCalledWith('Created 101 tasks in Work')
+            expect(consoleSpy).toHaveBeenCalledWith('  - Task 102 (id:task-new-101)')
+            expect(consoleSpy).toHaveBeenCalledWith('Failed: Task 101: Invalid argument value')
+        })
     })
 
     describe('documenting the input', () => {
