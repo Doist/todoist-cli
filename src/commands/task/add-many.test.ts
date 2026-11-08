@@ -96,6 +96,22 @@ function createProgram() {
     return createTestProgram(registerTaskCommand)
 }
 
+/** Runs `td task add-many` with the given arguments. */
+function runAddMany(...args: string[]) {
+    return createProgram().parseAsync(['node', 'td', 'task', 'add-many', ...args])
+}
+
+/** Runs `td task add-many --stdin` with `tasks` as JSON on stdin. */
+function addManyFromStdin(tasks: unknown, ...args: string[]) {
+    mockStdin(JSON.stringify(tasks))
+    return runAddMany('--stdin', ...args)
+}
+
+/** As `addManyFromStdin`, adding to the Work project. */
+function addManyToWork(tasks: unknown, ...args: string[]) {
+    return addManyFromStdin(tasks, '--project', 'Work', ...args)
+}
+
 describe('task add-many', () => {
     let mockApi: MockApi
 
@@ -125,15 +141,7 @@ describe('task add-many', () => {
             const requests = fakeSync(mockApi)
             mockStdin(JSON.stringify([{ content: 'Draft brief' }, { content: 'Book venue' }]))
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ])
+            await runAddMany('--project', 'Work', '--stdin')
 
             expect(requests).toHaveLength(1)
             expect(typesAndArgs(requests[0])).toEqual([
@@ -149,16 +157,7 @@ describe('task add-many', () => {
             const file = join(tmpDir, 'tasks.json')
             await writeFile(file, JSON.stringify([{ content: 'Draft brief' }]))
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--file',
-                file,
-            ])
+            await runAddMany('--project', 'Work', '--file', file)
 
             expect(typesAndArgs(requests[0])).toEqual([
                 { type: 'item_add', args: { content: 'Draft brief', projectId: 'proj-work' } },
@@ -168,9 +167,9 @@ describe('task add-many', () => {
         it('reports a missing --file without calling the API', async () => {
             const file = join(tmpDir, 'missing.json')
 
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--file', file]),
-            ).rejects.toMatchObject({ code: 'FILE_NOT_FOUND' })
+            await expect(runAddMany('--file', file)).rejects.toMatchObject({
+                code: 'FILE_NOT_FOUND',
+            })
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
 
@@ -179,7 +178,7 @@ describe('task add-many', () => {
             const requests = fakeSync(mockApi)
             mockStdin(JSON.stringify([{ content: 'Call the bank' }]))
 
-            await createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--stdin'])
+            await runAddMany('--stdin')
 
             expect(typesAndArgs(requests[0])).toEqual([
                 { type: 'item_add', args: { content: 'Call the bank' } },
@@ -188,26 +187,19 @@ describe('task add-many', () => {
         })
 
         it('rejects --stdin together with --file', async () => {
-            await expect(
-                createProgram().parseAsync([
-                    'node',
-                    'td',
-                    'task',
-                    'add-many',
-                    '--stdin',
-                    '--file',
-                    'tasks.json',
-                ]),
-            ).rejects.toMatchObject({ code: 'CONFLICTING_OPTIONS' })
+            await expect(runAddMany('--stdin', '--file', 'tasks.json')).rejects.toMatchObject({
+                code: 'CONFLICTING_OPTIONS',
+            })
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
 
         it('shows usage when neither --stdin nor --file is given', async () => {
             const stderrSpy = captureStream('stderr')
 
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many']),
-            ).rejects.toMatchObject({ code: 'commander.help', exitCode: 1 })
+            await expect(runAddMany()).rejects.toMatchObject({
+                code: 'commander.help',
+                exitCode: 1,
+            })
 
             const output = stderrSpy.mock.calls.map((c) => c[0]).join('')
             expect(output).toContain('Usage: td task add-many')
@@ -232,15 +224,7 @@ describe('task add-many', () => {
                 ]),
             )
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ])
+            await runAddMany('--project', 'Work', '--stdin')
 
             const [plan, draft, collect, book, invites] = requests[0]
             expect(typesAndArgs(requests[0])).toEqual([
@@ -263,24 +247,11 @@ describe('task add-many', () => {
             })
         })
 
-        async function addMany(tasks: unknown[]) {
-            mockStdin(JSON.stringify(tasks))
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ])
-        }
-
         it('reuses an existing section whose name matches, ignoring case', async () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([{ content: 'Draft brief', section: 'planning' }])
+            await addManyToWork([{ content: 'Draft brief', section: 'planning' }])
 
             expect(mockApi.getSections).toHaveBeenCalledWith(
                 expect.objectContaining({ projectId: 'proj-work' }),
@@ -297,7 +268,7 @@ describe('task add-many', () => {
             const consoleSpy = captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([
+            await addManyToWork([
                 { content: 'Book venue', section: 'Launch' },
                 { content: 'Draft brief', section: 'Planning' },
                 { content: 'Send invites', section: 'launch' },
@@ -334,7 +305,7 @@ describe('task add-many', () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([{ content: 'Draft brief', section: 'id:sec-9' }])
+            await addManyToWork([{ content: 'Draft brief', section: 'id:sec-9' }])
 
             expect(typesAndArgs(requests[0])).toEqual([
                 {
@@ -348,7 +319,7 @@ describe('task add-many', () => {
             captureConsole()
             fakeSync(mockApi)
 
-            await addMany([{ content: 'Draft brief' }])
+            await addManyToWork([{ content: 'Draft brief' }])
 
             expect(mockApi.getSections).not.toHaveBeenCalled()
         })
@@ -357,7 +328,7 @@ describe('task add-many', () => {
             captureConsole()
             fakeSync(mockApi)
 
-            await addMany([{ content: 'Draft brief', section: 'id:sec-9' }])
+            await addManyToWork([{ content: 'Draft brief', section: 'id:sec-9' }])
 
             expect(mockApi.getSections).not.toHaveBeenCalled()
         })
@@ -365,32 +336,17 @@ describe('task add-many', () => {
         it('requires --project when a task names a section', async () => {
             mockStdin(JSON.stringify([{ content: 'Draft brief', section: 'Planning' }]))
 
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--stdin']),
-            ).rejects.toMatchObject({ code: 'PROJECT_REQUIRED' })
+            await expect(runAddMany('--stdin')).rejects.toMatchObject({ code: 'PROJECT_REQUIRED' })
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
     })
 
     describe('task fields', () => {
-        async function addMany(tasks: unknown[]) {
-            mockStdin(JSON.stringify(tasks))
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ])
-        }
-
         it('maps each field the way td task add does', async () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([
+            await addManyToWork([
                 {
                     content: 'Draft brief',
                     description: 'Two pages',
@@ -425,7 +381,7 @@ describe('task add-many', () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([
+            await addManyToWork([
                 { content: 'Plan launch', subtasks: [{ content: 'Draft brief', priority: 'p2' }] },
             ])
 
@@ -448,7 +404,7 @@ describe('task add-many', () => {
                 nextCursor: null,
             })
 
-            await addMany([
+            await addManyToWork([
                 { content: 'Draft brief', assignee: 'Alice Example' },
                 { content: 'Book venue', assignee: 'alice example' },
             ])
@@ -464,7 +420,7 @@ describe('task add-many', () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await addMany([{ content: 'Draft brief', labels: ['@'] }])
+            await addManyToWork([{ content: 'Draft brief', labels: ['@'] }])
 
             expect(requests[0][0].args).toEqual({ content: 'Draft brief', projectId: 'proj-work' })
         })
@@ -484,7 +440,7 @@ describe('task add-many', () => {
                 nextCursor: null,
             })
 
-            await addMany([
+            await addManyToWork([
                 { content: 'Draft brief', assignee: 'Alice Example' },
                 { content: 'Book venue', assignee: 'bob@example.com' },
                 { content: 'Send invites', assignee: 'id:user-4' },
@@ -509,7 +465,7 @@ describe('task add-many', () => {
             })
 
             await expect(
-                addMany([{ content: 'Draft brief', assignee: 'Carol' }]),
+                addManyToWork([{ content: 'Draft brief', assignee: 'Carol' }]),
             ).rejects.toMatchObject({ code: 'ASSIGNEE_NOT_FOUND' })
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
@@ -517,9 +473,7 @@ describe('task add-many', () => {
         it('requires --project when a task names an assignee', async () => {
             mockStdin(JSON.stringify([{ content: 'Draft brief', assignee: 'id:user-2' }]))
 
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--stdin']),
-            ).rejects.toMatchObject({ code: 'PROJECT_REQUIRED' })
+            await expect(runAddMany('--stdin')).rejects.toMatchObject({ code: 'PROJECT_REQUIRED' })
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
     })
@@ -625,17 +579,10 @@ describe('task add-many', () => {
         ])('rejects %s before calling the API', async (_name, input, code, message) => {
             mockStdin(input)
 
-            await expect(
-                createProgram().parseAsync([
-                    'node',
-                    'td',
-                    'task',
-                    'add-many',
-                    '--project',
-                    'Work',
-                    '--stdin',
-                ]),
-            ).rejects.toMatchObject({ code, message })
+            await expect(runAddMany('--project', 'Work', '--stdin')).rejects.toMatchObject({
+                code,
+                message,
+            })
             expect(mockApi.getProjects).not.toHaveBeenCalled()
             expect(mockApi.sync).not.toHaveBeenCalled()
         })
@@ -643,9 +590,7 @@ describe('task add-many', () => {
         it('lists every problem, not just the first', async () => {
             mockStdin('[{"content": ""}, {"content": "Book venue", "priority": "high"}]')
 
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--stdin']),
-            ).rejects.toMatchObject({
+            await expect(runAddMany('--stdin')).rejects.toMatchObject({
                 code: 'INVALID_INPUT',
                 message:
                     'Invalid task list: [0].content: must not be empty; [1].priority: expected p1, p2, p3 or p4',
@@ -676,16 +621,7 @@ describe('task add-many', () => {
                 ]),
             )
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-                '--dry-run',
-            ])
+            await runAddMany('--project', 'Work', '--stdin', '--dry-run')
 
             expect(mockApi.sync).not.toHaveBeenCalled()
             expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual([
@@ -710,14 +646,7 @@ describe('task add-many', () => {
                 ]),
             )
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--stdin',
-                '--dry-run',
-            ])
+            await runAddMany('--stdin', '--dry-run')
 
             expect(consoleSpy).toHaveBeenCalledWith(
                 '  - Draft brief (description: Two pages covering scope, budget and the...)',
@@ -729,14 +658,7 @@ describe('task add-many', () => {
             const consoleSpy = captureConsole()
             mockStdin(JSON.stringify([{ content: 'Call the bank' }]))
 
-            await createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--stdin',
-                '--dry-run',
-            ])
+            await runAddMany('--stdin', '--dry-run')
 
             expect(mockApi.sync).not.toHaveBeenCalled()
             expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual([
@@ -770,16 +692,7 @@ describe('task add-many', () => {
         })
 
         function run(...extra: string[]) {
-            return createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-                ...extra,
-            ])
+            return runAddMany('--project', 'Work', '--stdin', ...extra)
         }
 
         it('lists what it created, name first and ID after', async () => {
@@ -857,35 +770,13 @@ describe('task add-many', () => {
         })
         mockStdin(JSON.stringify([{ content: 'Draft brief' }]))
 
-        await expect(
-            createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ]),
-        ).rejects.toMatchObject({ code: 'PROJECT_ARCHIVED' })
+        await expect(runAddMany('--project', 'Work', '--stdin')).rejects.toMatchObject({
+            code: 'PROJECT_ARCHIVED',
+        })
         expect(mockApi.sync).not.toHaveBeenCalled()
     })
 
     describe('when some items fail', () => {
-        function run(tasks: unknown[], ...extra: string[]) {
-            mockStdin(JSON.stringify(tasks))
-            return createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-                ...extra,
-            ])
-        }
-
         const tasks = [
             { content: 'Book venue', subtasks: [{ content: 'Get quotes' }] },
             { content: 'Draft brief' },
@@ -899,7 +790,7 @@ describe('task add-many', () => {
                     command.args.content === 'Book venue' ? 'Invalid argument value' : undefined,
             })
 
-            await expect(run(tasks)).rejects.toMatchObject({
+            await expect(addManyToWork(tasks)).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
                 message: '2 of 3 tasks were not created.',
             })
@@ -923,7 +814,10 @@ describe('task add-many', () => {
             })
 
             await expect(
-                run([{ content: 'Book venue', section: 'Launch' }, { content: 'Draft brief' }]),
+                addManyToWork([
+                    { content: 'Book venue', section: 'Launch' },
+                    { content: 'Draft brief' },
+                ]),
             ).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
                 message: '1 of 2 tasks and 1 of 1 section were not created.',
@@ -946,7 +840,9 @@ describe('task add-many', () => {
                     command.args.content === 'Book venue' ? 'Invalid argument value' : undefined,
             })
 
-            await expect(run(tasks, '--json')).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
+            await expect(addManyToWork(tasks, '--json')).rejects.toMatchObject({
+                code: 'PARTIAL_FAILURE',
+            })
 
             expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
                 projectId: 'proj-work',
@@ -989,7 +885,9 @@ describe('task add-many', () => {
                             : undefined,
                 })
 
-                await expect(run(tasks)).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
+                await expect(addManyToWork(tasks)).rejects.toMatchObject({
+                    code: 'PARTIAL_FAILURE',
+                })
 
                 expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual(['task-new-1'])
                 expect(errorSpy.mock.calls.map((call) => call[0])).toEqual([
@@ -1010,7 +908,9 @@ describe('task add-many', () => {
                     command.args.content === 'Get quotes' ? 'Invalid argument value' : undefined,
             })
 
-            const failure = run([{ content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] }])
+            const failure = addManyToWork([
+                { content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] },
+            ])
 
             await expect(failure).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
             await expect(failure).rejects.toMatchObject({
@@ -1029,7 +929,10 @@ describe('task add-many', () => {
             })
 
             await expect(
-                run([{ content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] }], '--json'),
+                addManyToWork(
+                    [{ content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] }],
+                    '--json',
+                ),
             ).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
 
             const report = JSON.parse(consoleSpy.mock.calls[0][0] as string)
@@ -1048,7 +951,7 @@ describe('task add-many', () => {
         it('passes on an error that stops the whole request, when nothing was created', async () => {
             mockApi.sync.mockRejectedValue(new CliError('RATE_LIMITED', 'Too many requests'))
 
-            await expect(run(tasks)).rejects.toMatchObject({ code: 'RATE_LIMITED' })
+            await expect(addManyToWork(tasks)).rejects.toMatchObject({ code: 'RATE_LIMITED' })
         })
     })
 
@@ -1057,23 +960,11 @@ describe('task add-many', () => {
             resetGlobalArgs()
         })
 
-        function run(tasks: unknown[], ...extra: string[]) {
-            mockStdin(JSON.stringify(tasks))
-            return createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--stdin',
-                ...extra,
-            ])
-        }
-
         it("adds a task under an existing parent, in the parent's project and section", async () => {
             const consoleSpy = captureConsole()
             const requests = fakeSync(mockApi)
 
-            await run(
+            await addManyFromStdin(
                 [{ content: 'Get quotes', parent: 'id:task-9', subtasks: [{ content: 'Call A' }] }],
                 '--project',
                 'Work',
@@ -1094,7 +985,7 @@ describe('task add-many', () => {
             captureConsole()
             const requests = fakeSync(mockApi)
 
-            await run([
+            await addManyFromStdin([
                 { content: 'Get quotes', parent: '6Jx4mVr72kPn3QwB' },
                 {
                     content: 'Book venue',
@@ -1111,7 +1002,7 @@ describe('task add-many', () => {
         it('shows the parent in the --dry-run preview', async () => {
             const consoleSpy = captureConsole()
 
-            await run([{ content: 'Get quotes', parent: 'id:task-9' }], '--dry-run')
+            await addManyFromStdin([{ content: 'Get quotes', parent: 'id:task-9' }], '--dry-run')
 
             expect(mockApi.sync).not.toHaveBeenCalled()
             expect(consoleSpy).toHaveBeenCalledWith('  - Get quotes (parent: id:task-9)')
@@ -1123,24 +1014,11 @@ describe('task add-many', () => {
             return Array.from({ length: count }, (_, index) => ({ content: `Step ${index + 1}` }))
         }
 
-        function run(tasks: unknown[]) {
-            mockStdin(JSON.stringify(tasks))
-            return createProgram().parseAsync([
-                'node',
-                'td',
-                'task',
-                'add-many',
-                '--project',
-                'Work',
-                '--stdin',
-            ])
-        }
-
         it('splits them into requests of 100, using real IDs from earlier requests', async () => {
             const consoleSpy = captureConsole()
             const requests = fakeSync(mockApi)
 
-            await run([{ content: 'Plan launch', subtasks: subtasks(150) }])
+            await addManyToWork([{ content: 'Plan launch', subtasks: subtasks(150) }])
 
             expect(requests.map((commands) => commands.length)).toEqual([100, 51])
             expect(requests[1][0].args).toEqual({ content: 'Step 100', parentId: 'task-new-1' })
@@ -1159,7 +1037,7 @@ describe('task add-many', () => {
             })
 
             await expect(
-                run([{ content: 'Plan launch', subtasks: subtasks(150) }]),
+                addManyToWork([{ content: 'Plan launch', subtasks: subtasks(150) }]),
             ).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
                 message: '151 of 151 tasks were not created.',
@@ -1183,7 +1061,7 @@ describe('task add-many', () => {
                 content: `Task ${index + 1}`,
             }))
 
-            await expect(run(tasks)).rejects.toMatchObject({
+            await expect(addManyToWork(tasks)).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
                 message: '1 of 101 tasks was not created.',
             })
@@ -1209,7 +1087,7 @@ describe('task add-many', () => {
                 content: `Task ${index + 1}`,
             }))
 
-            const failure = run(tasks)
+            const failure = addManyToWork(tasks)
 
             await expect(failure).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
@@ -1238,7 +1116,7 @@ describe('task add-many', () => {
                 section: 'Launch',
             }))
 
-            await run(tasks)
+            await addManyToWork(tasks)
 
             expect(requests.map((commands) => commands.length)).toEqual([100, 21])
             expect(requests[0][0]).toMatchObject({
@@ -1267,7 +1145,7 @@ describe('task add-many', () => {
                 content: `Task ${index + 1}`,
             }))
 
-            await expect(run(tasks)).rejects.toMatchObject({
+            await expect(addManyToWork(tasks)).rejects.toMatchObject({
                 code: 'PARTIAL_FAILURE',
                 message: '1 of 102 tasks was not created.',
             })
@@ -1294,15 +1172,13 @@ describe('task add-many', () => {
 
         async function printSchema(): Promise<JsonSchema> {
             const consoleSpy = captureConsole()
-            await createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--schema'])
+            await runAddMany('--schema')
             return JSON.parse(consoleSpy.mock.calls[0][0] as string) as JsonSchema
         }
 
         async function captureHelp(): Promise<string> {
             const stdoutSpy = captureStream()
-            await expect(
-                createProgram().parseAsync(['node', 'td', 'task', 'add-many', '--help']),
-            ).rejects.toThrow()
+            await expect(runAddMany('--help')).rejects.toThrow()
             return stdoutSpy.mock.calls.map((c) => String(c[0])).join('')
         }
 
