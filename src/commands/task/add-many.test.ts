@@ -858,12 +858,14 @@ describe('task add-many', () => {
                 failures: [
                     {
                         type: 'task',
+                        status: 'failed',
                         path: '[0]',
                         content: 'Book venue',
                         error: 'Invalid argument value',
                     },
                     {
                         type: 'task',
+                        status: 'skipped',
                         path: '[0].subtasks[0]',
                         content: 'Get quotes',
                         error: 'parent "Book venue" was not created',
@@ -978,6 +980,44 @@ describe('task add-many', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith('Created 100 tasks in Work')
             expect(errorSpy).toHaveBeenCalledWith('Failed: Task 101: not sent: Too many requests')
+        })
+
+        it('reports items in a request that may have been applied as unknown, not unsent', async () => {
+            const consoleSpy = captureConsole()
+            const errorSpy = captureConsole('error')
+            const requests = fakeSync(mockApi)
+            const fakeServer = mockApi.sync.getMockImplementation() as NonNullable<
+                ReturnType<typeof mockApi.sync.getMockImplementation>
+            >
+            mockApi.sync
+                .mockImplementationOnce(fakeServer)
+                .mockImplementationOnce(async (request: { commands: SentCommand[] }) => {
+                    requests.push(request.commands)
+                    throw new Error('fetch failed')
+                })
+            const tasks = Array.from({ length: 201 }, (_, index) => ({
+                content: `Task ${index + 1}`,
+            }))
+
+            const failure = run(tasks)
+
+            await expect(failure).rejects.toMatchObject({
+                code: 'PARTIAL_FAILURE',
+                message:
+                    '1 of 201 tasks was not created. 100 items may or may not have been created.',
+            })
+            await expect(failure).rejects.toMatchObject({
+                hints: expect.arrayContaining([expect.stringContaining('check the project')]),
+            })
+            expect(requests.map((commands) => commands.length)).toEqual([100, 100])
+            expect(consoleSpy).toHaveBeenCalledWith('Created 100 tasks in Work')
+            expect(errorSpy).toHaveBeenCalledWith(
+                'Unknown: Task 101: may or may not have been created: fetch failed',
+            )
+            expect(errorSpy).toHaveBeenCalledWith(
+                'Unknown: Task 200: may or may not have been created: fetch failed',
+            )
+            expect(errorSpy).toHaveBeenCalledWith('Failed: Task 201: not sent: fetch failed')
         })
 
         it('uses the real ID of a section created in an earlier request', async () => {

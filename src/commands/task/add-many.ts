@@ -54,6 +54,8 @@ type Outcome =
     | { status: 'failed'; error: string }
     /** Not created because something it belongs in or under was not created. */
     | { status: 'skipped'; reason: string }
+    /** Sent in a request that failed without a response, so the server may have applied it. */
+    | { status: 'unknown'; error: string }
 
 /**
  * One section or task to create, in the order it is sent. Args refer to other
@@ -127,6 +129,17 @@ export async function addManyTasks(options: AddManyOptions): Promise<void> {
 const MAX_COMMANDS_PER_REQUEST = 100
 
 /**
+ * Request errors that mean the server turned the request away before applying
+ * any of it. Any other failure to get a response leaves the outcome unknown.
+ */
+const REJECTED_BEFORE_APPLYING = new Set([
+    'RATE_LIMITED',
+    'AUTH_ERROR',
+    'MISSING_SCOPE',
+    'READ_ONLY',
+])
+
+/**
  * Sends the planned items, at most 100 commands per request, and records what
  * happened to each. The Sync API applies commands independently, so a failed
  * command does not undo the others; anything that depended on a failed item is
@@ -164,7 +177,16 @@ async function send(api: TodoistApi, planned: PlannedItem[]): Promise<Map<string
                 throw err
             } else {
                 const message = err instanceof Error ? err.message : String(err)
-                for (const item of planned.slice(start)) {
+                const rejected = err instanceof CliError && REJECTED_BEFORE_APPLYING.has(err.code)
+                for (const item of batch) {
+                    outcomes.set(
+                        item.tempId,
+                        rejected
+                            ? { status: 'failed', error: `not sent: ${message}` }
+                            : { status: 'unknown', error: message },
+                    )
+                }
+                for (const item of planned.slice(start + MAX_COMMANDS_PER_REQUEST)) {
                     if (!outcomes.has(item.tempId)) {
                         outcomes.set(item.tempId, {
                             status: 'failed',
@@ -254,9 +276,20 @@ function printReport(
     })
     const problem = (tempId: string) => {
         const outcome = outcomes.get(tempId)
-        if (outcome?.status === 'failed') return { label: 'Failed', error: outcome.error }
-        if (outcome?.status === 'skipped') return { label: 'Skipped', error: outcome.reason }
-        return undefined
+        switch (outcome?.status) {
+            case 'failed':
+                return { status: outcome.status, label: 'Failed', error: outcome.error }
+            case 'skipped':
+                return { status: outcome.status, label: 'Skipped', error: outcome.reason }
+            case 'unknown':
+                return {
+                    status: outcome.status,
+                    label: 'Unknown',
+                    error: `may or may not have been created: ${outcome.error}`,
+                }
+            default:
+                return undefined
+        }
     }
     const sectionFailures = resolved.newSections.flatMap((section) => {
         const found = problem(section.tempId)
@@ -279,13 +312,15 @@ function printReport(
                     parentId: idOf(task.parentTempId),
                 })),
                 failures: [
-                    ...sectionFailures.map(({ section, error }) => ({
+                    ...sectionFailures.map(({ section, status, error }) => ({
                         type: 'section',
+                        status,
                         name: section.name,
                         error,
                     })),
-                    ...taskFailures.map(({ task, error }) => ({
+                    ...taskFailures.map(({ task, status, error }) => ({
                         type: 'task',
+                        status,
                         path: task.path,
                         content: task.content,
                         error,
@@ -309,16 +344,35 @@ function printReport(
     }
 
     if (sectionFailures.length > 0 || taskFailures.length > 0) {
-        const parts = [`${taskFailures.length} of ${plural(plannedTasks.length, 'task')}`]
-        if (sectionFailures.length > 0) {
-            parts.push(
-                `${sectionFailures.length} of ${plural(resolved.newSections.length, 'section')}`,
+        const isUnknown = (failure: { status: string }) => failure.status === 'unknown'
+        const failedTasks = taskFailures.filter((failure) => !isUnknown(failure)).length
+        const failedSections = sectionFailures.filter((failure) => !isUnknown(failure)).length
+        const unknownItems =
+            taskFailures.filter(isUnknown).length + sectionFailures.filter(isUnknown).length
+
+        const parts: string[] = []
+        if (failedTasks > 0) parts.push(`${failedTasks} of ${plural(plannedTasks.length, 'task')}`)
+        if (failedSections > 0) {
+            parts.push(`${failedSections} of ${plural(resolved.newSections.length, 'section')}`)
+        }
+        const sentences: string[] = []
+        if (parts.length > 0) {
+            const verb = parts.length === 1 && failedTasks + failedSections === 1 ? 'was' : 'were'
+            sentences.push(`${parts.join(' and ')} ${verb} not created.`)
+        }
+        if (unknownItems > 0) {
+            sentences.push(`${plural(unknownItems, 'item')} may or may not have been created.`)
+        }
+
+        const hints = [
+            'Everything else was created. Re-run with only the items listed as failed or skipped, so nothing is created twice.',
+        ]
+        if (unknownItems > 0) {
+            hints.unshift(
+                'The request holding the items marked unknown failed after it was sent, so the server may have created them: check the project before re-running them.',
             )
         }
-        const verb = parts.length === 1 && taskFailures.length === 1 ? 'was' : 'were'
-        throw new CliError('PARTIAL_FAILURE', `${parts.join(' and ')} ${verb} not created.`, [
-            'Everything else was created. Re-run with only the items listed as failed or skipped, so nothing is created twice.',
-        ])
+        throw new CliError('PARTIAL_FAILURE', sentences.join(' '), hints)
     }
 }
 
