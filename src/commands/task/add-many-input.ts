@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { parseDuration } from '../../lib/duration.js'
 import { CliError } from '../../lib/errors.js'
+import { lenientIdRef } from '../../lib/refs.js'
 
 /** How many problems an error message lists before summarising the rest. */
 const MAX_LISTED_PROBLEMS = 10
@@ -49,6 +50,10 @@ const TaskInputSchema = z
             description:
                 'Section name, reused if the project has one by that name (ignoring case) and created otherwise; or id:xxx. Top-level tasks only. Needs --project.',
         }),
+        parent: optionalText.meta({
+            description:
+                "An existing task to add this one under: id:xxx, a task ID or a Todoist task URL. Top-level tasks only; the task goes in the parent's project and section. Use it to retry a subtask whose parent was already created.",
+        }),
         get subtasks() {
             return z
                 .array(TaskInputSchema)
@@ -66,7 +71,7 @@ const TaskListSchema = z
 export type TaskInput = z.infer<typeof TaskInputSchema>
 
 export const TASK_INPUT_HINTS = [
-    'Pass a JSON array of tasks. Each task needs "content", and can set description, due, deadline (YYYY-MM-DD), priority (p1-p4), labels (array), duration, assignee, section and subtasks (array of tasks).',
+    'Pass a JSON array of tasks. Each task needs "content", and can set description, due, deadline (YYYY-MM-DD), priority (p1-p4), labels (array), duration, assignee, section, parent (an existing task ID) and subtasks (array of tasks).',
     'Example: [{"content": "Draft brief", "section": "Planning", "due": "friday", "subtasks": [{"content": "Collect quotes"}]}]',
 ]
 
@@ -97,7 +102,7 @@ export function parseTaskList(raw: string): TaskInput[] {
 
     const result = TaskListSchema.safeParse(data)
     const problems = result.success
-        ? findSubtaskSections(result.data)
+        ? findPlacementProblems(result.data)
         : result.error.issues.map(formatIssue)
     if (!result.success || problems.length > 0) {
         throw new CliError('INVALID_INPUT', `Invalid task list: ${listProblems(problems)}`, [
@@ -107,8 +112,12 @@ export function parseTaskList(raw: string): TaskInput[] {
     return result.data
 }
 
-/** A subtask always goes in its parent's section, so it cannot name its own. */
-function findSubtaskSections(tasks: TaskInput[]): string[] {
+/**
+ * Checks where each task goes. A task under a parent, whether nested or given
+ * by `parent`, takes its parent's section, so it cannot name its own; and a
+ * nested subtask's parent is the task it sits in.
+ */
+function findPlacementProblems(tasks: TaskInput[]): string[] {
     const problems: string[] = []
     const visit = (subtasks: TaskInput[] | undefined, path: string) => {
         subtasks?.forEach((subtask, index) => {
@@ -116,11 +125,36 @@ function findSubtaskSections(tasks: TaskInput[]): string[] {
             if (subtask.section !== undefined) {
                 problems.push(`${subtaskPath}.section: a subtask goes in its parent's section`)
             }
+            if (subtask.parent !== undefined) {
+                problems.push(
+                    `${subtaskPath}.parent: a subtask's parent is the task it is nested under`,
+                )
+            }
             visit(subtask.subtasks, subtaskPath)
         })
     }
-    tasks.forEach((task, index) => visit(task.subtasks, `[${index}]`))
+    tasks.forEach((task, index) => {
+        const path = `[${index}]`
+        if (task.parent !== undefined) {
+            if (!isTaskRef(task.parent)) {
+                problems.push(`${path}.parent: expected id:xxx, a task ID or a Todoist task URL`)
+            }
+            if (task.section !== undefined) {
+                problems.push(`${path}.section: a task with a parent goes in its parent's section`)
+            }
+        }
+        visit(task.subtasks, path)
+    })
     return problems
+}
+
+function isTaskRef(ref: string): boolean {
+    try {
+        lenientIdRef(ref, 'task')
+        return true
+    } catch {
+        return false
+    }
 }
 
 function formatIssue(issue: z.core.$ZodIssue): string {

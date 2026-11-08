@@ -209,11 +209,14 @@ Input:
     assignee      "me", a collaborator name or email, or id:xxx (needs --project)
     section       Section name, reused if it exists, created if not; or id:xxx
                   (top-level tasks only; needs --project)
+    parent        An existing task to add this one under: id:xxx, a task ID or
+                  a task URL (top-level tasks only)
     subtasks      Array of tasks to create under this one
   Run with --schema for the full JSON Schema.
 
   If some items fail, the rest are still created: the command lists what
-  failed or was skipped on stderr and exits with PARTIAL_FAILURE.
+  failed or was skipped on stderr and exits with PARTIAL_FAILURE. To retry a
+  failed subtask whose parent was created, give it "parent": "id:<parent ID>".
 
 Example:
   td task add-many --project "Launch" --stdin <<'EOF'

@@ -545,6 +545,24 @@ describe('task add-many', () => {
                 'Invalid task list: [0].subtasks[0].subtasks[0].content: must not be empty',
             ],
             [
+                'a parent on a subtask',
+                '[{"content": "Plan", "subtasks": [{"content": "Draft", "parent": "id:task-9"}]}]',
+                'INVALID_INPUT',
+                "Invalid task list: [0].subtasks[0].parent: a subtask's parent is the task it is nested under",
+            ],
+            [
+                'a parent together with a section',
+                '[{"content": "Draft", "parent": "id:task-9", "section": "Planning"}]',
+                'INVALID_INPUT',
+                "Invalid task list: [0].section: a task with a parent goes in its parent's section",
+            ],
+            [
+                'a parent given by name',
+                '[{"content": "Draft", "parent": "Plan launch"}]',
+                'INVALID_INPUT',
+                'Invalid task list: [0].parent: expected id:xxx, a task ID or a Todoist task URL',
+            ],
+            [
                 'a section on a subtask',
                 '[{"content": "Plan", "subtasks": [{"content": "Draft", "section": "Planning"}]}]',
                 'INVALID_INPUT',
@@ -861,6 +879,7 @@ describe('task add-many', () => {
                         status: 'failed',
                         path: '[0]',
                         content: 'Book venue',
+                        parentId: null,
                         error: 'Invalid argument value',
                     },
                     {
@@ -868,6 +887,7 @@ describe('task add-many', () => {
                         status: 'skipped',
                         path: '[0].subtasks[0]',
                         content: 'Get quotes',
+                        parentId: null,
                         error: 'parent "Book venue" was not created',
                     },
                 ],
@@ -901,10 +921,119 @@ describe('task add-many', () => {
             }
         })
 
+        it('gives the parent ID of a failed subtask whose parent was created, for a retry', async () => {
+            captureConsole()
+            const errorSpy = captureConsole('error')
+            fakeSync(mockApi, {
+                fail: (command) =>
+                    command.args.content === 'Get quotes' ? 'Invalid argument value' : undefined,
+            })
+
+            const failure = run([{ content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] }])
+
+            await expect(failure).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
+            await expect(failure).rejects.toMatchObject({
+                hints: expect.arrayContaining([expect.stringContaining('"parent": "id:')]),
+            })
+            expect(errorSpy).toHaveBeenCalledWith(
+                'Failed: Get quotes: Invalid argument value (parent: id:task-new-1)',
+            )
+        })
+
+        it('includes the parent ID in --json failures when the parent was created', async () => {
+            const consoleSpy = captureConsole()
+            fakeSync(mockApi, {
+                fail: (command) =>
+                    command.args.content === 'Get quotes' ? 'Invalid argument value' : undefined,
+            })
+
+            await expect(
+                run([{ content: 'Plan launch', subtasks: [{ content: 'Get quotes' }] }], '--json'),
+            ).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
+
+            const report = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+            expect(report.failures).toEqual([
+                {
+                    type: 'task',
+                    status: 'failed',
+                    path: '[0].subtasks[0]',
+                    content: 'Get quotes',
+                    parentId: 'task-new-1',
+                    error: 'Invalid argument value',
+                },
+            ])
+        })
+
         it('passes on an error that stops the whole request, when nothing was created', async () => {
             mockApi.sync.mockRejectedValue(new CliError('RATE_LIMITED', 'Too many requests'))
 
             await expect(run(tasks)).rejects.toMatchObject({ code: 'RATE_LIMITED' })
+        })
+    })
+
+    describe('parent', () => {
+        afterEach(() => {
+            resetGlobalArgs()
+        })
+
+        function run(tasks: unknown[], ...extra: string[]) {
+            mockStdin(JSON.stringify(tasks))
+            return createProgram().parseAsync([
+                'node',
+                'td',
+                'task',
+                'add-many',
+                '--stdin',
+                ...extra,
+            ])
+        }
+
+        it("adds a task under an existing parent, in the parent's project and section", async () => {
+            const consoleSpy = captureConsole()
+            const requests = fakeSync(mockApi)
+
+            await run(
+                [{ content: 'Get quotes', parent: 'id:task-9', subtasks: [{ content: 'Call A' }] }],
+                '--project',
+                'Work',
+                '--json',
+            )
+
+            expect(typesAndArgs(requests[0])).toEqual([
+                { type: 'item_add', args: { content: 'Get quotes', parentId: 'task-9' } },
+                { type: 'item_add', args: { content: 'Call A', parentId: requests[0][0].tempId } },
+            ])
+            expect(JSON.parse(consoleSpy.mock.calls[0][0] as string).tasks).toEqual([
+                { id: 'task-new-1', content: 'Get quotes', sectionId: null, parentId: 'task-9' },
+                { id: 'task-new-2', content: 'Call A', sectionId: null, parentId: 'task-new-1' },
+            ])
+        })
+
+        it('takes the parent as a raw ID or a Todoist task URL, without --project', async () => {
+            captureConsole()
+            const requests = fakeSync(mockApi)
+
+            await run([
+                { content: 'Get quotes', parent: '6Jx4mVr72kPn3QwB' },
+                {
+                    content: 'Book venue',
+                    parent: 'https://app.todoist.com/app/task/plan-launch-6Jx4mVr72kPn3QwB',
+                },
+            ])
+
+            expect(typesAndArgs(requests[0])).toEqual([
+                { type: 'item_add', args: { content: 'Get quotes', parentId: '6Jx4mVr72kPn3QwB' } },
+                { type: 'item_add', args: { content: 'Book venue', parentId: '6Jx4mVr72kPn3QwB' } },
+            ])
+        })
+
+        it('shows the parent in the --dry-run preview', async () => {
+            const consoleSpy = captureConsole()
+
+            await run([{ content: 'Get quotes', parent: 'id:task-9' }], '--dry-run')
+
+            expect(mockApi.sync).not.toHaveBeenCalled()
+            expect(consoleSpy).toHaveBeenCalledWith('  - Get quotes (parent: id:task-9)')
         })
     })
 
@@ -1112,6 +1241,7 @@ describe('task add-many', () => {
                 'duration',
                 'assignee',
                 'section',
+                'parent',
                 'subtasks',
             ])
             expect(task.required).toEqual(['content'])

@@ -17,7 +17,7 @@ import { isQuiet } from '../../lib/global-args.js'
 import { stripLabelAtPrefix } from '../../lib/labels.js'
 import { formatJson } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
-import { extractId, isIdRef, resolveProjectRef } from '../../lib/refs.js'
+import { extractId, isIdRef, lenientIdRef, resolveProjectRef } from '../../lib/refs.js'
 import { parsePriority } from '../../lib/task-list.js'
 import { parseTaskList, type TaskInput } from './add-many-input.js'
 
@@ -43,7 +43,8 @@ type PlannedTask = {
     /** Where the task sits in the input, such as `[0].subtasks[1]`. */
     path: string
     input: TaskInput
-    parentTempId?: string
+    /** The parent task, as a planned task's temp ID or an existing task's ID. */
+    parentRef?: string
     /** The section the task lands in (its parent's, for a subtask), as an ID or a new section's temp ID. */
     sectionRef?: string
 }
@@ -240,8 +241,8 @@ function findBlocker(
         const outcome = tempId === undefined ? undefined : outcomes.get(tempId)
         return outcome !== undefined && outcome.status !== 'created'
     }
-    if (notCreated(item.parentTempId)) {
-        const parent = byTempId.get(item.parentTempId as string) as PlannedTask
+    if (notCreated(item.parentRef)) {
+        const parent = byTempId.get(item.parentRef as string) as PlannedTask
         return `parent "${parent.content}" was not created`
     }
     if (notCreated(item.sectionRef)) {
@@ -309,7 +310,7 @@ function printReport(
                     id,
                     content: task.content,
                     sectionId: idOf(task.sectionRef),
-                    parentId: idOf(task.parentTempId),
+                    parentId: idOf(task.parentRef),
                 })),
                 failures: [
                     ...sectionFailures.map(({ section, status, error }) => ({
@@ -323,6 +324,7 @@ function printReport(
                         status,
                         path: task.path,
                         content: task.content,
+                        parentId: idOf(task.parentRef),
                         error,
                     })),
                 ],
@@ -339,7 +341,10 @@ function printReport(
             console.error(`${label}: section ${section.name}: ${error}`)
         }
         for (const { task, label, error } of taskFailures) {
-            console.error(`${label}: ${task.content}: ${error}`)
+            // A parent that exists is what a retry of this task should name in "parent".
+            const parentId = idOf(task.parentRef)
+            const suffix = parentId ? ` (parent: id:${parentId})` : ''
+            console.error(`${label}: ${task.content}: ${error}${suffix}`)
         }
     }
 
@@ -365,7 +370,8 @@ function printReport(
         }
 
         const hints = [
-            'Everything else was created. Re-run with only the items listed as failed or skipped, so nothing is created twice.',
+            'Everything else was created. To retry, re-run only the failed and skipped items, keeping skipped subtasks nested under their failed parent, so nothing is created twice.',
+            'Give a failed subtask whose parent was created "parent": "id:<parent ID>", so it is not added at the top level. The ID is shown with the failure, and as parentId in --json.',
         ]
         if (unknownItems > 0) {
             hints.unshift(
@@ -423,6 +429,7 @@ function describeFields(task: TaskInput, resolved: Resolved): string[] {
     if (labels.length > 0) details.push(`labels: ${labels.join(', ')}`)
     if (task.duration) details.push(`duration: ${task.duration}`)
     if (task.assignee) details.push(`assignee: ${task.assignee}`)
+    if (task.parent) details.push(`parent: ${task.parent}`)
     return details
 }
 
@@ -483,8 +490,8 @@ function sectionKey(ref: string): string {
 
 /**
  * Flattens the task tree depth first, so every parent is sent before its
- * subtasks. Top-level tasks go to the project; subtasks only name their
- * parent, and inherit its project and section.
+ * subtasks. Top-level tasks go to the project; subtasks, and tasks given an
+ * existing `parent`, only name their parent and inherit its project and section.
  */
 function planTasks(tasks: TaskInput[], resolved: Resolved): PlannedTask[] {
     const planned: PlannedTask[] = []
@@ -492,8 +499,13 @@ function planTasks(tasks: TaskInput[], resolved: Resolved): PlannedTask[] {
         const tempId = crypto.randomUUID()
         const args: TaskAddArgs = { content: task.content }
         let sectionRef = parent?.sectionRef
+        let parentRef = parent?.tempId
         if (parent) {
             args.parentId = parent.tempId
+        } else if (task.parent) {
+            // The input check has already confirmed this is an ID or a task URL.
+            parentRef = lenientIdRef(task.parent, 'task')
+            args.parentId = parentRef
         } else if (resolved.project) {
             args.projectId = resolved.project.id
             if (task.section) {
@@ -510,7 +522,7 @@ function planTasks(tasks: TaskInput[], resolved: Resolved): PlannedTask[] {
             depth: parent ? parent.depth + 1 : 0,
             path,
             input: task,
-            parentTempId: parent?.tempId,
+            parentRef,
             sectionRef,
         }
         planned.push(item)
