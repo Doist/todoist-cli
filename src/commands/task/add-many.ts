@@ -17,6 +17,7 @@ import { formatJson } from '../../lib/output.js'
 import { paginate } from '../../lib/pagination.js'
 import { extractId, isIdRef, lenientIdRef, resolveProjectRef } from '../../lib/refs.js'
 import { parsePriority } from '../../lib/task-list.js'
+import { truncateForDisplay } from '../../lib/text.js'
 import { parseTaskList, type TaskInput } from './add-many-input.js'
 import { normalizeLabels } from './helpers.js'
 
@@ -119,6 +120,9 @@ export async function addManyTasks(options: AddManyOptions): Promise<void> {
     const outcomes = await send(api, planned)
     printReport(resolved, plannedTasks, outcomes, options)
 }
+
+/** How much of a description the --dry-run preview shows. */
+const PREVIEW_DESCRIPTION_LENGTH = 40
 
 /** The Sync API accepts at most this many commands in one request. */
 const MAX_COMMANDS_PER_REQUEST = 100
@@ -415,6 +419,11 @@ function describeFields(task: TaskInput, resolved: Resolved): string[] {
     const details: string[] = []
     if (task.section) {
         details.push(`section: ${resolved.sectionNames.get(sectionKey(task.section))}`)
+    }
+    if (task.description) {
+        // The preview is one line per task, so the description is flattened and shortened.
+        const oneLine = task.description.split(/\s+/).filter(Boolean).join(' ')
+        details.push(`description: ${truncateForDisplay(oneLine, PREVIEW_DESCRIPTION_LENGTH)}`)
     }
     if (task.due) details.push(`due: ${task.due}`)
     if (task.deadline) details.push(`deadline: ${task.deadline}`)

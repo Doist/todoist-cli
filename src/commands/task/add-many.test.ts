@@ -698,6 +698,33 @@ describe('task add-many', () => {
             ])
         })
 
+        it('shows the description on one line, shortened, in the preview', async () => {
+            const consoleSpy = captureConsole()
+            mockStdin(
+                JSON.stringify([
+                    {
+                        content: 'Draft brief',
+                        description: 'Two pages\ncovering scope, budget and the launch timeline',
+                    },
+                    { content: 'Book venue', description: 'Seats 80' },
+                ]),
+            )
+
+            await createProgram().parseAsync([
+                'node',
+                'td',
+                'task',
+                'add-many',
+                '--stdin',
+                '--dry-run',
+            ])
+
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '  - Draft brief (description: Two pages covering scope, budget and the...)',
+            )
+            expect(consoleSpy).toHaveBeenCalledWith('  - Book venue (description: Seats 80)')
+        })
+
         it('previews additions to the Inbox when no --project is given', async () => {
             const consoleSpy = captureConsole()
             mockStdin(JSON.stringify([{ content: 'Call the bank' }]))
