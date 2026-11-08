@@ -293,15 +293,18 @@ function printReport(
                 ],
             }),
         )
-    } else if (isQuiet()) {
-        console.log(tasks.map(({ id }) => id).join('\n'))
     } else {
-        printCreated(resolved, sections, tasks)
+        if (isQuiet()) {
+            console.log(tasks.map(({ id }) => id).join('\n'))
+        } else {
+            printCreated(resolved, sections, tasks)
+        }
+        // Problems go to stderr, even with --quiet, so stdout only lists what was created.
         for (const { section, label, error } of sectionFailures) {
-            console.log(`${label}: section ${section.name}: ${error}`)
+            console.error(`${label}: section ${section.name}: ${error}`)
         }
         for (const { task, label, error } of taskFailures) {
-            console.log(`${label}: ${task.content}: ${error}`)
+            console.error(`${label}: ${task.content}: ${error}`)
         }
     }
 

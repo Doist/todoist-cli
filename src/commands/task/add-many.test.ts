@@ -792,8 +792,9 @@ describe('task add-many', () => {
             { content: 'Draft brief' },
         ]
 
-        it('reports what was created, what failed and what was skipped, then fails', async () => {
+        it('reports what was created on stdout and what failed or was skipped on stderr', async () => {
             const consoleSpy = captureConsole()
+            const errorSpy = captureConsole('error')
             fakeSync(mockApi, {
                 fail: (command) =>
                     command.args.content === 'Book venue' ? 'Invalid argument value' : undefined,
@@ -807,6 +808,8 @@ describe('task add-many', () => {
             expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual([
                 'Created 1 task in Work',
                 '  - Draft brief (id:task-new-1)',
+            ])
+            expect(errorSpy.mock.calls.map((call) => call[0])).toEqual([
                 'Failed: Book venue: Invalid argument value',
                 'Skipped: Get quotes: parent "Book venue" was not created',
             ])
@@ -814,6 +817,7 @@ describe('task add-many', () => {
 
         it('skips the tasks in a section that could not be created', async () => {
             const consoleSpy = captureConsole()
+            const errorSpy = captureConsole('error')
             mockApi.getSections.mockResolvedValue({ results: [], nextCursor: null })
             fakeSync(mockApi, {
                 fail: (command) => (command.type === 'section_add' ? 'Name too long' : undefined),
@@ -829,6 +833,8 @@ describe('task add-many', () => {
             expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual([
                 'Created 1 task in Work',
                 '  - Draft brief (id:task-new-1)',
+            ])
+            expect(errorSpy.mock.calls.map((call) => call[0])).toEqual([
                 'Failed: section Launch: Name too long',
                 'Skipped: Book venue: section "Launch" was not created',
             ])
@@ -864,6 +870,33 @@ describe('task add-many', () => {
                     },
                 ],
             })
+        })
+
+        it('still lists failures on stderr with --quiet, after the created IDs on stdout', async () => {
+            const originalArgv = process.argv
+            process.argv = ['node', 'td', '--quiet', 'task', 'add-many']
+            resetGlobalArgs()
+            try {
+                const consoleSpy = captureConsole()
+                const errorSpy = captureConsole('error')
+                fakeSync(mockApi, {
+                    fail: (command) =>
+                        command.args.content === 'Book venue'
+                            ? 'Invalid argument value'
+                            : undefined,
+                })
+
+                await expect(run(tasks)).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' })
+
+                expect(consoleSpy.mock.calls.map((call) => call[0])).toEqual(['task-new-1'])
+                expect(errorSpy.mock.calls.map((call) => call[0])).toEqual([
+                    'Failed: Book venue: Invalid argument value',
+                    'Skipped: Get quotes: parent "Book venue" was not created',
+                ])
+            } finally {
+                process.argv = originalArgv
+                resetGlobalArgs()
+            }
         })
 
         it('passes on an error that stops the whole request, when nothing was created', async () => {
@@ -906,7 +939,8 @@ describe('task add-many', () => {
         })
 
         it('does not send items whose parent failed in an earlier request', async () => {
-            const consoleSpy = captureConsole()
+            captureConsole()
+            const errorSpy = captureConsole('error')
             const requests = fakeSync(mockApi, {
                 fail: (command) =>
                     command.args.content === 'Plan launch' ? 'Invalid argument value' : undefined,
@@ -920,13 +954,14 @@ describe('task add-many', () => {
             })
 
             expect(requests).toHaveLength(1)
-            expect(consoleSpy).toHaveBeenCalledWith(
+            expect(errorSpy).toHaveBeenCalledWith(
                 'Skipped: Step 150: parent "Plan launch" was not created',
             )
         })
 
         it('reports what earlier requests created when a later request fails outright', async () => {
             const consoleSpy = captureConsole()
+            const errorSpy = captureConsole('error')
             fakeSync(mockApi)
             const fakeServer = mockApi.sync.getMockImplementation()
             mockApi.sync
@@ -942,7 +977,7 @@ describe('task add-many', () => {
             })
 
             expect(consoleSpy).toHaveBeenCalledWith('Created 100 tasks in Work')
-            expect(consoleSpy).toHaveBeenCalledWith('Failed: Task 101: not sent: Too many requests')
+            expect(errorSpy).toHaveBeenCalledWith('Failed: Task 101: not sent: Too many requests')
         })
 
         it('uses the real ID of a section created in an earlier request', async () => {
@@ -973,6 +1008,7 @@ describe('task add-many', () => {
 
         it('reports a later request that partly fails after earlier requests created items', async () => {
             const consoleSpy = captureConsole()
+            const errorSpy = captureConsole('error')
             fakeSync(mockApi, {
                 fail: (command) =>
                     command.args.content === 'Task 101' ? 'Invalid argument value' : undefined,
@@ -988,7 +1024,7 @@ describe('task add-many', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith('Created 101 tasks in Work')
             expect(consoleSpy).toHaveBeenCalledWith('  - Task 102 (id:task-new-101)')
-            expect(consoleSpy).toHaveBeenCalledWith('Failed: Task 101: Invalid argument value')
+            expect(errorSpy).toHaveBeenCalledWith('Failed: Task 101: Invalid argument value')
         })
     })
 

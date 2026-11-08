@@ -213,7 +213,7 @@ Input:
   Run with --schema for the full JSON Schema.
 
   If some items fail, the rest are still created: the command lists what
-  failed or was skipped and exits with PARTIAL_FAILURE.
+  failed or was skipped on stderr and exits with PARTIAL_FAILURE.
 
 Example:
   td task add-many --project "Launch" --stdin <<'EOF'
