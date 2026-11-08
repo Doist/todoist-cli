@@ -1,3 +1,9 @@
+## [5.12.0](https://github.com/Doist/todoist-cli/compare/v5.11.1...v5.12.0) (2026-11-08)
+
+### Features
+
+* **task:** add `td task add-many` for creating many tasks at once ([#643](https://github.com/Doist/todoist-cli/issues/643)) ([ba5f7c6](https://github.com/Doist/todoist-cli/commit/ba5f7c648d8cf754fd90e49b827b6210f9f0ece2))
+
 ## [5.11.1](https://github.com/Doist/todoist-cli/compare/v5.11.0...v5.11.1) (2026-11-07)
 
 ### Bug Fixes
