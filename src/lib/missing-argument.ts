@@ -3,7 +3,7 @@ import { CliError } from './errors.js'
 import { isJsonMode, isNdjsonMode } from './global-args.js'
 
 /** The full invocation path of a command, e.g. `td task complete`. */
-export function getCommandPath(command: Command): string {
+function getCommandPath(command: Command): string {
     const names: string[] = []
     for (let current: Command | null = command; current?.parent; current = current.parent) {
         names.unshift(current.name())

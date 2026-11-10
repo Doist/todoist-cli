@@ -23,6 +23,7 @@ vi.mock('../lib/browser.js', () => ({
 }))
 
 import { fetchFilters } from '../lib/api/filters.js'
+import { usageTracking } from '../lib/usage-tracking.js'
 import { setupApiMock } from '../test-support/api-mock.js'
 import { makeFilter } from '../test-support/fixtures.js'
 import { type MockApi } from '../test-support/mock-api.js'
@@ -73,6 +74,48 @@ describe('view command', () => {
         ])
 
         expect(mockApi.getTask).toHaveBeenCalledWith('task1')
+    })
+
+    it('attributes the requests of a task URL to task:view, not view', async () => {
+        mockApi.getTask.mockResolvedValue({
+            id: 'task1',
+            content: 'Buy milk',
+            description: '',
+            priority: 1,
+            projectId: 'proj1',
+            sectionId: null,
+            parentId: null,
+            labels: [],
+            due: null,
+            checked: false,
+        })
+        mockApi.getProjects.mockResolvedValue({
+            results: [{ id: 'proj1', name: 'Inbox' }],
+            nextCursor: null,
+        })
+        mockApi.getTasks.mockResolvedValue({ results: [], nextCursor: null })
+        // What the root preAction hook records for `td view …` before routing.
+        usageTracking.setCommand('view')
+
+        await createProgram().parseAsync([
+            'node',
+            'td',
+            'view',
+            'https://app.todoist.com/app/task/buy-milk-task1',
+        ])
+
+        expect(usageTracking.headers()['cli-command']).toBe('task:view')
+    })
+
+    it.each([
+        ['https://app.todoist.com/app/today', 'today'],
+        ['https://app.todoist.com/app/upcoming', 'upcoming'],
+    ])('attributes the requests of %s to the routed %s command', async (url, label) => {
+        usageTracking.setCommand('view')
+
+        await createProgram().parseAsync(['node', 'td', 'view', url])
+
+        expect(usageTracking.headers()['cli-command']).toBe(label)
     })
 
     it('routes project URL to project view', async () => {

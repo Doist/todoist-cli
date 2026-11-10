@@ -16,13 +16,12 @@ import {
 } from './lib/global-args.js'
 import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
-import { getCommandPath } from './lib/missing-argument.js'
 import { enableMutationJson } from './lib/mutation-json.js'
 import { formatError, formatErrorJson } from './lib/output.js'
 import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
 import { refreshSkillsAfterUpgrade } from './lib/skills/refresh-on-upgrade.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
-import { setActiveCommandPath } from './lib/usage-tracking.js'
+import { usageTracking } from './lib/usage-tracking.js'
 
 /**
  * Report a failure the way every command reports one, and stop. Used by the
@@ -241,7 +240,7 @@ for (const [name, [description, , aliases]] of Object.entries(commands)) {
 }
 
 program.hook('preAction', async (_thisCommand, actionCommand) => {
-    setActiveCommandPath(getCommandPath(actionCommand))
+    usageTracking.setCommand(actionCommand)
     // Never let skill bookkeeping fail the command the user ran.
     await refreshSkillsAfterUpgrade().catch(() => {})
 })
