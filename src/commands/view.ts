@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import { CliError } from '../lib/errors.js'
 import { classifyTodoistUrl } from '../lib/refs.js'
-import { setActiveCommandPath } from '../lib/usage-tracking.js'
+import { usageTracking } from '../lib/usage-tracking.js'
 
 function looksLikeTodoistAppUrl(token: string): boolean {
     return /^https?:\/\/app\.todoist\.com\/app\/\S+/.test(token)
@@ -46,7 +46,7 @@ async function runRoutedCommand(
     // `src/index.ts` already recorded the top-level `view` command on the main
     // program. Override it here so downstream API requests are attributed to
     // the routed target command (`task:view`, `today`, etc.) instead.
-    setActiveCommandPath(commandPath)
+    usageTracking.setCommand(commandPath)
     await proxy.parseAsync(['node', 'td', ...argv])
 }
 

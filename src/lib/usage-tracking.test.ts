@@ -1,13 +1,8 @@
 import { getDefaultTransport } from '@doist/todoist-sdk'
+import { Command } from 'commander'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-    buildUsageTrackingHeaders,
-    createTrackedFetch,
-    fetchTodoist,
-    normalizeCommandPath,
-    resetUsageTrackingForTests,
-    setActiveCommandPath,
-} from './usage-tracking.js'
+import packageJson from '../../package.json' with { type: 'json' }
+import { createTrackedFetch, fetchTodoist, usageTracking } from './usage-tracking.js'
 
 vi.mock('@doist/todoist-sdk', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@doist/todoist-sdk')>()
@@ -19,17 +14,30 @@ vi.mock('@doist/todoist-sdk', async (importOriginal) => {
 
 const getDefaultTransportMock = vi.mocked(getDefaultTransport)
 
+/** The command Commander hands the `preAction` hook for `td <names…>`. */
+function commandFor(...names: string[]): Command {
+    let command = new Command('td')
+    for (const name of names) command = command.command(name)
+    return command
+}
+
+function resetUsageTrackingForTests(): void {
+    usageTracking.setCommand(undefined)
+}
+
 describe('usage tracking', () => {
     it('normalizes commander command paths into header-friendly values', () => {
-        expect(normalizeCommandPath('td task view')).toBe('task:view')
-        expect(normalizeCommandPath('td today')).toBe('today')
+        usageTracking.setCommand(commandFor('task', 'view'))
+        expect(usageTracking.headers()['cli-command']).toBe('task:view')
+        usageTracking.setCommand(commandFor('today'))
+        expect(usageTracking.headers()['cli-command']).toBe('today')
     })
 
     it('builds cli tracking headers with command metadata', () => {
         resetUsageTrackingForTests()
-        setActiveCommandPath('td task view')
+        usageTracking.setCommand(commandFor('task', 'view'))
 
-        const headers = buildUsageTrackingHeaders()
+        const headers = usageTracking.headers()
 
         expect(headers['User-Agent']).toMatch(/^todoist-cli\/\d+\.\d+\.\d+(-[\w.]+)?$/)
         expect(headers['doist-platform']).toBe('cli')
@@ -42,7 +50,7 @@ describe('usage tracking', () => {
 
     it('injects tracking headers into sdk custom fetch requests', async () => {
         resetUsageTrackingForTests()
-        setActiveCommandPath('td today')
+        usageTracking.setCommand(commandFor('today'))
 
         const captured: RequestInit[] = []
         const trackedFetch = createTrackedFetch(async (_url, options) => {
@@ -353,5 +361,123 @@ describe('usage tracking', () => {
         const headers = captured.headers as Record<string, string>
         expect(headers.authorization).toBe('Bearer token')
         expect(headers['cli-command']).toBe('postinstall:auth-migrate')
+    })
+})
+
+describe('usage tracking wire contract', () => {
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+
+    afterEach(() => {
+        if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform)
+    })
+
+    function setPlatform(platform: string): void {
+        Object.defineProperty(process, 'platform', { value: platform, configurable: true })
+    }
+
+    /** Sends one request through a tracked fetch and returns the headers it carried. */
+    async function sentHeaders(init: RequestInit = {}): Promise<Record<string, string>> {
+        let captured: RequestInit | undefined
+        const trackedFetch = createTrackedFetch(async (_url, options) => {
+            captured = options
+            return new Response('{}', { status: 200 })
+        })
+        await trackedFetch('https://api.todoist.com/api/v1/tasks', init)
+        return captured?.headers as Record<string, string>
+    }
+
+    it('sends exactly the todoist header set on an SDK request', async () => {
+        setPlatform('linux')
+        resetUsageTrackingForTests()
+        usageTracking.setCommand('task:add')
+
+        expect(await sentHeaders({ headers: { Authorization: 'Bearer token' } })).toEqual({
+            authorization: 'Bearer token',
+            'user-agent': `todoist-cli/${packageJson.version}`,
+            'doist-platform': 'cli',
+            'doist-version': packageJson.version,
+            'doist-os': 'linux',
+            'request-id': expect.stringMatching(UUID),
+            'session-id': expect.stringMatching(UUID),
+            'cli-command': 'task:add',
+        })
+    })
+
+    it('sends exactly the same header set on a direct fetch', async () => {
+        setPlatform('darwin')
+        resetUsageTrackingForTests()
+        usageTracking.setCommand('auth:login')
+        let captured: RequestInit | undefined
+        const fetchImpl: typeof fetch = async (_url, options) => {
+            captured = options
+            return new Response('{}', { status: 200 })
+        }
+
+        await fetchTodoist(
+            'https://todoist.com/oauth/access_token',
+            { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+            fetchImpl,
+        )
+
+        expect(captured?.headers).toEqual({
+            'content-type': 'application/x-www-form-urlencoded',
+            'user-agent': `todoist-cli/${packageJson.version}`,
+            'doist-platform': 'cli',
+            'doist-version': packageJson.version,
+            'doist-os': 'macos',
+            'request-id': expect.stringMatching(UUID),
+            'session-id': expect.stringMatching(UUID),
+            'cli-command': 'auth:login',
+        })
+    })
+
+    it.each([
+        ['darwin', 'macos'],
+        ['linux', 'linux'],
+        ['win32', 'windows'],
+        ['freebsd', 'unknown'],
+    ])('reports process.platform %s as doist-os %s', async (platform, expected) => {
+        setPlatform(platform)
+
+        expect((await sentHeaders())['doist-os']).toBe(expected)
+    })
+
+    it('labels requests made before any command is recorded as unknown', async () => {
+        resetUsageTrackingForTests()
+
+        expect((await sentHeaders())['cli-command']).toBe('unknown')
+    })
+
+    it('overrides caller headers that name a tracking header in any case', async () => {
+        const headers = await sentHeaders({
+            headers: { 'Doist-Platform': 'web', 'User-Agent': 'node', 'Request-Id': 'mine' },
+        })
+
+        expect(headers['doist-platform']).toBe('cli')
+        expect(headers['user-agent']).toBe(`todoist-cli/${packageJson.version}`)
+        expect(headers['request-id']).toMatch(UUID)
+    })
+
+    it('attributes a routed view request to the routed command', async () => {
+        resetUsageTrackingForTests()
+        usageTracking.setCommand(commandFor('view'))
+        usageTracking.setCommand('task:view')
+
+        expect((await sentHeaders())['cli-command']).toBe('task:view')
+    })
+
+    it('leaves the active command alone after a per-request override', async () => {
+        resetUsageTrackingForTests()
+        usageTracking.setCommand(commandFor('today'))
+
+        await fetchTodoist(
+            'https://api.todoist.com/api/v1/user',
+            {},
+            async () => new Response('{}', { status: 200 }),
+            'postinstall:auth-migrate',
+        )
+
+        expect((await sentHeaders())['cli-command']).toBe('today')
     })
 })

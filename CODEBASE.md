@@ -264,8 +264,11 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `template create --file`, `template import-file`); `readLocalTextFile()`
   for text input such as `task add-many --file`. Both map fs errors to
   `FILE_NOT_FOUND` / `FILE_READ_ERROR` CliErrors.
-- **`usage-tracking.ts`** — request/session metadata headers, CLI command
-  attribution, tracked fetch wrappers
+- **`usage-tracking.ts`** — tracked fetch wrappers that put cli-core's shared
+  attribution headers (`createUsageTracking`: `User-Agent`, `doist-platform`,
+  `doist-version`, `doist-os`, `request-id`, `session-id`, `cli-command`) on
+  every Todoist request. `usageTracking.setCommand()` records the active
+  command from the `preAction` hook and routed `td view` flows
 - **`browser.ts` / `update.ts`** — small single-purpose helpers
 - **Piped `--stdin` input** comes from `readStdin()` in `@doist/cli-core`
   (fails with `STDIN_IS_TTY` when nothing is piped in); don't add a local reader.
