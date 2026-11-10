@@ -1,9 +1,18 @@
-import { type UpdateFilterArgs, updateFilter } from '../../lib/api/filters.js'
+import {
+    type Filter,
+    PartialFilterSaveError,
+    type UpdateFilterArgs,
+    updateFilter,
+} from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
-import { parseViewOptionFlags, type ViewOptionFlags } from '../../lib/view-options.js'
-import { resolveFilterRef } from './helpers.js'
+import {
+    type ParsedViewFlags,
+    parseViewOptionFlags,
+    type ViewOptionFlags,
+} from '../../lib/view-options.js'
+import { resolveFilterRef, tdCommand } from './helpers.js'
 
 export interface UpdateOptions extends ViewOptionFlags {
     name?: string
@@ -49,9 +58,47 @@ export async function updateFilterCmd(nameOrId: string, options: UpdateOptions):
         return
     }
 
-    await updateFilter(filter.id, args, view?.settings)
+    try {
+        await updateFilter(filter.id, args, view?.settings)
+    } catch (error) {
+        if (view && error instanceof PartialFilterSaveError) {
+            throw partlyUpdated(filter, args.name, error, view)
+        }
+        throw error
+    }
     if (!isQuiet())
         console.log(
             `Updated: ${filter.name}${options.name ? ` -> ${options.name}` : ''} (id:${filter.id})`,
         )
+}
+
+/**
+ * Says which half of the update was saved. A retry goes by ID, because a
+ * rename that went through means the old name no longer finds the filter.
+ */
+function partlyUpdated(
+    filter: Filter,
+    newName: string | undefined,
+    error: PartialFilterSaveError,
+    view: ParsedViewFlags,
+): CliError {
+    if (error.saved === 'view') {
+        return new CliError(
+            error.code,
+            `Saved the view of filter "${filter.name}" (id:${filter.id}), but the filter itself was not updated: ${error.message}`,
+            [
+                ...(error.hints ?? []),
+                'The view is saved: leave out the view flags if you run it again',
+            ],
+        )
+    }
+    const renamed = newName ? ` (now "${newName}")` : ''
+    return new CliError(
+        error.code,
+        `Updated filter "${filter.name}"${renamed} (id:${filter.id}), but its view could not be saved: ${error.message}`,
+        // A refused view fails again on a retry, so the API's own hints say what to change.
+        error.refused
+            ? error.hints
+            : [`Save the view: ${tdCommand('filter', 'update', `id:${filter.id}`, ...view.flags)}`],
+    )
 }
