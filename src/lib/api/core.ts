@@ -198,6 +198,12 @@ function createSpinnerWrappedApi(api: TodoistApi): TodoistApi {
 }
 
 function getErrorTag(error: TodoistRequestError): unknown {
+    // A failed Sync command's `responseData` is only its `error_extra`; the tag
+    // sits on the command's entry in `syncStatus`.
+    if (error instanceof TodoistSyncError) {
+        const failure = Object.values(error.syncStatus).find((status) => status !== 'ok')
+        return typeof failure === 'object' ? failure.errorTag : undefined
+    }
     const data = error.responseData
     if (typeof data !== 'object' || data === null) return undefined
     return (data as { error_tag?: unknown }).error_tag
@@ -242,28 +248,46 @@ const METHOD_REQUIRED_FLAG: Record<string, AdditionalScopeFlag> = {
 const STANDARD_REMEDIATION =
     'Re-authenticate with `td auth login` (or `td auth login --read-only`) to refresh your token with the standard scopes.'
 
-function extractApiResponseMessage(data: unknown): string | undefined {
+const PREMIUM_HINT =
+    'This needs a paid Todoist plan. Upgrade, or leave out the option that needs it.'
+
+/**
+ * The API's message with its reason attached. A REST error's `responseData` is
+ * the whole error body; a failed Sync command's is only that command's
+ * `error_extra`, with the message already on the error.
+ */
+function describeRequestError(error: TodoistRequestError): string {
+    const data = error.responseData
+    if (error instanceof TodoistSyncError) return withReason(error.message, data)
     if (typeof data === 'string') return data
-    if (typeof data !== 'object' || data === null) return undefined
-    const { error, error_extra } = data as { error?: unknown; error_extra?: unknown }
-    if (typeof error !== 'string') return undefined
-    const fieldErrors = extractFieldErrors(error_extra)
-    return fieldErrors.length > 0 ? `${error} — ${fieldErrors.join('; ')}` : error
+    if (typeof data !== 'object' || data === null) return error.message
+    const { error: message, error_extra } = data as { error?: unknown; error_extra?: unknown }
+    return typeof message === 'string' ? withReason(message, error_extra) : error.message
 }
 
-// Validation failures carry only a generic top-level `error` ("Invalid
-// argument value"); the actual reason for each rejected field lives under
-// `error_extra.error_fields`.
-function extractFieldErrors(extra: unknown): string[] {
+// The top-level `error` is generic ("Invalid argument value", "Premium only
+// feature"); the actual reason lives in `error_extra`.
+function withReason(message: string, extra: unknown): string {
+    const reasons = extractReasons(extra)
+    return reasons.length > 0 ? `${message} — ${reasons.join('; ')}` : message
+}
+
+function extractReasons(extra: unknown): string[] {
     if (typeof extra !== 'object' || extra === null) return []
-    const fields = (extra as { error_fields?: unknown }).error_fields
-    if (!Array.isArray(fields)) return []
-    return fields.flatMap((entry: unknown) => {
-        if (typeof entry !== 'object' || entry === null) return []
-        const { field, error } = entry as { field?: unknown; error?: unknown }
-        if (typeof error !== 'string') return []
-        return [typeof field === 'string' ? `${field}: ${error}` : error]
-    })
+    const { error_fields, explanation, expected } = extra as {
+        error_fields?: unknown
+        explanation?: unknown
+        expected?: unknown
+    }
+    if (Array.isArray(error_fields)) {
+        return error_fields.flatMap((entry: unknown) => {
+            if (typeof entry !== 'object' || entry === null) return []
+            const { field, error } = entry as { field?: unknown; error?: unknown }
+            if (typeof error !== 'string') return []
+            return [typeof field === 'string' ? `${field}: ${error}` : error]
+        })
+    }
+    return [explanation, expected].filter((reason) => typeof reason === 'string')
 }
 
 async function getScopeRemediation(methodName: string | undefined): Promise<string> {
@@ -305,6 +329,9 @@ async function toCliError(error: unknown, methodName?: string): Promise<Error> {
                 [PROJECT_LIMIT_HINT],
             )
         }
+        if (status === 403 && getErrorTag(error) === 'PREMIUM_ONLY') {
+            return new CliError('PREMIUM_REQUIRED', describeRequestError(error), [PREMIUM_HINT])
+        }
         if (status === 401 || status === 403) {
             return new CliError('AUTH_ERROR', error.message, [
                 'Check your API token: td auth status',
@@ -316,8 +343,7 @@ async function toCliError(error: unknown, methodName?: string): Promise<Error> {
         if (status === 429) {
             return new CliError('RATE_LIMITED', error.message, ['Wait a moment and retry'])
         }
-        const responseMessage = extractApiResponseMessage(error.responseData)
-        return new CliError('API_ERROR', responseMessage || error.message)
+        return new CliError('API_ERROR', describeRequestError(error) || error.message)
     }
     return error instanceof Error ? error : new Error(String(error))
 }

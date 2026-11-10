@@ -193,6 +193,21 @@ describe('wrapApiError → PROJECT_LIMIT_REACHED', () => {
     })
 })
 
+describe('wrapApiError → PREMIUM_REQUIRED', () => {
+    it('maps a REST refusal tagged PREMIUM_ONLY to a plan error', async () => {
+        const wrapped = (await wrapApiError(
+            new TodoistRequestError('HTTP 403: Forbidden', 403, {
+                error: 'Premium only feature',
+                error_tag: 'PREMIUM_ONLY',
+                error_extra: { explanation: 'Reminders are a premium only feature' },
+            }),
+        )) as CliError
+
+        expect(wrapped.code).toBe('PREMIUM_REQUIRED')
+        expect(wrapped.message).toBe('Premium only feature — Reminders are a premium only feature')
+    })
+})
+
 describe('wrapApiError → Sync API failures', () => {
     it('keeps each command outcome and the created IDs alongside the usual error', async () => {
         const failure = {
@@ -215,6 +230,54 @@ describe('wrapApiError → Sync API failures', () => {
         expect(commandError.message).toBe('Invalid argument value')
         expect(commandError.syncStatus).toEqual({ 'uuid-1': 'ok', 'uuid-2': failure })
         expect(commandError.tempIdMapping).toEqual({ 'temp-1': 'task-1' })
+    })
+
+    it('names a feature the plan lacks, not a token problem', async () => {
+        const failure = {
+            error: 'Premium only feature',
+            errorCode: 32,
+            errorExtra: { explanation: 'Calendar layout is a premium only feature' },
+            errorTag: 'PREMIUM_ONLY',
+            httpCode: 403,
+        }
+        const syncError = new TodoistSyncError(failure, {
+            syncStatus: { 'uuid-1': 'ok', 'uuid-2': failure },
+            tempIdMapping: {},
+        })
+
+        const wrapped = await wrapApiError(syncError, 'sync')
+
+        expect(wrapped).toBeInstanceOf(SyncCommandError)
+        expect(wrapped).toMatchObject({
+            code: 'PREMIUM_REQUIRED',
+            message: 'Premium only feature — Calendar layout is a premium only feature',
+            hints: [expect.stringContaining('paid Todoist plan')],
+        })
+    })
+
+    it("keeps the API's reason for a rejected value", async () => {
+        const failure = {
+            error: 'Invalid argument value',
+            errorCode: 20,
+            errorExtra: {
+                argument: 'args',
+                expected: "view_mode: Input should be 'LIST', 'BOARD', 'CALENDAR' or 'TABLE'",
+            },
+            errorTag: 'INVALID_ARGUMENT_VALUE',
+            httpCode: 400,
+        }
+        const syncError = new TodoistSyncError(failure, {
+            syncStatus: { 'uuid-1': failure },
+            tempIdMapping: {},
+        })
+
+        const wrapped = await wrapApiError(syncError, 'sync')
+
+        expect(wrapped).toMatchObject({
+            code: 'API_ERROR',
+            message:
+                "Invalid argument value — view_mode: Input should be 'LIST', 'BOARD', 'CALENDAR' or 'TABLE'",
+        })
     })
 
     it('leaves other request errors as a plain CliError', async () => {
