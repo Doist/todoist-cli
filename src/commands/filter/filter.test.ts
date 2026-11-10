@@ -1915,6 +1915,47 @@ describe('filter view options', () => {
         })
     })
 
+    it("keeps the API's advice next to the retry when the view may save later", async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(
+            viewFailed('filter-1', {
+                refused: false,
+                cause: new CliError('RATE_LIMITED', 'Too many requests', [
+                    'Wait a moment and retry',
+                ]),
+            }),
+        )
+
+        const error = await updateWith('--name', 'Team', '--view-style', 'board').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toHaveProperty('hints', [
+            'Wait a moment and retry',
+            expect.stringContaining('td filter update id:filter-1 --view-style board'),
+        ])
+    })
+
+    it("keeps the API's advice next to the retry when a new filter's view may save later", async () => {
+        captureConsole()
+        mockAddFilter.mockRejectedValueOnce(
+            viewFailed('filter-new', {
+                refused: false,
+                cause: new CliError('RATE_LIMITED', 'Too many requests', [
+                    'Wait a moment and retry',
+                ]),
+            }),
+        )
+
+        const error = await createWith('--view-style', 'board').catch((caught: unknown) => caught)
+
+        expect(mockDeleteFilter).not.toHaveBeenCalled()
+        expect(error).toHaveProperty('hints', [
+            'Wait a moment and retry',
+            expect.stringContaining('td filter update id:filter-new --view-style board'),
+        ])
+    })
+
     it("gives the API's hints, not a retry, when it refused the view", async () => {
         captureConsole()
         mockUpdateFilter.mockRejectedValueOnce(

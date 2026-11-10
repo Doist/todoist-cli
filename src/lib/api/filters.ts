@@ -30,7 +30,8 @@ export class PartialFilterSaveError extends CliError {
     }
 }
 
-type CommandFailure = Exclude<SyncCommandError['syncStatus'][string], 'ok'>
+/** One failed command's entry in `syncStatus`. */
+export type CommandFailure = Exclude<SyncCommandError['syncStatus'][string], 'ok'>
 
 /** A 4xx other than rate limiting: the API looked at the command and said no. */
 function isRefusal(failure: CommandFailure): boolean {

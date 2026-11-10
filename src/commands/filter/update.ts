@@ -99,6 +99,9 @@ function partlyUpdated(
         // A refused view fails again on a retry, so the API's own hints say what to change.
         error.refused
             ? error.hints
-            : [`Save the view: ${tdCommand('filter', 'update', `id:${filter.id}`, ...view.flags)}`],
+            : [
+                  ...(error.hints ?? []),
+                  `Save the view: ${tdCommand('filter', 'update', `id:${filter.id}`, ...view.flags)}`,
+              ],
     )
 }

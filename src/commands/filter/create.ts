@@ -95,6 +95,7 @@ async function viewNotSaved(
             error.code,
             `Created filter "${name}" (id:${id}), but its view could not be saved: ${error.message}`,
             [
+                ...(error.hints ?? []),
                 `Save the view without creating the filter again: ${tdCommand('filter', 'update', `id:${id}`, ...view.flags)}`,
             ],
         )

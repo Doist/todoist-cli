@@ -9,9 +9,13 @@ import type { SyncCommand } from '@doist/todoist-sdk'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import type { MockApi } from '../../test-support/mock-api.js'
 import { CliError, SyncCommandError } from '../errors.js'
-import { addFilter, deleteFilter, PartialFilterSaveError, updateFilter } from './filters.js'
-
-type CommandFailure = Exclude<SyncCommandError['syncStatus'][string], 'ok'>
+import {
+    addFilter,
+    type CommandFailure,
+    deleteFilter,
+    PartialFilterSaveError,
+    updateFilter,
+} from './filters.js'
 
 const PREMIUM_ONLY: CommandFailure = {
     error: 'Premium only feature',
@@ -19,6 +23,14 @@ const PREMIUM_ONLY: CommandFailure = {
     errorExtra: {},
     errorTag: 'PREMIUM_ONLY',
     httpCode: 403,
+}
+
+const RATE_LIMITED: CommandFailure = {
+    error: 'Too many requests',
+    errorCode: 0,
+    errorExtra: {},
+    errorTag: 'TOO_MANY_REQUESTS',
+    httpCode: 429,
 }
 
 const SERVICE_UNAVAILABLE: CommandFailure = {
@@ -91,6 +103,16 @@ describe('addFilter', () => {
 
     it('tells a view that may save on a retry from one the API refused', async () => {
         failCommands(mockApi, { 1: SERVICE_UNAVAILABLE }, 'filter-9')
+
+        const error = await addFilter({ name: 'Team', query: 'p1' }, { viewMode: 'BOARD' }).catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({ filterId: 'filter-9', saved: 'filter', refused: false })
+    })
+
+    it('keeps a rate-limited view apart from a refused one, since a later retry can save it', async () => {
+        failCommands(mockApi, { 1: RATE_LIMITED }, 'filter-9')
 
         const error = await addFilter({ name: 'Team', query: 'p1' }, { viewMode: 'BOARD' }).catch(
             (caught: unknown) => caught,
