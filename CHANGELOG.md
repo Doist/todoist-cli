@@ -1,3 +1,9 @@
+## [5.12.2](https://github.com/Doist/todoist-cli/compare/v5.12.1...v5.12.2) (2026-11-10)
+
+### Bug Fixes
+
+* **filter:** report half-saved filter and view changes ([#648](https://github.com/Doist/todoist-cli/issues/648)) ([dd6be6c](https://github.com/Doist/todoist-cli/commit/dd6be6c58043097840aaf7af640b375f4af75c8b))
+
 ## [5.12.1](https://github.com/Doist/todoist-cli/compare/v5.12.0...v5.12.1) (2026-11-09)
 
 ### Bug Fixes
