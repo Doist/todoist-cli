@@ -1,4 +1,5 @@
 import { extname } from 'node:path'
+import { APP_CLIENT_TYPES, type AppClientType } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -23,6 +24,7 @@ export interface UpdateAppOptions {
     addOauthRedirect?: string
     removeOauthRedirect?: string
     setWebhookUrl?: string
+    clientType?: string
     icon?: string
     iconSize?: string
     yes?: boolean
@@ -44,14 +46,14 @@ function invalidWebhookUrl(url: string): CliError {
 }
 
 // Every update flag can be combined in a single invocation. The command
-// performs up to three API operations: an app-record patch (name, description
-// and/or OAuth redirect URIs via `updateApp`), an icon upload (`uploadAppIcon`)
+// performs up to three API operations: an app-record patch (name, description,
+// OAuth redirect URIs and/or client type via `updateApp`), an icon upload (`uploadAppIcon`)
 // and a webhook URL swap (a separate endpoint via `updateAppWebhook`). The only
 // mutually-exclusive pair is --add-oauth-redirect / --remove-oauth-redirect,
 // which read-modify-write the same field with different confirmation semantics.
 export async function updateApp(ref: string, options: UpdateAppOptions): Promise<void> {
     const { name, description, addOauthRedirect: add, removeOauthRedirect: remove } = options
-    const { setWebhookUrl, icon } = options
+    const { setWebhookUrl, icon, clientType } = options
 
     // Phase A — validate up front, before any network call.
     if (add !== undefined && remove !== undefined) {
@@ -76,6 +78,12 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         throw invalidWebhookUrl(setWebhookUrl)
     }
 
+    if (clientType !== undefined && !isAppClientType(clientType)) {
+        throw new CliError('INVALID_OPTIONS', `Invalid client type: ${clientType}`, [
+            `Use one of: ${APP_CLIENT_TYPES.join(', ')}.`,
+        ])
+    }
+
     if (options.iconSize !== undefined && icon === undefined) {
         throw new CliError('INVALID_OPTIONS', '--icon-size requires --icon <path>.')
     }
@@ -86,10 +94,11 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         add === undefined &&
         remove === undefined &&
         setWebhookUrl === undefined &&
+        clientType === undefined &&
         icon === undefined
     ) {
         throw new CliError('NO_CHANGES', 'No changes specified.', [
-            'Use --name, --description, --add-oauth-redirect <url>, --remove-oauth-redirect <url>, --set-webhook-url <url>, or --icon <path>.',
+            'Use --name, --description, --add-oauth-redirect <url>, --remove-oauth-redirect <url>, --set-webhook-url <url>, --client-type <confidential|public>, or --icon <path>.',
         ])
     }
 
@@ -164,6 +173,17 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         }
     }
 
+    if (clientType !== undefined) {
+        if (clientType === app.clientType) {
+            noops.push(
+                `Client type for "${app.displayName}" is already ${clientType} — nothing to change.`,
+            )
+        } else {
+            patch.clientType = clientType
+            changes.push(`set client type to ${clientType}`)
+        }
+    }
+
     if (setWebhookUrl !== undefined && webhook !== null) {
         if (webhook.callbackUrl === setWebhookUrl) {
             noops.push(
@@ -192,6 +212,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
         description !== undefined ||
         add !== undefined ||
         remove !== undefined ||
+        clientType !== undefined ||
         icon !== undefined
     const webhookTouched = setWebhookUrl !== undefined
 
@@ -224,6 +245,7 @@ export async function updateApp(ref: string, options: UpdateAppOptions): Promise
                     : removeIsMutation
                       ? `remove ${remove}`
                       : undefined,
+            'Client type': patch.clientType,
             Icon: iconUpload ? `${iconUpload.filePath} (${iconUpload.size})` : undefined,
             'Webhook URL': hasWebhookChange ? setWebhookUrl : undefined,
         })
@@ -304,6 +326,10 @@ function printResultJson({
         return
     }
     console.log(formatJson(app, 'app'))
+}
+
+function isAppClientType(value: string): value is AppClientType {
+    return (APP_CLIENT_TYPES as readonly string[]).includes(value)
 }
 
 type IconUpload = {

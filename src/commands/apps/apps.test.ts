@@ -52,6 +52,7 @@ const APP_A = {
     iconMd: null,
     iconLg: null,
     appTokenScopes: null,
+    clientType: 'confidential',
 }
 
 const APP_B = {
@@ -68,6 +69,7 @@ const APP_B = {
     iconMd: null,
     iconLg: null,
     appTokenScopes: ['data:read'],
+    clientType: 'public',
 }
 
 const APP_A_DETAIL = {
@@ -101,9 +103,9 @@ describe('apps list', () => {
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
         expect(output).toContain('Todoist for VS Code (id:9909)')
-        expect(output).toContain('Client ID: client-abc')
+        expect(output).toContain('Client ID: client-abc · Client type: confidential')
         expect(output).toContain('Zapier Connector (id:9910)')
-        expect(output).toContain('Client ID: client-xyz')
+        expect(output).toContain('Client ID: client-xyz · Client type: public')
         // App B has no description → fallback string
         expect(output).toContain('(no description)')
     })
@@ -464,6 +466,7 @@ describe('apps view — enriched fields', () => {
         // Client ID is public (carried on App directly since SDK 9.3.0) —
         // always shown regardless of --include-secrets.
         expect(output).toContain('Client ID:          client-abc')
+        expect(output).toContain('Client type:        confidential')
         expect(output).toContain('Client secret:      (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Verification token: (hidden — pass --include-secrets to reveal)')
         expect(output).toContain('Test token:         (hidden — pass --include-secrets to reveal)')
@@ -1534,6 +1537,170 @@ describe('apps update --name / --description (and combined)', () => {
         expect(output).toContain('Renamed App')
         expect(output).toContain('New blurb')
         expect(output).toContain('https://new.example.com/webhook')
+    })
+})
+
+describe('apps update --client-type', () => {
+    let mockApi: MockApi
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockApi = setupApiMock()
+    })
+
+    it('switches a confidential app to public', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, clientType: 'public' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--client-type',
+            'public',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', { clientType: 'public' })
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain(
+            'Updated Todoist for VS Code (id:9909) — set client type to public.',
+        )
+    })
+
+    it('is a no-op when the app already has that client type', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--client-type',
+            'confidential',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain(
+            'Client type for "Todoist for VS Code" is already confidential — nothing to change.',
+        )
+    })
+
+    it('rejects an unknown client type before any API call', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync([
+                'node',
+                'td',
+                'apps',
+                'update',
+                'id:9909',
+                '--client-type',
+                'secret',
+            ]),
+        ).rejects.toMatchObject({
+            code: 'INVALID_OPTIONS',
+            hints: [expect.stringContaining('confidential, public')],
+        })
+        expect(mockApi.getApp).not.toHaveBeenCalled()
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+    })
+
+    it('previews the change with --dry-run without calling updateApp', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--client-type',
+            'public',
+            '--dry-run',
+        ])
+
+        expect(mockApi.updateApp).not.toHaveBeenCalled()
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join('\n')
+        expect(output).toContain('[dry-run]')
+        expect(output).toMatch(/Client type:\s+public/)
+    })
+
+    it('outputs the updated app, client type included, with --json', async () => {
+        const program = createProgram()
+        const consoleSpy = captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({ ...APP_A_DETAIL, clientType: 'public' })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--client-type',
+            'public',
+            '--json',
+        ])
+
+        const parsed = JSON.parse(consoleSpy.mock.calls[0][0] as string)
+        expect(parsed.id).toBe('9909')
+        expect(parsed.clientType).toBe('public')
+    })
+
+    it('combines with --name in a single updateApp patch', async () => {
+        const program = createProgram()
+        captureConsole()
+
+        mockApi.getApp.mockResolvedValue(APP_A_DETAIL)
+        mockApi.updateApp.mockResolvedValue({
+            ...APP_A_DETAIL,
+            displayName: 'Renamed App',
+            clientType: 'public',
+        })
+
+        await program.parseAsync([
+            'node',
+            'td',
+            'apps',
+            'update',
+            'id:9909',
+            '--name',
+            'Renamed App',
+            '--client-type',
+            'public',
+        ])
+
+        expect(mockApi.updateApp).toHaveBeenCalledTimes(1)
+        expect(mockApi.updateApp).toHaveBeenCalledWith('9909', {
+            displayName: 'Renamed App',
+            clientType: 'public',
+        })
+    })
+
+    it('mentions --client-type in the NO_CHANGES hint', async () => {
+        const program = createProgram()
+
+        await expect(
+            program.parseAsync(['node', 'td', 'apps', 'update', 'id:9909']),
+        ).rejects.toMatchObject({
+            code: 'NO_CHANGES',
+            hints: [expect.stringContaining('--client-type <confidential|public>')],
+        })
     })
 })
 

@@ -362,6 +362,7 @@ const APP_ESSENTIAL_FIELDS = [
     'serviceUrl',
     'oauthRedirectUri',
     'appTokenScopes',
+    'clientType',
     'iconSm',
     'iconMd',
     'iconLg',
