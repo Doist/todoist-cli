@@ -1,18 +1,20 @@
 import chalk from 'chalk'
 import {
     addFilter,
+    deleteFilter,
     type Filter,
+    PartialFilterSaveError,
     type UpdateFilterArgs,
-    updateFilter,
 } from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
-import { getRequestedUserRef, isQuiet } from '../../lib/global-args.js'
+import { isQuiet } from '../../lib/global-args.js'
 import { formatJson, printDryRun } from '../../lib/output.js'
 import {
     type ParsedViewFlags,
     parseViewOptionFlags,
     type ViewOptionFlags,
 } from '../../lib/view-options.js'
+import { tdCommand } from './helpers.js'
 
 export interface CreateOptions extends ViewOptionFlags {
     name: string
@@ -39,14 +41,24 @@ export async function createFilter(options: CreateOptions): Promise<void> {
         return
     }
 
-    const filter = await addFilter({
-        name: options.name,
-        query: options.query,
-        description: options.description,
-        color: options.color,
-        isFavorite: options.favorite,
-    })
-    if (view) await saveView(filter, view)
+    let filter: Filter
+    try {
+        filter = await addFilter(
+            {
+                name: options.name,
+                query: options.query,
+                description: options.description,
+                color: options.color,
+                isFavorite: options.favorite,
+            },
+            view?.settings,
+        )
+    } catch (error) {
+        if (view && error instanceof PartialFilterSaveError) {
+            throw await viewNotSaved(options.name, error, view)
+        }
+        throw error
+    }
 
     if (options.json) {
         console.log(formatJson(filter, 'filter'))
@@ -67,26 +79,42 @@ export async function createFilter(options: CreateOptions): Promise<void> {
 }
 
 /**
- * The view goes in a request of its own, after the filter exists. The Sync
- * API applies batched commands one by one, so in a single batch a failed view
- * would still leave the filter created, behind an error that never names it,
- * and running the command again would create a second one.
+ * The filter was created but its view was not saved. A view the API refused
+ * would be refused again on every retry, so the filter is deleted and the
+ * command fails as a whole: running it again can't leave a second filter
+ * behind. Any other failure keeps the filter and says how to save its view.
  */
-async function saveView(filter: Filter, view: ParsedViewFlags): Promise<void> {
-    try {
-        await updateFilter(filter.id, {}, view.settings)
-    } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error)
-        // Without the account the filter went to, the retry would look for it
-        // in the default account.
-        const user = getRequestedUserRef()
-        const td = user ? `td --user ${user}` : 'td'
-        throw new CliError(
-            error instanceof CliError ? error.code : 'API_ERROR',
-            `Created filter "${filter.name}" (id:${filter.id}), but its view could not be saved: ${reason}`,
+async function viewNotSaved(
+    name: string,
+    error: PartialFilterSaveError,
+    view: ParsedViewFlags,
+): Promise<CliError> {
+    const id = error.filterId
+    if (!error.refused) {
+        return new CliError(
+            error.code,
+            `Created filter "${name}" (id:${id}), but its view could not be saved: ${error.message}`,
             [
-                `Save the view without creating the filter again: ${td} filter update id:${filter.id} ${view.flags.join(' ')}`,
+                ...(error.hints ?? []),
+                `Save the view without creating the filter again: ${tdCommand('filter', 'update', `id:${id}`, ...view.flags)}`,
             ],
         )
     }
+    try {
+        await deleteFilter(id)
+    } catch {
+        return new CliError(
+            error.code,
+            `Created filter "${name}" (id:${id}), but its view was refused: ${error.message}`,
+            [
+                ...(error.hints ?? []),
+                `Delete the filter: ${tdCommand('filter', 'delete', `id:${id}`, '--yes')}`,
+            ],
+        )
+    }
+    return new CliError(
+        error.code,
+        `Filter "${name}" was not created, because its view was refused: ${error.message}`,
+        error.hints,
+    )
 }

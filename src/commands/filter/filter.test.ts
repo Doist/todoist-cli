@@ -11,7 +11,9 @@ vi.mock('../../lib/api/workspaces.js', () => ({
     fetchWorkspaces: vi.fn(async () => []),
 }))
 
-vi.mock('../../lib/api/filters.js', () => ({
+vi.mock('../../lib/api/filters.js', async (importOriginal) => ({
+    PartialFilterSaveError: (await importOriginal<typeof import('../../lib/api/filters.js')>())
+        .PartialFilterSaveError,
     fetchFilters: vi.fn(),
     addFilter: vi.fn(),
     updateFilter: vi.fn(),
@@ -20,7 +22,13 @@ vi.mock('../../lib/api/filters.js', () => ({
 
 import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
 import { getAccountLanguage, getAccountTimezone } from '../../lib/api/core.js'
-import { addFilter, deleteFilter, fetchFilters, updateFilter } from '../../lib/api/filters.js'
+import {
+    addFilter,
+    deleteFilter,
+    fetchFilters,
+    PartialFilterSaveError,
+    updateFilter,
+} from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
 import { resetGlobalArgs } from '../../lib/global-args.js'
 import { setupApiMock } from '../../test-support/api-mock.js'
@@ -223,6 +231,7 @@ describe('filter create', () => {
 
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Work', query: '@work' }),
+            undefined,
         )
         expect(consoleSpy).toHaveBeenCalledWith('Created: Work')
     })
@@ -250,6 +259,7 @@ describe('filter create', () => {
 
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ description: 'Everything for the day job' }),
+            undefined,
         )
     })
 
@@ -276,6 +286,7 @@ describe('filter create', () => {
 
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Urgent', query: 'p1', color: 'red' }),
+            undefined,
         )
     })
 
@@ -301,6 +312,7 @@ describe('filter create', () => {
 
         expect(mockAddFilter).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Important', isFavorite: true }),
+            undefined,
         )
     })
 
@@ -1612,10 +1624,29 @@ describe('filter --dry-run', () => {
     })
 })
 
+const PREMIUM_REFUSAL = new CliError(
+    'PREMIUM_REQUIRED',
+    'Premium only feature — Calendar layout is a premium only feature',
+    ['This needs a paid Todoist plan. Upgrade, or leave out the option that needs it.'],
+)
+
+/** The filter change was saved, its view was not. */
+function viewFailed(
+    filterId: string,
+    {
+        refused,
+        cause = new CliError('API_ERROR', 'Service unavailable'),
+    }: { refused: boolean; cause?: CliError },
+): PartialFilterSaveError {
+    return new PartialFilterSaveError(cause, filterId, 'filter', refused)
+}
+
 describe('filter view options', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockUpdateFilter.mockReset()
+        mockAddFilter.mockReset()
+        mockDeleteFilter.mockReset()
         mockAddFilter.mockResolvedValue(makeFilter({ id: 'filter-new', name: 'Team', query: 'p1' }))
         mockFetchFilters.mockResolvedValue([
             makeFilter({ id: 'filter-1', name: 'Work', query: '@work' }),
@@ -1640,22 +1671,21 @@ describe('filter view options', () => {
         return createProgram().parseAsync(['node', 'td', 'filter', 'update', 'Work', ...flags])
     }
 
-    it('saves the layout and grouping on the new filter', async () => {
+    it('saves the layout and grouping with the new filter', async () => {
         captureConsole()
 
         await createWith('--view-style', 'board', '--group-by', 'assignee')
 
-        expect(mockAddFilter).toHaveBeenCalledWith({ name: 'Team', query: 'p1' })
-        expect(mockUpdateFilter).toHaveBeenCalledWith(
-            'filter-new',
-            {},
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            { name: 'Team', query: 'p1' },
             { viewMode: 'BOARD', groupedBy: 'ASSIGNEE' },
         )
+        expect(mockUpdateFilter).not.toHaveBeenCalled()
     })
 
-    it('names the created filter when its view fails to save', async () => {
+    it('names the created filter when its view may save on a retry', async () => {
         captureConsole()
-        mockUpdateFilter.mockRejectedValueOnce(new CliError('API_ERROR', 'Invalid argument value'))
+        mockAddFilter.mockRejectedValueOnce(viewFailed('filter-new', { refused: false }))
 
         const error = await createWith('--view-style', 'board', '--sort', 'priority').catch(
             (caught: unknown) => caught,
@@ -1672,6 +1702,46 @@ describe('filter view options', () => {
                     'td filter update id:filter-new --view-style board --sort priority --sort-order desc',
                 ),
             ]),
+        )
+        expect(mockDeleteFilter).not.toHaveBeenCalled()
+    })
+
+    it('deletes the filter again when the API refuses its view', async () => {
+        captureConsole()
+        mockAddFilter.mockRejectedValueOnce(
+            viewFailed('filter-new', { refused: true, cause: PREMIUM_REFUSAL }),
+        )
+
+        const error = await createWith('--view-style', 'calendar').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(mockDeleteFilter).toHaveBeenCalledWith('filter-new')
+        expect(error).toMatchObject({
+            code: 'PREMIUM_REQUIRED',
+            message: expect.stringMatching(/"Team" was not created.*premium only/),
+            hints: PREMIUM_REFUSAL.hints,
+        })
+    })
+
+    it('names the filter when it cannot be deleted after a refused view', async () => {
+        captureConsole()
+        mockAddFilter.mockRejectedValueOnce(
+            viewFailed('filter-new', { refused: true, cause: PREMIUM_REFUSAL }),
+        )
+        mockDeleteFilter.mockRejectedValueOnce(new CliError('API_ERROR', 'Service unavailable'))
+
+        const error = await createWith('--view-style', 'calendar').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({
+            code: 'PREMIUM_REQUIRED',
+            message: expect.stringContaining('id:filter-new'),
+        })
+        expect(error).toHaveProperty(
+            'hints',
+            expect.arrayContaining([expect.stringContaining('td filter delete id:filter-new')]),
         )
     })
 
@@ -1692,9 +1762,7 @@ describe('filter view options', () => {
         process.argv = ['node', 'td', '--user', 'alice@example.com', 'filter', 'create']
         resetGlobalArgs()
         try {
-            mockUpdateFilter.mockRejectedValueOnce(
-                new CliError('API_ERROR', 'Invalid argument value'),
-            )
+            mockAddFilter.mockRejectedValueOnce(viewFailed('filter-new', { refused: false }))
 
             const error = await createWith('--view-style', 'board').catch(
                 (caught: unknown) => caught,
@@ -1711,12 +1779,15 @@ describe('filter view options', () => {
         }
     })
 
-    it('saves the view before printing the created filter as JSON', async () => {
+    it('saves the view along with a filter created for JSON output', async () => {
         const consoleSpy = captureConsole()
 
         await createWith('--view-style', 'board', '--json')
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith('filter-new', {}, { viewMode: 'BOARD' })
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            { name: 'Team', query: 'p1' },
+            { viewMode: 'BOARD' },
+        )
         expect(JSON.parse(consoleSpy.mock.calls[0][0])).toMatchObject({ id: 'filter-new' })
     })
 
@@ -1734,9 +1805,8 @@ describe('filter view options', () => {
             'ASC',
         )
 
-        expect(mockUpdateFilter).toHaveBeenCalledWith(
-            'filter-new',
-            {},
+        expect(mockAddFilter).toHaveBeenCalledWith(
+            { name: 'Team', query: 'p1' },
             { viewMode: 'BOARD', groupedBy: 'ADDED_DATE', sortedBy: 'PRIORITY', sortOrder: 'ASC' },
         )
     })
@@ -1831,6 +1901,101 @@ describe('filter view options', () => {
         )
     })
 
+    it('says the rename went through when only the view failed', async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(viewFailed('filter-1', { refused: false }))
+
+        const error = await updateWith('--name', 'Team', '--view-style', 'board').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({
+            message: expect.stringMatching(/Updated filter "Work" \(now "Team"\) \(id:filter-1\)/),
+            hints: [expect.stringContaining('td filter update id:filter-1 --view-style board')],
+        })
+    })
+
+    it("keeps the API's advice next to the retry when the view may save later", async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(
+            viewFailed('filter-1', {
+                refused: false,
+                cause: new CliError('RATE_LIMITED', 'Too many requests', [
+                    'Wait a moment and retry',
+                ]),
+            }),
+        )
+
+        const error = await updateWith('--name', 'Team', '--view-style', 'board').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toHaveProperty('hints', [
+            'Wait a moment and retry',
+            expect.stringContaining('td filter update id:filter-1 --view-style board'),
+        ])
+    })
+
+    it("keeps the API's advice next to the retry when a new filter's view may save later", async () => {
+        captureConsole()
+        mockAddFilter.mockRejectedValueOnce(
+            viewFailed('filter-new', {
+                refused: false,
+                cause: new CliError('RATE_LIMITED', 'Too many requests', [
+                    'Wait a moment and retry',
+                ]),
+            }),
+        )
+
+        const error = await createWith('--view-style', 'board').catch((caught: unknown) => caught)
+
+        expect(mockDeleteFilter).not.toHaveBeenCalled()
+        expect(error).toHaveProperty('hints', [
+            'Wait a moment and retry',
+            expect.stringContaining('td filter update id:filter-new --view-style board'),
+        ])
+    })
+
+    it("gives the API's hints, not a retry, when it refused the view", async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(
+            viewFailed('filter-1', { refused: true, cause: PREMIUM_REFUSAL }),
+        )
+
+        const error = await updateWith('--name', 'Team', '--view-style', 'calendar').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({
+            code: 'PREMIUM_REQUIRED',
+            message: expect.stringContaining('now "Team"'),
+            hints: PREMIUM_REFUSAL.hints,
+        })
+    })
+
+    it('says the view was saved when only the filter change failed', async () => {
+        captureConsole()
+        mockUpdateFilter.mockRejectedValueOnce(
+            new PartialFilterSaveError(
+                new CliError('API_ERROR', 'Name already in use'),
+                'filter-1',
+                'view',
+                true,
+            ),
+        )
+
+        const error = await updateWith('--name', 'Team', '--view-style', 'board').catch(
+            (caught: unknown) => caught,
+        )
+
+        expect(error).toMatchObject({
+            message: expect.stringMatching(
+                /view of filter "Work".*not updated: Name already in use/,
+            ),
+            hints: [expect.stringContaining('leave out the view flags')],
+        })
+    })
+
     it('rejects --sort none, which no saved view can hold', async () => {
         captureConsole()
         captureStream('stderr')
@@ -1886,7 +2051,7 @@ describe('filter view options', () => {
 
         await createWith()
 
-        expect(mockAddFilter).toHaveBeenCalledWith({ name: 'Team', query: 'p1' })
+        expect(mockAddFilter).toHaveBeenCalledWith({ name: 'Team', query: 'p1' }, undefined)
         expect(mockUpdateFilter).not.toHaveBeenCalled()
     })
 })

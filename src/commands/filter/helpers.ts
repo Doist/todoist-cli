@@ -1,5 +1,6 @@
 import { type Filter, fetchFilters } from '../../lib/api/filters.js'
 import { CliError } from '../../lib/errors.js'
+import { getRequestedUserRef } from '../../lib/global-args.js'
 import { isIdRef, lenientIdRef, looksLikeRawId, parseTodoistUrl } from '../../lib/refs.js'
 
 export async function resolveFilterRef(nameOrId: string): Promise<Filter> {
@@ -31,4 +32,13 @@ export async function resolveFilterRef(nameOrId: string): Promise<Filter> {
     }
 
     throw new CliError('FILTER_NOT_FOUND', `Filter "${nameOrId}" not found.`)
+}
+
+/**
+ * A `td` command line for a hint. It keeps `--user`, so the command reaches the
+ * account the filter is in rather than the default one.
+ */
+export function tdCommand(...args: string[]): string {
+    const user = getRequestedUserRef()
+    return ['td', ...(user ? ['--user', user] : []), ...args].join(' ')
 }

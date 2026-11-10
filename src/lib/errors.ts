@@ -100,6 +100,7 @@ export type ErrorCode =
     | 'PROJECT_ARCHIVED'
     | 'UNKNOWN_AGENT'
     | 'PROJECT_LIMIT_REACHED'
+    | 'PREMIUM_REQUIRED'
     // Sharing limits & permissions
     | 'COLLABORATOR_LIMIT_REACHED'
     | 'ALREADY_COLLABORATOR'
