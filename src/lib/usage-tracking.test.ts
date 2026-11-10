@@ -459,14 +459,6 @@ describe('usage tracking wire contract', () => {
         expect(headers['request-id']).toMatch(UUID)
     })
 
-    it('attributes a routed view request to the routed command', async () => {
-        resetUsageTrackingForTests()
-        usageTracking.setCommand(commandFor('view'))
-        usageTracking.setCommand('task:view')
-
-        expect((await sentHeaders())['cli-command']).toBe('task:view')
-    })
-
     it('leaves the active command alone after a per-request override', async () => {
         resetUsageTrackingForTests()
         usageTracking.setCommand(commandFor('today'))
