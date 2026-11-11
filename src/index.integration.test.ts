@@ -64,3 +64,10 @@ it('leaves extension exec flags with the extension', () => {
     expect(JSON.parse(result.stderr).error.code).toBe('EXTENSION_NOT_FOUND')
     expect(result.stdout).toBe('')
 })
+
+it('keeps the moved notice off stderr when it is not a terminal', () => {
+    const result = run('--help')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Usage: td')
+    expect(result.stderr).toBe('')
+})

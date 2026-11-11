@@ -18,6 +18,7 @@ import { initializeLogger } from './lib/logger.js'
 import { preloadMarkdown } from './lib/markdown.js'
 import { enableMutationJson } from './lib/mutation-json.js'
 import { formatError, formatErrorJson } from './lib/output.js'
+import { printMovedNotice } from './lib/package-move.js'
 import { ROOT_VALUE_FLAGS } from './lib/root-options.js'
 import { refreshSkillsAfterUpgrade } from './lib/skills/refresh-on-upgrade.js'
 import { startEarlySpinner, stopEarlySpinner } from './lib/spinner.js'
@@ -251,6 +252,8 @@ const { token: commandToken, index: commandTokenIndex } = findCommandToken(
     ROOT_VALUE_FLAGS,
 )
 const builtInCommand = commandToken ? resolveCommandName(commandToken) : undefined
+
+printMovedNotice(builtInCommand ?? commandToken)
 
 // Help is handled before Commander consumes --help so agents can inspect the
 // actual registered flags and arguments without scraping formatted text.
