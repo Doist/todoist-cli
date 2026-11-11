@@ -1,4 +1,4 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { getApi, type Project } from '../lib/api/core.js'

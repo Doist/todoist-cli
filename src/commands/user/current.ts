@@ -1,5 +1,5 @@
-import { formatJson, formatNdjson } from '@doist/cli-core'
-import { attachAccountCurrentCommand } from '@doist/cli-core/auth'
+import { formatJson, formatNdjson } from '@todoist/cli-core'
+import { attachAccountCurrentCommand } from '@todoist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'

@@ -1,7 +1,7 @@
 import { access, chmod, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram } from '@todoist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')

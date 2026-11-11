@@ -5,7 +5,7 @@ import {
     captureConsole,
     captureStream,
     createTestProgram,
-} from '@doist/cli-core/testing'
+} from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -54,8 +54,8 @@ vi.mock('chalk')
 // drives the OAuth flow. The original todoist-local OAuth tests were dropped
 // when `pkce` / `oauth` / `oauth-server` moved to cli-core; cli-core has its
 // own runtime + registrar tests.
-vi.mock('@doist/cli-core/auth', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
+vi.mock('@todoist/cli-core/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@todoist/cli-core/auth')>()
     return {
         ...actual,
         attachLoginCommand: vi.fn((parent: { command: (name: string) => unknown }) =>
@@ -76,7 +76,7 @@ vi.mock('node:readline', () => ({
 }))
 
 import { createInterface, type Interface } from 'node:readline'
-import type { TokenStorageResult } from '@doist/cli-core/auth'
+import type { TokenStorageResult } from '@todoist/cli-core/auth'
 import { createApiForToken, getApi } from '../../lib/api/core.js'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 import { NoTokenError, getAuthMetadata, listStoredUsers, readConfig } from '../../lib/auth.js'
@@ -303,7 +303,7 @@ describe('auth command', () => {
         })
     })
 
-    // login subcommand: handled by @doist/cli-core/auth tests now.
+    // login subcommand: handled by @todoist/cli-core/auth tests now.
     // The pre-extraction OAuth flow tests lived here and were dropped along
     // with `pkce.ts` / `oauth.ts` / `oauth-server.ts`.
 

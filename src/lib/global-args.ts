@@ -1,5 +1,5 @@
 /**
- * Per-CLI extension of `@doist/cli-core`'s global-args parser.
+ * Per-CLI extension of `@todoist/cli-core`'s global-args parser.
  *
  * Layers todoist-cli's `--user <ref>` and `--raw` flags on top of the canonical
  * shape (`--json`, `--ndjson`, `--ids-only`, `--quiet`/`-q`, `--verbose`/`-v`,
@@ -12,7 +12,7 @@ import {
     createSpinnerGate,
     type GlobalArgs,
     parseGlobalArgs as parseCoreGlobalArgs,
-} from '@doist/cli-core'
+} from '@todoist/cli-core'
 
 export type TdGlobalArgs = GlobalArgs & {
     idsOnly: boolean

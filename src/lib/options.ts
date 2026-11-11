@@ -1,4 +1,4 @@
-import type { ListViewOptions as CoreListViewOptions } from '@doist/cli-core'
+import type { ListViewOptions as CoreListViewOptions } from '@todoist/cli-core'
 
 export type ViewOptions = CoreListViewOptions & {
     full?: boolean

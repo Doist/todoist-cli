@@ -1,5 +1,5 @@
-import { formatJson, formatNdjson } from '@doist/cli-core'
-import { attachLoginCommand } from '@doist/cli-core/auth'
+import { formatJson, formatNdjson } from '@todoist/cli-core'
+import { attachLoginCommand } from '@todoist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import { renderAuthErrorPage, renderAuthSuccessPage } from '../../lib/auth-html.js'

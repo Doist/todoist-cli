@@ -1,4 +1,4 @@
-import { readStdin } from '@doist/cli-core'
+import { readStdin } from '@todoist/cli-core'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'

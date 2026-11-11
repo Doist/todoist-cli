@@ -143,7 +143,7 @@ Users and AI agents will call your extension the same way they call built-in com
 5. **Never prompt when stdin is not a TTY.** `td` is non-interactive by design, and agents run extensions without a terminal. Take input from flags, and fail with a clear message when something required is missing.
 6. **Respect `TD_ACCESSIBLE`.** Pair any color-coding with a text label.
 
-Node authors who want output that matches `td` exactly can use [`@doist/cli-core`](https://www.npmjs.com/package/@doist/cli-core) for the same spinner, JSON formatting, and error classes.
+Node authors who want output that matches `td` exactly can use [`@todoist/cli-core`](https://www.npmjs.com/package/@todoist/cli-core) for the same spinner, JSON formatting, and error classes.
 
 ## Metadata: `td-extension.json`
 

@@ -9,7 +9,7 @@ import {
     findManifestProblems,
     mapWithConcurrency,
     satisfiesRange,
-} from '@doist/cli-core/extensions'
+} from '@todoist/cli-core/extensions'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
 import type { DoctorCheck } from '../doctor.js'

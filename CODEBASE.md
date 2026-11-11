@@ -6,7 +6,7 @@
 
 ## What this project is
 
-`@doist/todoist-cli` is a **TypeScript CLI** for Todoist. Binary name: `td`. It
+`@todoist/cli` is a **TypeScript CLI** for Todoist. Binary name: `td`. It
 wraps `@doist/todoist-sdk` and publishes a single executable (`dist/index.js`).
 
 ESM-only · Node ≥ 24 · npm ≥ 11 · Commander 14 · vitest · oxlint + oxfmt (no
@@ -69,10 +69,10 @@ src/
    ├─ api-mock.ts         # setupApiMock() — wires getApi() to a fresh mock API
    └─ fixtures.ts         # Sample task/project/label/section fixtures
                           # (program harness + console/stream spies now come
-                          #  from @doist/cli-core/testing)
+                          #  from @todoist/cli-core/testing)
 ```
 
-The extension system itself lives in `@doist/cli-core/extensions`, scaffold
+The extension system itself lives in `@todoist/cli-core/extensions`, scaffold
 templates included; `commands/extension/` is only the td-specific glue (binary
 name, directories, first-party source, colours, doctor checks).
 
@@ -83,7 +83,7 @@ name, directories, first-party source, colours, doctor checks).
    and builds a **lazy command registry** — a `Record<name, [description, loader]>`.
 2. Placeholder subcommands are registered so `--help` lists everything without
    importing anything.
-3. `findCommandToken()` (from `@doist/cli-core`) walks argv from the start,
+3. `findCommandToken()` (from `@todoist/cli-core`) walks argv from the start,
    stepping over global flags and the values of the two that take one, and
    stops at the first remaining token. Nothing after it is inspected — that
    belongs to whatever the token names.
@@ -116,7 +116,7 @@ name, directories, first-party source, colours, doctor checks).
   logic lives in a sibling file (`task/add.ts`, `task/list.ts`, …) re-imported
   by `index.ts`. Shared helpers live in `task/helpers.ts`.
 - **Pass-through command** (extensions): registered by
-  `@doist/cli-core/extensions` with `.allowUnknownOption()`,
+  `@todoist/cli-core/extensions` with `.allowUnknownOption()`,
   `.allowExcessArguments()`, `.helpOption(false)` and `.helpGroup('Extensions:')`,
   so commander touches nothing after the name and `--help` lists them under
   their own heading. Not `.passThroughOptions()`: commander requires
@@ -168,7 +168,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   `config view`).
 - **Extensions** — the whole system (`createExtensionManager`, the
   `registerExtension*` registrars, discovery, install, upgrade, remove,
-  dispatch, scaffolding) is `@doist/cli-core/extensions`. Everything
+  dispatch, scaffolding) is `@todoist/cli-core/extensions`. Everything
   td-specific — binary name, `getDataDir(APP_NAME)` / `getStateDir(APP_NAME)`
   from cli-core, first-party source, `secretEnvVars`, colours — is decided in
   `commands/extension/index.ts`; `commands/extension/dispatch.ts` adds the
@@ -270,7 +270,7 @@ New subcommand? Copy a sibling in the target group, wire it in that group's
   every Todoist request. `usageTracking.setCommand()` records the active
   command from the `preAction` hook and routed `td view` flows
 - **`browser.ts` / `update.ts`** — small single-purpose helpers
-- **Piped `--stdin` input** comes from `readStdin()` in `@doist/cli-core`
+- **Piped `--stdin` input** comes from `readStdin()` in `@todoist/cli-core`
   (fails with `STDIN_IS_TTY` when nothing is piped in); don't add a local reader.
 - **`skills/content.ts`** — `SKILL_NAME`, `SKILL_DESCRIPTION`, `SKILL_CONTENT`
 - **`skills/refresh-on-upgrade.ts`** — refreshes installed skills once per
@@ -314,7 +314,7 @@ anything else with `INVALID_REF`.
 
 ## Auth & token storage
 
-`@doist/cli-core/auth` owns the keyring, multi-user `TokenStore`, OAuth flow,
+`@todoist/cli-core/auth` owns the keyring, multi-user `TokenStore`, OAuth flow,
 and the `login` / `logout` / `status` / `token view` registrars, plus the
 `account list` / `account use` attachers that back `td accounts list` and
 `td accounts use` (`commands/user/{list,use}.ts`). todoist-cli supplies a
@@ -348,14 +348,14 @@ re-migrate a stale legacy slot.
   `getApi()` to it. The Commander harness `createTestProgram(register)` and the
   output spies `captureConsole(method?)` / `captureStream(stream?)` and the
   `process.stdin` stand-in `mockStdin(input, { isTTY? })` come from the shared
-  `@doist/cli-core/testing` subpath (not local files).
+  `@todoist/cli-core/testing` subpath (not local files).
 - **Pattern:** still `vi.mock('…/api/core.js')` (hoisted) per file, then in
   `beforeEach` `mockApi = setupApiMock()`; build with
   `createTestProgram(registerXCommand)` and run
   `program.parseAsync(['node','td','<cmd>',…])`.
 - **Auto-restore:** `vitest.config.ts` sets `restoreMocks: true`, so spies are
   restored between tests automatically — do NOT add manual `.mockRestore()`.
-- **`@doist/cli-core` inlining:** `vitest.config.ts` lists `@doist/cli-core` in
+- **`@todoist/cli-core` inlining:** `vitest.config.ts` lists `@todoist/cli-core` in
   `server.deps.inline` so `vi.doMock('node:fs/promises', …)` /
   `vi.doMock('node:os', …)` reach cli-core's compiled imports. Without it
   vitest treats the package as external and Node's native resolver bypasses
@@ -422,7 +422,7 @@ file, or a token stored in the OS credential manager via `td auth login`.
 - User-facing errors: throw `CliError(code, message, hints?)` from
   `src/lib/errors.ts`; the global `parseAsync().catch` in `src/index.ts`
   renders it. The same handler also catches `BaseCliError` (re-exported
-  from `src/lib/errors.ts`) so errors thrown by `@doist/cli-core` helpers
+  from `src/lib/errors.ts`) so errors thrown by `@todoist/cli-core` helpers
   route through the same path
 - Missing positional/required input: call `failWithUsage(command)` from
   `src/lib/missing-argument.ts`, never a bare `command.help()` (which prints

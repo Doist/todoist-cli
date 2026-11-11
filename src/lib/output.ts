@@ -1,5 +1,5 @@
-import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@doist/cli-core'
 import type { HealthStatus, Task } from '@doist/todoist-sdk'
+import { formatJson as formatJsonCore, formatNdjson as formatNdjsonCore } from '@todoist/cli-core'
 import chalk from 'chalk'
 import type { Project } from './api/core.js'
 import type { ChildrenResult, ProjectChild, TaskChild } from './children.js'

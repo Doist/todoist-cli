@@ -1,4 +1,4 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram } from '@todoist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/config.js', () => ({
@@ -18,7 +18,7 @@ vi.mock('../../lib/auth.js', async () => {
 
 vi.mock('chalk')
 
-import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
+import { SecureStoreUnavailableError } from '@todoist/cli-core/auth'
 import { listStoredUsers, NoTokenError, probeApiToken } from '../../lib/auth.js'
 import { type Config, readConfigStrict } from '../../lib/config.js'
 import { CliError } from '../../lib/errors.js'

@@ -1,4 +1,4 @@
-import { findCommandToken } from '@doist/cli-core'
+import { findCommandToken } from '@todoist/cli-core'
 import { Command } from 'commander'
 import { describe, expect, it } from 'vitest'
 import { ROOT_VALUE_FLAGS } from './root-options.js'

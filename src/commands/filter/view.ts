@@ -1,4 +1,3 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import {
     findViewOptions,
     isDateDrivenQuery,
@@ -6,6 +5,7 @@ import {
     type TodoistApi,
     type ViewOptions as SavedViewOptions,
 } from '@doist/todoist-sdk'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import {
     getAccountLanguage,

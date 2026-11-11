@@ -1,16 +1,16 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createExtensionManager } from '@doist/cli-core/extensions'
-import { captureConsole, createTestProgram, writeFixtureExtension } from '@doist/cli-core/testing'
+import { createExtensionManager } from '@todoist/cli-core/extensions'
+import { captureConsole, createTestProgram, writeFixtureExtension } from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildExtensionManager, registerExtensionCommand } from './index.js'
 
 // Spied rather than mocked: the tests below need the real manager, and only
 // one of them wants to see the options it was built from.
-vi.mock('@doist/cli-core/extensions', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@doist/cli-core/extensions')>()
+vi.mock('@todoist/cli-core/extensions', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@todoist/cli-core/extensions')>()
     return { ...actual, createExtensionManager: vi.fn(actual.createExtensionManager) }
 })
 

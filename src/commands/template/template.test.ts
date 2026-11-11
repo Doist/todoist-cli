@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { open } from 'node:fs/promises'
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, captureStream, createTestProgram } from '@todoist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs')

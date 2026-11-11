@@ -1,4 +1,4 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { fetchFilters } from '../../lib/api/filters.js'
 import { isAccessible } from '../../lib/global-args.js'

@@ -1,4 +1,4 @@
-import type { MigrateAuthResult, MigrateLegacyAuthOptions } from '@doist/cli-core/auth'
+import type { MigrateAuthResult, MigrateLegacyAuthOptions } from '@todoist/cli-core/auth'
 /**
  * Adapter-level tests for the local `migrate-auth.ts` wrapper. The actual
  * migration mechanics (keyring read/write, default promotion, rollback)
@@ -53,8 +53,8 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
             }),
         }))
 
-        vi.doMock('@doist/cli-core', async (importOriginal) => {
-            const actual = await importOriginal<typeof import('@doist/cli-core')>()
+        vi.doMock('@todoist/cli-core', async (importOriginal) => {
+            const actual = await importOriginal<typeof import('@todoist/cli-core')>()
             return {
                 ...actual,
                 getConfigPath: () => TEST_CONFIG_PATH,
@@ -63,8 +63,8 @@ describe('migrateLegacyAuth (todoist-cli wrapper)', () => {
 
         // Stub cli-core's migration so we observe what the wrapper passes in
         // and can drive each consumer callback directly.
-        vi.doMock('@doist/cli-core/auth', async (importOriginal) => {
-            const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
+        vi.doMock('@todoist/cli-core/auth', async (importOriginal) => {
+            const actual = await importOriginal<typeof import('@todoist/cli-core/auth')>()
             return {
                 ...actual,
                 migrateLegacyAuth: vi.fn(

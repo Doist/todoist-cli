@@ -10,7 +10,7 @@ import {
 
 // Smoke tests for the local wrapper. The detailed spinner behaviour
 // (early-spinner adoption, colour palette, ✓/✗ rendering, etc.) is
-// covered exhaustively in @doist/cli-core's own spinner suite — this
+// covered exhaustively in @todoist/cli-core's own spinner suite — this
 // file only verifies that we wire it up correctly and surface the
 // expected public API.
 

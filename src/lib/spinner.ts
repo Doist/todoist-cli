@@ -1,7 +1,7 @@
-import { createSpinner } from '@doist/cli-core'
+import { createSpinner } from '@todoist/cli-core'
 import { shouldDisableSpinner } from './global-args.js'
 
-export type { SpinnerOptions } from '@doist/cli-core'
+export type { SpinnerOptions } from '@todoist/cli-core'
 
 /**
  * Todoist spinner kit. The CLI-specific bit is `shouldDisableSpinner` —

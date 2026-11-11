@@ -1,5 +1,5 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
 import { formatUserShortName, isWorkspaceProject } from '@doist/todoist-sdk'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'

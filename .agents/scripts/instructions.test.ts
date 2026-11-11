@@ -145,7 +145,7 @@ it('lists every skill in AGENTS.md, and only those', () => {
     expect(listedUnder(text, '## Skills').toSorted()).toEqual(skills.toSorted())
 })
 
-it('names only test helpers that src/test-support/ or @doist/cli-core/testing export', async () => {
+it('names only test helpers that src/test-support/ or @todoist/cli-core/testing export', async () => {
     const skill = readFileSync(join(SKILLS_DIR, 'write-tests/SKILL.md'), 'utf8')
     const section = skill.split('## Helpers')[1]?.split('\n## ')[0] ?? ''
     const named = [...section.matchAll(/`(\w+)`/g)].map((match) => match[1] ?? '')
@@ -157,7 +157,7 @@ it('names only test helpers that src/test-support/ or @doist/cli-core/testing ex
             ),
         ].map((match) => match[1]),
     )
-    const shared = Object.keys(await import('@doist/cli-core/testing'))
+    const shared = Object.keys(await import('@todoist/cli-core/testing'))
     expect(named.length).toBeGreaterThan(5)
     expect(named.filter((name) => !local.includes(name) && !shared.includes(name))).toEqual([])
 })

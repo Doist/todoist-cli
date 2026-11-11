@@ -1,8 +1,8 @@
-import { fetchLatestVersion as fetchLatestVersionCore } from '@doist/cli-core/commands'
+import { fetchLatestVersion as fetchLatestVersionCore } from '@todoist/cli-core/commands'
 import packageJson from '../../package.json' with { type: 'json' }
 import { readConfig, type UpdateChannel } from './config.js'
 
-export { compareVersions, getInstallTag, isNewer, parseVersion } from '@doist/cli-core/commands'
+export { compareVersions, getInstallTag, isNewer, parseVersion } from '@todoist/cli-core/commands'
 
 export async function fetchLatestVersion(channel: UpdateChannel): Promise<string> {
     return fetchLatestVersionCore({ packageName: packageJson.name, channel })

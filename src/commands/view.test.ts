@@ -1,4 +1,4 @@
-import { captureConsole, captureStream, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, captureStream, createTestProgram } from '@todoist/cli-core/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/api/core.js', async (importOriginal) => {

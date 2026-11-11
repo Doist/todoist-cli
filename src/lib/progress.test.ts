@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { captureConsole } from '@doist/cli-core/testing'
+import { captureConsole } from '@todoist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetGlobalArgs } from './global-args.js'
 import type { ProgressEvent } from './progress.js'

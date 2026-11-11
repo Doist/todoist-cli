@@ -1,4 +1,4 @@
-import { formatJson, formatNdjson, printEmpty } from '@doist/cli-core'
+import { formatJson, formatNdjson, printEmpty } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { searchHelpCenter } from '../../lib/help-center.js'
 import { withSpinner } from '../../lib/spinner.js'

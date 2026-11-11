@@ -15,7 +15,7 @@ description: Writes or changes tests in this repository to its quality bar, with
 
 ## Helpers
 
-From `src/test-support/`: `createMockApi`, `setupApiMock`, `fixtures`, `makeFilter`, `createProjectProgram`. From `@doist/cli-core/testing`: `createTestProgram`, `captureConsole`, `captureStream`, `describeEmptyMachineOutput`. Build entities from `fixtures` instead of by hand; extend it when a test needs a new shape.
+From `src/test-support/`: `createMockApi`, `setupApiMock`, `fixtures`, `makeFilter`, `createProjectProgram`. From `@todoist/cli-core/testing`: `createTestProgram`, `captureConsole`, `captureStream`, `describeEmptyMachineOutput`. Build entities from `fixtures` instead of by hand; extend it when a test needs a new shape.
 
 ## The quality bar
 

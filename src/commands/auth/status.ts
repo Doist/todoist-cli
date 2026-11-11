@@ -1,5 +1,5 @@
-import { formatJson, formatNdjson } from '@doist/cli-core'
-import { attachStatusCommand } from '@doist/cli-core/auth'
+import { formatJson, formatNdjson } from '@todoist/cli-core'
+import { attachStatusCommand } from '@todoist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import { createApiForToken, getApi } from '../../lib/api/core.js'

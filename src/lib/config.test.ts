@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@doist/cli-core', async () => {
-    const actual = await vi.importActual<typeof import('@doist/cli-core')>('@doist/cli-core')
+vi.mock('@todoist/cli-core', async () => {
+    const actual = await vi.importActual<typeof import('@todoist/cli-core')>('@todoist/cli-core')
     return {
         ...actual,
         getConfigPath: vi.fn(() => '/tmp/cli-core-test/config.json'),
@@ -9,7 +9,7 @@ vi.mock('@doist/cli-core', async () => {
     }
 })
 
-import { readConfigStrict as readConfigStrictCore } from '@doist/cli-core'
+import { readConfigStrict as readConfigStrictCore } from '@todoist/cli-core'
 import { getConfigDir, getConfigPath, readConfigStrict } from './config.js'
 
 const mockReadConfigStrictCore = vi.mocked(readConfigStrictCore)

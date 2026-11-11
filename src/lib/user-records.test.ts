@@ -39,8 +39,8 @@ describe('createTodoistUserRecordStore', () => {
             }),
         }))
 
-        vi.doMock('@doist/cli-core', async (importOriginal) => {
-            const actual = await importOriginal<typeof import('@doist/cli-core')>()
+        vi.doMock('@todoist/cli-core', async (importOriginal) => {
+            const actual = await importOriginal<typeof import('@todoist/cli-core')>()
             return { ...actual, getConfigPath: () => TEST_CONFIG_PATH }
         })
     })
