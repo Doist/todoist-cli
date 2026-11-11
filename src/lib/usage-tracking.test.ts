@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import packageJson from '../../package.json' with { type: 'json' }
 import { createTrackedFetch, fetchTodoist, usageTracking } from './usage-tracking.js'
 
+// `usageTracking` reads the agent once, when its module loads, so the stub runs before the
+// import. Without it, `cli-agent` would depend on whichever agent (if any) runs the tests.
+vi.hoisted(() => {
+    vi.stubEnv('AI_AGENT', 'claude-code_1.0.0_agent')
+})
+
 vi.mock('@doist/todoist-sdk', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@doist/todoist-sdk')>()
     return {
@@ -401,6 +407,7 @@ describe('usage tracking wire contract', () => {
             'request-id': expect.stringMatching(UUID),
             'session-id': expect.stringMatching(UUID),
             'cli-command': 'task:add',
+            'cli-agent': 'claude-code',
         })
     })
 
@@ -429,6 +436,7 @@ describe('usage tracking wire contract', () => {
             'request-id': expect.stringMatching(UUID),
             'session-id': expect.stringMatching(UUID),
             'cli-command': 'auth:login',
+            'cli-agent': 'claude-code',
         })
     })
 
