@@ -7,4 +7,4 @@ export const CURSOR_DESCRIPTION = 'Pagingation cursor from previous response to 
  * `icons/todoist-cli_512px.png`, since removed.)
  */
 export const CLI_ICON_URL =
-    'https://raw.githubusercontent.com/Doist/todoist-cli/main/icons/td-cli.png'
+    'https://raw.githubusercontent.com/todoist/todoist-cli/main/icons/td-cli.png'

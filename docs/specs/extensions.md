@@ -20,7 +20,7 @@ From the original proposal:
 
 Concretely:
 
-1. **Prototyping.** A feature behind a server-side flag, or one that is still being designed, can ship as `Doist/td-goals` today and be used by the people testing it, without a release of `td` and without dead code in `main` when the experiment ends. If the feature graduates, the extension is either promoted into core or stays an extension.
+1. **Prototyping.** A feature behind a server-side flag, or one that is still being designed, can ship as `todoist/td-goals` today and be used by the people testing it, without a release of `td` and without dead code in `main` when the experiment ends. If the feature graduates, the extension is either promoted into core or stays an extension.
 2. **Community.** People already script `td` in shell and Python. An extension mechanism gives those scripts a home (`td standup`, `td weekly-review`, `td export-obsidian`) and a discovery path, with no obligation on Todoist to maintain them.
 3. **Consistency with the other Todoist CLIs.** One implementation, extracted to cli-core once proven here, means `tdc` and `tda` gain the same feature with the same commands and the same on-disk layout.
 
@@ -84,7 +84,7 @@ td extension exec <name> [args...]
 
 | Form          | Example                                 | Result                                                                            |
 | ------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `owner/repo`  | `Doist/td-goals`                        | GitHub. Binary release if the latest release has a matching asset, else git clone |
+| `owner/repo`  | `todoist/td-goals`                      | GitHub. Binary release if the latest release has a matching asset, else git clone |
 | Full URL      | `https://github.com/example/td-standup` | Same as above; also allows non-github.com hosts via git                           |
 | `.` or a path | `td extension install .`                | Local development install: a symlink to the directory                             |
 
@@ -105,7 +105,7 @@ Install steps for a GitHub source:
 The trust warning is printed on every install and upgrade:
 
 ```
-Installed td-goals from Doist/td-goals (v0.3.0) to ~/.local/share/todoist-cli/extensions/td-goals
+Installed td-goals from todoist/td-goals (v0.3.0) to ~/.local/share/todoist-cli/extensions/td-goals
 
 Extensions are not reviewed, signed, or endorsed by Todoist. Installing one runs
 code from its publisher with your permissions and your Todoist credentials.
@@ -116,13 +116,13 @@ Review the source before use.
 
 ```
 NAME        SOURCE                       VERSION   KIND                                  OFFICIAL
-goals       Doist/td-goals               v0.3.0    binary                                ✓ Todoist
+goals       todoist/td-goals             v0.3.0    binary                                ✓ Todoist
 standup     example/td-standup           a1b2c3d4  git (pinned)
 scratch     ~/code/td-scratch            —         local
 weekly      example/td-weekly            0.1.0     git · shadowed by built-in "weekly"
 ```
 
-Extensions published by Todoist show `✓ Todoist` in the `OFFICIAL` column (`Todoist` without the tick in `--accessible` mode). An extension is official when its install source is the `Doist` organisation on `github.com`: both host and owner must match, taken from `.td-manifest.json` for binary installs and from the parsed `remote.origin.url` for git installs. Owner alone is not enough, because `install` accepts any git host and `https://git.example/Doist/td-x` must not pass. Local installs are never official. The host and owner pair is one constant so the organisation rename is a one-line change. It is an ownership label, not a signature, and it does not suppress the trust warning.
+Extensions published by Todoist show `✓ Todoist` in the `OFFICIAL` column (`Todoist` without the tick in `--accessible` mode). An extension is official when its install source is the `todoist` organisation on `github.com`: both host and owner must match, taken from `.td-manifest.json` for binary installs and from the parsed `remote.origin.url` for git installs. Owner alone is not enough, because `install` accepts any git host and `https://git.example/todoist/td-x` must not pass. Local installs are never official. The host and owner pair is one constant so the organisation rename is a one-line change. It is an ownership label, not a signature, and it does not suppress the trust warning.
 
 No network access. `--json` returns the manifest fields plus `path`, `kind`, `shadowed`, `official`, and `executable` (false when the file is missing or not executable, which is the usual state of a freshly cloned Go extension that has not been built).
 
@@ -187,7 +187,7 @@ The config file is untouched. Nothing in this design needs a new config key, so 
 ```json
 {
     "manifestVersion": 1,
-    "owner": "Doist",
+    "owner": "todoist",
     "name": "td-goals",
     "host": "github.com",
     "tag": "v0.3.0",
@@ -348,7 +348,7 @@ The full guide for extension authors is [`docs/extensions.md`](../extensions.md)
 - Trust warning on install/upgrade. Checksum verification when a checksums asset exists. `✓ Todoist` marker in `list`.
 - Windows is best effort in this phase: the path-file local install, the Node-shebang shortcut, the `sh.exe` fallback, and `.exe` asset matching are all specified and implemented, but the release does not wait on a full Windows pass. `td doctor` reports extensions as experimental on Windows until that pass is done.
 - Tests: manager unit tests with a fake filesystem and stubbed GitHub API, including a mismatched or truncated release asset refusing to install with `EXTENSION_CHECKSUM_MISMATCH`, and `--pin` resolving a tagged release rather than latest; dispatch tests asserting argv passthrough, env contract, `--user` scoping, and exit-code propagation; a fixture extension in `src/test-support/` for end-to-end runs.
-- Dogfood: `Doist/td-goals` (or whichever prototype is live) rebuilt as an extension before the release, so the first release is validated by a real consumer.
+- Dogfood: `todoist/td-goals` (or whichever prototype is live) rebuilt as an extension before the release, so the first release is validated by a real consumer.
 
 ### Phase 2 — ergonomics
 
@@ -378,7 +378,7 @@ The full guide for extension authors is [`docs/extensions.md`](../extensions.md)
 ## Decisions
 
 1. **Build here first, extract to cli-core later.** The manager and the command registration both live in `src/lib/extensions/` with host-specific values injected through the manager's options object and no imports from the rest of `td`, so moving them is a file move. It goes to cli-core once the API has stopped changing, and `tdc` and `tda` adopt it then. _Outcome:_ moved in cli-core 1.7.0 as `@doist/cli-core/extensions`, with the templates going along and two generalisations on the way (the npm secret denylist became the `secretEnvVars` option; zod became an optional peer of cli-core). `src/commands/extension/` is what stayed behind.
-2. **First-party marker, yes.** Extensions whose install source is the `Doist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
+2. **First-party marker, yes.** Extensions whose install source is the `todoist` organisation on `github.com` (host and owner both checked) show `✓ Todoist` in `list` (and `search` when that ships) and `official: true` in `--json`. The host and owner pair is a single constant, to be updated when the organisation is renamed. The trust warning is still printed for them.
 3. **Windows is best effort in phase 1.** All Windows paths are specified and implemented, but the first release does not wait on a full Windows test pass. `doctor` labels extensions experimental on Windows until phase 2 completes that pass.
 4. **The name is `extension`.** With `ext` as the alias, as the Terminology section says. `plugin` is not used anywhere in code, commands, or docs.
 5. **Extension runs are not recorded.** `usageTracking.setCommand` exists to populate the `cli-command` header on outbound Todoist API requests, and dispatching an extension makes no such request — `td` spawns a child and waits. There is nothing to tag, and recording a synthetic path would need a transport this CLI does not have. The data arrives anyway: an extension that wants Todoist data calls `td … --json`, and that nested process reports its own real command path. If attribution is wanted later, the nested process can add a header of its own when it sees `TD_EXTENSION` in its environment, which needs no decision from the parent. `td extension install|list|…` are ordinary commands and are recorded normally.

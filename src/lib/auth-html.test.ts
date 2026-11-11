@@ -19,7 +19,7 @@ describe('auth pages', () => {
 
 describe('CLI_ICON_URL', () => {
     it('points at a file in this repo, which published READMEs also use', () => {
-        const path = new URL(CLI_ICON_URL).pathname.replace(/^\/Doist\/todoist-cli\/main\//, '')
+        const path = new URL(CLI_ICON_URL).pathname.replace(/^\/todoist\/todoist-cli\/main\//, '')
         expect(existsSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)))).toBe(true)
     })
 })

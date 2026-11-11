@@ -52,7 +52,7 @@ npm uninstall -g @doist/todoist-cli
 ## Local Setup
 
 ```bash
-git clone https://github.com/Doist/todoist-cli.git
+git clone https://github.com/todoist/todoist-cli.git
 cd todoist-cli
 npm install
 npm run build

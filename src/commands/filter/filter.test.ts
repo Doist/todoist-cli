@@ -1342,7 +1342,7 @@ describe('filter show sorting', () => {
     }
 
     it('leads with the date for a Spanish query the English keywords missed', async () => {
-        // Doist/todoist-sdk-typescript#669: the old table matched no English
+        // todoist/todoist-sdk-typescript#669: the old table matched no English
         // keyword in "hoy | vencidas", so this fell to priority and the p1 led.
         expect(await orderUnderQuery('hoy | vencidas', 'es')).toEqual([
             fixtures.tasks.overdue.id,

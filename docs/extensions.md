@@ -238,7 +238,7 @@ Keep `td-extension.json` in the repository. `td` fetches it at the release tag t
 
 ### Official extensions
 
-Extensions installed from the `Doist` organization on github.com show `✓ Todoist` in `td extension list`. The label shows who owns the source. It is not a signature, and it does not suppress the trust warning.
+Extensions installed from the `todoist` organization on github.com show `✓ Todoist` in `td extension list`. The label shows who owns the source. It is not a signature, and it does not suppress the trust warning.
 
 ## Checklist
 

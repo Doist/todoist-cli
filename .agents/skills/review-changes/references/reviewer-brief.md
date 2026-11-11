@@ -3,7 +3,7 @@
 Fill in the brackets. Give every reviewer the same brief, plus its role. Leave out your opinion of the change and how you reached it: a reviewer handed a conclusion tends to confirm it.
 
 ```
-Repository: Doist/todoist-cli, the Todoist CLI `td` (TypeScript, Commander, Vitest).
+Repository: todoist/todoist-cli, the Todoist CLI `td` (TypeScript, Commander, Vitest).
 The change: `git diff <base>` in <checkout path>, plus the untracked files
 `git ls-files --others --exclude-standard` lists there.
 
