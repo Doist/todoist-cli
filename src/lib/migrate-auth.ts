@@ -1,6 +1,6 @@
 /**
  * One-time migration of v1 single-user auth state into the v2 multi-user
- * shape. Delegates to `@doist/cli-core/auth`'s generic `migrateLegacyAuth`,
+ * shape. Delegates to `@todoist/cli-core/auth`'s generic `migrateLegacyAuth`,
  * supplying only the todoist-specific bits: the durable migration marker
  * (`config_version === CONFIG_VERSION`), how to read the v1 plaintext token,
  * how to identify the user behind a v1 token, and how to clean up the
@@ -11,7 +11,7 @@
  * until the next attempt.
  */
 
-import { migrateLegacyAuth as coreMigrateLegacyAuth } from '@doist/cli-core/auth'
+import { migrateLegacyAuth as coreMigrateLegacyAuth } from '@todoist/cli-core/auth'
 import {
     LEGACY_ACCOUNT,
     SERVICE_NAME,

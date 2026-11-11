@@ -1,4 +1,4 @@
-import { attachAccountRemoveCommand } from '@doist/cli-core/auth'
+import { attachAccountRemoveCommand } from '@todoist/cli-core/auth'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'

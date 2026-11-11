@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { getStateDir } from '@doist/cli-core'
+import { getStateDir } from '@todoist/cli-core'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { APP_NAME } from '../app-name.js'
 

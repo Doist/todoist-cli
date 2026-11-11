@@ -4,7 +4,7 @@ import {
     readConfig as readConfigCore,
     readConfigStrict as readConfigStrictCore,
     writeConfig as writeConfigCore,
-} from '@doist/cli-core'
+} from '@todoist/cli-core'
 import { APP_NAME } from './app-name.js'
 import { CliError } from './errors.js'
 import { normalizeHelpCenterLocale } from './help-center.js'

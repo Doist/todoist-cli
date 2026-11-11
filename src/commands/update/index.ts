@@ -1,4 +1,4 @@
-import { registerUpdateCommand as registerCoreUpdateCommand } from '@doist/cli-core/commands'
+import { registerUpdateCommand as registerCoreUpdateCommand } from '@todoist/cli-core/commands'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }
 import { getConfigPath } from '../../lib/config.js'

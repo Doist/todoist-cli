@@ -1,5 +1,5 @@
 {
-  "name": "@doist/todoist-cli",
+  "name": "@todoist/cli",
   "version": "5.12.4",
   "description": "TypeScript CLI for Todoist",
   "type": "module",
@@ -55,10 +55,10 @@
     "scripts"
   ],
   "dependencies": {
-    "@doist/cli-core": "1.10.0",
     "@doist/todoist-sdk": "17.0.0",
     "@napi-rs/keyring": "2.1.2",
     "@pnpm/tabtab": "0.5.4",
+    "@todoist/cli-core": "2.0.0",
     "chalk": "6.0.1",
     "commander": "15.0.0",
     "date-fns": "4.4.0",

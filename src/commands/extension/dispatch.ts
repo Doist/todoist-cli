@@ -11,7 +11,7 @@ import {
     type DispatchOptions,
     type ExtensionCommands,
     registerExtensionPassThrough,
-} from '@doist/cli-core/extensions'
+} from '@todoist/cli-core/extensions'
 import type { Command } from 'commander'
 import { getRequestedOrEnvUserRef } from '../../lib/auth-store.js'
 import { getVerboseLevel, setHostArgvLength, shouldDisableSpinner } from '../../lib/global-args.js'

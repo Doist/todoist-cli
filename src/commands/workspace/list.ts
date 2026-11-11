@@ -1,4 +1,4 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { fetchWorkspaces } from '../../lib/api/workspaces.js'
 import type { PaginatedViewOptions } from '../../lib/options.js'

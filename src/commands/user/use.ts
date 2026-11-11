@@ -1,4 +1,4 @@
-import { attachAccountUseCommand } from '@doist/cli-core/auth'
+import { attachAccountUseCommand } from '@todoist/cli-core/auth'
 import type { Command } from 'commander'
 import type { TodoistAccount, TodoistTokenStore } from '../../lib/auth-store.js'
 

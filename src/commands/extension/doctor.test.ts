@@ -1,7 +1,7 @@
 import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { captureConsole, writeFixtureExtension } from '@doist/cli-core/testing'
+import { captureConsole, writeFixtureExtension } from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { checkExtensions } from './doctor.js'

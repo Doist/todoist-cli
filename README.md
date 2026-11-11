@@ -9,8 +9,10 @@ A command-line interface for Todoist.
 ## Installation
 
 > ```bash
-> npm install -g @doist/todoist-cli
+> npm install -g @todoist/cli
 > ```
+
+Previously published as `@doist/todoist-cli`. Both packages install the `td` binary, so uninstall the old one first: `npm uninstall -g @doist/todoist-cli`.
 
 ### Agent Skills
 
@@ -46,7 +48,7 @@ td skill uninstall <agent>
 Then uninstall the CLI:
 
 ```bash
-npm uninstall -g @doist/todoist-cli
+npm uninstall -g @todoist/cli
 ```
 
 ## Local Setup

@@ -3,7 +3,7 @@ import {
     captureStream,
     createTestProgram,
     describeEmptyMachineOutput,
-} from '@doist/cli-core/testing'
+} from '@todoist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/browser.js', () => ({

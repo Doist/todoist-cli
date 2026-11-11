@@ -1,4 +1,4 @@
-import { type AuthProvider, createPkceProvider } from '@doist/cli-core/auth'
+import { type AuthProvider, createPkceProvider } from '@todoist/cli-core/auth'
 import { createApiForToken } from './api/core.js'
 import { type TodoistAccount, toTodoistAccount } from './auth-store.js'
 import { type AuthFlag } from './config.js'

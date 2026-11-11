@@ -1,4 +1,4 @@
-import { attachTokenViewCommand } from '@doist/cli-core/auth'
+import { attachTokenViewCommand } from '@todoist/cli-core/auth'
 import type { Command } from 'commander'
 import {
     createTodoistTokenStore,

@@ -6,7 +6,7 @@ import {
     captureStream,
     createTestProgram,
     mockStdin,
-} from '@doist/cli-core/testing'
+} from '@todoist/cli-core/testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({

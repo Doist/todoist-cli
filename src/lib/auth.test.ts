@@ -1,4 +1,4 @@
-import { captureConsole } from '@doist/cli-core/testing'
+import { captureConsole } from '@todoist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const TEST_HOME = '/tmp/todoist-cli-tests'
 const TEST_CONFIG_PATH = `${TEST_HOME}/.config/todoist-cli/config.json`
@@ -76,15 +76,15 @@ describe('lib/auth', () => {
             writeFile: writeFileMock,
         }))
 
-        // Override @doist/cli-core's getConfigPath at the package boundary so
+        // Override @todoist/cli-core's getConfigPath at the package boundary so
         // we don't depend on `node:os` mock substitution reaching cli-core's
         // compiled `homedir()` call — that route works on macOS but not on
         // Linux runners under vitest 4's `server.deps.inline`. The node:os
         // mock above is left in place for any other code that reads homedir
         // directly.
-        vi.doMock('@doist/cli-core', async () => {
+        vi.doMock('@todoist/cli-core', async () => {
             const actual =
-                await vi.importActual<typeof import('@doist/cli-core')>('@doist/cli-core')
+                await vi.importActual<typeof import('@todoist/cli-core')>('@todoist/cli-core')
             return {
                 ...actual,
                 getConfigPath: () => TEST_CONFIG_PATH,
@@ -95,11 +95,11 @@ describe('lib/auth', () => {
         // `server.deps.inline` is not sufficient on Linux + npm-linked cli-core:
         // the dynamic `import('@napi-rs/keyring')` inside cli-core resolves
         // against the symlink target and bypasses vitest's mock. Mocking
-        // `@doist/cli-core/auth` is the reliable boundary — it preserves the
+        // `@todoist/cli-core/auth` is the reliable boundary — it preserves the
         // typed `SecureStoreUnavailableError` re-export so the actual class
         // identity carries across the test/import boundary.
-        vi.doMock('@doist/cli-core/auth', async (importOriginal) => {
-            const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
+        vi.doMock('@todoist/cli-core/auth', async (importOriginal) => {
+            const actual = await importOriginal<typeof import('@todoist/cli-core/auth')>()
             const { SecureStoreUnavailableError } = actual
             return {
                 ...actual,
@@ -366,7 +366,7 @@ describe('lib/auth', () => {
         keyring.getError = new Error('keychain locked')
 
         const { probeApiToken } = await import('./auth.js')
-        const { SecureStoreUnavailableError } = await import('@doist/cli-core/auth')
+        const { SecureStoreUnavailableError } = await import('@todoist/cli-core/auth')
 
         await expect(probeApiToken()).rejects.toBeInstanceOf(SecureStoreUnavailableError)
     })

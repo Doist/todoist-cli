@@ -1,4 +1,4 @@
-import { outputIds, resolveOutputMode } from '@doist/cli-core'
+import { outputIds, resolveOutputMode } from '@todoist/cli-core'
 import chalk from 'chalk'
 import { fetchNotifications } from '../../lib/api/notifications.js'
 import { CliError } from '../../lib/errors.js'

@@ -3,7 +3,7 @@ import {
     type AuthAccount,
     createKeyringTokenStore,
     type KeyringTokenStore,
-} from '@doist/cli-core/auth'
+} from '@todoist/cli-core/auth'
 import { type AuthFlag, type AuthMode, getConfigPath, readConfig } from './config.js'
 import { CliError } from './errors.js'
 import { getRequestedUserRef } from './global-args.js'

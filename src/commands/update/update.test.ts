@@ -5,7 +5,7 @@ import { getConfigPath } from '../../lib/config.js'
 
 describe('update wrapper', () => {
     afterEach(() => {
-        vi.doUnmock('@doist/cli-core/commands')
+        vi.doUnmock('@todoist/cli-core/commands')
         vi.resetModules()
         vi.restoreAllMocks()
         vi.unstubAllGlobals()
@@ -13,7 +13,7 @@ describe('update wrapper', () => {
 
     it('forwards todoist-cli wiring (packageName, version, configPath, changelog hint, spinner) to cli-core', async () => {
         const registerCoreSpy = vi.fn()
-        vi.doMock('@doist/cli-core/commands', () => ({
+        vi.doMock('@todoist/cli-core/commands', () => ({
             registerUpdateCommand: registerCoreSpy,
         }))
 

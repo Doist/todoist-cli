@@ -1,7 +1,7 @@
 import {
     preloadMarkdown as corePreloadMarkdown,
     renderMarkdown as coreRenderMarkdown,
-} from '@doist/cli-core/markdown'
+} from '@todoist/cli-core/markdown'
 
 let preloadPromise: Promise<void> | null = null
 

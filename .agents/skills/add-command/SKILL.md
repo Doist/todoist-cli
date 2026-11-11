@@ -45,7 +45,7 @@ Every new command should satisfy these properties. They ensure the CLI works wel
 
 5. **Progressive help discovery** — Parent command groups include `.addHelpText('after', ...)` with 2–3 concrete examples. Every `.description()` is a clear one-line purpose statement. When a required positional arg is missing, call `failWithUsage(cmd)`: it prints help to stderr and exits 1, or throws `MISSING_ARGUMENT` under `--json` / `--ndjson`. Never a bare `cmd.help()`, which prints to stdout and exits 0.
 
-6. **Composable and predictable structure** — Use consistent subcommand verbs (`list`/`view`/`create`/`update`/`delete`/`browse`). Use consistent flag names across entities (`--project <ref>`, `--json`, `--dry-run`, `--yes`, `--limit`, `--cursor`, `--all`). Support `--stdin` for text content where applicable (read it with `readStdin()` from `@doist/cli-core`, and test it with `mockStdin()` from `@doist/cli-core/testing`).
+6. **Composable and predictable structure** — Use consistent subcommand verbs (`list`/`view`/`create`/`update`/`delete`/`browse`). Use consistent flag names across entities (`--project <ref>`, `--json`, `--dry-run`, `--yes`, `--limit`, `--cursor`, `--all`). Support `--stdin` for text content where applicable (read it with `readStdin()` from `@todoist/cli-core`, and test it with `mockStdin()` from `@todoist/cli-core/testing`).
 
 7. **Bounded, high-signal responses** — List commands use `paginate()` from `src/lib/pagination.ts` with `--limit <n>`, `--cursor`, and `--all` flags. When results are truncated, `formatNextCursorFooter()` tells the user how to fetch more. JSON output uses `formatJson()` or `formatPaginatedJson()` to return essential fields by default, passing the `--full` flag for complete output.
 

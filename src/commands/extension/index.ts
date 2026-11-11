@@ -1,5 +1,5 @@
 /**
- * Where the extension system from `@doist/cli-core` meets this CLI.
+ * Where the extension system from `@todoist/cli-core` meets this CLI.
  *
  * Everything td-specific is decided here — the binary name, the directories,
  * which organisation earns the first-party marker, which colours to use — and
@@ -7,12 +7,12 @@
  */
 
 import { realpathSync } from 'node:fs'
-import { getDataDir, getStateDir } from '@doist/cli-core'
+import { getDataDir, getStateDir } from '@todoist/cli-core'
 import {
     createExtensionManager,
     type ExtensionManager,
     registerExtensionGroup,
-} from '@doist/cli-core/extensions'
+} from '@todoist/cli-core/extensions'
 import chalk from 'chalk'
 import type { Command } from 'commander'
 import packageJson from '../../../package.json' with { type: 'json' }

@@ -1,4 +1,4 @@
-import { SecureStoreUnavailableError } from '@doist/cli-core/auth'
+import { SecureStoreUnavailableError } from '@todoist/cli-core/auth'
 import chalk from 'chalk'
 import {
     type AuthMetadata,

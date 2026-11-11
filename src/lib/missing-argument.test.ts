@@ -1,4 +1,4 @@
-import { captureStream } from '@doist/cli-core/testing'
+import { captureStream } from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CliError } from './errors.js'

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { findCommandToken, needsExtensionLookup, stripUserFlag } from '@doist/cli-core'
-import type { ExtensionCommands } from '@doist/cli-core/extensions'
+import { findCommandToken, needsExtensionLookup, stripUserFlag } from '@todoist/cli-core'
+import type { ExtensionCommands } from '@todoist/cli-core/extensions'
 import { type Command, program } from 'commander'
 import packageJson from '../package.json' with { type: 'json' }
 import { ACCOUNT_COMMAND_ALIASES } from './commands/user/aliases.js'

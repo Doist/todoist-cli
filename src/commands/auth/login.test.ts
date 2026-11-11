@@ -1,4 +1,4 @@
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram } from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -28,8 +28,8 @@ vi.mock('open', () => ({ default: (url: string) => openMock(url) }))
 // the mapping logic, so the local glue would otherwise go unverified.
 const capturedAttachOptions: Array<{ options: Record<string, unknown> }> = []
 
-vi.mock('@doist/cli-core/auth', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@doist/cli-core/auth')>()
+vi.mock('@todoist/cli-core/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@todoist/cli-core/auth')>()
     return {
         ...actual,
         attachLoginCommand: vi.fn(

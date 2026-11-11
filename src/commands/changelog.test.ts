@@ -1,4 +1,4 @@
-import { captureConsole } from '@doist/cli-core/testing'
+import { captureConsole } from '@todoist/cli-core/testing'
 import { Command } from 'commander'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { captureConsole, createTestProgram } from '@doist/cli-core/testing'
+import { captureConsole, createTestProgram } from '@todoist/cli-core/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockWithSpinner, mockProgressTracker, mockLoadingSpinnerStart, mockLoadingSpinnerStop } =

@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { registerChangelogCommand as registerCoreChangelogCommand } from '@doist/cli-core/commands'
+import { registerChangelogCommand as registerCoreChangelogCommand } from '@todoist/cli-core/commands'
 import type { Command } from 'commander'
 import packageJson from '../../package.json' with { type: 'json' }
 

@@ -1,5 +1,5 @@
-import { createSecureStore, SecureStoreUnavailableError } from '@doist/cli-core/auth'
-export type { TokenStorageLocation, TokenStorageResult } from '@doist/cli-core/auth'
+import { createSecureStore, SecureStoreUnavailableError } from '@todoist/cli-core/auth'
+export type { TokenStorageLocation, TokenStorageResult } from '@todoist/cli-core/auth'
 export {
     AUTH_FLAG_ORDER,
     CONFIG_VERSION,
