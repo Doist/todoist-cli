@@ -1,3 +1,13 @@
+## [6.0.0](https://github.com/todoist/todoist-cli/compare/v5.12.4...v6.0.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* publish as @todoist/cli (#652)
+
+### Features
+
+* publish as @todoist/cli ([#652](https://github.com/todoist/todoist-cli/issues/652)) ([8f18b8d](https://github.com/todoist/todoist-cli/commit/8f18b8d729dfd680a097f140e7f9cb7a07662714))
+
 ## [5.12.4](https://github.com/todoist/todoist-cli/compare/v5.12.3...v5.12.4) (2026-11-11)
 
 ### Bug Fixes
