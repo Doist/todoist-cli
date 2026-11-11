@@ -1,4 +1,4 @@
-import { type Comment, formatUserShortName, type TodoistApi } from '@doist/todoist-sdk'
+import { type Comment, formatUserShortName, type TodoistApi } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchCollaboratorsForProject } from '../../lib/collaborators.js'

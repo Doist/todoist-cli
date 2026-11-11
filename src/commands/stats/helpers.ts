@@ -1,4 +1,4 @@
-import { DAY_OF_WEEK_TO_API, type ProductivityStats } from '@doist/todoist-sdk'
+import { DAY_OF_WEEK_TO_API, type ProductivityStats } from '@todoist/sdk'
 import chalk from 'chalk'
 
 type Streak = ProductivityStats['goals']['currentDailyStreak']

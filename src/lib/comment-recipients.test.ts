@@ -1,4 +1,4 @@
-import type { Comment, TodoistApi } from '@doist/todoist-sdk'
+import type { Comment, TodoistApi } from '@todoist/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultCommentRecipients } from './comment-recipients.js'
 

@@ -1,5 +1,5 @@
-import type { SyncResponse } from '@doist/todoist-sdk'
 import { CliError as BaseCliError, type CliErrorCode, type ErrorType } from '@todoist/cli-core'
+import type { SyncResponse } from '@todoist/sdk'
 
 export { BaseCliError }
 export type { ErrorType } from '@todoist/cli-core'

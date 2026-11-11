@@ -6,7 +6,7 @@ import {
     getSectionUrl,
     getTaskCommentUrl,
     getTaskUrl,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 
 /**
  * Todoist web links.

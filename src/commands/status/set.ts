@@ -1,4 +1,4 @@
-import type { UserStatus, UserStatusArgs } from '@doist/todoist-sdk'
+import type { UserStatus, UserStatusArgs } from '@todoist/sdk'
 import type { Command } from 'commander'
 import { writeUserStatus } from '../../lib/api/user-status.js'
 import { formatDateTime, parseLocalDate } from '../../lib/dates.js'

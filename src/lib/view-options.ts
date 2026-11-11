@@ -3,7 +3,7 @@ import {
     VIEW_MODES,
     type GroupedBy,
     type ViewOptionsSetArgs,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { type Command, Option } from 'commander'
 import { withCaseInsensitiveChoices } from './completion.js'
 import { CliError } from './errors.js'

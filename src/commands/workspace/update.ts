@@ -1,4 +1,4 @@
-import type { UpdateWorkspaceArgs } from '@doist/todoist-sdk'
+import type { UpdateWorkspaceArgs } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { clearWorkspaceCache, fetchWorkspaces } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'

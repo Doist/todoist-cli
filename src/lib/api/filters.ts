@@ -4,7 +4,7 @@ import {
     type Filter as SdkFilter,
     type SyncCommand,
     type ViewOptionsSetArgs,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { CliError, SyncCommandError } from '../errors.js'
 import { getApi, pickDefined } from './core.js'
 

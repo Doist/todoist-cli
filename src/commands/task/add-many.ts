@@ -1,11 +1,11 @@
+import { outputIds, readStdin } from '@todoist/cli-core'
 import {
     createCommand,
     type Project,
     type SyncCommand,
     type SyncCommandsMap,
     type TodoistApi,
-} from '@doist/todoist-sdk'
-import { outputIds, readStdin } from '@todoist/cli-core'
+} from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { resolveAssigneeIds } from '../../lib/collaborators.js'

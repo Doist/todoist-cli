@@ -1,5 +1,5 @@
-import { formatUserShortName } from '@doist/todoist-sdk'
 import { outputIds, resolveOutputMode } from '@todoist/cli-core'
+import { formatUserShortName } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'

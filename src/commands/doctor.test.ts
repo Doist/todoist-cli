@@ -17,7 +17,7 @@ const { mockWithSpinner, mockProgressTracker, mockLoadingSpinnerStart, mockLoadi
 
 vi.mock('chalk')
 
-vi.mock('@doist/todoist-sdk', () => ({
+vi.mock('@todoist/sdk', () => ({
     TodoistApi: vi.fn(),
 }))
 
@@ -76,7 +76,7 @@ vi.mock('../lib/config.js', async (importOriginal) => {
     }
 })
 
-import { TodoistApi } from '@doist/todoist-sdk'
+import { TodoistApi } from '@todoist/sdk'
 import { NoTokenError, probeApiToken } from '../lib/auth.js'
 import { readConfig } from '../lib/config.js'
 import { registerDoctorCommand } from './doctor.js'

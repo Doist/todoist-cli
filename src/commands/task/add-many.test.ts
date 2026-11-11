@@ -1,13 +1,13 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { SyncError } from '@doist/todoist-sdk'
 import {
     captureConsole,
     captureStream,
     createTestProgram,
     mockStdin,
 } from '@todoist/cli-core/testing'
+import type { SyncError } from '@todoist/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('chalk')

@@ -1,10 +1,10 @@
+import { resolveOutputMode } from '@todoist/cli-core'
 import {
     formatUserShortName,
     isWorkspaceProject,
     type ActivityEvent,
     type ActivityObjectEventType,
-} from '@doist/todoist-sdk'
-import { resolveOutputMode } from '@todoist/cli-core'
+} from '@todoist/sdk'
 import chalk from 'chalk'
 import { Command, Option } from 'commander'
 import { getApi, getCurrentUserId, type Project } from '../lib/api/core.js'

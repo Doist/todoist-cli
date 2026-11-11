@@ -8,7 +8,7 @@ vi.mock('../auth.js', async (importOriginal) => {
     }
 })
 
-import { TodoistRequestError, TodoistSyncError } from '@doist/todoist-sdk'
+import { TodoistRequestError, TodoistSyncError } from '@todoist/sdk'
 import { getAuthMetadata } from '../auth.js'
 import { CliError, SyncCommandError } from '../errors.js'
 import { buildRescheduleDate, wrapApiError } from './core.js'

@@ -6,7 +6,7 @@ import {
     DATE_FORMAT_TO_API,
     DAY_OF_WEEK_TO_API,
     TIME_FORMAT_TO_API,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { CliError } from '../errors.js'
 import { getApi, pickDefined } from './core.js'
 

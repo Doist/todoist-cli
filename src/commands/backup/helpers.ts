@@ -1,4 +1,4 @@
-import type { Backup, TodoistApi } from '@doist/todoist-sdk'
+import type { Backup, TodoistApi } from '@todoist/sdk'
 import { buildReloginCommand } from '../../lib/auth-flags.js'
 import { getAuthMetadata } from '../../lib/auth.js'
 import { CliError } from '../../lib/errors.js'

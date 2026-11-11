@@ -1,4 +1,4 @@
-import type { UserStatus } from '@doist/todoist-sdk'
+import type { UserStatus } from '@todoist/sdk'
 import { formatDateTime } from './dates.js'
 
 /** One line for a status: emoji and message, then the expiry and the pause when they apply. */

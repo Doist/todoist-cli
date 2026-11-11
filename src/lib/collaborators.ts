@@ -1,4 +1,4 @@
-import { formatUserShortName, isWorkspaceProject, type TodoistApi } from '@doist/todoist-sdk'
+import { formatUserShortName, isWorkspaceProject, type TodoistApi } from '@todoist/sdk'
 import { getCurrentUserId, type Project, type Task } from './api/core.js'
 import { CliError } from './errors.js'
 import { extractId, isIdRef } from './refs.js'

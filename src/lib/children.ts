@@ -1,9 +1,4 @@
-import {
-    isWorkspaceProject,
-    type PersonalProject,
-    type Task,
-    type TodoistApi,
-} from '@doist/todoist-sdk'
+import { isWorkspaceProject, type PersonalProject, type Task, type TodoistApi } from '@todoist/sdk'
 import type { Project } from './api/core.js'
 
 /** Max direct children listed by `--include-children`; past this the list is truncated. */

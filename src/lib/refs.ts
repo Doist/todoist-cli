@@ -3,7 +3,7 @@ import {
     parseTodoistUrl as parseSdkTodoistUrl,
     TodoistApi,
     TodoistRequestError,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import type { Project, Task } from './api/core.js'
 import {
     fetchWorkspaceFolders,

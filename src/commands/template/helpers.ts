@@ -1,4 +1,4 @@
-import type { ImportTemplateResponse } from '@doist/todoist-sdk'
+import type { ImportTemplateResponse } from '@todoist/sdk'
 import chalk from 'chalk'
 
 export function formatImportResult(result: ImportTemplateResponse): void {

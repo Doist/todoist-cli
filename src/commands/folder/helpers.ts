@@ -1,4 +1,4 @@
-import type { Folder } from '@doist/todoist-sdk'
+import type { Folder } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'

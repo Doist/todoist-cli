@@ -9,7 +9,7 @@ import {
     User,
     WorkspaceProject,
     type DueDate,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { buildReloginCommand } from '../auth-flags.js'
 import { getAuthMetadata, resolveActiveUser } from '../auth.js'
 import { CliError, SyncCommandError } from '../errors.js'

@@ -1,4 +1,4 @@
-import type { TodoistApi } from '@doist/todoist-sdk'
+import type { TodoistApi } from '@todoist/sdk'
 import { CliError } from './errors.js'
 
 export const PROJECT_LIMIT_HINT =

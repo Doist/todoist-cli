@@ -1,4 +1,4 @@
-import { isWorkspaceProject, type WorkspaceRole } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type WorkspaceRole } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { shareProject as shareProjectSync } from '../../lib/api/projects-sync.js'

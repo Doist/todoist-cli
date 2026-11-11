@@ -1,5 +1,5 @@
-import { formatUserShortName } from '@doist/todoist-sdk'
 import { readStdin } from '@todoist/cli-core'
+import { formatUserShortName } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi, getCurrentUserId } from '../../lib/api/core.js'
 import {

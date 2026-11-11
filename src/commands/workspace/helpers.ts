@@ -1,4 +1,4 @@
-import { WORKSPACE_ROLES as SDK_WORKSPACE_ROLES, type WorkspaceUser } from '@doist/todoist-sdk'
+import { WORKSPACE_ROLES as SDK_WORKSPACE_ROLES, type WorkspaceUser } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import type { Workspace } from '../../lib/api/workspaces.js'
 import { CliError } from '../../lib/errors.js'

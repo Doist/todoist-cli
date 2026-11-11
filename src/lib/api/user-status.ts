@@ -3,7 +3,7 @@ import {
     type SyncResponse,
     type UserStatus,
     type UserStatusArgs,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { CliError } from '../errors.js'
 import { getApi } from './core.js'
 

@@ -1,4 +1,4 @@
-import { type CustomFetch, TodoistApi } from '@doist/todoist-sdk'
+import { type CustomFetch, TodoistApi } from '@todoist/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./core.js', () => ({ getApi: vi.fn() }))

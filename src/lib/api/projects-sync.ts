@@ -1,4 +1,4 @@
-import { createCommand, type ShareProjectArgs } from '@doist/todoist-sdk'
+import { createCommand, type ShareProjectArgs } from '@todoist/sdk'
 import { getApi } from './core.js'
 
 export async function moveProjectParent(id: string, parentId: string | null): Promise<void> {
