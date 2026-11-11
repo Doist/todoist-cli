@@ -43,7 +43,7 @@ Rate every claim on this ladder:
 
 Claims about behaviour ("fixed", "works", "safe", "no regressions") need **ran** or higher. A fact the code shows needs **cited**. Anything lower goes under **Not verified**, with why.
 
-For a change to code others rely on (shared helpers in `src/lib/`, command registration and global flags in `src/index.ts`, an `@todoist/cli-core` or `@doist/todoist-sdk` upgrade), name the one fact that makes it safe, and how you proved it.
+For a change to code others rely on (shared helpers in `src/lib/`, command registration and global flags in `src/index.ts`, an `@todoist/cli-core` or `@todoist/sdk` upgrade), name the one fact that makes it safe, and how you proved it.
 
 Report format:
 

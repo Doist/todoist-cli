@@ -1,4 +1,4 @@
-import { isWorkspaceProject, type PersonalProject } from '@doist/todoist-sdk'
+import { isWorkspaceProject, type PersonalProject } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { reorderProjects } from '../../lib/api/projects-sync.js'
 import { CliError } from '../../lib/errors.js'

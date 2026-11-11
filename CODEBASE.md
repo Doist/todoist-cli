@@ -7,7 +7,7 @@
 ## What this project is
 
 `@todoist/cli` is a **TypeScript CLI** for Todoist. Binary name: `td`. It
-wraps `@doist/todoist-sdk` and publishes a single executable (`dist/index.js`).
+wraps `@todoist/sdk` and publishes a single executable (`dist/index.js`).
 
 ESM-only · Node ≥ 24 · npm ≥ 11 · Commander 14 · vitest · oxlint + oxfmt (no
 eslint/prettier) · semantic-release on merge to `main`.

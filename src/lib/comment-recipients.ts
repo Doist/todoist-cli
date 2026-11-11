@@ -1,4 +1,4 @@
-import type { Comment, GetTaskCommentsArgs, TodoistApi } from '@doist/todoist-sdk'
+import type { Comment, GetTaskCommentsArgs, TodoistApi } from '@todoist/sdk'
 
 export type CommentTarget =
     | { taskId: string; projectId?: never }

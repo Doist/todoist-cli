@@ -1,4 +1,4 @@
-import { type Folder as SdkFolder, type SyncWorkspace } from '@doist/todoist-sdk'
+import { type Folder as SdkFolder, type SyncWorkspace } from '@todoist/sdk'
 import { getApi } from './core.js'
 
 export interface Workspace {

@@ -1,4 +1,4 @@
-import type { PersonalProject, Task } from '@doist/todoist-sdk'
+import type { PersonalProject, Task } from '@todoist/sdk'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fixtures } from '../test-support/fixtures.js'
 import { createMockApi, type MockApi } from '../test-support/mock-api.js'

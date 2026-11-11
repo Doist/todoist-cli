@@ -1,4 +1,4 @@
-import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
+import type { ViewOptions as SavedViewOptions } from '@todoist/sdk'
 import { describe, expect, it } from 'vitest'
 import type { Project, Task } from './api/core.js'
 import { CliError } from './errors.js'

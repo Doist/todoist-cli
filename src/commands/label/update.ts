@@ -1,4 +1,4 @@
-import type { ColorKey } from '@doist/todoist-sdk'
+import type { ColorKey } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'

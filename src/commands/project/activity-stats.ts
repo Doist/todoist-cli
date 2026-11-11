@@ -1,4 +1,4 @@
-import type { GetProjectActivityStatsArgs } from '@doist/todoist-sdk'
+import type { GetProjectActivityStatsArgs } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'

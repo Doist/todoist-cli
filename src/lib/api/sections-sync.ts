@@ -1,4 +1,4 @@
-import { createCommand } from '@doist/todoist-sdk'
+import { createCommand } from '@todoist/sdk'
 import { getApi } from './core.js'
 
 export async function reorderSections(

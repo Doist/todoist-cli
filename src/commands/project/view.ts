@@ -3,7 +3,7 @@ import {
     isWorkspaceProject,
     type PersonalProject,
     type TodoistApi,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaceFolders, fetchWorkspaces } from '../../lib/api/workspaces.js'

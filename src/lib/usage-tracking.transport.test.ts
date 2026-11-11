@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initializeLogger, resetLogger } from './logger.js'
 import { createTrackedFetch, fetchTodoist } from './usage-tracking.js'
 
-// Deliberately no `vi.mock('@doist/todoist-sdk')` in this file, unlike its
+// Deliberately no `vi.mock('@todoist/sdk')` in this file, unlike its
 // sibling `usage-tracking.test.ts`. This exercises the REAL transport — the
 // SDK's proxy agent, its decompress interceptor and undici's own fetch —
 // against a real local server.

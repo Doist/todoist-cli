@@ -1,4 +1,4 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
+import { isWorkspaceProject } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'

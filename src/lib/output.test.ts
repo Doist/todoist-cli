@@ -1,4 +1,4 @@
-import type { Task } from '@doist/todoist-sdk'
+import type { Task } from '@todoist/sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fixtures } from '../test-support/fixtures.js'
 import type { ChildrenResult, ProjectChild, TaskChild } from './children.js'

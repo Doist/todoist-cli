@@ -1,4 +1,4 @@
-import { createCommand, type LiveNotification } from '@doist/todoist-sdk'
+import { createCommand, type LiveNotification } from '@todoist/sdk'
 import { getApi } from './core.js'
 
 export type NotificationType =

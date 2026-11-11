@@ -1,5 +1,5 @@
-import type { ColorKey, ProjectViewStyle } from '@doist/todoist-sdk'
 import { readStdin } from '@todoist/cli-core'
+import type { ColorKey, ProjectViewStyle } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'

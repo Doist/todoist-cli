@@ -393,7 +393,7 @@ describe('resolveTaskRef', () => {
     it.each([404, 400])(
         'falls back to name matching when the ID lookup returns %s',
         async (status) => {
-            const { TodoistRequestError } = await import('@doist/todoist-sdk')
+            const { TodoistRequestError } = await import('@todoist/sdk')
             const api = createMockApi({
                 getTask: vi.fn().mockRejectedValue(new TodoistRequestError('nope', status)),
                 getTasksByFilter: vi
@@ -408,7 +408,7 @@ describe('resolveTaskRef', () => {
     )
 
     it('reports TASK_NOT_FOUND when the API rejects a malformed ID with 400', async () => {
-        const { TodoistRequestError } = await import('@doist/todoist-sdk')
+        const { TodoistRequestError } = await import('@todoist/sdk')
         const api = createMockApi({
             getTask: vi.fn().mockRejectedValue(new TodoistRequestError('Bad Request', 400)),
             getTasksByFilter: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
@@ -462,7 +462,7 @@ describe('resolveTaskRef', () => {
     })
 
     it('rethrows non-404 API errors from raw ID fallback', async () => {
-        const { TodoistRequestError } = await import('@doist/todoist-sdk')
+        const { TodoistRequestError } = await import('@todoist/sdk')
         const networkError = new TodoistRequestError('Service Unavailable', 503)
         const api = createMockApi({
             getTask: vi.fn().mockRejectedValue(networkError),
@@ -818,7 +818,7 @@ describe('resolveParentTaskId', () => {
     })
 
     it('falls back to name matching when the raw-ID lookup 404s', async () => {
-        const { TodoistRequestError } = await import('@doist/todoist-sdk')
+        const { TodoistRequestError } = await import('@todoist/sdk')
         const api = createMockApi({
             getTask: vi.fn().mockRejectedValue(new TodoistRequestError('Not Found', 404)),
             getTasks: vi.fn().mockResolvedValue({
@@ -832,7 +832,7 @@ describe('resolveParentTaskId', () => {
     })
 
     it('throws PARENT_NOT_FOUND for an ID-shaped ref that matches nothing', async () => {
-        const { TodoistRequestError } = await import('@doist/todoist-sdk')
+        const { TodoistRequestError } = await import('@todoist/sdk')
         const api = createMockApi({
             getTask: vi.fn().mockRejectedValue(new TodoistRequestError('Not Found', 404)),
             getTasks: vi.fn().mockResolvedValue({ results: [] }),

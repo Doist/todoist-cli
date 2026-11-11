@@ -1,4 +1,4 @@
-import type { PriceListing, TodoistApi } from '@doist/todoist-sdk'
+import type { PriceListing, TodoistApi } from '@todoist/sdk'
 import type { ViewOptions } from '../../lib/options.js'
 import { formatJson, formatNdjson } from '../../lib/output.js'
 

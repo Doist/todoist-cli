@@ -4,7 +4,7 @@ import {
     ProjectVisibilitySchema,
     type MoveProjectToWorkspaceArgs,
     type ProjectVisibility,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'

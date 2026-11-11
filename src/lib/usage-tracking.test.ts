@@ -1,4 +1,4 @@
-import { getDefaultTransport } from '@doist/todoist-sdk'
+import { getDefaultTransport } from '@todoist/sdk'
 import { Command } from 'commander'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import packageJson from '../../package.json' with { type: 'json' }
@@ -10,8 +10,8 @@ vi.hoisted(() => {
     vi.stubEnv('AI_AGENT', 'claude-code_1.0.0_agent')
 })
 
-vi.mock('@doist/todoist-sdk', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@doist/todoist-sdk')>()
+vi.mock('@todoist/sdk', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@todoist/sdk')>()
     return {
         ...actual,
         getDefaultTransport: vi.fn(() => Promise.resolve(undefined)),

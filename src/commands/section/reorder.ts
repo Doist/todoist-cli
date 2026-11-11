@@ -1,4 +1,4 @@
-import type { Section, TodoistApi } from '@doist/todoist-sdk'
+import type { Section, TodoistApi } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { reorderSections } from '../../lib/api/sections-sync.js'
 import { CliError } from '../../lib/errors.js'

@@ -4,7 +4,7 @@ import {
     type PersonalProject,
     type ProjectViewStyle,
     type TodoistApi,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import type { Project } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { paginate } from '../../lib/pagination.js'

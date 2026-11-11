@@ -23,11 +23,11 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Check for @doist/todoist-sdk updates
+            - name: Check for @todoist/sdk updates
               id: check-updates
               run: |
-                  CURRENT_VERSION=$(npm list @doist/todoist-sdk --json | jq -r '.dependencies."@doist/todoist-sdk".version // empty')
-                  LATEST_VERSION=$(npm view @doist/todoist-sdk version)
+                  CURRENT_VERSION=$(npm list @todoist/sdk --json | jq -r '.dependencies."@todoist/sdk".version // empty')
+                  LATEST_VERSION=$(npm view @todoist/sdk version)
 
                   echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
                   echo "latest-version=$LATEST_VERSION" >> $GITHUB_OUTPUT
@@ -37,14 +37,14 @@ jobs:
                     echo "Found update: $CURRENT_VERSION → $LATEST_VERSION"
                   else
                     echo "updates-available=false" >> $GITHUB_OUTPUT
-                    echo "@doist/todoist-sdk is already at the latest version ($CURRENT_VERSION)"
+                    echo "@todoist/sdk is already at the latest version ($CURRENT_VERSION)"
                   fi
 
-            - name: Update @doist/todoist-sdk to latest
+            - name: Update @todoist/sdk to latest
               if: steps.check-updates.outputs.updates-available == 'true'
               run: |
-                  echo "Updating @doist/todoist-sdk from ${{ steps.check-updates.outputs.current-version }} to ${{ steps.check-updates.outputs.latest-version }}"
-                  npm install --save-exact @doist/todoist-sdk@latest
+                  echo "Updating @todoist/sdk from ${{ steps.check-updates.outputs.current-version }} to ${{ steps.check-updates.outputs.latest-version }}"
+                  npm install --save-exact @todoist/sdk@latest
 
             - name: Upload updated package files
               if: steps.check-updates.outputs.updates-available == 'true'
@@ -106,9 +106,9 @@ jobs:
                   git config --local user.email "action@github.com"
                   git config --local user.name "GitHub Action"
                   git add package.json package-lock.json
-                  git commit -m "fix(deps): update to latest \`@doist/todoist-sdk\` package
+                  git commit -m "fix(deps): update to latest \`@todoist/sdk\` package
 
-                  Updated @doist/todoist-sdk from ${{ needs.update.outputs.current-version }} to ${{ needs.update.outputs.latest-version }}"
+                  Updated @todoist/sdk from ${{ needs.update.outputs.current-version }} to ${{ needs.update.outputs.latest-version }}"
                   git push
 
             - name: Trigger release workflow

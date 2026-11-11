@@ -1,4 +1,4 @@
-import type { WorkspaceUser } from '@doist/todoist-sdk'
+import type { WorkspaceUser } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { lenientIdRef, resolveWorkspaceRef } from '../../lib/refs.js'

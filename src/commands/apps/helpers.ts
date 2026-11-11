@@ -1,4 +1,4 @@
-import type { UploadAppIconArgs } from '@doist/todoist-sdk'
+import type { UploadAppIconArgs } from '@todoist/sdk'
 
 // URL validation + serialization for app OAuth redirect URIs.
 // Mirrored from the todoist-web app editor so the CLI accepts the same set

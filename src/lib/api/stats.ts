@@ -1,4 +1,4 @@
-import { createCommand, type ProductivityStats } from '@doist/todoist-sdk'
+import { createCommand, type ProductivityStats } from '@todoist/sdk'
 import { CliError } from '../errors.js'
 import { getApi, pickDefined } from './core.js'
 

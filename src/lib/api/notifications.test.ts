@@ -4,7 +4,7 @@ vi.mock('./core.js', () => ({
     getApi: vi.fn(),
 }))
 
-import type { LiveNotification } from '@doist/todoist-sdk'
+import type { LiveNotification } from '@todoist/sdk'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import type { MockApi } from '../../test-support/mock-api.js'
 import { fetchNotifications } from './notifications.js'

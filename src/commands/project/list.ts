@@ -1,5 +1,5 @@
-import { isWorkspaceProject } from '@doist/todoist-sdk'
 import { outputIds, resolveOutputMode } from '@todoist/cli-core'
+import { isWorkspaceProject } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi, type Project } from '../../lib/api/core.js'
 import { fetchWorkspaces, type Workspace } from '../../lib/api/workspaces.js'

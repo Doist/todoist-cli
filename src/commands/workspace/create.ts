@@ -1,4 +1,4 @@
-import type { AddWorkspaceArgs } from '@doist/todoist-sdk'
+import type { AddWorkspaceArgs } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { clearWorkspaceCache, fetchWorkspaces } from '../../lib/api/workspaces.js'

@@ -3,7 +3,7 @@ import {
     type LocationReminder,
     type LocationTrigger,
     type Reminder,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import chalk from 'chalk'
 import type { ReminderDue } from '../../lib/api/reminders.js'
 import { formatDuration } from '../../lib/duration.js'

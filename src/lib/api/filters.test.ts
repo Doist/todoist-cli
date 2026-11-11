@@ -5,7 +5,7 @@ vi.mock('./core.js', async (importOriginal) => ({
     getApi: vi.fn(),
 }))
 
-import type { SyncCommand } from '@doist/todoist-sdk'
+import type { SyncCommand } from '@todoist/sdk'
 import { setupApiMock } from '../../test-support/api-mock.js'
 import type { MockApi } from '../../test-support/mock-api.js'
 import { CliError, SyncCommandError } from '../errors.js'

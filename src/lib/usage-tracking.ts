@@ -1,5 +1,5 @@
-import { type CustomFetch, type CustomFetchResponse, getDefaultTransport } from '@doist/todoist-sdk'
 import { createUsageTracking } from '@todoist/cli-core'
+import { type CustomFetch, type CustomFetchResponse, getDefaultTransport } from '@todoist/sdk'
 import packageJson from '../../package.json' with { type: 'json' }
 import { isHttpLoggingEnabled, withHttpLogging } from './logger.js'
 

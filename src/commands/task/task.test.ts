@@ -1,10 +1,10 @@
-import type { Task } from '@doist/todoist-sdk'
 import {
     captureConsole,
     captureStream,
     createTestProgram,
     mockStdin,
 } from '@todoist/cli-core/testing'
+import type { Task } from '@todoist/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', () => ({

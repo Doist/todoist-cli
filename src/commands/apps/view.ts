@@ -1,4 +1,4 @@
-import type { UiExtension } from '@doist/todoist-sdk'
+import type { UiExtension } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { resolveAppRef } from '../../lib/refs.js'

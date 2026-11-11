@@ -1,9 +1,5 @@
-import {
-    isWorkspaceProject,
-    SORTED_BY_OPTIONS,
-    sortTasks as sortTasksBySdk,
-} from '@doist/todoist-sdk'
-import type { SortedBy, TaskSortContext, ViewOptions } from '@doist/todoist-sdk'
+import { isWorkspaceProject, SORTED_BY_OPTIONS, sortTasks as sortTasksBySdk } from '@todoist/sdk'
+import type { SortedBy, TaskSortContext, ViewOptions } from '@todoist/sdk'
 import type { Project, Task } from './api/core.js'
 import { CliError } from './errors.js'
 

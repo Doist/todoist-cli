@@ -20,7 +20,7 @@ vi.mock('../../lib/api/filters.js', async (importOriginal) => ({
     deleteFilter: vi.fn(),
 }))
 
-import type { ViewOptions as SavedViewOptions } from '@doist/todoist-sdk'
+import type { ViewOptions as SavedViewOptions } from '@todoist/sdk'
 import { getAccountLanguage, getAccountTimezone } from '../../lib/api/core.js'
 import {
     addFilter,

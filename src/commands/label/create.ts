@@ -1,4 +1,4 @@
-import type { ColorKey } from '@doist/todoist-sdk'
+import type { ColorKey } from '@todoist/sdk'
 import chalk from 'chalk'
 import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'

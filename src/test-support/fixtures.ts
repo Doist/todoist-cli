@@ -6,7 +6,7 @@ import type {
     ProPlanDetails,
     SubscriptionInfo,
     Task,
-} from '@doist/todoist-sdk'
+} from '@todoist/sdk'
 import type { Project, Section } from '../lib/api/core.js'
 import type { Filter } from '../lib/api/filters.js'
 

@@ -1,12 +1,12 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { TodoistRequestError } from '@doist/todoist-sdk'
 import {
     captureConsole,
     createTestProgram,
     describeEmptyMachineOutput,
 } from '@todoist/cli-core/testing'
+import { TodoistRequestError } from '@todoist/sdk'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/api/core.js', async (importOriginal) => {

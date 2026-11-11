@@ -1,5 +1,5 @@
-import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@doist/todoist-sdk'
 import { readStdin } from '@todoist/cli-core'
+import { isWorkspaceProject, type ColorKey, type ProjectViewStyle } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { moveProjectParent } from '../../lib/api/projects-sync.js'
 import { CliError } from '../../lib/errors.js'

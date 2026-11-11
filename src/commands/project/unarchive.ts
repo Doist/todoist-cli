@@ -1,4 +1,4 @@
-import { isPersonalProject } from '@doist/todoist-sdk'
+import { isPersonalProject } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { isQuiet } from '../../lib/global-args.js'
 import { printDryRun } from '../../lib/output.js'
