@@ -1,3 +1,9 @@
+## [6.0.1](https://github.com/todoist/todoist-cli/compare/v6.0.0...v6.0.1) (2026-11-11)
+
+### Bug Fixes
+
+* **deps:** move to @todoist/sdk ([#653](https://github.com/todoist/todoist-cli/issues/653)) ([397457b](https://github.com/todoist/todoist-cli/commit/397457b684a106ed059e0a91087f5da99346c338))
+
 ## [6.0.0](https://github.com/todoist/todoist-cli/compare/v5.12.4...v6.0.0) (2026-11-11)
 
 ### ⚠ BREAKING CHANGES
