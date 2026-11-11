@@ -1,3 +1,9 @@
+## [5.12.3](https://github.com/Doist/todoist-cli/compare/v5.12.2...v5.12.3) (2026-11-11)
+
+### Bug Fixes
+
+* **deps:** update dependency @doist/cli-core to v1.10.0 ([#650](https://github.com/Doist/todoist-cli/issues/650)) ([625c351](https://github.com/Doist/todoist-cli/commit/625c3517ff7cc28a48068fc69bd257dc26bfdbfc))
+
 ## [5.12.2](https://github.com/Doist/todoist-cli/compare/v5.12.1...v5.12.2) (2026-11-10)
 
 ### Bug Fixes
