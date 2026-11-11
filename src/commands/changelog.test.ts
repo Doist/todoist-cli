@@ -58,7 +58,7 @@ describe('changelog wrapper', () => {
 
         const all = logSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n')
         expect(all).toContain(
-            `View full changelog: https://github.com/Doist/todoist-cli/blob/v${packageJson.version}/CHANGELOG.md`,
+            `View full changelog: https://github.com/todoist/todoist-cli/blob/v${packageJson.version}/CHANGELOG.md`,
         )
     })
 })

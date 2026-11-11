@@ -4,7 +4,7 @@ The following is a set of guidelines for contributing to the Todoist CLI. Please
 
 ## Open Development
 
-All work on Todoist CLI happens directly on [GitHub](https://github.com/Doist/todoist-cli). Both core team members and external contributors send pull requests that go through the same review process.
+All work on Todoist CLI happens directly on [GitHub](https://github.com/todoist/todoist-cli). Both core team members and external contributors send pull requests that go through the same review process.
 
 ## Semantic Versioning
 
@@ -14,7 +14,7 @@ Every significant change is documented in the [CHANGELOG.md](CHANGELOG.md) file.
 
 ## Branch Organization
 
-Submit all changes to the [main](https://github.com/Doist/todoist-cli/tree/main) branch (via PR) by default. For pre-release work, target the `next` branch instead — see [Release Process](#release-process-core-team-only) for details.
+Submit all changes to the [main](https://github.com/todoist/todoist-cli/tree/main) branch (via PR) by default. For pre-release work, target the `next` branch instead — see [Release Process](#release-process-core-team-only) for details.
 
 We do our best to keep `main` in good shape, with all tests passing.
 

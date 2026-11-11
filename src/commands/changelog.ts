@@ -9,7 +9,7 @@ const CHANGELOG_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', '..',
 export function registerChangelogCommand(program: Command): void {
     registerCoreChangelogCommand(program, {
         path: CHANGELOG_PATH,
-        repoUrl: 'https://github.com/Doist/todoist-cli',
+        repoUrl: 'https://github.com/todoist/todoist-cli',
         version: packageJson.version,
     })
 }

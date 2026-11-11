@@ -22,7 +22,7 @@ import { getConfigDir } from '../../lib/config.js'
 import { isAccessible } from '../../lib/global-args.js'
 
 /** The organisation whose extensions show the first-party marker. */
-const OFFICIAL_SOURCE = { host: 'github.com', owner: 'Doist' }
+const OFFICIAL_SOURCE = { host: 'github.com', owner: 'todoist' }
 
 /**
  * Names no extension may take, whatever happens to be registered right now.
