@@ -1,3 +1,9 @@
+## [6.1.0](https://github.com/todoist/todoist-cli/compare/v6.0.1...v6.1.0) (2026-11-12)
+
+### Features
+
+* **apps:** add td apps update --client-type ([#647](https://github.com/todoist/todoist-cli/issues/647)) ([4bd2e9a](https://github.com/todoist/todoist-cli/commit/4bd2e9a628a8305d12a47ec6680b3ae79c6b18be)), closes [todoist/todoist-sdk-typescript#765](https://github.com/todoist/todoist-sdk-typescript/issues/765)
+
 ## [6.0.1](https://github.com/todoist/todoist-cli/compare/v6.0.0...v6.0.1) (2026-11-11)
 
 ### Bug Fixes
