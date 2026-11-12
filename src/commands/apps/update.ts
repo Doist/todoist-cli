@@ -1,5 +1,5 @@
 import { extname } from 'node:path'
-import { APP_CLIENT_TYPES, type AppClientType } from '@todoist/sdk'
+import { APP_CLIENT_TYPES } from '@todoist/sdk'
 import { getApi } from '../../lib/api/core.js'
 import { CliError } from '../../lib/errors.js'
 import { isQuiet } from '../../lib/global-args.js'
@@ -11,6 +11,7 @@ import {
     APP_ICON_SIZES,
     APP_ICON_SPECS,
     type AppIconSize,
+    isAppClientType,
     isAppIconSize,
     parseOAuthRedirectUris,
     serializeOAuthRedirectUris,
@@ -326,10 +327,6 @@ function printResultJson({
         return
     }
     console.log(formatJson(app, 'app'))
-}
-
-function isAppClientType(value: string): value is AppClientType {
-    return (APP_CLIENT_TYPES as readonly string[]).includes(value)
 }
 
 type IconUpload = {
