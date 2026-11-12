@@ -1,3 +1,4 @@
+import { APP_CLIENT_TYPES } from '@todoist/sdk'
 import { Command, Option } from 'commander'
 import { withUnvalidatedChoices } from '../../lib/completion.js'
 import { failWithUsage } from '../../lib/missing-argument.js'
@@ -28,6 +29,7 @@ Examples:
   td apps update id:9909 --remove-oauth-redirect https://example.com/callback --yes
   td apps update id:9909 --set-webhook-url https://example.com/webhook
   td apps update id:9909 --name "My App" --description "New blurb" --set-webhook-url https://example.com/webhook
+  td apps update id:9909 --client-type public
   td apps update id:9909 --icon ./icon.png
   td apps update id:9909 --icon ./icon-60.png --icon-size small
   td apps delete id:9909 --yes
@@ -74,6 +76,15 @@ Requires authenticating with the dev:app_console scope:
             'Remove an OAuth redirect URI from the app (requires --yes)',
         )
         .option('--set-webhook-url <url>', "Set (swap) the app's webhook callback URL")
+        .addOption(
+            withUnvalidatedChoices(
+                new Option(
+                    '--client-type <type>',
+                    'OAuth client type: confidential (server apps that keep a client secret) or public (native apps, browser extensions, CLIs: PKCE without a secret)',
+                ),
+                [...APP_CLIENT_TYPES],
+            ),
+        )
         .option('--icon <path>', "Upload a PNG or JPEG file as the app's icon")
         .addOption(
             withUnvalidatedChoices(

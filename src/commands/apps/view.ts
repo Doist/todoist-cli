@@ -109,6 +109,7 @@ export async function viewApp(ref: string, options: ViewAppOptions = {}): Promis
 
     console.log('')
     console.log(`  Client ID:          ${app.clientId}`)
+    console.log(`  Client type:        ${app.clientType}`)
 
     if (revealSecrets && secrets) {
         console.log(`  Client secret:      ${secrets.clientSecret}`)

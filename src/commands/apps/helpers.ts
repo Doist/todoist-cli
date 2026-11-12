@@ -1,4 +1,4 @@
-import type { UploadAppIconArgs } from '@todoist/sdk'
+import { APP_CLIENT_TYPES, type AppClientType, type UploadAppIconArgs } from '@todoist/sdk'
 
 // URL validation + serialization for app OAuth redirect URIs.
 // Mirrored from the todoist-web app editor so the CLI accepts the same set
@@ -129,4 +129,8 @@ export const APP_ICON_EXTENSIONS: ReadonlySet<string> = new Set(['.png', '.jpg',
 
 export function isAppIconSize(value: string): value is AppIconSize {
     return (APP_ICON_SIZES as readonly string[]).includes(value)
+}
+
+export function isAppClientType(value: string): value is AppClientType {
+    return (APP_CLIENT_TYPES as readonly string[]).includes(value)
 }

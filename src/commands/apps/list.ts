@@ -35,7 +35,9 @@ export async function listApps(options: ListAppsOptions = {}): Promise<void> {
 
     for (const app of apps) {
         console.log(`${app.displayName} ${chalk.dim(`(id:${app.id})`)}`)
-        console.log(`   ${chalk.dim(`Client ID: ${app.clientId}`)}`)
+        console.log(
+            `   ${chalk.dim(`Client ID: ${app.clientId} · Client type: ${app.clientType}`)}`,
+        )
         console.log(`   ${chalk.dim(app.description ?? '(no description)')}`)
     }
 }
